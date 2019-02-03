@@ -1,0 +1,1 @@
+run --workspace_status_command="bash tools/workspace-status.sh"

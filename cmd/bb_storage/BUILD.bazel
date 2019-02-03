@@ -1,0 +1,40 @@
+load("//tools:container.bzl", "container_push_official")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/buildbarn/bb-storage/cmd/bb_storage",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/ac:go_default_library",
+        "//pkg/blobstore/configuration:go_default_library",
+        "//pkg/cas:go_default_library",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_grpc_ecosystem_go_grpc_prometheus//:go_default_library",
+        "@com_github_prometheus_client_golang//prometheus/promhttp:go_default_library",
+        "@go_googleapis//google/bytestream:bytestream_go_proto",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "bb_storage",
+    embed = [":go_default_library"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+container_image(
+    name = "bb_storage_container",
+    entrypoint = ["/bb_storage"],
+    files = [":bb_storage"],
+    visibility = ["//visibility:public"],
+)
+
+container_push_official(
+    name = "bb_storage_container_push",
+    component = "bb-storage",
+    image = ":bb_storage_container",
+)

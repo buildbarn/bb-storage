@@ -1,0 +1,6 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/buildbarn/bb-storage
+gazelle(
+    name = "gazelle",
+)

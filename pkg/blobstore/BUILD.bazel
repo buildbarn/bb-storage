@@ -1,0 +1,51 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "action_cache_blob_access.go",
+        "blob_access.go",
+        "content_addressable_storage_blob_access.go",
+        "error_blob_access.go",
+        "merkle_blob_access.go",
+        "metrics_blob_access.go",
+        "redis_blob_access.go",
+        "remote_blob_access.go",
+        "s3_blob_access.go",
+        "size_distinguishing_blob_access.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/util:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws/awserr:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/s3/s3manager:go_default_library",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_go_redis_redis//:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_google_uuid//:go_default_library",
+        "@com_github_prometheus_client_golang//prometheus:go_default_library",
+        "@go_googleapis//google/bytestream:bytestream_go_proto",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_x_net//context/ctxhttp:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["merkle_blob_access_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/mock:go_default_library",
+        "//pkg/util:go_default_library",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_golang_mock//gomock:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+    ],
+)
