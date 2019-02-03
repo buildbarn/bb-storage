@@ -3,15 +3,20 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "blob_access_content_addressable_storage.go",
         "byte_stream_server.go",
+        "content_addressable_storage.go",
         "content_addressable_storage_server.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/cas",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore:go_default_library",
+        "//pkg/filesystem:go_default_library",
+        "//pkg/proto/cas:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
         "@go_googleapis//google/bytestream:bytestream_go_proto",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
