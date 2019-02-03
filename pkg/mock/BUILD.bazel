@@ -4,14 +4,6 @@ load("@bazel_gomock//:gomock.bzl", "gomock")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 gomock(
-    name = "ac",
-    out = "ac.go",
-    interfaces = ["ActionCache"],
-    library = "//pkg/ac:go_default_library",
-    package = "mock",
-)
-
-gomock(
     name = "blobstore",
     out = "blobstore.go",
     interfaces = ["BlobAccess"],
@@ -19,57 +11,13 @@ gomock(
     package = "mock",
 )
 
-gomock(
-    name = "filesystem",
-    out = "filesystem.go",
-    interfaces = [
-        "Directory",
-        "File",
-    ],
-    library = "//pkg/filesystem:go_default_library",
-    package = "mock",
-)
-
-gomock(
-    name = "remoteexecution",
-    out = "remoteexecution.go",
-    interfaces = [
-        "Execution_ExecuteServer",
-        "Execution_WaitExecutionServer",
-    ],
-    library = "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-    package = "mock",
-)
-
-gomock(
-    name = "sharding",
-    out = "sharding.go",
-    interfaces = [
-        "ShardPermuter",
-        "ShardSelector",
-    ],
-    library = "//pkg/blobstore/sharding:go_default_library",
-    package = "mock",
-)
-
 go_library(
     name = "go_default_library",
-    srcs = [
-        ":ac.go",
-        ":blobstore.go",
-        ":filesystem.go",
-        ":remoteexecution.go",
-        ":sharding.go",
-    ],
+    srcs = [":blobstore.go"],
     importpath = "github.com/buildbarn/bb-storage/pkg/mock",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/blobstore/sharding:go_default_library",
-        "//pkg/filesystem:go_default_library",
         "//pkg/util:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
-        "@go_googleapis//google/longrunning:longrunning_go_proto",
-        "@org_golang_google_grpc//metadata:go_default_library",
     ],
 )
