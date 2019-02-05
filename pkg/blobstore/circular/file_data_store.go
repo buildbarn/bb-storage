@@ -30,7 +30,7 @@ func (ds *fileDataStore) Put(r io.Reader, offset uint64) error {
 		if copyLength > ds.size-writeOffset {
 			copyLength = ds.size - writeOffset
 		}
-		n, err := r.Read(b[:])
+		n, err := r.Read(b[:copyLength])
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
