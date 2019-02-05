@@ -40,8 +40,8 @@ go_library(
         ":builder.go",
         ":remoteexecution.go",
     ],
-    importpath = "github.com/buildbarn/bb-storage/pkg/mock",
-    visibility = ["//visibility:public"],
+    importpath = "github.com/buildbarn/bb-storage/internal/mock",
+    visibility = ["//:__subpackages__"],
     deps = [
         "//pkg/builder:go_default_library",
         "//pkg/util:go_default_library",
