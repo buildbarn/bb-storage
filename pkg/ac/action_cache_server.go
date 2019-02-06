@@ -11,16 +11,16 @@ import (
 )
 
 type actionCacheServer struct {
-	actionCache  ActionCache
-	allowUpdates bool
+	actionCache              ActionCache
+	allowUpdatesForInstances map[string]bool
 }
 
 // NewActionCacheServer creates a GRPC service for serving the contents
 // of a Bazel Action Cache (AC) to Bazel.
-func NewActionCacheServer(actionCache ActionCache, allowUpdates bool) remoteexecution.ActionCacheServer {
+func NewActionCacheServer(actionCache ActionCache, allowUpdatesForInstances map[string]bool) remoteexecution.ActionCacheServer {
 	return &actionCacheServer{
-		actionCache:  actionCache,
-		allowUpdates: allowUpdates,
+		actionCache:              actionCache,
+		allowUpdatesForInstances: allowUpdatesForInstances,
 	}
 }
 
@@ -33,12 +33,12 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {
-	if !s.allowUpdates {
-		return nil, status.Error(codes.Unimplemented, "This service can only be used to get action results")
-	}
 	digest, err := util.NewDigest(in.InstanceName, in.ActionDigest)
 	if err != nil {
 		return nil, err
+	}
+	if instance := digest.GetInstance(); !s.allowUpdatesForInstances[instance] {
+		return nil, status.Errorf(codes.Unimplemented, "This service can only be used to get action results for instance %#v", instance)
 	}
 	return in.ActionResult, s.actionCache.PutActionResult(ctx, digest, in.ActionResult)
 }

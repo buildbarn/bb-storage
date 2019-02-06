@@ -24,13 +24,14 @@ import (
 )
 
 func main() {
-	var schedulersList util.StringList
 	var (
-		actionCacheAllowUpdates = flag.Bool("ac-allow-updates", false, "Allow clients to write into the action cache")
-		blobstoreConfig         = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
-		webListenAddress        = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
+		blobstoreConfig  = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
+		webListenAddress = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
 	)
+	var schedulersList util.StringList
 	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")
+	var allowActionCacheUpdatesForInstancesList util.StringList
+	flag.Var(&allowActionCacheUpdatesForInstancesList, "allow-ac-updates-for-instance", "Allow clients to write into the action cache for this instance")
 	flag.Parse()
 
 	// Web server for metrics and profiling.
@@ -46,8 +47,20 @@ func main() {
 	}
 	actionCache := ac.NewBlobAccessActionCache(actionCacheBlobAccess)
 
-	// Backends capable of compiling.
+	// Let GetCapabilities() work, even for instances that don't
+	// have a scheduler attached to them, but do allow uploading
+	// results into the Action Cache.
 	schedulers := map[string]builder.BuildQueue{}
+	allowActionCacheUpdatesForInstances := map[string]bool{}
+	if len(allowActionCacheUpdatesForInstancesList) > 0 {
+		fallback := builder.NewNonExecutableBuildQueue()
+		for _, instance := range allowActionCacheUpdatesForInstancesList {
+			schedulers[instance] = fallback
+			allowActionCacheUpdatesForInstances[instance] = true
+		}
+	}
+
+	// Backends capable of compiling.
 	for _, schedulerEntry := range schedulersList {
 		components := strings.SplitN(schedulerEntry, "|", 2)
 		if len(components) != 2 {
@@ -76,7 +89,7 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, *actionCacheAllowUpdates))
+	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
 	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 	bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
 	remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
