@@ -1,7 +1,9 @@
 package cas
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -50,7 +52,31 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 }
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support batched uploading of blobs")
+	// Asynchronously call Put() for every blob.
+	responsesChan := make(chan *remoteexecution.BatchUpdateBlobsResponse_Response, len(in.Requests))
+	for _, request := range in.Requests {
+		go func(request *remoteexecution.BatchUpdateBlobsRequest_Request) {
+			digest, err := util.NewDigest(in.InstanceName, request.Digest)
+			if err == nil {
+				err = s.contentAddressableStorage.Put(
+					ctx,
+					digest,
+					int64(len(request.Data)),
+					ioutil.NopCloser(bytes.NewBuffer(request.Data)))
+			}
+			responsesChan <- &remoteexecution.BatchUpdateBlobsResponse_Response{
+				Digest: request.Digest,
+				Status: status.Convert(err).Proto(),
+			}
+		}(request)
+	}
+
+	// Recombine results.
+	var response remoteexecution.BatchUpdateBlobsResponse
+	for i := 0; i < len(in.Requests); i++ {
+		response.Responses = append(response.Responses, <-responsesChan)
+	}
+	return &response, nil
 }
 
 func (s *contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeRequest, stream remoteexecution.ContentAddressableStorage_GetTreeServer) error {
