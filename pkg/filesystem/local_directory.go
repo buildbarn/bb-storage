@@ -46,6 +46,10 @@ func (d *localDirectory) Enter(name string) (Directory, error) {
 
 	fd, err := unix.Openat(d.fd, name, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
 	if err != nil {
+		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
+			// FreeBSD erroneously returns EMLINK.
+			return nil, syscall.ENOTDIR
+		}
 		return nil, err
 	}
 	cd := &localDirectory{
@@ -121,6 +125,10 @@ func (d *localDirectory) OpenFile(name string, flag int, perm os.FileMode) (File
 
 	fd, err := unix.Openat(d.fd, name, flag|unix.O_NOFOLLOW, uint32(perm))
 	if err != nil {
+		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
+			// FreeBSD erroneously returns EMLINK.
+			return nil, syscall.ELOOP
+		}
 		return nil, err
 	}
 	return os.NewFile(uintptr(fd), name), nil
