@@ -13,23 +13,33 @@ import (
 	cas_proto "github.com/buildbarn/bb-storage/pkg/proto/cas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type blobAccessContentAddressableStorage struct {
-	blobAccess blobstore.BlobAccess
+	blobAccess         blobstore.BlobAccess
+	maximumMessageSize int64
 }
 
 // NewBlobAccessContentAddressableStorage creates a
 // ContentAddressableStorage that reads and writes Content Addressable
 // Storage (CAS) objects from a BlobAccess based store.
-func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess) ContentAddressableStorage {
+func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSize int64) ContentAddressableStorage {
 	return &blobAccessContentAddressableStorage{
-		blobAccess: blobAccess,
+		blobAccess:         blobAccess,
+		maximumMessageSize: maximumMessageSize,
 	}
 }
 
 func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest *util.Digest, message proto.Message) error {
-	// TODO(edsch): Reject fetching overly large blobs.
+	if sizeBytes := digest.GetSizeBytes(); sizeBytes > cas.maximumMessageSize {
+		return status.Errorf(
+			codes.InvalidArgument,
+			"Refusing to unmarshal message of size %d, as it exceeds the maximum size of %d",
+			sizeBytes, cas.maximumMessageSize)
+	}
 	_, r, err := cas.blobAccess.Get(ctx, digest)
 	if err != nil {
 		return err
