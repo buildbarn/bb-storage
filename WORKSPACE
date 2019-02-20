@@ -28,8 +28,9 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "ade51a315fa17347e5c31201fdc55aa5ffb913377aa315dceb56ee9725e620ee",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.16.6/rules_go-0.16.6.tar.gz",
+    sha256 = "ee67651f3d5bab1c5dd7f071bc4566cf809745f23bb32ff26d0aa38ed878b261",
+    url = "https://github.com/bazelbuild/rules_go/archive/bb5873bebd9fe63a1789912c8561bcd5fba6f345.tar.gz",
+    strip_prefix = "rules_go-bb5873bebd9fe63a1789912c8561bcd5fba6f345",
 )
 
 http_archive(
@@ -42,7 +43,7 @@ load("@io_bazel_rules_docker//repositories:repositories.bzl", container_reposito
 
 container_repositories()
 
-load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()
 
