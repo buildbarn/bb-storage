@@ -84,3 +84,8 @@ Bazel can be configured to use the remote cache as follows:
 ```
 $ bazel build --remote_cache=localhost:8980 --remote_instance_name=foo //...
 ```
+
+Prebuilt container images of the Buildbarn storage daemon may be found
+on [Docker Hub](https://hub.docker.com/r/buildbarn/bb-storage). More
+examples of how the Buildbarn storage daemon may be deployed can be
+found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-deployments).
