@@ -15,34 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// parseResourceNameRead parses resource name strings in one of the following two forms:
-//
-// - blobs/${hash}/${size}
-// - ${instance}/blobs/${hash}/${size}
-//
-// In the process, the hash, size and instance are extracted.
-func parseResourceNameRead(resourceName string) (*util.Digest, error) {
-	fields := strings.FieldsFunc(resourceName, func(r rune) bool { return r == '/' })
-	l := len(fields)
-	if (l != 3 && l != 4) || fields[l-3] != "blobs" {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
-	}
-	size, err := strconv.ParseInt(fields[l-1], 10, 64)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
-	}
-	instance := ""
-	if l == 4 {
-		instance = fields[0]
-	}
-	return util.NewDigest(
-		instance,
-		&remoteexecution.Digest{
-			Hash:      fields[l-2],
-			SizeBytes: size,
-		})
-}
-
 // parseResourceNameWrite parses resource name strings in one of the following two forms:
 //
 // - uploads/${uuid}/blobs/${hash}/${size}
@@ -91,7 +63,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
 
-	digest, err := parseResourceNameRead(in.ResourceName)
+	digest, err := util.NewDigestFromBytestreamPath(in.ResourceName)
 	if err != nil {
 		return err
 	}

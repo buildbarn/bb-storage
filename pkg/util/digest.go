@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"hash"
 	"log"
+	"strconv"
+	"strings"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
@@ -74,6 +76,36 @@ func MustNewDigest(instance string, partialDigest *remoteexecution.Digest) *Dige
 		log.Fatal(err)
 	}
 	return d
+}
+
+// NewDigestFromBytestreamPath creates a Digest from a string having one
+// of the following two formats:
+//
+// - blobs/${hash}/${size}
+// - ${instance}/blobs/${hash}/${size}
+//
+// This notation is used by Bazel to refer to files accessible through a
+// gRPC Bytestream service.
+func NewDigestFromBytestreamPath(path string) (*Digest, error) {
+	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
+	l := len(fields)
+	if (l != 3 && l != 4) || fields[l-3] != "blobs" {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+	}
+	size, err := strconv.ParseInt(fields[l-1], 10, 64)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+	}
+	instance := ""
+	if l == 4 {
+		instance = fields[0]
+	}
+	return NewDigest(
+		instance,
+		&remoteexecution.Digest{
+			Hash:      fields[l-2],
+			SizeBytes: size,
+		})
 }
 
 // NewDerivedDigest creates a Digest object that uses the same instance
