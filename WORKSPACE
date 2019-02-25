@@ -11,11 +11,11 @@ http_archive(
 
 http_archive(
     name = "bazel_toolchains",
-    sha256 = "ee854b5de299138c1f4a2edb5573d22b21d975acfc7aa938f36d30b49ef97498",
-    strip_prefix = "bazel-toolchains-37419a124bdb9af2fec5b99a973d359b6b899b61",
+    sha256 = "109a99384f9d08f9e75136d218ebaebc68cc810c56897aea2224c57932052d30",
+    strip_prefix = "bazel-toolchains-94d31935a2c94fe7e7c7379a0f3393e181928ff7",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/archive/37419a124bdb9af2fec5b99a973d359b6b899b61.tar.gz",
-        "https://github.com/bazelbuild/bazel-toolchains/archive/37419a124bdb9af2fec5b99a973d359b6b899b61.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/archive/94d31935a2c94fe7e7c7379a0f3393e181928ff7.tar.gz",
+        "https://github.com/bazelbuild/bazel-toolchains/archive/94d31935a2c94fe7e7c7379a0f3393e181928ff7.tar.gz",
     ],
 )
 
@@ -29,8 +29,8 @@ http_archive(
 http_archive(
     name = "io_bazel_rules_go",
     sha256 = "ee67651f3d5bab1c5dd7f071bc4566cf809745f23bb32ff26d0aa38ed878b261",
-    url = "https://github.com/bazelbuild/rules_go/archive/bb5873bebd9fe63a1789912c8561bcd5fba6f345.tar.gz",
     strip_prefix = "rules_go-bb5873bebd9fe63a1789912c8561bcd5fba6f345",
+    url = "https://github.com/bazelbuild/rules_go/archive/bb5873bebd9fe63a1789912c8561bcd5fba6f345.tar.gz",
 )
 
 http_archive(
@@ -43,7 +43,7 @@ load("@io_bazel_rules_docker//repositories:repositories.bzl", container_reposito
 
 container_repositories()
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
