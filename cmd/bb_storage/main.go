@@ -20,6 +20,7 @@ import (
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -27,6 +28,8 @@ func main() {
 	var (
 		blobstoreConfig  = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
 		webListenAddress = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
+		tlsCertFile      = flag.String("tls-cert-file", "", "Certificate for TLS server authentication")
+		tlsKeyFile       = flag.String("tls-key-file", "", "Private key for TLS server authentication")
 	)
 	var schedulersList util.StringList
 	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")
@@ -85,10 +88,25 @@ func main() {
 	})
 
 	// RPC server.
-	s := grpc.NewServer(
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-	)
+	var s *grpc.Server
+	if *tlsCertFile != "" && *tlsKeyFile != "" {
+		creds, err := credentials.NewServerTLSFromFile(*tlsCertFile, *tlsKeyFile)
+		if err != nil {
+			log.Fatal("Failed to generate credentials: ", err)
+		}
+		s = grpc.NewServer(
+			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+			grpc.Creds(creds),
+		)
+	} else if *tlsCertFile != "" || *tlsKeyFile != "" {
+		log.Fatal("Both certificate and key are required for TLS")
+	} else {
+		s = grpc.NewServer(
+			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		)
+	}
 	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
 	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 	bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
