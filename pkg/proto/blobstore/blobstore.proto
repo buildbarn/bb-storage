@@ -75,6 +75,9 @@ message CircularBlobAccessConfiguration {
 message GRPCBlobAccessConfiguration {
     // Endpoint address of the GRPC server (e.g., "localhost:8982").
     string endpoint = 1;
+
+    // TLS details for encrypted and optionally authenticated communications.
+    ClientTLSConfiguration tls = 2;
 }
 
 message RedisBlobAccessConfiguration {
@@ -158,4 +161,19 @@ message SizeDistinguishingeBlobAccessConfiguration {
 
     // Maximum size of blobs read from/written to the backend for small blobs.
     int64 cutoff_size_bytes = 3;
+}
+
+message ClientTLSConfiguration {
+    // PEM file of the TLS public certificate for the remote server. Only
+    // necessary if the server certificate is self-signed or not trusted
+    // by any of the client's system root certificates.
+    string server_ca_file = 1;
+
+    // PEM file of the client TLS public certificate. Only necessary for
+    // client-side TLS authentication. Requires 'client_key_file'.
+    string client_cert_file = 2;
+
+    // PEM file of the client TLS private key. Only necessary for
+    // client-side TLS authentication. Requires 'client_cert_file'.
+    string client_key_file = 3;
 }

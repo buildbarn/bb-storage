@@ -1,13 +1,15 @@
 package configuration
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -23,6 +25,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	grpc_credentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -54,6 +57,35 @@ func CreateBlobAccessObjectsFromConfig(configurationFile string) (blobstore.Blob
 		blobstore.NewMerkleBlobAccess(contentAddressableStorage),
 		"cas_merkle")
 	return contentAddressableStorage, actionCache, nil
+}
+
+func newClientTLSFromFiles(config *pb.ClientTLSConfiguration) (grpc_credentials.TransportCredentials, error) {
+	var certificates []tls.Certificate
+	if config.ClientCertFile != "" || config.ClientKeyFile != "" {
+		certificate, err := tls.LoadX509KeyPair(config.ClientCertFile, config.ClientKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		certificates = append(certificates, certificate)
+	}
+	var certPool *x509.CertPool
+	if config.ServerCaFile != "" {
+		pemCerts, err := ioutil.ReadFile(config.ServerCaFile)
+		if err != nil {
+			return nil, err
+		}
+		certPool = x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(pemCerts); !ok {
+			return nil, errors.New("Failed parsing PEM encoded server CA certificates")
+		}
+	} else {
+		var err error
+		certPool, err = x509.SystemCertPool()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return grpc_credentials.NewTLS(&tls.Config{Certificates: certificates, RootCAs: certPool}), nil
 }
 
 func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, digestKeyFormat util.DigestKeyFormat) (blobstore.BlobAccess, error) {
@@ -131,11 +163,19 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 		implementation = blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error))
 	case *pb.BlobAccessConfiguration_Grpc:
 		backendType = "grpc"
-		client, err := grpc.Dial(
-			backend.Grpc.Endpoint,
-			grpc.WithInsecure(),
-			grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
+		options := []grpc.DialOption{
+			grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+			grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor)}
+		if backend.Grpc.Tls != nil {
+			creds, err := newClientTLSFromFiles(backend.Grpc.Tls)
+			if err != nil {
+				return nil, err
+			}
+			options = append(options, grpc.WithTransportCredentials(creds))
+		} else {
+			options = append(options, grpc.WithInsecure())
+		}
+		client, err := grpc.Dial(backend.Grpc.Endpoint, options...)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +208,7 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 		// If AccessKeyId isn't specified, allow AWS to search for credentials.
 		// In AWS EC2, this search will include the instance IAM Role.
 		if backend.S3.AccessKeyId != "" {
-			cfg.Credentials = credentials.NewStaticCredentials(backend.S3.AccessKeyId, backend.S3.SecretAccessKey, "")
+			cfg.Credentials = aws_credentials.NewStaticCredentials(backend.S3.AccessKeyId, backend.S3.SecretAccessKey, "")
 		}
 		session := session.New(&cfg)
 		s3 := s3.New(session)
