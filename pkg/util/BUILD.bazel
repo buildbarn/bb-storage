@@ -5,13 +5,20 @@ go_library(
     srcs = [
         "digest.go",
         "flag.go",
+        "options.go",
         "status.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/util",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/auth:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_grpc_ecosystem_go_grpc_middleware//:go_default_library",
+        "@com_github_grpc_ecosystem_go_grpc_middleware//auth:go_default_library",
+        "@com_github_grpc_ecosystem_go_grpc_prometheus//:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//credentials:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
     ],
 )
