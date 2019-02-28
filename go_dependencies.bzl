@@ -30,6 +30,14 @@ def bb_storage_go_dependencies():
     )
 
     go_repository(
+        name = "com_github_dgrijalva_jwt_go",
+        importpath = "github.com/dgrijalva/jwt-go",
+        sha256 = "197465ef53219f3aeb1a6940b70e16d288fe4e4108d4831b91ea101118440e63",
+        strip_prefix = "jwt-go-3.2.0",
+        urls = ["https://github.com/dgrijalva/jwt-go/archive/v3.2.0.tar.gz"],
+    )
+
+    go_repository(
         name = "com_github_golang_mock",
         importpath = "github.com/golang/mock",
         sha256 = "0dc7dbcf6d83b4318e26d9481dfa9405042288d666835f810e0b70ada2f54e11",
@@ -51,6 +59,14 @@ def bb_storage_go_dependencies():
         sha256 = "c997aca07026a52745e3d7aeab528550b90d3bae65ff2b67991d890bb2a7b1ff",
         strip_prefix = "redis-6.15.1",
         urls = ["https://github.com/go-redis/redis/archive/v6.15.1.tar.gz"],
+    )
+
+    go_repository(
+        name = "com_github_grpc_ecosystem_go_grpc_middleware",
+        importpath = "github.com/grpc-ecosystem/go-grpc-middleware",
+        sha256 = "e9178768b55709d2fc2b5a509baceccb4e51d841fa13ed409e16455435e6917b",
+        strip_prefix = "go-grpc-middleware-1.0.0",
+        urls = ["https://github.com/grpc-ecosystem/go-grpc-middleware/archive/v1.0.0.tar.gz"],
     )
 
     go_repository(
