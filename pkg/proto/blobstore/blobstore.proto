@@ -42,6 +42,10 @@ message BlobAccessConfiguration {
         // Fan out requests across multiple storage backends to spread
         // out load.
         ShardingBlobAccessConfiguration sharding = 9;
+
+        // Delegate requests to an underlying backend but forward
+        // incoming client metadata (including credentials).
+        BlobAccessConfiguration grpc_metadata_forwarding = 10;
     }
 }
 

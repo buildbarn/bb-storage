@@ -185,6 +185,13 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 		case "cas":
 			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, 65536)
 		}
+	case *pb.BlobAccessConfiguration_GrpcMetadataForwarding:
+		backendType = "grpc_metadata_forwarding"
+		remote, err := createBlobAccess(backend.GrpcMetadataForwarding, storageType, digestKeyFormat)
+		if err != nil {
+			return nil, err
+		}
+		implementation = blobstore.NewGRPCMetadataForwardingBlobAccess(remote)
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
 		implementation = blobstore.NewRedisBlobAccess(
