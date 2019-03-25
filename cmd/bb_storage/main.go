@@ -14,7 +14,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/configuration"
 	"github.com/buildbarn/bb-storage/pkg/opencensus"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/buildbarn/bb-storage/pkg/util"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -35,10 +36,13 @@ func main() {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
 
+	util.ValidateTLS(storageConfiguration.Tls)
+
 	// Web server for metrics and profiling.
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, nil))
+		log.Fatal(util.HTTPListenAndServe(&storageConfiguration.MetricsListenAddress,
+			storageConfiguration.Tls, nil))
 	}()
 
 	if storageConfiguration.Jaeger != nil {
@@ -86,11 +90,18 @@ func main() {
 	})
 
 	// RPC server.
-	s := grpc.NewServer(
+	opts := []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
-	)
+	}
+	creds, err := util.MakeGRPCCreds(storageConfiguration.Tls)
+	if err != nil {
+		log.Fatal("Loading TLS materials failed: ", err)
+	} else if creds != nil {
+		opts = append(opts, grpc.Creds(creds))
+	}
+	s := grpc.NewServer(opts...)
 	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
 	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 	bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))

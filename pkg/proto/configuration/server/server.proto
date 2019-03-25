@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package buildbarn.configuration.server;
+
+// Used for both GRPC and HTTP listeners.
+// note the corresponding file and inline fields are logically exclusive,
+// but we're not using proto oneof due to its complexities. Instead we validate
+// the generated object.
+message TLSConfiguration {
+  // File containing the TLS private key in ASCII PEM format, unencrypted.
+  string key_file = 1;
+  // Verbatim TLS private key in PEM format, unencrypted.
+  // It's already a combination of headers and base64 encoded bytes, so not using proto 'bytes' here.
+  string key = 2;
+
+  // File containing the TLS certificate in ASCII PEM format.
+  string cert_file = 3;
+  // Verbatim TLS certificate in PEM format.
+  // It's already a combination of headers and base64 encoded bytes, so not using proto 'bytes' here.
+  string cert = 4;
+}

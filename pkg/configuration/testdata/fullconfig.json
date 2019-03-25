@@ -1,0 +1,32 @@
+{
+    "grpc_listen_address": ":4251",
+    "tls": {
+        "cert_file": "cert.pem",
+        "key_file": "key.pem"
+    },
+    "blobstore": {
+        "contentAddressableStorage": {
+            "circular": {
+                "directory": "storage-cas",
+                "offsetFileSizeBytes": 16777216,
+                "offsetCacheSize": 10000,
+                "dataFileSizeBytes": 10737418240,
+                "dataAllocationChunkSizeBytes": 16777216
+            }
+        },
+        "actionCache": {
+            "cloud": {
+                "s3": {
+                    "endpoint": "s3-i7.hula.org:427"
+                }
+            }
+        }
+    },
+    "jaeger": {
+        "service_name": "service_51"
+    },
+    "schedulers": {
+        "bar": "bar-scheduler:8981"
+    },
+    "allowAcUpdatesForInstances": ["foo"]
+}

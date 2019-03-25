@@ -1,16 +1,30 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "digest.go",
         "status.go",
+        "tls.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/util",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/server:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//credentials:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["tls_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/proto/configuration/server:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
     ],
 )

@@ -5,7 +5,10 @@ proto_library(
     name = "bb_storage_proto",
     srcs = ["bb_storage.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/blobstore:blobstore_proto"],
+    deps = [
+        "//pkg/proto/configuration/blobstore:blobstore_proto",
+        "//pkg/proto/configuration/server:server_proto",
+    ],
 )
 
 go_proto_library(
@@ -14,7 +17,10 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage",
     proto = ":bb_storage_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/blobstore:go_default_library"],
+    deps = [
+        "//pkg/proto/configuration/blobstore:go_default_library",
+        "//pkg/proto/configuration/server:go_default_library",
+    ],
 )
 
 go_library(

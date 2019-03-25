@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"fmt"
 	"os"
 
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
@@ -10,14 +11,16 @@ import (
 func GetStorageConfiguration(path string) (*pb.StorageConfiguration, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to load configuration from %s. Caused by: %v",
+			path, err)
 	}
 	var configuration pb.StorageConfiguration
 	if err := jsonpb.Unmarshal(file, &configuration); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to unmarshall configuration from %s. Caused by: %v",
+			path, err)
 	}
 	setDefaultStorageValues(&configuration)
-	return &configuration, err
+	return &configuration, nil
 }
 
 func SetDefaultJaegerValues(configuration *pb.JaegerConfiguration, serviceName string) {

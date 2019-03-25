@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.bb_storage;
 
 import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/server/server.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
 
@@ -38,4 +39,7 @@ message StorageConfiguration {
 
   // List of instances which can upload to the Action Cache.
   repeated string allow_ac_updates_for_instances = 6;
+
+  // TLS configuration, if enabled.
+  buildbarn.configuration.server.TLSConfiguration tls = 7;
 }
