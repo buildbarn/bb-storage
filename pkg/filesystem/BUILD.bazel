@@ -6,15 +6,26 @@ go_library(
         "directory.go",
         "file.go",
         "file_info.go",
-        "local_directory.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "local_directory_windows.go",
+            "windows_junction.go",
+        ],
+        "//conditions:default": [
+            "local_directory_unix.go",
+        ],
+    }),
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem",
     visibility = ["//visibility:public"],
     deps = [
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
-        "@org_golang_x_sys//unix:go_default_library",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [],
+        "//conditions:default": [
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+    }),
 )
 
 go_test(

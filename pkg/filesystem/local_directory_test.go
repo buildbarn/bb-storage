@@ -3,6 +3,8 @@ package filesystem_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -73,7 +75,7 @@ func TestLocalDirectoryEnterFile(t *testing.T) {
 func TestLocalDirectoryEnterSymlink(t *testing.T) {
 	d, p := openTmpDir(t)
 	defer os.RemoveAll(p)
-	require.NoError(t, d.Symlink("/", "symlink"))
+	require.NoError(t, d.Symlink("foobar", "symlink"))
 	_, err := d.Enter("symlink")
 	require.Equal(t, syscall.ENOTDIR, err)
 	require.NoError(t, d.Close())
@@ -111,7 +113,7 @@ func TestLocalDirectoryLinkBadName(t *testing.T) {
 func TestLocalDirectoryLinkNotFound(t *testing.T) {
 	d, p := openTmpDir(t)
 	defer os.RemoveAll(p)
-	require.Equal(t, syscall.ENOENT, d.Link("source", d, "target"))
+	require.True(t, os.IsNotExist(d.Link("source", d, "target")))
 	require.NoError(t, d.Close())
 }
 
@@ -177,7 +179,25 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 	fi, err := d.Lstat("file")
 	require.NoError(t, err)
 	require.Equal(t, "file", fi.Name())
-	require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
+	if runtime.GOOS == "windows" {
+		// On Windows, all files are reported as executable unless using ACL API.
+		require.Equal(t, filesystem.FileTypeExecutableFile, fi.Type())
+	} else {
+		require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
+	}
+	require.NoError(t, d.Close())
+}
+
+func TestLocalDirectoryLstatExecutableFile(t *testing.T) {
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
+	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0755)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	fi, err := d.Lstat("file")
+	require.NoError(t, err)
+	require.Equal(t, "file", fi.Name())
+	require.Equal(t, filesystem.FileTypeExecutableFile, fi.Type())
 	require.NoError(t, d.Close())
 }
 
@@ -266,7 +286,11 @@ func TestLocalDirectoryOpenFileSymlink(t *testing.T) {
 	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/etc/passwd", "symlink"))
 	_, err := d.OpenFile("symlink", os.O_RDONLY, 0)
-	require.Equal(t, syscall.ELOOP, err)
+	if runtime.GOOS == "windows" {
+		require.True(t, os.IsPermission(err))
+	} else {
+		require.Equal(t, syscall.ELOOP, err)
+	}
 	require.NoError(t, d.Close())
 }
 
@@ -297,7 +321,12 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	require.Equal(t, "directory", files[0].Name())
 	require.Equal(t, filesystem.FileTypeDirectory, files[0].Type())
 	require.Equal(t, "file", files[1].Name())
-	require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
+	if runtime.GOOS == "windows" {
+		// On Windows, all files are reported as executable
+		require.Equal(t, filesystem.FileTypeExecutableFile, files[1].Type())
+	} else {
+		require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
+	}
 	require.Equal(t, "symlink", files[2].Name())
 	require.Equal(t, filesystem.FileTypeSymlink, files[2].Type())
 
@@ -349,10 +378,18 @@ func TestLocalDirectoryReadlinkFile(t *testing.T) {
 func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 	d, p := openTmpDir(t)
 	defer os.RemoveAll(p)
-	require.NoError(t, d.Symlink("/foo/bar/baz", "symlink"))
+	require.NoError(t, d.Symlink("foo/bar/baz", "symlink"))
 	target, err := d.Readlink("symlink")
 	require.NoError(t, err)
-	require.Equal(t, "/foo/bar/baz", target)
+	if runtime.GOOS == "windows" {
+		// The d.Symlink() implementation is using junctions to avoid the need
+		// of raised privileges. Junctions are in turn using absolute paths,
+		// so this test is not really representative.
+		// TODO: How to handle symlinks on Windows?
+		require.True(t, strings.HasSuffix(target, "/foo/bar/baz"))
+	} else {
+		require.Equal(t, "foo/bar/baz", target)
+	}
 	require.NoError(t, d.Close())
 }
 
