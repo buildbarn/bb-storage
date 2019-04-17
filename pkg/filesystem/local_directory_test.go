@@ -13,12 +13,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func openTmpDir(t *testing.T) filesystem.Directory {
+func openTmpDir(t *testing.T) (filesystem.Directory, string) {
 	p := filepath.Join(os.Getenv("TEST_TMPDIR"), t.Name())
 	require.NoError(t, os.Mkdir(p, 0777))
 	d, err := filesystem.NewLocalDirectory(p)
 	require.NoError(t, err)
-	return d
+	return d, p
 }
 
 func TestLocalDirectoryCreationFailure(t *testing.T) {
@@ -27,12 +27,14 @@ func TestLocalDirectoryCreationFailure(t *testing.T) {
 }
 
 func TestLocalDirectoryCreationSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryEnterBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 
 	// Empty filename.
 	_, err := d.Enter("")
@@ -50,14 +52,16 @@ func TestLocalDirectoryEnterBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryEnterNonExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.Enter("nonexistent")
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryEnterFile(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -67,7 +71,8 @@ func TestLocalDirectoryEnterFile(t *testing.T) {
 }
 
 func TestLocalDirectoryEnterSymlink(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	_, err := d.Enter("symlink")
 	require.Equal(t, syscall.ENOTDIR, err)
@@ -75,7 +80,8 @@ func TestLocalDirectoryEnterSymlink(t *testing.T) {
 }
 
 func TestLocalDirectoryEnterSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("subdir", 0777))
 	sub, err := d.Enter("subdir")
 	require.NoError(t, err)
@@ -84,7 +90,8 @@ func TestLocalDirectoryEnterSuccess(t *testing.T) {
 }
 
 func TestLocalDirectoryLinkBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 
 	// Invalid source name.
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Link("", d, "file"))
@@ -102,20 +109,23 @@ func TestLocalDirectoryLinkBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryLinkNotFound(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.Equal(t, syscall.ENOENT, d.Link("source", d, "target"))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLinkDirectory(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("source", 0777))
 	require.True(t, os.IsPermission(d.Link("source", d, "target")))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLinkTargetExists(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("source", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -127,7 +137,8 @@ func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 }
 
 func TestLocalDirectoryLinkSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("source", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -136,7 +147,8 @@ func TestLocalDirectoryLinkSuccess(t *testing.T) {
 }
 
 func TestLocalDirectoryLstatBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.Lstat("")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), err)
 	_, err = d.Lstat(".")
@@ -149,14 +161,16 @@ func TestLocalDirectoryLstatBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryLstatNonExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.Lstat("hello")
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLstatFile(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0644)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -168,7 +182,8 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 }
 
 func TestLocalDirectoryLstatSymlink(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	fi, err := d.Lstat("symlink")
 	require.NoError(t, err)
@@ -178,7 +193,8 @@ func TestLocalDirectoryLstatSymlink(t *testing.T) {
 }
 
 func TestLocalDirectoryLstatDirectory(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("directory", 0700))
 	fi, err := d.Lstat("directory")
 	require.NoError(t, err)
@@ -188,7 +204,8 @@ func TestLocalDirectoryLstatDirectory(t *testing.T) {
 }
 
 func TestLocalDirectoryMkdirBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Mkdir("", 0777))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), d.Mkdir(".", 0777))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), d.Mkdir("..", 0777))
@@ -197,20 +214,23 @@ func TestLocalDirectoryMkdirBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryMkdirExisting(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	require.True(t, os.IsExist(d.Mkdir("symlink", 0777)))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryMkdirSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("directory", 0777))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryOpenFileBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.OpenFile("", os.O_CREATE|os.O_WRONLY, 0666)
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), err)
 	_, err = d.OpenFile(".", os.O_CREATE|os.O_WRONLY, 0666)
@@ -223,7 +243,8 @@ func TestLocalDirectoryOpenFileBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryOpenFileExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -233,14 +254,16 @@ func TestLocalDirectoryOpenFileExistent(t *testing.T) {
 }
 
 func TestLocalDirectoryOpenFileNonExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.OpenFile("file", os.O_RDONLY, 0666)
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryOpenFileSymlink(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/etc/passwd", "symlink"))
 	_, err := d.OpenFile("symlink", os.O_RDONLY, 0)
 	require.Equal(t, syscall.ELOOP, err)
@@ -248,7 +271,8 @@ func TestLocalDirectoryOpenFileSymlink(t *testing.T) {
 }
 
 func TestLocalDirectoryOpenFileSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -256,7 +280,8 @@ func TestLocalDirectoryOpenFileSuccess(t *testing.T) {
 }
 
 func TestLocalDirectoryReadDir(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 
 	// Prepare file system.
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
@@ -280,7 +305,8 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 }
 
 func TestLocalDirectoryReadlinkBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.Readlink("")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), err)
 	_, err = d.Readlink(".")
@@ -293,14 +319,16 @@ func TestLocalDirectoryReadlinkBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryReadlinkNonExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	_, err := d.Readlink("nonexistent")
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryReadlinkDirectory(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("directory", 0777))
 	_, err := d.Readlink("directory")
 	require.Equal(t, syscall.EINVAL, err)
@@ -308,7 +336,8 @@ func TestLocalDirectoryReadlinkDirectory(t *testing.T) {
 }
 
 func TestLocalDirectoryReadlinkFile(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -318,7 +347,8 @@ func TestLocalDirectoryReadlinkFile(t *testing.T) {
 }
 
 func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/foo/bar/baz", "symlink"))
 	target, err := d.Readlink("symlink")
 	require.NoError(t, err)
@@ -327,7 +357,8 @@ func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 }
 
 func TestLocalDirectoryRemoveBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Remove(""))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), d.Remove("."))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), d.Remove(".."))
@@ -336,20 +367,23 @@ func TestLocalDirectoryRemoveBadName(t *testing.T) {
 }
 
 func TestLocalDirectoryRemoveNonExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.True(t, os.IsNotExist(d.Remove("nonexistent")))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryRemoveDirectory(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("directory", 0777))
 	require.NoError(t, d.Remove("directory"))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryRemoveFile(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -358,14 +392,16 @@ func TestLocalDirectoryRemoveFile(t *testing.T) {
 }
 
 func TestLocalDirectoryRemoveSymlink(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	require.NoError(t, d.Remove("symlink"))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectorySymlinkBadName(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Symlink("/whatever", ""))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), d.Symlink("/whatever", "."))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), d.Symlink("/whatever", ".."))
@@ -374,14 +410,16 @@ func TestLocalDirectorySymlinkBadName(t *testing.T) {
 }
 
 func TestLocalDirectorySymlinkExistent(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Mkdir("directory", 0777))
 	require.True(t, os.IsExist(d.Symlink("/", "directory")))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectorySymlinkSuccess(t *testing.T) {
-	d := openTmpDir(t)
+	d, p := openTmpDir(t)
+	defer os.RemoveAll(p)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	require.NoError(t, d.Close())
 }
