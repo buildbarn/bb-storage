@@ -160,6 +160,9 @@ const (
 	// DigestKeyWithInstance lets Digest.GetKey() return a key
 	// that includes the hash, size and instance name.
 	DigestKeyWithInstance
+	// DigestKeyShort lets Digest.GetKey() return a short key
+	// made from parts of the hash.
+	DigestKeyShort
 )
 
 // GetKey generates a string representation of the digest object that
@@ -170,6 +173,8 @@ func (d *Digest) GetKey(format DigestKeyFormat) string {
 		return fmt.Sprintf("%s-%d", d.partialDigest.Hash, d.partialDigest.SizeBytes)
 	case DigestKeyWithInstance:
 		return fmt.Sprintf("%s-%d-%s", d.partialDigest.Hash, d.partialDigest.SizeBytes, d.instance)
+	case DigestKeyShort:
+		return d.partialDigest.Hash[:7]
 	default:
 		log.Fatal("Invalid digest key format")
 		return ""
