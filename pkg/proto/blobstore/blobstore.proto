@@ -42,6 +42,9 @@ message BlobAccessConfiguration {
         // Fan out requests across multiple storage backends to spread
         // out load.
         ShardingBlobAccessConfiguration sharding = 9;
+
+        // Read objects from/write objects to an GCS bucket.
+        GCSBlobAccessConfiguration gcs = 10;
     }
 }
 
@@ -158,4 +161,15 @@ message SizeDistinguishingeBlobAccessConfiguration {
 
     // Maximum size of blobs read from/written to the backend for small blobs.
     int64 cutoff_size_bytes = 3;
+}
+
+message GCSBlobAccessConfiguration {
+       // Name of the GCS bucket.
+       string bucket = 1;
+   
+       // Prefix for keys, e.g. 'bazel_cas/'.
+       string key_prefix = 2;
+
+       // Auth JWT location.
+       string auth = 3; 
 }

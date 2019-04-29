@@ -108,3 +108,51 @@ def bb_storage_go_dependencies():
         strip_prefix = "testify-1.3.0",
         urls = ["https://github.com/stretchr/testify/archive/v1.3.0.tar.gz"],
     )
+
+    go_repository(
+      name = "com_google_cloud_go",
+      importpath = "cloud.google.com/go",
+      vcs = "git",
+      remote = "https://github.com/googleapis/google-cloud-go",
+      tag = "v0.37.4",
+    )
+  
+    go_repository(
+        name = "org_golang_x_oauth2",
+        importpath = "golang.org/x/oauth2",
+        vcs = "git",
+        remote = "https://github.com/golang/oauth2",
+        commit = "9f3314589c9a9136388751d9adae6b0ed400978a",
+    )
+
+    go_repository(
+        name = "org_golang_google_api",
+        importpath = "google.golang.org/api",
+        strip_prefix = "google-api-go-client-0.4.0",
+        sha256 = "b3ccb1714d7f60ecbb42882b68a2da1ee3a721087fa5b22c518156ab8f7e1a12",
+        urls = ["https://github.com/googleapis/google-api-go-client/archive/v0.4.0.zip"],
+    )
+
+    go_repository(
+        name = "com_github_googleapis_gax_go",
+        importpath = "github.com/googleapis/gax-go",
+        tag = "v2.0.4",
+    )
+
+    go_repository(
+        name = "io_opencensus_go",
+        importpath = "go.opencensus.io",
+        sha256 = "839fb798c5034805884c4c6632f1e959b04edaf0c34fc17fd8f617b39af91d79",
+        strip_prefix = "opencensus-go-0.21.0",
+        urls = ["https://github.com/census-instrumentation/opencensus-go/archive/v0.21.0.zip"],
+
+    )
+    
+    go_repository(
+        name = "com_github_hashicorp_golang_lru",
+        importpath = "github.com/hashicorp/golang-lru",
+        sha256 = "db5fb365252d34390618905a43f444a58567029a74f16a9ee077c1b37b9fd007",
+        strip_prefix = "golang-lru-0.5.1",
+        urls = ["https://github.com/hashicorp/golang-lru/archive/v0.5.1.zip"],
+
+    )

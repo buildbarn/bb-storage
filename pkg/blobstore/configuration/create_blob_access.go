@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,15 +16,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
-	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
 	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 // CreateBlobAccessObjectsFromConfig creates a pair of BlobAccess
@@ -157,6 +158,13 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 	case *pb.BlobAccessConfiguration_Remote:
 		backendType = "remote"
 		implementation = blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageType)
+	case *pb.BlobAccessConfiguration_Gcs:
+		backendType = "gcs"
+		var err error
+		implementation, err = blobstore.NewGCS(context.Background(), backend.Gcs.Bucket, backend.Gcs.KeyPrefix, digestKeyFormat, backend.Gcs.Auth)
+		if err != nil {
+			return nil, err
+		}
 	case *pb.BlobAccessConfiguration_S3:
 		backendType = "s3"
 		cfg := aws.Config{
