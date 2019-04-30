@@ -7,6 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"strings"
+	"time"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
@@ -15,7 +16,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
+	"contrib.go.opencensus.io/exporter/ocagent"
+	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
+	"go.opencensus.io/zpages"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -25,8 +34,10 @@ import (
 
 func main() {
 	var (
-		blobstoreConfig  = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
-		webListenAddress = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
+		blobstoreConfig    = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
+		webListenAddress   = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
+		ocagentAddress     = flag.String("ocagent.address", "", "Address of the opencensus agent, optional")
+		ocagentServiceName = flag.String("ocagent.service-name", "bb-storage", "Opencensus service name")
 	)
 	var schedulersList util.StringList
 	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")
@@ -39,6 +50,31 @@ func main() {
 	go func() {
 		log.Fatal(http.ListenAndServe(*webListenAddress, nil))
 	}()
+
+	pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
+		Namespace: "bb_storage",
+		Registry: prometheus.DefaultRegisterer.(*prometheus.Registry),
+	})
+	if err != nil {
+		log.Fatalf("Failed to create the Prometheus stats exporter: %v", err)
+	}
+	view.RegisterExporter(pe)
+	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+		log.Fatalf("Failed to register ocgrpc server views: %v", err)
+	}
+	zpages.Handle(nil, "/debug")
+	if *ocagentAddress != "" {
+		oce, err := ocagent.NewExporter(
+			ocagent.WithInsecure(),
+			ocagent.WithReconnectionPeriod(5 * time.Second),
+			ocagent.WithAddress(*ocagentAddress),
+			ocagent.WithServiceName(*ocagentServiceName))
+		if err != nil {
+			log.Fatalf("Failed to create ocagent-exporter: %v", err)
+		}
+		trace.RegisterExporter(oce)
+		view.RegisterExporter(oce)
+	}
 
 	// Storage access.
 	contentAddressableStorageBlobAccess, actionCacheBlobAccess, err := configuration.CreateBlobAccessObjectsFromConfig(*blobstoreConfig)
@@ -88,6 +124,7 @@ func main() {
 	s := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 	)
 	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
 	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))

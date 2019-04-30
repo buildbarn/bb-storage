@@ -9,6 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"go.opencensus.io/trace"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -59,13 +61,18 @@ func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateSt
 }
 
 func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Get")
+	defer span.End()
 	ba.lock.Lock()
+	span.Annotate(nil, "Lock obtained")
 	cursors := ba.stateStore.GetCursors()
 	offset, length, ok, err := ba.offsetStore.Get(digest, cursors)
+	span.Annotate([]trace.Attribute{trace.Int64Attribute("offset", int64(offset)), trace.Int64Attribute("length", length), trace.BoolAttribute("object_found", ok)}, "offsetStore.Get completed")
 	ba.lock.Unlock()
 	if err != nil {
 		return 0, nil, err
 	} else if ok {
+		span.Annotate(nil, "Obtaining body ReadCloser")
 		return length, ba.dataStore.Get(offset, length), nil
 	}
 	return 0, nil, status.Errorf(codes.NotFound, "Blob not found")
@@ -73,23 +80,30 @@ func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) (int
 
 func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
 	defer r.Close()
+	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Put")
+	defer span.End()
 
 	// Allocate space in the data store.
 	ba.lock.Lock()
+	span.Annotatef(nil, "Lock obtained, allocating %d bytes", sizeBytes)
 	offset, err := ba.stateStore.Allocate(sizeBytes)
 	ba.lock.Unlock()
 	if err != nil {
 		return err
 	}
+	span.Annotatef(nil, "Store allocated, offset %d", offset)
 
 	// Write the data to storage.
 	if err := ba.dataStore.Put(r, offset); err != nil {
 		return err
 	}
 
+	span.Annotate(nil, "Obtaining lock")
 	ba.lock.Lock()
+	span.Annotate(nil, "Lock obtained, calling GetCursors")
 	cursors := ba.stateStore.GetCursors()
 	if cursors.Contains(offset, sizeBytes) {
+		span.Annotate(nil, "Updating offsetStore")
 		err = ba.offsetStore.Put(digest, offset, sizeBytes, cursors)
 	} else {
 		err = errors.New("Data became stale before write completed")

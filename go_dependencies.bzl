@@ -108,3 +108,65 @@ def bb_storage_go_dependencies():
         strip_prefix = "testify-1.3.0",
         urls = ["https://github.com/stretchr/testify/archive/v1.3.0.tar.gz"],
     )
+
+    go_repository(
+        name = "io_opencensus_go_contrib_exporter_prometheus",
+        importpath = "contrib.go.opencensus.io/exporter/prometheus",
+        commit = "f6cda26f80a388eabda7766388c14e96370440e5",
+    )
+
+    go_repository(
+        name = "io_opencensus_go_contrib_exporter_ocagent",
+        importpath = "contrib.go.opencensus.io/exporter/ocagent",
+        urls = ["https://github.com/census-ecosystem/opencensus-go-exporter-ocagent/archive/v0.5.0.tar.gz"],
+        sha256 = "b5e1e1e67edd460dae1a5125b594e060c2bae1dfc2d2a3fbadbbb65c15e079a5",
+        strip_prefix = "opencensus-go-exporter-ocagent-0.5.0",
+    )
+
+    go_repository(
+        name = "org_golang_google_api",
+        importpath = "google.golang.org/api",
+        urls = ["https://github.com/googleapis/google-api-go-client/archive/v0.4.0.tar.gz"],
+        sha256 = "fde7b06bc002cc886efa94845ac2ba4f48fd4c321a04a9ee5558026f5fa28c0c",
+        strip_prefix = "google-api-go-client-0.4.0",
+    )
+
+    go_repository(
+        name = "com_github_census_instrumentation_opencensus_proto",
+        importpath = "github.com/census-instrumentation/opencensus-proto",
+        commit = "e2601ef16f8a085a69d94ace5133f97438f8945f",
+        patches = [
+            "//third_party:com_github_census_instrumentation_opencensus_proto.patch",
+        ]
+    )
+
+    go_repository(
+        name = "org_golang_x_sync",
+        importpath = "golang.org/x/sync",
+        commit = "112230192c580c3556b8cee6403af37a4fc5f28c",
+    )
+
+    go_repository(
+        name = "com_github_grpc_ecosystem_grpc_gateway",
+        importpath = "github.com/grpc-ecosystem/grpc-gateway",
+        urls = ["https://github.com/grpc-ecosystem/grpc-gateway/archive/v1.8.5.tar.gz"],
+        sha256 = "9d7cf2ce799002024f215d3ff2df4882c347563478093a4671b13154ba37982c",
+        strip_prefix = "grpc-gateway-1.8.5",
+        build_file_generation = "on",
+    )
+
+    go_repository(
+        name = "io_opencensus_go",
+        importpath = "go.opencensus.io",
+        urls = ["https://github.com/census-instrumentation/opencensus-go/archive/v0.21.0.tar.gz"],
+        sha256 = "e7129aebb9bcb590f01b4fb773b6cf0b10109211cb38cfbaf1f097d191043251",
+        strip_prefix = "opencensus-go-0.21.0",
+    )
+
+    go_repository(
+        name = "com_github_hashicorp_golang_lru",
+        importpath = "github.com/hashicorp/golang-lru",
+        urls = ["https://github.com/hashicorp/golang-lru/archive/v0.5.1.tar.gz"],
+        sha256 = "3bf57512af746dc0338651ba1c35c65fe907ff214ccb22d679539f7ea791511e",
+        strip_prefix = "golang-lru-0.5.1",
+    )
