@@ -116,11 +116,9 @@ def bb_storage_go_dependencies():
     )
 
     go_repository(
-        name = "io_opencensus_go_contrib_exporter_ocagent",
-        importpath = "contrib.go.opencensus.io/exporter/ocagent",
-        urls = ["https://github.com/census-ecosystem/opencensus-go-exporter-ocagent/archive/v0.5.0.tar.gz"],
-        sha256 = "b5e1e1e67edd460dae1a5125b594e060c2bae1dfc2d2a3fbadbbb65c15e079a5",
-        strip_prefix = "opencensus-go-exporter-ocagent-0.5.0",
+        name = "io_opencensus_go_contrib_exporter_jaeger",
+        commit = "e8b55949d948652e47aae4378212f933ecee856b",
+        importpath = "contrib.go.opencensus.io/exporter/jaeger",
     )
 
     go_repository(
@@ -132,27 +130,17 @@ def bb_storage_go_dependencies():
     )
 
     go_repository(
-        name = "com_github_census_instrumentation_opencensus_proto",
-        importpath = "github.com/census-instrumentation/opencensus-proto",
-        commit = "e2601ef16f8a085a69d94ace5133f97438f8945f",
-        patches = [
-            "//third_party:com_github_census_instrumentation_opencensus_proto.patch",
-        ]
+        name = "com_github_uber_jaeger_client_go",
+        importpath = "github.com/uber/jaeger-client-go",
+        urls = ["https://github.com/jaegertracing/jaeger-client-go/archive/v2.16.0.tar.gz"],
+        sha256 = "9657eb6603d6aae55c5637957ab63400127bcc395981831366998428cc3f7edb",
+        strip_prefix = "jaeger-client-go-2.16.0",
     )
 
     go_repository(
         name = "org_golang_x_sync",
         importpath = "golang.org/x/sync",
         commit = "112230192c580c3556b8cee6403af37a4fc5f28c",
-    )
-
-    go_repository(
-        name = "com_github_grpc_ecosystem_grpc_gateway",
-        importpath = "github.com/grpc-ecosystem/grpc-gateway",
-        urls = ["https://github.com/grpc-ecosystem/grpc-gateway/archive/v1.8.5.tar.gz"],
-        sha256 = "9d7cf2ce799002024f215d3ff2df4882c347563478093a4671b13154ba37982c",
-        strip_prefix = "grpc-gateway-1.8.5",
-        build_file_generation = "on",
     )
 
     go_repository(

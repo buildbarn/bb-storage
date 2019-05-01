@@ -7,7 +7,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"strings"
-	"time"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
@@ -20,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
-	"contrib.go.opencensus.io/exporter/ocagent"
+	"contrib.go.opencensus.io/exporter/jaeger"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
@@ -34,10 +33,12 @@ import (
 
 func main() {
 	var (
-		blobstoreConfig    = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
-		webListenAddress   = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
-		ocagentAddress     = flag.String("ocagent.address", "", "Address of the opencensus agent, optional")
-		ocagentServiceName = flag.String("ocagent.service-name", "bb-storage", "Opencensus service name")
+		blobstoreConfig      = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
+		webListenAddress     = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
+		agentEndpointURI     = flag.String("jaeger.agent-endpoint", "127.0.0.1:6831", "jaeger agent address")
+		collectorEndpointURI = flag.String("jaeger.collector-endpoint", "http://127.0.0.1:14268/api/traces", "jaeger collector endpoint")
+		serviceName          = flag.String("service-name", "bb_storage", "service name for tracing")
+		alwaysSample         = flag.Bool("always-sample", false, "record all traces. warning! do not use this in production!")
 	)
 	var schedulersList util.StringList
 	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")
@@ -63,17 +64,18 @@ func main() {
 		log.Fatalf("Failed to register ocgrpc server views: %v", err)
 	}
 	zpages.Handle(nil, "/debug")
-	if *ocagentAddress != "" {
-		oce, err := ocagent.NewExporter(
-			ocagent.WithInsecure(),
-			ocagent.WithReconnectionPeriod(5 * time.Second),
-			ocagent.WithAddress(*ocagentAddress),
-			ocagent.WithServiceName(*ocagentServiceName))
-		if err != nil {
-			log.Fatalf("Failed to create ocagent-exporter: %v", err)
-		}
-		trace.RegisterExporter(oce)
-		view.RegisterExporter(oce)
+	je, err := jaeger.NewExporter(jaeger.Options{
+		AgentEndpoint:          *agentEndpointURI,
+		CollectorEndpoint:      *collectorEndpointURI,
+		ServiceName:            *serviceName,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
+	}
+
+	trace.RegisterExporter(je)
+	if *alwaysSample {
+		trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	}
 
 	// Storage access.
