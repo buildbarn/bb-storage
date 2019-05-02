@@ -8,20 +8,15 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
-	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
-	"contrib.go.opencensus.io/exporter/jaeger"
 	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
-	"go.opencensus.io/zpages"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/opencensus"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -51,31 +46,7 @@ func main() {
 		log.Fatal(http.ListenAndServe(*webListenAddress, nil))
 	}()
 
-	pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
-		Namespace: "bb_storage",
-		Registry: prometheus.DefaultRegisterer.(*prometheus.Registry),
-	})
-	if err != nil {
-		log.Fatalf("Failed to create the Prometheus stats exporter: %v", err)
-	}
-	view.RegisterExporter(pe)
-	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-		log.Fatalf("Failed to register ocgrpc server views: %v", err)
-	}
-	zpages.Handle(nil, "/debug")
-	je, err := jaeger.NewExporter(jaeger.Options{
-		AgentEndpoint:          *agentEndpointURI,
-		CollectorEndpoint:      *collectorEndpointURI,
-		ServiceName:            *serviceName,
-	})
-	if err != nil {
-		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
-	}
-
-	trace.RegisterExporter(je)
-	if *alwaysSample {
-		trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-	}
+	opencensus.Initialize(*agentEndpointURI, *collectorEndpointURI, *serviceName, *alwaysSample)
 
 	// Storage access.
 	contentAddressableStorageBlobAccess, actionCacheBlobAccess, err := configuration.CreateBlobAccessObjectsFromConfig(*blobstoreConfig)
