@@ -7,7 +7,6 @@ go_library(
         "file.go",
         "file_info.go",
         "local_directory.go",
-        "simple_file_info.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem",
     visibility = ["//visibility:public"],

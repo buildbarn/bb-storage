@@ -156,7 +156,6 @@ func TestLocalDirectoryLstatNonExistent(t *testing.T) {
 }
 
 func TestLocalDirectoryLstatFile(t *testing.T) {
-	syscall.Umask(0)
 	d := openTmpDir(t)
 	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0644)
 	require.NoError(t, err)
@@ -164,29 +163,27 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 	fi, err := d.Lstat("file")
 	require.NoError(t, err)
 	require.Equal(t, "file", fi.Name())
-	require.Equal(t, os.FileMode(0644), fi.Mode())
+	require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLstatSymlink(t *testing.T) {
-	syscall.Umask(0)
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", "symlink"))
 	fi, err := d.Lstat("symlink")
 	require.NoError(t, err)
 	require.Equal(t, "symlink", fi.Name())
-	require.Equal(t, 0777|os.ModeSymlink, fi.Mode())
+	require.Equal(t, filesystem.FileTypeSymlink, fi.Type())
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLstatDirectory(t *testing.T) {
-	syscall.Umask(0)
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir("directory", 0700))
 	fi, err := d.Lstat("directory")
 	require.NoError(t, err)
 	require.Equal(t, "directory", fi.Name())
-	require.Equal(t, 0700|os.ModeDir, fi.Mode())
+	require.Equal(t, filesystem.FileTypeDirectory, fi.Type())
 	require.NoError(t, d.Close())
 }
 
@@ -259,7 +256,6 @@ func TestLocalDirectoryOpenFileSuccess(t *testing.T) {
 }
 
 func TestLocalDirectoryReadDir(t *testing.T) {
-	syscall.Umask(0)
 	d := openTmpDir(t)
 
 	// Prepare file system.
@@ -274,11 +270,11 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, len(files))
 	require.Equal(t, "directory", files[0].Name())
-	require.Equal(t, 0777|os.ModeDir, files[0].Mode())
+	require.Equal(t, filesystem.FileTypeDirectory, files[0].Type())
 	require.Equal(t, "file", files[1].Name())
-	require.Equal(t, os.FileMode(0666), files[1].Mode())
+	require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
 	require.Equal(t, "symlink", files[2].Name())
-	require.Equal(t, 0777|os.ModeSymlink, files[2].Mode())
+	require.Equal(t, filesystem.FileTypeSymlink, files[2].Type())
 
 	require.NoError(t, d.Close())
 }

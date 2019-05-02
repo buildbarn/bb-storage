@@ -85,27 +85,29 @@ func (d *localDirectory) Link(oldName string, newDirectory Directory, newName st
 
 func (d *localDirectory) Lstat(name string) (FileInfo, error) {
 	if err := validateFilename(name); err != nil {
-		return nil, err
+		return FileInfo{}, err
 	}
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
 	err := unix.Fstatat(d.fd, name, &stat, unix.AT_SYMLINK_NOFOLLOW)
 	if err != nil {
-		return nil, err
+		return FileInfo{}, err
 	}
-	mode := os.FileMode(stat.Mode & 0777)
+	fileType := FileTypeOther
 	switch stat.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
-		mode |= os.ModeDir
+		fileType = FileTypeDirectory
 	case syscall.S_IFLNK:
-		mode |= os.ModeSymlink
+		fileType = FileTypeSymlink
 	case syscall.S_IFREG:
-		// Regular files have a mode of zero.
-	default:
-		mode |= os.ModeIrregular
+		if stat.Mode&0111 != 0 {
+			fileType = FileTypeExecutableFile
+		} else {
+			fileType = FileTypeRegularFile
+		}
 	}
-	return NewSimpleFileInfo(name, mode), nil
+	return NewFileInfo(name, fileType), nil
 }
 
 func (d *localDirectory) Mkdir(name string, perm os.FileMode) error {
@@ -215,7 +217,7 @@ func (d *localDirectory) RemoveAllChildren() error {
 	}
 	for _, child := range children {
 		name := child.Name()
-		if child.Mode()&os.ModeType == os.ModeDir {
+		if child.Type() == FileTypeDirectory {
 			// A directory. Remove all children. Adjust permissions
 			// to ensure we can delete directories with degenerate
 			// permissions.
