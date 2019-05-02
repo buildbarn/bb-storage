@@ -8,6 +8,12 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
+	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
+	"contrib.go.opencensus.io/exporter/jaeger"
+	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
+	"go.opencensus.io/zpages"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
@@ -17,13 +23,6 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
-	"contrib.go.opencensus.io/exporter/jaeger"
-	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
-	"go.opencensus.io/zpages"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
