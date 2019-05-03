@@ -3,6 +3,7 @@ package cas
 import (
 	"context"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 
@@ -59,6 +60,7 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int) byt
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
+	log.Println("byteStreamServer.Read", in)
 	if in.ReadOffset != 0 || in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
@@ -141,6 +143,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return err
 	}
+	log.Println("byteStreamServer.Write", request)
 	digest, err := parseResourceNameWrite(request.ResourceName)
 	if err != nil {
 		return err
