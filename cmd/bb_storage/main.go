@@ -29,10 +29,10 @@ func main() {
 	var (
 		blobstoreConfig      = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
 		webListenAddress     = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
-		agentEndpointURI     = flag.String("jaeger.agent-endpoint", "127.0.0.1:6831", "jaeger agent address")
-		collectorEndpointURI = flag.String("jaeger.collector-endpoint", "http://127.0.0.1:14268/api/traces", "jaeger collector endpoint")
-		serviceName          = flag.String("service-name", "bb_storage", "service name for tracing")
-		alwaysSample         = flag.Bool("always-sample", false, "record all traces. warning! do not use this in production!")
+		agentEndpointURI     = flag.String("jaeger.agent-endpoint", "127.0.0.1:6831", "Jaeger agent address")
+		collectorEndpointURI = flag.String("jaeger.collector-endpoint", "http://127.0.0.1:14268/api/traces", "Jaeger collector endpoint")
+		serviceName          = flag.String("trace.service-name", "bb_storage", "Service name for tracing")
+		alwaysSample         = flag.Bool("trace.always-sample", false, "Record all traces.")
 	)
 	var schedulersList util.StringList
 	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")

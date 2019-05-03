@@ -34,7 +34,7 @@ func Initialize(jaegerAgentEndpointURI, jaegerCollectorEndpointURI, serviceName 
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
+		log.Fatal("Failed to create the Jaeger exporter:", err)
 	}
 
 	trace.RegisterExporter(je)
