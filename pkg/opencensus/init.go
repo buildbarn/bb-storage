@@ -29,7 +29,9 @@ func Initialize(jaegerAgentEndpointURI, jaegerCollectorEndpointURI, serviceName 
 	je, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint:     jaegerAgentEndpointURI,
 		CollectorEndpoint: jaegerCollectorEndpointURI,
-		ServiceName:       serviceName,
+		Process: jaeger.Process{
+			ServiceName: serviceName,
+		},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
