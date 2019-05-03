@@ -158,3 +158,31 @@ def bb_storage_go_dependencies():
         sha256 = "3bf57512af746dc0338651ba1c35c65fe907ff214ccb22d679539f7ea791511e",
         strip_prefix = "golang-lru-0.5.1",
     )
+
+    go_repository(
+        name = "com_github_dgraph_io_badger",
+        importpath = "github.com/dgraph-io/badger",
+        urls = ["https://github.com/dgraph-io/badger/archive/v1.5.3.tar.gz"],
+        sha256 = "653dccac0adde8462e2ce88cb6ce8eaf1e50d9cb3ec5d57269307b2dabb4885c",
+        strip_prefix = "badger-1.5.3",
+        build_file_proto_mode = "disable",
+    )
+
+    go_repository(
+        name = "com_github_pkg_errors",
+        importpath = "github.com/pkg/errors",
+        urls = ["https://github.com/pkg/errors/archive/v0.8.1.tar.gz"],
+        strip_prefix = "errors-0.8.1",
+    )
+
+    go_repository(
+        name = "com_github_dgryski_go_farm",
+        importpath = "github.com/dgryski/go-farm",
+        commit = "6a90982ecee230ff6cba02d5bd386acc030be9d3",
+    )
+
+    go_repository(
+        name = "com_github_andreasbriese_bbloom",
+        importpath = "github.com/AndreasBriese/bbloom",
+        commit = "e2d15f34fcf99d5dbb871c820ec73f710fca9815",
+    )

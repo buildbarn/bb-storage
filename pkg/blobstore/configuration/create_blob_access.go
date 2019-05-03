@@ -17,9 +17,10 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/dgraph-io/badger"
 	"github.com/go-redis/redis"
 	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -63,6 +64,17 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 		return nil, errors.New("Configuration not specified")
 	}
 	switch backend := config.Backend.(type) {
+	case *pb.BlobAccessConfiguration_Badger:
+		backendType = "badger"
+		opts := badger.DefaultOptions
+		opts.Dir = backend.Badger.Directory
+		opts.ValueDir = backend.Badger.Directory
+		opts.SyncWrites = false
+		db, err := badger.Open(opts)
+		if err != nil {
+			return nil, err
+		}
+		implementation = blobstore.NewBadgerBlobAccess(db, digestKeyFormat)
 	case *pb.BlobAccessConfiguration_Circular:
 		backendType = "circular"
 

@@ -42,6 +42,9 @@ message BlobAccessConfiguration {
         // Fan out requests across multiple storage backends to spread
         // out load.
         ShardingBlobAccessConfiguration sharding = 9;
+
+        // Read objects from/write objects to a Badger k/v store.
+        BadgerBlobAccessConfiguration badger = 10;
     }
 }
 
@@ -158,4 +161,10 @@ message SizeDistinguishingeBlobAccessConfiguration {
 
     // Maximum size of blobs read from/written to the backend for small blobs.
     int64 cutoff_size_bytes = 3;
+}
+
+message BadgerBlobAccessConfiguration {
+    // Directory where the files created by the badger storage
+    // backend are located.
+    string directory = 1;
 }
