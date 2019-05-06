@@ -64,7 +64,7 @@ func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) (int
 	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Get")
 	defer span.End()
 	ba.lock.Lock()
-	span.Annotate(nil, "Lock obtained")
+	span.Annotate(nil, "Lock obtained, calling GetCursors")
 	cursors := ba.stateStore.GetCursors()
 	offset, length, ok, err := ba.offsetStore.Get(digest, cursors)
 	span.Annotate([]trace.Attribute{trace.Int64Attribute("offset", int64(offset)), trace.Int64Attribute("length", length), trace.BoolAttribute("object_found", ok)}, "offsetStore.Get completed")
