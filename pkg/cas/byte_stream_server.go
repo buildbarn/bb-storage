@@ -143,7 +143,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return err
 	}
-	log.Println("byteStreamServer.Write", request)
+	log.Println("byteStreamServer.Write", request.GetResourceName())
 	digest, err := parseResourceNameWrite(request.ResourceName)
 	if err != nil {
 		return err
