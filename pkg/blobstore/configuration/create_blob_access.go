@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -9,8 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
@@ -21,9 +21,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
+	"gocloud.dev/blob/azureblob"
+	"gocloud.dev/gcp"
+
+	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"cloud.google.com/go/storage"
 )
 
 // CreateBlobAccessObjectsFromConfig creates a pair of BlobAccess
@@ -126,6 +132,64 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 				circular.NewBulkAllocatingStateStore(
 					stateStore,
 					backend.Circular.DataAllocationChunkSizeBytes)))
+	case *pb.BlobAccessConfiguration_Cloud:
+		backendType = "cloud"
+		var err error
+		switch backendConfig := backend.Cloud.Config.(type) {
+		case *pb.CloudBlobAccessConfiguration_Url:
+			implementation, err = blobstore.NewCloudUrlBlobAccess(backendConfig.Url, backend.Cloud.KeyPrefix, digestKeyFormat)
+			if err != nil {
+				return nil, err
+			}
+		case *pb.CloudBlobAccessConfiguration_Azure:
+			backendType = "azure"
+			credential, err := azureblob.NewCredential(azureblob.AccountName(backendConfig.Azure.AccountName), azureblob.AccountKey(backendConfig.Azure.AccountKey))
+			if err != nil {
+				return nil, err
+			}
+			pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
+			implementation, err = blobstore.NewCloudAzureBlobAccess(pipeline, azureblob.AccountName(backendConfig.Azure.AccountName), backendConfig.Azure.ContainerName, backend.Cloud.KeyPrefix, digestKeyFormat)
+
+		case *pb.CloudBlobAccessConfiguration_Gcs:
+			backendType = "gcs"
+			var creds *google.Credentials
+			var err error
+			ctx := context.Background()
+			if backendConfig.Gcs.Credentials != nil {
+				creds, err = google.CredentialsFromJSON(ctx, backendConfig.Gcs.Credentials, storage.ScopeReadWrite)
+			} else {
+				creds, err = google.FindDefaultCredentials(ctx, storage.ScopeReadWrite)
+			}
+			if err != nil {
+				return nil, err
+			}
+			client, err := gcp.NewHTTPClient(gcp.DefaultTransport(), gcp.CredentialsTokenSource(creds))
+			if err != nil {
+				return nil, err
+			}
+			implementation, err = blobstore.NewCloudGCSBlobAccess(client, backendConfig.Gcs.Bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+
+		case *pb.CloudBlobAccessConfiguration_S3:
+			backendType = "s3"
+			cfg := aws.Config{
+				Endpoint:         &backendConfig.S3.Endpoint,
+				Region:           &backendConfig.S3.Region,
+				DisableSSL:       &backendConfig.S3.DisableSsl,
+				S3ForcePathStyle: aws.Bool(true),
+			}
+			// If AccessKeyId isn't specified, allow AWS to search for credentials.
+			// In AWS EC2, this search will include the instance IAM Role.
+			if backendConfig.S3.AccessKeyId != "" {
+				cfg.Credentials = credentials.NewStaticCredentials(backendConfig.S3.AccessKeyId, backendConfig.S3.SecretAccessKey, "")
+			}
+			session := session.New(&cfg)
+			implementation, err = blobstore.NewCloudS3BlobAccess(session, backendConfig.S3.Bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errors.New("Cloud configuration did not contain a backend")
+		}
 	case *pb.BlobAccessConfiguration_Error:
 		backendType = "failing"
 		implementation = blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error))
@@ -157,31 +221,6 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 	case *pb.BlobAccessConfiguration_Remote:
 		backendType = "remote"
 		implementation = blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageType)
-	case *pb.BlobAccessConfiguration_S3:
-		backendType = "s3"
-		cfg := aws.Config{
-			Endpoint:         &backend.S3.Endpoint,
-			Region:           &backend.S3.Region,
-			DisableSSL:       &backend.S3.DisableSsl,
-			S3ForcePathStyle: aws.Bool(true),
-		}
-		// If AccessKeyId isn't specified, allow AWS to search for credentials.
-		// In AWS EC2, this search will include the instance IAM Role.
-		if backend.S3.AccessKeyId != "" {
-			cfg.Credentials = credentials.NewStaticCredentials(backend.S3.AccessKeyId, backend.S3.SecretAccessKey, "")
-		}
-		session := session.New(&cfg)
-		s3 := s3.New(session)
-		// Set the uploader concurrency to 1 to drastically reduce memory usage.
-		// TODO(edsch): Maybe the concurrency can be left alone for this process?
-		uploader := s3manager.NewUploader(session)
-		uploader.Concurrency = 1
-		implementation = blobstore.NewS3BlobAccess(
-			s3,
-			uploader,
-			&backend.S3.Bucket,
-			backend.S3.KeyPrefix,
-			digestKeyFormat)
 	case *pb.BlobAccessConfiguration_Sharding:
 		backendType = "sharding"
 		var backends []blobstore.BlobAccess

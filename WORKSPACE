@@ -50,7 +50,7 @@ go_rules_dependencies()
 
 go_register_toolchains()
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
 
@@ -72,3 +72,69 @@ buildifier_dependencies()
 load(":go_dependencies.bzl", "bb_storage_go_dependencies")
 
 bb_storage_go_dependencies()
+
+go_repository(
+    name = "dev_gocloud",
+    commit = "a68836e8e108ad55d26e8e2d21579028090c8aa5",
+    importpath = "gocloud.dev",
+)
+
+go_repository(
+    name = "org_golang_google_api",
+    commit = "612f6f6a5fdac9e861d1779dffe63a1e105fb55c",
+    importpath = "google.golang.org/api",
+)
+
+go_repository(
+    name = "com_google_cloud_go",
+    commit = "09ad026a62f0561b7f7e276569eda11a6afc9773",
+    importpath = "cloud.google.com/go",
+)
+
+go_repository(
+    name = "io_opencensus_go",
+    commit = "17d7955af9d42886455ce010dd46878208041a58",
+    importpath = "go.opencensus.io",
+)
+
+go_repository(
+    name = "org_golang_x_xerrors",
+    commit = "385005612d73f6925de56cb1886917aeaf90e3c5",
+    importpath = "golang.org/x/xerrors",
+)
+
+go_repository(
+    name = "com_github_hashicorp_golang_lru",
+    commit = "7087cb70de9f7a8bc0a10c375cb0d2280a8edf9c",
+    importpath = "github.com/hashicorp/golang-lru",
+)
+
+go_repository(
+    name = "com_github_googleapis_gax_go",
+    commit = "9e334198cafcf7b281a9673424d7b1c3a02ebd50",
+    importpath = "github.com/googleapis/gax-go",
+)
+
+go_repository(
+    name = "org_golang_x_oauth2",
+    commit = "9f3314589c9a9136388751d9adae6b0ed400978a",
+    importpath = "golang.org/x/oauth2",
+)
+
+go_repository(
+    name = "com_github_google_wire",
+    commit = "2183ee4806cf1878e136fea26f06f9abef9375b6",
+    importpath = "github.com/google/wire",
+)
+
+go_repository(
+    name = "com_github_azure_azure_pipeline_go",
+    commit = "55fedc85a614dcd0e942a66f302ae3efb83d563c",
+    importpath = "github.com/Azure/azure-pipeline-go",
+)
+
+go_repository(
+    name = "com_github_azure_azure_storage_blob_go",
+    commit = "8a1deeeabe0a24f918d29630ede0da2a1c8f3b2f",
+    importpath = "github.com/Azure/azure-storage-blob-go",
+)
