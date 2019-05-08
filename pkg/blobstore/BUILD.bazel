@@ -29,6 +29,7 @@ go_library(
         "@dev_gocloud//blob/azureblob:go_default_library",
         "@dev_gocloud//blob/gcsblob:go_default_library",
         "@dev_gocloud//blob/s3blob:go_default_library",
+        "@dev_gocloud//gcerrors:go_default_library",
         "@dev_gocloud//gcp:go_default_library",
         "@go_googleapis//google/bytestream:bytestream_go_proto",
         "@org_golang_google_grpc//:go_default_library",

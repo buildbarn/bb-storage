@@ -4,16 +4,29 @@ import (
 	"context"
 	"io"
 
+	"github.com/Azure/azure-pipeline-go/pipeline"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/buildbarn/bb-storage/pkg/util"
+
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/gcerrors"
 	"gocloud.dev/gcp"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/Azure/azure-pipeline-go/pipeline"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+func convertError(err error) error {
+	if err != nil {
+		if gcerrors.Code(err) == gcerrors.NotFound {
+			err = status.Errorf(codes.NotFound, err.Error())
+		}
+	}
+	return err
+}
 
 type cloudBlobAccess struct {
 	bucket        *blob.Bucket
@@ -35,8 +48,8 @@ func NewCloudAzureBlobAccess(pipeline pipeline.Pipeline, accountName azureblob.A
 	ctx := context.Background()
 	bucket, err := azureblob.OpenBucket(ctx, pipeline, accountName, containerName, nil)
 	return &cloudBlobAccess{
-		bucket: bucket,
-		keyPrefix: keyPrefix,
+		bucket:        bucket,
+		keyPrefix:     keyPrefix,
 		blobKeyFormat: keyFormat,
 	}, err
 }
@@ -63,6 +76,9 @@ func NewCloudS3BlobAccess(sess *session.Session, bucketName, keyPrefix string, k
 
 func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
 	result, err := ba.bucket.NewReader(ctx, *ba.getKey(digest), nil)
+	if err != nil {
+		return 0, nil, convertError(err)
+	}
 	return result.Size(), result, err
 }
 
@@ -73,13 +89,13 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeByt
 		return err
 	}
 	if _, err := io.Copy(w, r); err != nil {
-		return err
+		return convertError(err)
 	}
 	return nil
 }
 
 func (ba *cloudBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return ba.bucket.Delete(ctx, *ba.getKey(digest))
+	return convertError(ba.bucket.Delete(ctx, *ba.getKey(digest)))
 }
 
 func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
