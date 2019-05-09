@@ -10,7 +10,9 @@ import (
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
+	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcerrors"
 	"gocloud.dev/gcp"
