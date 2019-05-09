@@ -51,7 +51,7 @@ message BlobAccessConfiguration {
         // out load.
         ShardingBlobAccessConfiguration sharding = 9;
 
-        // Read objects from/write objects to various cloud-based backends..
+        // Read objects from/write objects to various cloud-based backends.
         CloudBlobAccessConfiguration cloud = 10;
     }
 }
@@ -89,7 +89,8 @@ message CloudBlobAccessConfiguration {
 
     // Backend configuration
     oneof config {
-        // Url of the bucket to use, supports S3 and file
+        // Url of the bucket to use, currently supports the following schemes:
+        // mem, file, s3, gs, azblob.
         string url = 2;
         AzureBlobAccessConfiguration azure = 3;
         GCSBlobAccessConfiguration gcs = 4;

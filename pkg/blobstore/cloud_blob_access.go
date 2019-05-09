@@ -22,10 +22,8 @@ import (
 )
 
 func convertError(err error) error {
-	if err != nil {
-		if gcerrors.Code(err) == gcerrors.NotFound {
-			err = status.Errorf(codes.NotFound, err.Error())
-		}
+	if gcerrors.Code(err) == gcerrors.NotFound {
+		err = status.Errorf(codes.NotFound, err.Error())
 	}
 	return err
 }
