@@ -5,7 +5,7 @@ def container_push_official(name, image, component):
         name = name,
         format = "Docker",
         image = image,
-        registry = "{BB_REGISTRY}",
-        repository = "{BB_REPO}" + component,
-        tag = "{BB_TAG}",
+        registry = "index.docker.io",
+        repository = "buildbarn/" + component,
+        tag = "{BUILD_SCM_TIMESTAMP}-{BUILD_SCM_REVISION}",
     )
