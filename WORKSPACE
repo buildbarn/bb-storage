@@ -26,10 +26,12 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.7.0.tar.gz"],
 )
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "6776d68ebb897625dead17ae510eac3d5f6342367327875210df44dbe2aeeb19",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.1/rules_go-0.17.1.tar.gz"],
+    sha256 = "86ae934bd4c43b99893fc64be9d9fc684b81461581df7ea8fc291c816f5ee8c5",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.18.3/rules_go-0.18.3.tar.gz"],
 )
 
 http_archive(
@@ -51,6 +53,21 @@ go_register_toolchains()
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
+
+load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
+
+_go_image_repos()
+
+http_archive(
+    name = "com_github_bazelbuild_buildtools",
+    sha256 = "5474cdb16fe9e1db22006b5f48d534a91b68236d588223439135c43215e93fba",
+    strip_prefix = "buildtools-0.25.0",
+    url = "https://github.com/bazelbuild/buildtools/archive/0.25.0.zip",
+)
+
+load("@com_github_bazelbuild_buildtools//buildifier:deps.bzl", "buildifier_dependencies")
+
+buildifier_dependencies()
 
 load(":go_dependencies.bzl", "bb_storage_go_dependencies")
 
