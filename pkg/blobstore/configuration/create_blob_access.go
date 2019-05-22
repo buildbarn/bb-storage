@@ -21,7 +21,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
+	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+	_ "gocloud.dev/blob/fileblob"
+	"gocloud.dev/blob/gcsblob"
+	_ "gocloud.dev/blob/memblob"
+	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
 
 	"golang.org/x/oauth2/google"
@@ -134,13 +139,14 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 					backend.Circular.DataAllocationChunkSizeBytes)))
 	case *pb.BlobAccessConfiguration_Cloud:
 		backendType = "cloud"
-		var err error
 		switch backendConfig := backend.Cloud.Config.(type) {
 		case *pb.CloudBlobAccessConfiguration_Url:
-			implementation, err = blobstore.NewCloudUrlBlobAccess(backendConfig.Url, backend.Cloud.KeyPrefix, digestKeyFormat)
+			ctx := context.Background()
+			bucket, err := blob.OpenBucket(ctx, backendConfig.Url)
 			if err != nil {
 				return nil, err
 			}
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
 		case *pb.CloudBlobAccessConfiguration_Azure:
 			backendType = "azure"
 			credential, err := azureblob.NewCredential(azureblob.AccountName(backendConfig.Azure.AccountName), azureblob.AccountKey(backendConfig.Azure.AccountKey))
@@ -148,15 +154,19 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 				return nil, err
 			}
 			pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
-			implementation, err = blobstore.NewCloudAzureBlobAccess(pipeline, azureblob.AccountName(backendConfig.Azure.AccountName), backendConfig.Azure.ContainerName, backend.Cloud.KeyPrefix, digestKeyFormat)
-
+			ctx := context.Background()
+			bucket, err := azureblob.OpenBucket(ctx, pipeline, azureblob.AccountName(backendConfig.Azure.AccountName), backendConfig.Azure.ContainerName, nil)
+			if err != nil {
+				return nil, err
+			}
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
 		case *pb.CloudBlobAccessConfiguration_Gcs:
 			backendType = "gcs"
 			var creds *google.Credentials
 			var err error
 			ctx := context.Background()
-			if backendConfig.Gcs.Credentials != nil {
-				creds, err = google.CredentialsFromJSON(ctx, backendConfig.Gcs.Credentials, storage.ScopeReadWrite)
+			if backendConfig.Gcs.Credentials != "" {
+				creds, err = google.CredentialsFromJSON(ctx, []byte(backendConfig.Gcs.Credentials), storage.ScopeReadWrite)
 			} else {
 				creds, err = google.FindDefaultCredentials(ctx, storage.ScopeReadWrite)
 			}
@@ -167,8 +177,11 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 			if err != nil {
 				return nil, err
 			}
-			implementation, err = blobstore.NewCloudGCSBlobAccess(client, backendConfig.Gcs.Bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
-
+			bucket, err := gcsblob.OpenBucket(ctx, client, backendConfig.Gcs.Bucket, nil)
+			if err != nil {
+				return nil, err
+			}
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
 		case *pb.CloudBlobAccessConfiguration_S3:
 			backendType = "s3"
 			cfg := aws.Config{
@@ -183,10 +196,12 @@ func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, di
 				cfg.Credentials = credentials.NewStaticCredentials(backendConfig.S3.AccessKeyId, backendConfig.S3.SecretAccessKey, "")
 			}
 			session := session.New(&cfg)
-			implementation, err = blobstore.NewCloudS3BlobAccess(session, backendConfig.S3.Bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			ctx := context.Background()
+			bucket, err := s3blob.OpenBucket(ctx, session, backendConfig.S3.Bucket, nil)
 			if err != nil {
 				return nil, err
 			}
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
 		default:
 			return nil, errors.New("Cloud configuration did not contain a backend")
 		}

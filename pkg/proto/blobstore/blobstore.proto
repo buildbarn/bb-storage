@@ -103,7 +103,7 @@ message GCSBlobAccessConfiguration {
     string bucket = 1;
 
     // The JWT credentials to authenticate against GCP.
-    bytes credentials = 2;
+    string credentials = 2;
 }
 
 message GRPCBlobAccessConfiguration {
