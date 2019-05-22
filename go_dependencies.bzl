@@ -122,6 +122,12 @@ def bb_storage_go_dependencies():
     )
 
     go_repository(
+        name = "dev_gocloud",
+        commit = "a68836e8e108ad55d26e8e2d21579028090c8aa5",
+        importpath = "gocloud.dev",
+    )
+
+    go_repository(
         name = "org_golang_google_api",
         importpath = "google.golang.org/api",
         urls = ["https://github.com/googleapis/google-api-go-client/archive/v0.4.0.tar.gz"],
@@ -152,9 +158,51 @@ def bb_storage_go_dependencies():
     )
 
     go_repository(
+        name = "com_google_cloud_go",
+        commit = "09ad026a62f0561b7f7e276569eda11a6afc9773",
+        importpath = "cloud.google.com/go",
+    )
+
+    go_repository(
+        name = "org_golang_x_xerrors",
+        commit = "385005612d73f6925de56cb1886917aeaf90e3c5",
+        importpath = "golang.org/x/xerrors",
+    )
+
+    go_repository(
         name = "com_github_hashicorp_golang_lru",
         importpath = "github.com/hashicorp/golang-lru",
         urls = ["https://github.com/hashicorp/golang-lru/archive/v0.5.1.tar.gz"],
         sha256 = "3bf57512af746dc0338651ba1c35c65fe907ff214ccb22d679539f7ea791511e",
         strip_prefix = "golang-lru-0.5.1",
+    )
+
+    go_repository(
+        name = "com_github_googleapis_gax_go",
+        commit = "9e334198cafcf7b281a9673424d7b1c3a02ebd50",
+        importpath = "github.com/googleapis/gax-go",
+    )
+
+    go_repository(
+        name = "org_golang_x_oauth2",
+        commit = "9f3314589c9a9136388751d9adae6b0ed400978a",
+        importpath = "golang.org/x/oauth2",
+    )
+
+    go_repository(
+        name = "com_github_google_wire",
+        commit = "2183ee4806cf1878e136fea26f06f9abef9375b6",
+        importpath = "github.com/google/wire",
+    )
+
+    go_repository(
+        name = "com_github_azure_azure_pipeline_go",
+        commit = "55fedc85a614dcd0e942a66f302ae3efb83d563c",
+        importpath = "github.com/Azure/azure-pipeline-go",
+    )
+
+    go_repository(
+        name = "com_github_azure_azure_storage_blob_go",
+        commit = "8a1deeeabe0a24f918d29630ede0da2a1c8f3b2f",
+        importpath = "github.com/Azure/azure-storage-blob-go",
     )
