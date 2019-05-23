@@ -6,6 +6,17 @@ import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/blobstore";
 
+message AzureBlobAccessConfiguration {
+    // Azure storage account name.
+    string account_name = 1;
+
+    // The key associated to the account.
+    string account_key = 2;
+
+    // The name of the storage container to use.
+    string container_name = 3;
+}
+
 // Storage configuration for Bazel Buildbarn.
 message BlobstoreConfiguration {
     // Storage configuration for the Content Addressable Storage (CAS).
@@ -22,9 +33,6 @@ message BlobAccessConfiguration {
 
         // Read objects from/write objects to a Bazel remote build cache server.
         RemoteBlobAccessConfiguration remote = 3;
-
-        // Read objects from/write objects to an S3 bucket.
-        S3BlobAccessConfiguration s3 = 4;
 
         // Split up objects across two storage backends by digest size.
         SizeDistinguishingeBlobAccessConfiguration size_distinguishing = 5;
@@ -43,8 +51,12 @@ message BlobAccessConfiguration {
         // out load.
         ShardingBlobAccessConfiguration sharding = 9;
 
+        // Read objects from/write objects to various cloud-based backends.
+        CloudBlobAccessConfiguration cloud = 10;
+
         // Read objects from/write objects to a Badger k/v store.
-        BadgerBlobAccessConfiguration badger = 10;
+        BadgerBlobAccessConfiguration badger = 11;
+
     }
 }
 
@@ -73,6 +85,29 @@ message CircularBlobAccessConfiguration {
     // state file. Setting this value too high may cause excessive
     // amounts of old data to be invalidated upon process restart.
     uint64 data_allocation_chunk_size_bytes = 6;
+}
+
+message CloudBlobAccessConfiguration {
+    // Prefix for keys, e.g. 'bazel_cas/'.
+    string key_prefix = 1;
+
+    // Backend configuration
+    oneof config {
+        // Url of the bucket to use, currently supports the following schemes:
+        // mem, file, s3, gs, azblob.
+        string url = 2;
+        AzureBlobAccessConfiguration azure = 3;
+        GCSBlobAccessConfiguration gcs = 4;
+        S3BlobAccessConfiguration s3 = 5;
+    }
+}
+
+message GCSBlobAccessConfiguration {
+    // Name of the bucket to use.
+    string bucket = 1;
+
+    // The JWT credentials to authenticate against GCP.
+    string credentials = 2;
 }
 
 message GRPCBlobAccessConfiguration {
@@ -111,9 +146,6 @@ message S3BlobAccessConfiguration {
 
     // Name of the S3 bucket.
     string bucket = 6;
-
-    // Prefix for keys, e.g. 'bazel_cas/'.
-    string key_prefix = 7;
 }
 
 message ShardingBlobAccessConfiguration {
