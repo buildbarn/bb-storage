@@ -35,7 +35,7 @@ message BlobAccessConfiguration {
         RemoteBlobAccessConfiguration remote = 3;
 
         // Split up objects across two storage backends by digest size.
-        SizeDistinguishingeBlobAccessConfiguration size_distinguishing = 5;
+        SizeDistinguishingBlobAccessConfiguration size_distinguishing = 5;
 
         // Read objects from/write objects to a circular file on disk.
         CircularBlobAccessConfiguration circular = 6;
@@ -180,11 +180,11 @@ message ShardingBlobAccessConfiguration {
     repeated Shard shard = 2;
 }
 
-message SizeDistinguishingeBlobAccessConfiguration {
+message SizeDistinguishingBlobAccessConfiguration {
     // Backend to which to send requests for small blobs (e.g., Redis).
     BlobAccessConfiguration small = 1;
 
-    // Backend to which to send requests for small blobs (e.g., S3).
+    // Backend to which to send requests for large blobs (e.g., S3).
     BlobAccessConfiguration large = 2;
 
     // Maximum size of blobs read from/written to the backend for small blobs.
