@@ -59,35 +59,63 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int) byt
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
-	if in.ReadOffset != 0 || in.ReadLimit != 0 {
-		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
-	}
-
 	digest, err := util.NewDigestFromBytestreamPath(in.ResourceName)
 	if err != nil {
 		return err
 	}
-	_, r, err := s.blobAccess.Get(out.Context(), digest)
+	blobLength, r, err := s.blobAccess.Get(out.Context(), digest)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
-	for {
+	if in.ReadOffset < 0 || in.ReadOffset > blobLength {
+		// Should return OUT_OF_RANGE according to protocol description.
+		return status.Errorf(
+			codes.OutOfRange, "Read offset %d (read limit %d) for %s of size %d is out of range.",
+			in.ReadOffset, in.ReadLimit, in.ResourceName, blobLength)
+	}
+	skipBytesRemaining := in.ReadOffset
+	readBytesRemaining := in.ReadLimit
+	if in.ReadLimit == 0 {
+		readBytesRemaining = blobLength - skipBytesRemaining
+	} else if in.ReadLimit < 0 {
+		return status.Errorf(
+			codes.InvalidArgument, "Invalid read limit %d (read offset %d) for %s.",
+			in.ReadLimit, in.ReadOffset, in.ResourceName)
+	}
+
+	for readBytesRemaining > 0 {
 		readBuf := make([]byte, s.readChunkSize)
 		n, err := r.Read(readBuf)
 		if err != nil && err != io.EOF {
 			return err
 		}
-		if n > 0 {
-			if err := out.Send(&bytestream.ReadResponse{Data: readBuf[:n]}); err != nil {
-				return err
+		bytesRead := int64(n)
+		if skipBytesRemaining >= bytesRead {
+			skipBytesRemaining -= bytesRead
+		} else {
+			// min(readBytesRemaining, n - skipBytes)
+			lengthToTransmit := bytesRead - skipBytesRemaining
+			if readBytesRemaining < lengthToTransmit {
+				lengthToTransmit = readBytesRemaining
 			}
+			if lengthToTransmit > 0 {
+				dataToTransmit := readBuf[skipBytesRemaining : skipBytesRemaining+lengthToTransmit]
+				if err := out.Send(&bytestream.ReadResponse{Data: dataToTransmit}); err != nil {
+					return err
+				}
+			}
+			skipBytesRemaining = 0
+			readBytesRemaining -= lengthToTransmit
 		}
+
 		if err == io.EOF {
 			return nil
 		}
 	}
+	// The requested amount of data has been transmitted.
+	return nil
 }
 
 type byteStreamWriteServerReader struct {

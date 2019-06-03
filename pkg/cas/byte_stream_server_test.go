@@ -261,3 +261,162 @@ func TestExistenceByteStreamServer(t *testing.T) {
 	require.Equal(t, codes.Unimplemented, s.Code())
 	require.Equal(t, "This service does not support querying write status", s.Message())
 }
+
+func TestByteStreamServerPartialReadSuccess(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	defer ctrl.Finish()
+
+	// Calls against underlying storage.
+	blobAccess := mock.NewMockBlobAccess(ctrl)
+	blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("", &remoteexecution.Digest{
+		Hash:      "09f7e02f1290be211da707a266f153b3",
+		SizeBytes: 5,
+	})).DoAndReturn(func(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+		require.Equal(t, digest, util.MustNewDigest("", &remoteexecution.Digest{
+			Hash:      "09f7e02f1290be211da707a266f153b3",
+			SizeBytes: 5,
+		}))
+		return int64(5), ioutil.NopCloser(bytes.NewBufferString("Hello")), nil
+	}).Times(12)
+	fullData := []byte("Hello")
+
+	// Create an RPC server/client pair.
+	l := bufconn.Listen(1 << 20)
+	server := grpc.NewServer()
+	bytestream.RegisterByteStreamServer(server, cas.NewByteStreamServer(blobAccess, 10))
+	go func() {
+		require.NoError(t, server.Serve(l))
+	}()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(func(string, time.Duration) (net.Conn, error) {
+		return l.Dial()
+	}), grpc.WithInsecure())
+	require.NoError(t, err)
+	defer server.Stop()
+	defer conn.Close()
+	client := bytestream.NewByteStreamClient(conn)
+
+	// Read until the end.
+	for readOffset := 0; readOffset < len(fullData); readOffset++ {
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+			ReadOffset:   int64(readOffset),
+			ReadLimit:    0,
+		})
+		require.NoError(t, err)
+		readResponse, err := req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, fullData[readOffset:], readResponse.Data)
+		readResponse, err = req.Recv()
+		require.Equal(t, io.EOF, err)
+	}
+	// Start at the end, read until the end.
+	req, err := client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+		ReadOffset:   int64(len(fullData)),
+		ReadLimit:    0,
+	})
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+
+	// Read 3 bytes.
+	for readOffset := 0; readOffset < len(fullData); readOffset++ {
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+			ReadOffset:   int64(readOffset),
+			ReadLimit:    3,
+		})
+		endOffset := readOffset + 3
+		if endOffset > len(fullData) {
+			endOffset = len(fullData)
+		}
+		require.NoError(t, err)
+		readResponse, err := req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, fullData[readOffset:endOffset], readResponse.Data)
+		_, err = req.Recv()
+		require.Equal(t, io.EOF, err)
+	}
+	// Start at the end, read until the end (up to 3 bytes).
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+		ReadOffset:   int64(len(fullData)),
+		ReadLimit:    3,
+	})
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+}
+
+func TestByteStreamServerPartialReadBadParameters(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	defer ctrl.Finish()
+
+	// Calls against underlying storage.
+	blobAccess := mock.NewMockBlobAccess(ctrl)
+	blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("", &remoteexecution.Digest{
+		Hash:      "09f7e02f1290be211da707a266f153b3",
+		SizeBytes: 5,
+	})).DoAndReturn(func(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+		require.Equal(t, digest, util.MustNewDigest("", &remoteexecution.Digest{
+			Hash:      "09f7e02f1290be211da707a266f153b3",
+			SizeBytes: 5,
+		}))
+		return int64(5), ioutil.NopCloser(bytes.NewBufferString("Hello")), nil
+	}).Times(3)
+
+	// Create an RPC server/client pair.
+	l := bufconn.Listen(1 << 20)
+	server := grpc.NewServer()
+	bytestream.RegisterByteStreamServer(server, cas.NewByteStreamServer(blobAccess, 10))
+	go func() {
+		require.NoError(t, server.Serve(l))
+	}()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(func(string, time.Duration) (net.Conn, error) {
+		return l.Dial()
+	}), grpc.WithInsecure())
+	require.NoError(t, err)
+	defer server.Stop()
+	defer conn.Close()
+	client := bytestream.NewByteStreamClient(conn)
+
+	// Negative read offset is not allowed.
+	req, err := client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+		ReadOffset:   -1,
+		ReadLimit:    0,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	s := status.Convert(err)
+	require.Equal(t, codes.OutOfRange, s.Code())
+	require.Equal(
+		t, "Read offset -1 (read limit 0) for blobs/09f7e02f1290be211da707a266f153b3/5 of size 5 is out of range.",
+		s.Message())
+
+	// Too large read offset is not allowed.
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+		ReadOffset:   6,
+		ReadLimit:    0,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	s = status.Convert(err)
+	require.Equal(t, codes.OutOfRange, s.Code())
+	require.Equal(
+		t, "Read offset 6 (read limit 0) for blobs/09f7e02f1290be211da707a266f153b3/5 of size 5 is out of range.",
+		s.Message())
+
+	// Negative read limit is not allowed.
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+		ReadOffset:   0,
+		ReadLimit:    -1,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	s = status.Convert(err)
+	require.Equal(t, codes.InvalidArgument, s.Code())
+	require.Equal(
+		t, "Invalid read limit -1 (read offset 0) for blobs/09f7e02f1290be211da707a266f153b3/5.",
+		s.Message())
+}
