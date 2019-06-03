@@ -59,19 +59,27 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int) byt
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
-	if in.ReadOffset != 0 || in.ReadLimit != 0 {
-		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
-	}
-
 	digest, err := util.NewDigestFromBytestreamPath(in.ResourceName)
 	if err != nil {
 		return err
 	}
-	_, r, err := s.blobAccess.Get(out.Context(), digest)
+	blobLength, r, err := s.blobAccess.Get(out.Context(), digest)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+	if in.ReadOffset < 0 || in.ReadOffset > blobLength {
+		return status.Errorf(codes.OutOfRange, "Offset %d (limit %d) in %s of size %d is out of range.", in.ReadOffset, in.ReadLimit, in.ResourceName, blobLength)
+	}
+	if in.ReadLimit < 0 {
+		return status.Errorf(codes.OutOfRange, "Read limit %d (offset %d) for %s of size %d is out of range.", in.ReadLimit, in.ReadOffset, in.ResourceName, blobLength)
+	}
+
+	skipBytesRemaining := in.ReadOffset
+	readBytesRemaining := in.ReadLimit
+	if in.ReadLimit == 0 {
+		readBytesRemaining = blobLength - skipBytesRemaining
+	}
 
 	for {
 		readBuf := make([]byte, s.readChunkSize)
@@ -79,11 +87,27 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		if err != nil && err != io.EOF {
 			return err
 		}
-		if n > 0 {
-			if err := out.Send(&bytestream.ReadResponse{Data: readBuf[:n]}); err != nil {
+		bytesRead := int64(n)
+
+		if skipBytesRemaining >= bytesRead {
+			skipBytesRemaining -= bytesRead
+		} else if readBytesRemaining > 0 {
+			lengthToRead := bytesRead - skipBytesRemaining
+			if readBytesRemaining < lengthToRead {
+				lengthToRead = readBytesRemaining
+			}
+
+			data := readBuf[skipBytesRemaining : skipBytesRemaining + lengthToRead]
+			if err := out.Send(&bytestream.ReadResponse{Data: data}); err != nil {
 				return err
 			}
+
+			skipBytesRemaining = 0
+			readBytesRemaining -= lengthToRead
+		} else {
+			return nil
 		}
+
 		if err == io.EOF {
 			return nil
 		}

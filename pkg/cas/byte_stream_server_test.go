@@ -85,6 +85,12 @@ func TestExistenceByteStreamServer(t *testing.T) {
 		require.NoError(t, r.Close())
 		return err
 	})
+	for i := 0; i < 7; i++ {
+		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("debian8", &remoteexecution.Digest{
+			Hash:      "3538d378083b9afa5ffad767f7269509",
+			SizeBytes: 22,
+		})).Return(int64(22), ioutil.NopCloser(bytes.NewBufferString("This is a long message")), nil)
+	}
 
 	// Create an RPC server/client pair.
 	l := bufconn.Listen(1 << 20)
@@ -260,4 +266,95 @@ func TestExistenceByteStreamServer(t *testing.T) {
 	s = status.Convert(err)
 	require.Equal(t, codes.Unimplemented, s.Code())
 	require.Equal(t, "This service does not support querying write status", s.Message())
+
+	// Do a partial read with a limit and no offset
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadLimit: 4,
+	})
+	require.NoError(t, err)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("This"), readResponse.Data)
+
+	// Do a partial read with an offset and no limit
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadOffset: 4,
+	})
+	require.NoError(t, err)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte(" is a "), readResponse.Data)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("long messa"), readResponse.Data)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("ge"), readResponse.Data)
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+
+	// Do a partial read with an offset and a limit
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadOffset: 3,
+		ReadLimit: 8,
+	})
+	require.NoError(t, err)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("s is a "), readResponse.Data)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("l"), readResponse.Data)
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+
+	// Do a partial read with an offset past the first chunk and a limit
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadOffset: 11,
+		ReadLimit: 500,
+	})
+	require.NoError(t, err)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("ong messa"), readResponse.Data)
+	readResponse, err = req.Recv()
+	require.NoError(t, err)
+	require.Equal(t, []byte("ge"), readResponse.Data)
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+
+	// Do a partial read with an offset at the end of the message
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadOffset: 22,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	require.Equal(t, io.EOF, err)
+
+	// Do a partial read with an offset past the end of the message
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadOffset: 23,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	s = status.Convert(err)
+	require.Equal(t, codes.OutOfRange, s.Code())
+	require.Equal(t, "Offset 23 (limit 0) in debian8/blobs/3538d378083b9afa5ffad767f7269509/22 of size 22 is out of range.", s.Message())
+
+	// Do a partial read with a negative limit
+	req, err = client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+		ReadLimit: -1,
+	})
+	require.NoError(t, err)
+	_, err = req.Recv()
+	s = status.Convert(err)
+	require.Equal(t, codes.OutOfRange, s.Code())
+	require.Equal(t, "Read limit -1 (offset 0) for debian8/blobs/3538d378083b9afa5ffad767f7269509/22 of size 22 is out of range.", s.Message())
 }
