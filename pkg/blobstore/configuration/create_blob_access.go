@@ -23,8 +23,11 @@ import (
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+	// Although not explicitly used here, we want to support a file blob
+	// backend for debug.
 	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
+	// Same thing for in-memory blob storage.
 	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
