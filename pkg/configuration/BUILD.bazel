@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["configuration.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/configuration",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/bb_storage:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+    ],
+)

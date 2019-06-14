@@ -1,21 +1,19 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"strings"
+	"os"
 
-	"go.opencensus.io/plugin/ocgrpc"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
+	blobstore "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/configuration"
 	"github.com/buildbarn/bb-storage/pkg/opencensus"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -23,33 +21,32 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/plugin/ocgrpc"
 )
 
 func main() {
-	var (
-		blobstoreConfig      = flag.String("blobstore-config", "/config/blobstore.conf", "Configuration for blob storage")
-		webListenAddress     = flag.String("web.listen-address", ":80", "Port on which to expose metrics")
-		agentEndpointURI     = flag.String("jaeger.agent-endpoint", "127.0.0.1:6831", "Jaeger agent address")
-		collectorEndpointURI = flag.String("jaeger.collector-endpoint", "http://127.0.0.1:14268/api/traces", "Jaeger collector endpoint")
-		serviceName          = flag.String("trace.service-name", "bb_storage", "Service name for tracing")
-		alwaysSample         = flag.Bool("trace.always-sample", false, "Record all traces.")
-	)
-	var schedulersList util.StringList
-	flag.Var(&schedulersList, "scheduler", "Backend capable of executing build actions. Example: debian8|hostname-of-debian8-scheduler:8981")
-	var allowActionCacheUpdatesForInstancesList util.StringList
-	flag.Var(&allowActionCacheUpdatesForInstancesList, "allow-ac-updates-for-instance", "Allow clients to write into the action cache for this instance")
-	flag.Parse()
+	if len(os.Args) != 2 {
+		log.Fatal("Usage: bb-storage bb-storage.conf")
+	}
+
+	storageConfiguration, err := configuration.GetStorageConfiguration(os.Args[1])
+	if err != nil {
+		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
+	}
 
 	// Web server for metrics and profiling.
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		log.Fatal(http.ListenAndServe(*webListenAddress, nil))
+		log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, nil))
 	}()
 
-	opencensus.Initialize(*agentEndpointURI, *collectorEndpointURI, *serviceName, *alwaysSample)
+	if storageConfiguration.Jaeger != nil {
+		opencensus.Initialize(storageConfiguration.Jaeger)
+	}
 
 	// Storage access.
-	contentAddressableStorageBlobAccess, actionCacheBlobAccess, err := configuration.CreateBlobAccessObjectsFromConfig(*blobstoreConfig)
+	contentAddressableStorageBlobAccess, actionCacheBlobAccess, err := blobstore.CreateBlobAccessObjectsFromConfig(storageConfiguration.Blobstore)
 	if err != nil {
 		log.Fatal("Failed to create blob access: ", err)
 	}
@@ -60,29 +57,25 @@ func main() {
 	// results into the Action Cache.
 	schedulers := map[string]builder.BuildQueue{}
 	allowActionCacheUpdatesForInstances := map[string]bool{}
-	if len(allowActionCacheUpdatesForInstancesList) > 0 {
+	if len(storageConfiguration.AllowAcUpdatesForInstances) > 0 {
 		fallback := builder.NewNonExecutableBuildQueue()
-		for _, instance := range allowActionCacheUpdatesForInstancesList {
+		for _, instance := range storageConfiguration.AllowAcUpdatesForInstances {
 			schedulers[instance] = fallback
 			allowActionCacheUpdatesForInstances[instance] = true
 		}
 	}
 
 	// Backends capable of compiling.
-	for _, schedulerEntry := range schedulersList {
-		components := strings.SplitN(schedulerEntry, "|", 2)
-		if len(components) != 2 {
-			log.Fatal("Invalid scheduler entry: ", schedulerEntry)
-		}
+	for name, endpoint := range storageConfiguration.Schedulers {
 		scheduler, err := grpc.Dial(
-			components[1],
+			endpoint,
 			grpc.WithInsecure(),
 			grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 			grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
 		if err != nil {
 			log.Fatal("Failed to create scheduler RPC client: ", err)
 		}
-		schedulers[components[0]] = builder.NewForwardingBuildQueue(scheduler)
+		schedulers[name] = builder.NewForwardingBuildQueue(scheduler)
 	}
 	buildQueue := builder.NewDemultiplexingBuildQueue(func(instance string) (builder.BuildQueue, error) {
 		scheduler, ok := schedulers[instance]
@@ -106,7 +99,7 @@ func main() {
 	grpc_prometheus.EnableHandlingTimeHistogram()
 	grpc_prometheus.Register(s)
 
-	sock, err := net.Listen("tcp", ":8980")
+	sock, err := net.Listen("tcp", storageConfiguration.GrpcListenAddress)
 	if err != nil {
 		log.Fatal("Failed to create listening socket: ", err)
 	}

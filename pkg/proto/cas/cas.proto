@@ -17,6 +17,6 @@ option go_package = "github.com/buildbarn/bb-storage/pkg/proto/cas";
 // user by providing a URL to bb_browser as a message in the
 // ExecuteResponse.
 message UncachedActionResult {
-	build.bazel.remote.execution.v2.Digest action_digest = 1;
-	build.bazel.remote.execution.v2.ActionResult action_result = 2;
+  build.bazel.remote.execution.v2.Digest action_digest = 1;
+  build.bazel.remote.execution.v2.ActionResult action_result = 2;
 }
