@@ -1,4 +1,4 @@
-# The Buildbarn storage daemon
+# The Buildbarn storage daemon [![Build status](https://badge.buildkite.com/212ccc2e6aab9f4df6490b30390492365c5641e65a768e5a51.svg)](https://buildkite.com/buildbarn/bb-storage)
 
 The Buildbarn project provides an implementation of the
 [Remote Execution protocol](https://github.com/bazelbuild/remote-apis).
