@@ -43,7 +43,7 @@ import (
 // a configuration file.
 func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	// Create two stores based on definitions in configuration.
-	contentAddressableStorage, err := createBlobAccess(configuration.ContentAddressableStorage, "cas", util.DigestKeyWithoutInstance)
+	contentAddressableStorage, err := createBlobAccess(configuration.GetContentAddressableStorage(), "cas", util.DigestKeyWithoutInstance)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,7 +63,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 	var implementation blobstore.BlobAccess
 	var backendType string
 	if configuration == nil {
-		return nil, errors.New("Configuration not specified")
+		return nil, errors.New("Storage configuration not specified")
 	}
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Circular:
