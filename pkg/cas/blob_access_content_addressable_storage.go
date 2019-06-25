@@ -20,25 +20,25 @@ import (
 
 type blobAccessContentAddressableStorage struct {
 	blobAccess         blobstore.BlobAccess
-	maximumMessageSize int64
+	maximumMessageSizeBytes uint64
 }
 
 // NewBlobAccessContentAddressableStorage creates a
 // ContentAddressableStorage that reads and writes Content Addressable
 // Storage (CAS) objects from a BlobAccess based store.
-func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSize int64) ContentAddressableStorage {
+func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes uint64) ContentAddressableStorage {
 	return &blobAccessContentAddressableStorage{
 		blobAccess:         blobAccess,
-		maximumMessageSize: maximumMessageSize,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
 func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest *util.Digest, message proto.Message) error {
-	if sizeBytes := digest.GetSizeBytes(); sizeBytes > cas.maximumMessageSize {
+	if sizeBytes := digest.GetSizeBytes(); uint64(sizeBytes) > cas.maximumMessageSizeBytes {
 		return status.Errorf(
 			codes.InvalidArgument,
 			"Refusing to unmarshal message of size %d, as it exceeds the maximum size of %d",
-			sizeBytes, cas.maximumMessageSize)
+			sizeBytes, cas.maximumMessageSizeBytes)
 	}
 	_, r, err := cas.blobAccess.Get(ctx, digest)
 	if err != nil {

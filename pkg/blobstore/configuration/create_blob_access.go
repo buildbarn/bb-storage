@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -15,17 +14,20 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
-	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/dgraph-io/badger"
 	"github.com/go-redis/redis"
 	"github.com/golang/protobuf/proto"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+	// Although not explicitly used here, we want to support a file blob
+	// backend for debug.
 	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
+	// Same thing for in-memory blob storage.
 	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
@@ -41,22 +43,13 @@ import (
 // CreateBlobAccessObjectsFromConfig creates a pair of BlobAccess
 // objects for the Content Addressable Storage and Action cache based on
 // a configuration file.
-func CreateBlobAccessObjectsFromConfig(configurationFile string) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
-	data, err := ioutil.ReadFile(configurationFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	var config pb.BlobstoreConfiguration
-	if err := proto.UnmarshalText(string(data), &config); err != nil {
-		return nil, nil, err
-	}
-
+func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	// Create two stores based on definitions in configuration.
-	contentAddressableStorage, err := createBlobAccess(config.ContentAddressableStorage, "cas", util.DigestKeyWithoutInstance)
+	contentAddressableStorage, err := createBlobAccess(configuration.GetContentAddressableStorage(), "cas", util.DigestKeyWithoutInstance)
 	if err != nil {
 		return nil, nil, err
 	}
-	actionCache, err := createBlobAccess(config.ActionCache, "ac", util.DigestKeyWithInstance)
+	actionCache, err := createBlobAccess(configuration.ActionCache, "ac", util.DigestKeyWithInstance)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,13 +61,13 @@ func CreateBlobAccessObjectsFromConfig(configurationFile string) (blobstore.Blob
 	return contentAddressableStorage, actionCache, nil
 }
 
-func createBlobAccess(config *pb.BlobAccessConfiguration, storageType string, digestKeyFormat util.DigestKeyFormat) (blobstore.BlobAccess, error) {
+func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType string, digestKeyFormat util.DigestKeyFormat) (blobstore.BlobAccess, error) {
 	var implementation blobstore.BlobAccess
 	var backendType string
-	if config == nil {
-		return nil, errors.New("Configuration not specified")
+	if configuration == nil {
+		return nil, errors.New("Storage configuration not specified")
 	}
-	switch backend := config.Backend.(type) {
+	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Badger:
 		backendType = "badger"
 		opts := badger.DefaultOptions

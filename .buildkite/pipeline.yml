@@ -1,0 +1,19 @@
+steps:
+  - command: 'bazel test -- //... \$(bazel query //... | grep -e "_container\$" -e "_container_push\$" -e "_layer" | while read target; do echo -\$target; done)'
+    label: 'FreeBSD'
+    agents:
+    - "os=freebsd"
+  - command: 'bazel test -- //... \$(bazel query //... | grep -e "_container\$" -e "_container_push\$" -e "_layer" | while read target; do echo -\$target; done)'
+    label: 'macOS'
+    agents:
+    - "os=darwin"
+  - label: 'Linux'
+    agents:
+    - "os=linux"
+    plugins:
+      - docker#v3.2.0:
+          image: "l.gcr.io/google/bazel:0.27.0"
+          shell: false
+          command: ['test', '--host_force_python=PY2', '//...']
+
+

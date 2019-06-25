@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/opencensus",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/bb_storage:go_default_library",
         "@com_github_prometheus_client_golang//prometheus:go_default_library",
         "@io_opencensus_go//plugin/ocgrpc:go_default_library",
         "@io_opencensus_go//stats/view:go_default_library",
