@@ -18,7 +18,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/dgraph-io/badger"
 	"github.com/go-redis/redis"
-	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"gocloud.dev/blob"
