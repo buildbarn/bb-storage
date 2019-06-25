@@ -28,6 +28,7 @@ go_library(
         "@dev_gocloud//blob:go_default_library",
         "@dev_gocloud//gcerrors:go_default_library",
         "@go_googleapis//google/bytestream:bytestream_go_proto",
+        "@io_bazel_rules_go//proto/wkt:duration_go_proto",
         "@io_opencensus_go//trace:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",

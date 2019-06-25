@@ -10,20 +10,30 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/dgraph-io/badger"
-	"google.golang.org/grpc/codes"
+	duration "github.com/golang/protobuf/ptypes/duration"
 	"go.opencensus.io/trace"
+	"google.golang.org/grpc/codes"
+)
+
+const (
+	defaultTTL = 10 * 24 * time.Hour
 )
 
 type badgerBlobAccess struct {
 	db            *badger.DB
 	blobKeyFormat util.DigestKeyFormat
+	ttl           time.Duration
 }
 
 // NewBadgerBlobAccess creates a BlobAccess that uses Badger as its backing store.
-func NewBadgerBlobAccess(db *badger.DB, blobKeyFormat util.DigestKeyFormat) BlobAccess {
+func NewBadgerBlobAccess(db *badger.DB, blobKeyFormat util.DigestKeyFormat, ttl *duration.Duration) BlobAccess {
 	ba := &badgerBlobAccess{
 		db:            db,
 		blobKeyFormat: blobKeyFormat,
+		ttl:           defaultTTL,
+	}
+	if ttl != nil {
+		ba.ttl = time.Duration(ttl.Seconds) * time.Second
 	}
 	go ba.gc()
 	return ba
@@ -33,13 +43,13 @@ func NewBadgerBlobAccess(db *badger.DB, blobKeyFormat util.DigestKeyFormat) Blob
 func (ba *badgerBlobAccess) gc() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
- 	for range ticker.C {
- 		again:
- 		err := ba.db.RunValueLogGC(0.7)
+	for range ticker.C {
+	again:
+		err := ba.db.RunValueLogGC(0.7)
 		if err == nil {
 			goto again
 		}
- }
+	}
 }
 
 func (ba *badgerBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
@@ -85,7 +95,7 @@ func (ba *badgerBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBy
 	txn := ba.db.NewTransaction(true)
 	defer txn.Discard()
 	span.Annotate(nil, "Transaction created")
-	err = txn.Set([]byte(digest.GetKey(ba.blobKeyFormat)), value)
+	err = txn.SetWithTTL([]byte(digest.GetKey(ba.blobKeyFormat)), value, ba.ttl)
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to set blob")
 	}

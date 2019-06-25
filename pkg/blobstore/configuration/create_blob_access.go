@@ -77,7 +77,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		if err != nil {
 			return nil, err
 		}
-		implementation = blobstore.NewBadgerBlobAccess(db, digestKeyFormat)
+		implementation = blobstore.NewBadgerBlobAccess(db, digestKeyFormat, backend.Badger.Ttl)
 	case *pb.BlobAccessConfiguration_Circular:
 		backendType = "circular"
 

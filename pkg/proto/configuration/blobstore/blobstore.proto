@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.blobstore;
 
+import "google/protobuf/duration.proto";
 import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
@@ -198,4 +199,7 @@ message BadgerBlobAccessConfiguration {
     // Directory where the files created by the badger storage
     // backend are located.
     string directory = 1;
+
+    // TTL for stored objects
+    google.protobuf.Duration ttl = 2;
 }

@@ -5,7 +5,10 @@ proto_library(
     name = "blobstore_proto",
     srcs = ["blobstore.proto"],
     visibility = ["//visibility:public"],
-    deps = ["@go_googleapis//google/rpc:status_proto"],
+    deps = [
+        "@com_google_protobuf//:duration_proto",
+        "@go_googleapis//google/rpc:status_proto",
+    ],
 )
 
 go_proto_library(
