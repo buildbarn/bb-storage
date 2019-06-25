@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/dgraph-io/badger"
@@ -20,10 +21,25 @@ type badgerBlobAccess struct {
 
 // NewBadgerBlobAccess creates a BlobAccess that uses Badger as its backing store.
 func NewBadgerBlobAccess(db *badger.DB, blobKeyFormat util.DigestKeyFormat) BlobAccess {
-	return &badgerBlobAccess{
+	ba := &badgerBlobAccess{
 		db:            db,
 		blobKeyFormat: blobKeyFormat,
 	}
+	go ba.gc()
+	return ba
+}
+
+// Badger storage garbage collection
+func (ba *badgerBlobAccess) gc() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+ 	for range ticker.C {
+ 		again:
+ 		err := ba.db.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+ }
 }
 
 func (ba *badgerBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
