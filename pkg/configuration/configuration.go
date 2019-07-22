@@ -1,26 +1,22 @@
 package configuration
 
 import (
-	"os"
-
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
+// GetStorageConfiguration reads the jsonnet configuration from file, renders
+// it, and fills in default values.
 func GetStorageConfiguration(path string) (*pb.StorageConfiguration, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
 	var configuration pb.StorageConfiguration
-	if err := jsonpb.Unmarshal(file, &configuration); err != nil {
-		return nil, err
+	if err := util.UnmarshalConfigurationFromFile(path, &configuration); err != nil {
+		return nil, util.StatusWrap(err, "Failed to retrieve configuration")
 	}
 	setDefaultStorageValues(&configuration)
-	return &configuration, err
+	return &configuration, nil
 }
 
-func SetDefaultJaegerValues(configuration *pb.JaegerConfiguration, serviceName string) {
+func setDefaultJaegerValues(configuration *pb.JaegerConfiguration, serviceName string) {
 	if configuration != nil {
 		if configuration.AgentEndpoint == "" {
 			configuration.AgentEndpoint = "127.0.0.1:6831"
@@ -41,5 +37,5 @@ func setDefaultStorageValues(configuration *pb.StorageConfiguration) {
 	if configuration.GrpcListenAddress == "" {
 		configuration.GrpcListenAddress = ":8980"
 	}
-	SetDefaultJaegerValues(configuration.Jaeger, "bb_storage")
+	setDefaultJaegerValues(configuration.Jaeger, "bb_storage")
 }

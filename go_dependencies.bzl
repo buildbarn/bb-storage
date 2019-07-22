@@ -206,3 +206,17 @@ def bb_storage_go_dependencies():
         commit = "8a1deeeabe0a24f918d29630ede0da2a1c8f3b2f",
         importpath = "github.com/Azure/azure-storage-blob-go",
     )
+
+    go_repository(
+        name = "com_github_google_go_jsonnet",
+        commit = "8cd516f2addca9148dc7f014e81ea3632ba90223",
+        importpath = "github.com/google/go-jsonnet",
+        patches = ["//:patches/com_github_google_go_jsonnet/astgen.diff"],
+    )
+
+    go_repository(
+        name = "com_github_fatih_color",
+        commit = "3f9d52f7176a6927daacff70a3e8d1dc2025c53e",
+        importpath = "github.com/fatih/color",
+    )
+
