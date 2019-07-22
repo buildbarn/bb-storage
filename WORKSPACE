@@ -9,7 +9,6 @@ http_archive(
     urls = ["https://github.com/mickael-carl/bazel_gomock/archive/d5cc12f6eca65d5b6b99f88b5551c37a3a47a65b.tar.gz"],
 )
 
-
 http_archive(
     name = "bazel_toolchains",
     sha256 = "28cb3666da80fbc62d4c46814f5468dd5d0b59f9064c0b933eee3140d706d330",
