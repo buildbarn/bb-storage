@@ -7,13 +7,7 @@ steps:
     label: 'macOS'
     agents:
     - "os=darwin"
-  - label: 'Linux'
+  - command: 'bazel run @com_github_buildbarn_bb_deployments//ci:run-ci'
+    label: 'Linux'
     agents:
     - "os=linux"
-    plugins:
-      - docker#v3.2.0:
-          image: "l.gcr.io/google/bazel:0.27.0"
-          shell: false
-          command: ['test', '--host_force_python=PY2', '//...']
-
-

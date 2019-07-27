@@ -21,12 +21,10 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "aed1c249d4ec8f703edddf35cbe9dfaca0b5f5ea6e4cd9e83e99f3b0d1136c3d",
-    strip_prefix = "rules_docker-0.7.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.7.0.tar.gz"],
+    sha256 = "87fc6a2b128147a0a3039a2fd0b53cc1f2ed5adb8716f50756544a572999ae9a",
+    strip_prefix = "rules_docker-0.8.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.8.1.tar.gz"],
 )
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
@@ -75,3 +73,10 @@ buildifier_dependencies()
 load(":go_dependencies.bzl", "bb_storage_go_dependencies")
 
 bb_storage_go_dependencies()
+
+http_archive(
+    name = "com_github_buildbarn_bb_deployments",
+    sha256 = "3c3f3acc40a829ce30f9e593b2ad48d2016386bfbbb70f0e36f47fb49a9d6ea0",
+    strip_prefix = "bb-deployments-5b304a6df814ba5c7f862557cfdf2ec365f5a682",
+    url = "https://github.com/buildbarn/bb-deployments/archive/5b304a6df814ba5c7f862557cfdf2ec365f5a682.tar.gz",
+)
