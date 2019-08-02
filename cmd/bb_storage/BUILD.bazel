@@ -1,5 +1,5 @@
 load("//tools:container.bzl", "container_push_official")
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
@@ -32,10 +32,10 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
-container_image(
+go_image(
     name = "bb_storage_container",
-    entrypoint = ["/bb_storage"],
-    files = [":bb_storage"],
+    embed = [":go_default_library"],
+    pure = "on",
     visibility = ["//visibility:public"],
 )
 
