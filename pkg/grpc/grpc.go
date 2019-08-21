@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"go.opencensus.io/plugin/ocgrpc"
@@ -91,6 +92,9 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.GRP
 		// Add Prometheus timing metrics.
 		grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 		grpc_prometheus.Register(s)
+
+		// Enable grpc reflection.
+		reflection.Register(s)
 
 		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
 			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
