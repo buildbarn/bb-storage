@@ -13,6 +13,7 @@ import (
 	"go.opencensus.io/zpages"
 )
 
+// Initialize sets up Opentracing with Jaeger and a Prometheus exporter.
 func Initialize(configuration *pb.JaegerConfiguration) {
 	if configuration != nil {
 		pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
