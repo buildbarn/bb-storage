@@ -2,6 +2,7 @@ package circular
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 )
@@ -14,8 +15,10 @@ type fileStateStore struct {
 
 // NewFileStateStore creates a new storage for global metadata of a
 // circular storage backend. Right now only a set of read/write cursors
-// are stored.
-func NewFileStateStore(file ReadWriterAt, dataSize uint64) (StateStore, error) {
+// are stored together with the data and offset file sizes. If the file
+// sizes changes in a destructive way for the cache, an error will be
+// returned.
+func NewFileStateStore(file ReadWriterAt, dataSize uint64, offsetSize uint64) (StateStore, error) {
 	var cursors Cursors
 	var data [16]byte
 	if _, err := file.ReadAt(data[:], 0); err == nil {
@@ -29,14 +32,44 @@ func NewFileStateStore(file ReadWriterAt, dataSize uint64) (StateStore, error) {
 				cursors.Read = cursors.Write - dataSize
 			}
 		}
+		// Earlier versions did only store the cursors, so ignore io.EOF
+		// errors for now to avoid trashing caches when upgrading.
+		// TODO: (2019-10-07) Read all 32 bytes at once when broadly adopted.
+		if _, err := file.ReadAt(data[:], 16); err == nil {
+			oldDataSize := binary.LittleEndian.Uint64(data[:])
+			oldOffsetSize := binary.LittleEndian.Uint64(data[8:])
+			if dataSize != oldDataSize && cursors.Read != 0 {
+				return nil, fmt.Errorf(
+					"Data size changed from %d to %d which would trash the "+
+						"cache because the cache has already wrapped around. "+
+						"Revert the change or remove the cache.",
+					oldDataSize, dataSize)
+			}
+			if offsetSize != oldOffsetSize {
+				return nil, fmt.Errorf(
+					"Offset size changed from %d to %d which would trash the "+
+						"cache. Revert the change or remove the cache.",
+					oldOffsetSize, offsetSize)
+			}
+		} else if err != io.EOF {
+			return nil, err
+		}
 	} else if err != io.EOF {
 		return nil, err
 	}
-	return &fileStateStore{
+	ss := &fileStateStore{
 		file:     file,
 		dataSize: dataSize,
 		cursors:  cursors,
-	}, nil
+	}
+	// Write the state file with cursor and storage sizes.
+	ss.put(cursors)
+	binary.LittleEndian.PutUint64(data[:], dataSize)
+	binary.LittleEndian.PutUint64(data[8:], offsetSize)
+	if _, err := file.WriteAt(data[:], 16); err != nil {
+		return nil, err
+	}
+	return ss, nil
 }
 
 func (ss *fileStateStore) GetCursors() Cursors {

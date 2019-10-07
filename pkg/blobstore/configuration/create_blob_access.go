@@ -117,7 +117,10 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 				return offsetStore, nil
 			})
 		}
-		stateStore, err := circular.NewFileStateStore(stateFile, backend.Circular.DataFileSizeBytes)
+		stateStore, err := circular.NewFileStateStore(
+			stateFile,
+			backend.Circular.DataFileSizeBytes,
+			backend.Circular.OffsetFileSizeBytes)
 		if err != nil {
 			return nil, err
 		}
