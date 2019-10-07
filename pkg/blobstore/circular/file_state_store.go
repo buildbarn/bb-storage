@@ -24,6 +24,10 @@ func NewFileStateStore(file ReadWriterAt, dataSize uint64) (StateStore, error) {
 		if readCursor <= writeCursor {
 			cursors.Read = readCursor
 			cursors.Write = writeCursor
+			if cursors.Read+dataSize < cursors.Write {
+				// Invalidate data that is about to be overwritten if dataSize has changed.
+				cursors.Read = cursors.Write - dataSize
+			}
 		}
 	} else if err != io.EOF {
 		return nil, err
