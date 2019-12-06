@@ -21,10 +21,12 @@ import (
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+
 	// Although not explicitly used here, we want to support a file blob
 	// backend for debug.
 	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
+
 	// Same thing for in-memory blob storage.
 	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/blob/s3blob"
@@ -218,6 +220,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		}
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
+		setRedisConfiguration()
 		implementation = blobstore.NewRedisBlobAccess(
 			redis.NewClient(
 				&redis.Options{
@@ -275,4 +278,41 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		return nil, errors.New("Configuration did not contain a backend")
 	}
 	return blobstore.NewMetricsBlobAccess(implementation, fmt.Sprintf("%s_%s", storageType, backendType)), nil
+}
+
+type RedisConfig struct {
+	Pwd                                         string
+	Ttl, DialTimeout, ReadTimeout, WriteTimeout int
+}
+
+func setRedisConfiguration(pwd string, ttl, dialTimeout, readTimeout, writeTimeout int) *RedisConfig {
+
+	if pwd == "" {
+		pwd = ""
+	}
+
+	if ttl == 0 {
+		ttl = 0
+	}
+
+	if dialTimeout == 0 {
+		dialTimeout = 5
+	}
+
+	if readTimeout == 0 {
+		readTimeout = 3
+	}
+
+	if writeTimeout == 0 {
+		writeTimeout = readTimeout
+	}
+
+	return &RedisConfig{
+		Pwd:          pwd,
+		Ttl:          ttl,
+		DialTimeout:  dialTimeout,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+	}
+
 }

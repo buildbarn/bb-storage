@@ -117,6 +117,28 @@ message RedisBlobAccessConfiguration {
 
   // Numerical ID of the database.
   int32 db = 2;
+
+   // Redis Auth Password
+  // Default is "" (NO Password)
+  string password = 3;
+
+  // Key TTL duration in secs
+  // Default 0 for No TTL duration (TTL will be set -1)
+  int64 key_ttl_duration = 4;
+
+  /// Dial timeout for establishing new connections in seconds
+	// Default is 5.
+  int64 dial_timeout = 5;
+
+  // Timeout for socket reads in seconds. If reached, commands will fail
+	// with a timeout instead of blocking.
+	// Default is 3.
+  int64 read_timeout = 6;
+
+  // Timeout for socket writes in seconds. If reached, commands will fail
+	// with a timeout instead of blocking.
+	// Default is ReadTimeout.
+  int64 write_timeout = 7;
 }
 
 message RemoteBlobAccessConfiguration {
