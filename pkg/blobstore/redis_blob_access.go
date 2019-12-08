@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
@@ -16,17 +15,14 @@ import (
 type redisBlobAccess struct {
 	redisClient   *redis.Client
 	blobKeyFormat util.DigestKeyFormat
-	keyDuration   time.Duration
 }
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-//keyDuration added
-func NewRedisBlobAccess(redisClient *redis.Client, blobKeyFormat util.DigestKeyFormat, keyDuration time.Duration) BlobAccess {
+func NewRedisBlobAccess(redisClient *redis.Client, blobKeyFormat util.DigestKeyFormat) BlobAccess {
 	return &redisBlobAccess{
 		redisClient:   redisClient,
 		blobKeyFormat: blobKeyFormat,
-		keyDuration:   keyDuration,
 	}
 }
 
@@ -37,7 +33,7 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64,
 	value, err := ba.redisClient.Get(digest.GetKey(ba.blobKeyFormat)).Bytes()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, nil, util.StatusWrapWithCode(err, codes.NotFound, "Key does not exist in db")
+			return 0, nil, util.StatusWrapWithCode(err, codes.NotFound, "Failed to get blob")
 		}
 		return 0, nil, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to get blob")
 	}
@@ -54,7 +50,7 @@ func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeByt
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
-	return ba.redisClient.Set(digest.GetKey(ba.blobKeyFormat), value, ba.keyDuration).Err()
+	return ba.redisClient.Set(digest.GetKey(ba.blobKeyFormat), value, 0).Err()
 }
 
 func (ba *redisBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
