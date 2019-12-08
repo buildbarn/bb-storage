@@ -123,16 +123,16 @@ message RedisBlobAccessConfiguration {
   string password = 3;
 
   // Key TTL duration in secs
-  // Default 0 for No TTL duration (TTL will be set -1)
+  // Default 0 for No TTL duration (TTL will be set -1 in Redis)
   int64 key_ttl_duration = 4;
 
   /// Dial timeout for establishing new connections in seconds
-	// Default is 5.
+	// Default is 5 secs.
   int64 dial_timeout = 5;
 
   // Timeout for socket reads in seconds. If reached, commands will fail
 	// with a timeout instead of blocking.
-	// Default is 3.
+	// Default is 3 secs.
   int64 read_timeout = 6;
 
   // Timeout for socket writes in seconds. If reached, commands will fail

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -220,14 +221,19 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		}
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
-		setRedisConfiguration()
+		rac := setRedisConfiguration(backend.Redis.Password, int(backend.Redis.KeyTtlDuration),
+			int(backend.Redis.DialTimeout), int(backend.Redis.ReadTimeout), int(backend.Redis.WriteTimeout))
 		implementation = blobstore.NewRedisBlobAccess(
 			redis.NewClient(
 				&redis.Options{
-					Addr: backend.Redis.Endpoint,
-					DB:   int(backend.Redis.Db),
+					Addr:         backend.Redis.Endpoint,
+					Password:     rac.Password,
+					DB:           int(backend.Redis.Db),
+					DialTimeout:  rac.DialTimeout,
+					ReadTimeout:  rac.ReadTimeout,
+					WriteTimeout: rac.WriteTimeout,
 				}),
-			digestKeyFormat)
+			digestKeyFormat, rac.Ttl)
 	case *pb.BlobAccessConfiguration_Remote:
 		backendType = "remote"
 		implementation = blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageType)
@@ -280,9 +286,9 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 	return blobstore.NewMetricsBlobAccess(implementation, fmt.Sprintf("%s_%s", storageType, backendType)), nil
 }
 
-type RedisConfig struct {
+type redisAdditionalConfig struct {
 	Pwd                                         string
-	Ttl, DialTimeout, ReadTimeout, WriteTimeout int
+	Ttl, DialTimeout, ReadTimeout, WriteTimeout time.Duration
 }
 
 func setRedisConfiguration(pwd string, ttl, dialTimeout, readTimeout, writeTimeout int) *RedisConfig {
@@ -307,12 +313,12 @@ func setRedisConfiguration(pwd string, ttl, dialTimeout, readTimeout, writeTimeo
 		writeTimeout = readTimeout
 	}
 
-	return &RedisConfig{
+	return &redisAdditionalConfig{
 		Pwd:          pwd,
-		Ttl:          ttl,
-		DialTimeout:  dialTimeout,
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
+		Ttl:          time.Duration(ttl) * time.Second,
+		DialTimeout:  time.Duration(dialTimeout) * time.Second,
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
 	}
 
 }
