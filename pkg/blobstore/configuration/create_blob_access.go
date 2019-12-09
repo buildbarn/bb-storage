@@ -227,7 +227,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			redis.NewClient(
 				&redis.Options{
 					Addr:         backend.Redis.Endpoint,
-					Password:     rac.Password,
+					Password:     rac.Pwd,
 					DB:           int(backend.Redis.Db),
 					DialTimeout:  rac.DialTimeout,
 					ReadTimeout:  rac.ReadTimeout,
@@ -291,7 +291,7 @@ type redisAdditionalConfig struct {
 	Ttl, DialTimeout, ReadTimeout, WriteTimeout time.Duration
 }
 
-func setRedisConfiguration(pwd string, ttl, dialTimeout, readTimeout, writeTimeout int) *RedisConfig {
+func setRedisConfiguration(pwd string, ttl, dialTimeout, readTimeout, writeTimeout int) *redisAdditionalConfig {
 
 	if pwd == "" {
 		pwd = ""
