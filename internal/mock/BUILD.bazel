@@ -4,10 +4,33 @@ load("@bazel_gomock//:gomock.bzl", "gomock")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 gomock(
+    name = "aliases",
+    out = "aliases.go",
+    interfaces = [
+        "ReadCloser",
+        "Writer",
+    ],
+    library = "//internal/mock/aliases:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "blobstore",
     out = "blobstore.go",
     interfaces = ["BlobAccess"],
     library = "//pkg/blobstore:go_default_library",
+    package = "mock",
+)
+
+gomock(
+    name = "buffer",
+    out = "buffer.go",
+    interfaces = [
+        "ChunkReader",
+        "ErrorHandler",
+        "RepairFunc",
+    ],
+    library = "//pkg/blobstore/buffer:go_default_library",
     package = "mock",
 )
 
@@ -55,7 +78,9 @@ gomock(
 go_library(
     name = "go_default_library",
     srcs = [
+        ":aliases.go",
         ":blobstore.go",
+        ":buffer.go",
         ":builder.go",
         ":clock.go",
         ":grpc.go",
@@ -64,6 +89,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//pkg/blobstore/buffer:go_default_library",
         "//pkg/builder:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/util:go_default_library",
