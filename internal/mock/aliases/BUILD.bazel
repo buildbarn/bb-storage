@@ -1,0 +1,8 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["aliases.go"],
+    importpath = "github.com/buildbarn/bb-storage/internal/mock/aliases",
+    visibility = ["//:__subpackages__"],
+)
