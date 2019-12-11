@@ -31,8 +31,9 @@ import (
 //   This ensures that outputs of build actions automatically use the
 //   same instance name and hashing algorithm.
 type Digest struct {
-	instance      string
-	partialDigest remoteexecution.Digest
+	instance  string
+	hash      string
+	sizeBytes int64
 }
 
 // NewDigest constructs a Digest object from an instance name and a
@@ -62,8 +63,9 @@ func NewDigest(instance string, partialDigest *remoteexecution.Digest) (*Digest,
 	}
 
 	return &Digest{
-		instance:      instance,
-		partialDigest: *partialDigest,
+		instance:  instance,
+		hash:      partialDigest.Hash,
+		sizeBytes: partialDigest.SizeBytes,
 	}, nil
 }
 
@@ -121,7 +123,10 @@ func (d *Digest) NewDerivedDigest(partialDigest *remoteexecution.Digest) (*Diges
 // execution protocol, so that it may be stored in messages returned to
 // the client.
 func (d *Digest) GetPartialDigest() *remoteexecution.Digest {
-	return &d.partialDigest
+	return &remoteexecution.Digest{
+		Hash:      d.hash,
+		SizeBytes: d.sizeBytes,
+	}
 }
 
 // GetInstance returns the instance name of the object.
@@ -131,7 +136,7 @@ func (d *Digest) GetInstance() string {
 
 // GetHashBytes returns the hash of the object as a slice of bytes.
 func (d *Digest) GetHashBytes() []byte {
-	hash, err := hex.DecodeString(d.partialDigest.Hash)
+	hash, err := hex.DecodeString(d.hash)
 	if err != nil {
 		log.Fatal("Failed to decode digest hash, even though its contents have already been validated")
 	}
@@ -140,12 +145,12 @@ func (d *Digest) GetHashBytes() []byte {
 
 // GetHashString returns the hash of the object as a string.
 func (d *Digest) GetHashString() string {
-	return d.partialDigest.Hash
+	return d.hash
 }
 
 // GetSizeBytes returns the size of the object, in bytes.
 func (d *Digest) GetSizeBytes() int64 {
-	return d.partialDigest.SizeBytes
+	return d.sizeBytes
 }
 
 // DigestKeyFormat is an enumeration type that determines the format of
@@ -167,9 +172,9 @@ const (
 func (d *Digest) GetKey(format DigestKeyFormat) string {
 	switch format {
 	case DigestKeyWithoutInstance:
-		return fmt.Sprintf("%s-%d", d.partialDigest.Hash, d.partialDigest.SizeBytes)
+		return fmt.Sprintf("%s-%d", d.hash, d.sizeBytes)
 	case DigestKeyWithInstance:
-		return fmt.Sprintf("%s-%d-%s", d.partialDigest.Hash, d.partialDigest.SizeBytes, d.instance)
+		return fmt.Sprintf("%s-%d-%s", d.hash, d.sizeBytes, d.instance)
 	default:
 		log.Fatal("Invalid digest key format")
 		return ""
@@ -227,10 +232,8 @@ func (dg *DigestGenerator) Write(p []byte) (int, error) {
 // DigestGenerator.
 func (dg *DigestGenerator) Sum() *Digest {
 	return &Digest{
-		instance: dg.instance,
-		partialDigest: remoteexecution.Digest{
-			Hash:      hex.EncodeToString(dg.partialHash.Sum(nil)),
-			SizeBytes: dg.sizeBytes,
-		},
+		instance:  dg.instance,
+		hash:      hex.EncodeToString(dg.partialHash.Sum(nil)),
+		sizeBytes: dg.sizeBytes,
 	}
 }
