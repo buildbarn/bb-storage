@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -36,6 +37,20 @@ type Digest struct {
 	sizeBytes int64
 }
 
+var (
+	// SupportedDigestFunctions is the list of digest functions
+	// supported by util.Digest, using the enumeration values that
+	// are part of the Remote Execution protocol.
+	SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
+		remoteexecution.DigestFunction_MD5,
+		remoteexecution.DigestFunction_SHA1,
+		remoteexecution.DigestFunction_SHA256,
+		remoteexecution.DigestFunction_SHA384,
+		remoteexecution.DigestFunction_SHA512,
+		remoteexecution.DigestFunction_VSO,
+	}
+)
+
 // NewDigest constructs a Digest object from an instance name and a
 // protocol-level digest object. The instance returned by this function
 // is guaranteed to be non-degenerate.
@@ -48,8 +63,10 @@ func NewDigest(instance string, partialDigest *remoteexecution.Digest) (*Digest,
 	// restrictive character set? What about length?
 
 	// Validate the hash.
-	if len(partialDigest.Hash) != md5.Size*2 && len(partialDigest.Hash) != sha1.Size*2 && len(partialDigest.Hash) != sha256.Size*2 {
-		return nil, status.Errorf(codes.InvalidArgument, "Unknown digest hash length: %d characters", len(partialDigest.Hash))
+	if l := len(partialDigest.Hash); l != md5.Size*2 && l != sha1.Size*2 &&
+		l != sha256.Size*2 && l != sha512.Size384*2 && l != sha512.Size*2 &&
+		l != vsoHashSize*2 {
+		return nil, status.Errorf(codes.InvalidArgument, "Unknown digest hash length: %d characters", l)
 	}
 	for _, c := range partialDigest.Hash {
 		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
@@ -190,13 +207,19 @@ func (d *Digest) String() string {
 // algorithm as the one that was used to create the digest, making it
 // possible to validate data against a digest.
 func (d *Digest) NewHasher() hash.Hash {
-	switch len(d.partialDigest.Hash) {
+	switch len(d.hash) {
 	case md5.Size * 2:
 		return md5.New()
 	case sha1.Size * 2:
 		return sha1.New()
 	case sha256.Size * 2:
 		return sha256.New()
+	case sha512.Size384 * 2:
+		return sha512.New384()
+	case sha512.Size * 2:
+		return sha512.New()
+	case vsoHashSize * 2:
+		return newVSOHasher()
 	default:
 		log.Fatal("Digest hash is of unknown type")
 		return nil
@@ -236,4 +259,105 @@ func (dg *DigestGenerator) Sum() *Digest {
 		hash:      hex.EncodeToString(dg.partialHash.Sum(nil)),
 		sizeBytes: dg.sizeBytes,
 	}
+}
+
+const (
+	vsoHashSize      = sha256.Size + 1
+	vsoBytesPerPage  = 1 << 16
+	vsoPagesPerBlock = 32
+)
+
+type vsoHasher struct {
+	pageHash            hash.Hash
+	pageRemainingBytes  int
+	blockHash           hash.Hash
+	blockRemainingPages int
+	summaryHash         hash.Hash
+}
+
+// newVSOHasher creates a hasher that computes VSO ('Visual Studio
+// Online') hashes. These are used as part of the BuildXL system.
+// VSO hashes are effectively three layers of checksumming applied on
+// top of each other:
+//
+// - 64 KiB of data is stored in a page.
+// - SHA-256 hashes of 32 pages (2 MiB of data) are stored in a block.
+// - SHA-256 hashes of blocks are stored in a summary.
+// - SHA-256 hashes of summaries are used to identify objects.
+//
+// The advantage of VSO hashes over plain SHA-256 is that it can be
+// computed in parallel for a single block. They also make it possible
+// to validate the integrity and perform deduplication of parts of
+// files.
+//
+// References:
+// - https://github.com/microsoft/BuildXL/blob/master/Documentation/Specs/PagedHash.md
+// - https://github.com/microsoft/BuildXL/blob/master/Public/Src/Cache/ContentStore/Hashing/VsoHash.cs
+// - https://github.com/microsoft/BuildXL/blob/master/Public/Src/Cache/ContentStore/InterfacesTest/Hashing/VsoHashTests.cs
+func newVSOHasher() hash.Hash {
+	vh := &vsoHasher{}
+	vh.Reset()
+	return vh
+}
+
+func (vh *vsoHasher) Write(p []byte) (int, error) {
+	total := len(p)
+	for {
+		// Store more data within the current page.
+		nWrite := len(p)
+		if nWrite > vh.pageRemainingBytes {
+			nWrite = vh.pageRemainingBytes
+		}
+		nWritten, _ := vh.pageHash.Write(p[:nWrite])
+		p = p[nWritten:]
+		vh.pageRemainingBytes -= nWritten
+		if len(p) == 0 {
+			return total, nil
+		}
+
+		// Add a single page to the current block.
+		vh.blockHash.Write(vh.pageHash.Sum(nil))
+		vh.pageHash.Reset()
+		vh.pageRemainingBytes = vsoBytesPerPage
+		vh.blockRemainingPages--
+
+		// Add a single block to the summary.
+		if vh.blockRemainingPages == 0 {
+			vh.summaryHash.Write(vh.blockHash.Sum(nil))
+			vh.summaryHash.Write([]byte{0})
+			blobID := vh.summaryHash.Sum(nil)
+			vh.summaryHash.Reset()
+			vh.summaryHash.Write(blobID)
+			vh.blockHash.Reset()
+			vh.blockRemainingPages = vsoPagesPerBlock
+		}
+	}
+}
+
+func (vh *vsoHasher) Sum(b []byte) []byte {
+	if vh.pageRemainingBytes != vsoBytesPerPage {
+		vh.blockHash.Write(vh.pageHash.Sum(nil))
+	}
+	vh.summaryHash.Write(vh.blockHash.Sum(nil))
+	vh.summaryHash.Write([]byte{1})
+	return append(append(b, vh.summaryHash.Sum(nil)...), 0)
+}
+
+func (vh *vsoHasher) Reset() {
+	*vh = vsoHasher{
+		pageHash:            sha256.New(),
+		pageRemainingBytes:  vsoBytesPerPage,
+		blockHash:           sha256.New(),
+		blockRemainingPages: vsoPagesPerBlock,
+		summaryHash:         sha256.New(),
+	}
+	vh.summaryHash.Write([]byte("VSO Content Identifier Seed"))
+}
+
+func (vh *vsoHasher) Size() int {
+	return vsoHashSize
+}
+
+func (vh *vsoHasher) BlockSize() int {
+	return vsoBytesPerPage
 }

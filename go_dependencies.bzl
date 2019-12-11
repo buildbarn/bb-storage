@@ -12,9 +12,10 @@ def bb_storage_go_dependencies():
     go_repository(
         name = "com_github_bazelbuild_remote_apis",
         importpath = "github.com/bazelbuild/remote-apis",
-        sha256 = "99ab1378f10854504c75bcfa43be2129d36bbba8e80a79a4216a3e3026a0985b",
-        strip_prefix = "remote-apis-ed4849810292e5fb3c844992133523f01a4ad420",
-        urls = ["https://github.com/bazelbuild/remote-apis/archive/ed4849810292e5fb3c844992133523f01a4ad420.tar.gz"],
+        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_bazelbuild_remote_apis/golang.diff"],
+        sha256 = "79204ed1fa385c03b5235f65b25ced6ac51cf4b00e45e1157beca6a28bdb8043",
+        strip_prefix = "remote-apis-2.0.0",
+        urls = ["https://github.com/bazelbuild/remote-apis/archive/v2.0.0.tar.gz"],
     )
 
     go_repository(

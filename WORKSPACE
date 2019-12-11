@@ -74,6 +74,13 @@ load(":go_dependencies.bzl", "bb_storage_go_dependencies")
 
 bb_storage_go_dependencies()
 
+load("@com_github_bazelbuild_remote_apis//:repository_rules.bzl", "switched_rules_by_language")
+
+switched_rules_by_language(
+    name = "bazel_remote_apis_imports",
+    go = True,
+)
+
 http_archive(
     name = "com_github_buildbarn_bb_deployments",
     sha256 = "cf910624a50d3f1f4c8af98d96f4ff7cbdd51f2c107315ac835256776a41df1c",
