@@ -5,6 +5,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/bazelbuild/remote-apis/build/bazel/semver"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,17 +25,13 @@ func NewNonExecutableBuildQueue() BuildQueue {
 func (bq *nonExecutableBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
 	return &remoteexecution.ServerCapabilities{
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
-			DigestFunction: []remoteexecution.DigestFunction{
-				remoteexecution.DigestFunction_MD5,
-				remoteexecution.DigestFunction_SHA1,
-				remoteexecution.DigestFunction_SHA256,
-			},
+			DigestFunction: util.SupportedDigestFunctions,
 			ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
 				UpdateEnabled: true,
 			},
 			// CachePriorityCapabilities: Priorities not supported.
 			// MaxBatchTotalSize: Not used by Bazel yet.
-			SymlinkAbsolutePathStrategy: remoteexecution.CacheCapabilities_ALLOWED,
+			SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
 		},
 		// TODO(edsch): DeprecatedApiVersion.
 		LowApiVersion:  &semver.SemVer{Major: 2},
