@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "eviction_proto",
+    srcs = ["eviction.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "eviction_go_proto",
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction",
+    proto = ":eviction_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":eviction_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction",
+    visibility = ["//visibility:public"],
+)
