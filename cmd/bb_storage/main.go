@@ -91,7 +91,7 @@ func main() {
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 	)
-	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
+	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, contentAddressableStorageBlobAccess, allowActionCacheUpdatesForInstances))
 	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 	bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
 	remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
