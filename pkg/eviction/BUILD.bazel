@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "configuration.go",
+        "fifo_set.go",
+        "lru_set.go",
+        "metrics_set.go",
+        "rr_set.go",
+        "set.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/eviction",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/eviction:go_default_library",
+        "@com_github_prometheus_client_golang//prometheus:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "fifo_set_test.go",
+        "lru_set_test.go",
+        "rr_set_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+)

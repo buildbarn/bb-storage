@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package buildbarn.configuration.eviction;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction";
+
+enum CacheReplacementPolicy {
+  UNKNOWN = 0;
+  FIRST_IN_FIRST_OUT = 1;
+  LEAST_RECENTLY_USED = 2;
+  RANDOM_REPLACEMENT = 3;
+}
