@@ -217,11 +217,18 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		}
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
+
+		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(backend.Redis.Tls)
+		if err != nil {
+			return nil, err
+		}
+
 		implementation = blobstore.NewRedisBlobAccess(
 			redis.NewClient(
 				&redis.Options{
-					Addr: backend.Redis.Endpoint,
-					DB:   int(backend.Redis.Db),
+					Addr:      backend.Redis.Endpoint,
+					DB:        int(backend.Redis.Db),
+					TLSConfig: tlsConfig,
 				}),
 			digestKeyFormat)
 	case *pb.BlobAccessConfiguration_Remote:

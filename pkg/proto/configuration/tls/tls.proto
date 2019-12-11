@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package buildbarn.configuration.tls;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls";
+
+message TLSClientConfiguration {
+  // PEM data for the certificate authorities that should be used to
+  // validate the remote TLS server. The default system certificate
+  // authorities are used when left unset.
+  string server_certificate_authorities = 1;
+
+  // PEM data for the certificate used by the TLS client. No client
+  // certificate/private key is used when left unset.
+  string client_certificate = 2;
+
+  // PEM data for the private key used by the TLS client. No client
+  // certificate/private key is used when left unset.
+  string client_private_key = 3;
+}
+
+message TLSServerConfiguration {
+  // PEM data for the certificate used by the TLS server.
+  string server_certificate = 1;
+
+  // PEM data for the private key used by the TLS server.
+  string server_private_key = 2;
+}
