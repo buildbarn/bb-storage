@@ -3,7 +3,6 @@ package blobstore
 import (
 	"context"
 	"io"
-	"math"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -25,7 +24,7 @@ var (
 			Subsystem: "blobstore",
 			Name:      "blob_access_operations_duration_seconds",
 			Help:      "Amount of time spent per operation on blob access objects, in seconds.",
-			Buckets:   prometheus.ExponentialBuckets(0.001, math.Pow(10.0, 1.0/3.0), 6*3+1),
+			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
 		[]string{"name", "operation"})
 )
