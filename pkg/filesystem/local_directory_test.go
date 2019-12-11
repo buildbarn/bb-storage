@@ -58,7 +58,7 @@ func TestLocalDirectoryEnterNonExistent(t *testing.T) {
 
 func TestLocalDirectoryEnterFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	_, err = d.Enter("file")
@@ -116,10 +116,10 @@ func TestLocalDirectoryLinkDirectory(t *testing.T) {
 
 func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("source", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("source", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = d.OpenFile("target", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err = d.OpenWrite("target", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.True(t, os.IsExist(d.Link("source", d, "target")))
@@ -128,7 +128,7 @@ func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 
 func TestLocalDirectoryLinkSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("source", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("source", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Link("source", d, "target"))
@@ -157,7 +157,7 @@ func TestLocalDirectoryLstatNonExistent(t *testing.T) {
 
 func TestLocalDirectoryLstatFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0644))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	fi, err := d.Lstat("file")
@@ -209,47 +209,47 @@ func TestLocalDirectoryMkdirSuccess(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
-func TestLocalDirectoryOpenFileBadName(t *testing.T) {
+func TestLocalDirectoryOpenWriteBadName(t *testing.T) {
 	d := openTmpDir(t)
-	_, err := d.OpenFile("", os.O_CREATE|os.O_WRONLY, 0666)
+	_, err := d.OpenWrite("", filesystem.CreateExcl(0666))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), err)
-	_, err = d.OpenFile(".", os.O_CREATE|os.O_WRONLY, 0666)
+	_, err = d.OpenWrite(".", filesystem.CreateExcl(0666))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), err)
-	_, err = d.OpenFile("..", os.O_CREATE|os.O_WRONLY, 0666)
+	_, err = d.OpenWrite("..", filesystem.CreateExcl(0666))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), err)
-	_, err = d.OpenFile("foo/bar", os.O_CREATE|os.O_WRONLY, 0666)
+	_, err = d.OpenWrite("foo/bar", filesystem.CreateExcl(0666))
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"foo/bar\""), err)
 	require.NoError(t, d.Close())
 }
 
-func TestLocalDirectoryOpenFileExistent(t *testing.T) {
+func TestLocalDirectoryOpenWriteExistent(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	_, err = d.OpenFile("file", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
+	_, err = d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.True(t, os.IsExist(err))
 	require.NoError(t, d.Close())
 }
 
-func TestLocalDirectoryOpenFileNonExistent(t *testing.T) {
+func TestLocalDirectoryOpenReadNonExistent(t *testing.T) {
 	d := openTmpDir(t)
-	_, err := d.OpenFile("file", os.O_RDONLY, 0666)
+	_, err := d.OpenRead("file")
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
-func TestLocalDirectoryOpenFileSymlink(t *testing.T) {
+func TestLocalDirectoryOpenReadSymlink(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/etc/passwd", "symlink"))
-	_, err := d.OpenFile("symlink", os.O_RDONLY, 0)
+	_, err := d.OpenRead("symlink")
 	require.Equal(t, syscall.ELOOP, err)
 	require.NoError(t, d.Close())
 }
 
-func TestLocalDirectoryOpenFileSuccess(t *testing.T) {
+func TestLocalDirectoryOpenWriteSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Close())
@@ -259,7 +259,7 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	d := openTmpDir(t)
 
 	// Prepare file system.
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Mkdir("directory", 0777))
@@ -309,7 +309,7 @@ func TestLocalDirectoryReadlinkDirectory(t *testing.T) {
 
 func TestLocalDirectoryReadlinkFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	_, err = d.Readlink("file")
@@ -350,7 +350,7 @@ func TestLocalDirectoryRemoveDirectory(t *testing.T) {
 
 func TestLocalDirectoryRemoveFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenFile("file", os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Remove("file"))

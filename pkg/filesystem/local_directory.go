@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -24,13 +25,7 @@ func validateFilename(name string) error {
 	return nil
 }
 
-// NewLocalDirectory creates a directory handle that corresponds to a
-// local path on the system.
-func NewLocalDirectory(path string) (Directory, error) {
-	fd, err := unix.Openat(unix.AT_FDCWD, path, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
-	if err != nil {
-		return nil, err
-	}
+func newLocalDirectoryFromFileDescriptor(fd int) (*localDirectory, error) {
 	d := &localDirectory{
 		fd: fd,
 	}
@@ -38,7 +33,17 @@ func NewLocalDirectory(path string) (Directory, error) {
 	return d, nil
 }
 
-func (d *localDirectory) Enter(name string) (Directory, error) {
+// NewLocalDirectory creates a directory handle that corresponds to a
+// local path on the system.
+func NewLocalDirectory(path string) (Directory, error) {
+	fd, err := unix.Openat(unix.AT_FDCWD, path, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	return newLocalDirectoryFromFileDescriptor(fd)
+}
+
+func (d *localDirectory) enter(name string) (*localDirectory, error) {
 	if err := validateFilename(name); err != nil {
 		return nil, err
 	}
@@ -52,11 +57,11 @@ func (d *localDirectory) Enter(name string) (Directory, error) {
 		}
 		return nil, err
 	}
-	cd := &localDirectory{
-		fd: fd,
-	}
-	runtime.SetFinalizer(cd, (*localDirectory).Close)
-	return cd, nil
+	return newLocalDirectoryFromFileDescriptor(fd)
+}
+
+func (d *localDirectory) Enter(name string) (Directory, error) {
+	return d.enter(name)
 }
 
 func (d *localDirectory) Close() error {
@@ -64,6 +69,39 @@ func (d *localDirectory) Close() error {
 	d.fd = -1
 	runtime.SetFinalizer(d, nil)
 	return unix.Close(fd)
+}
+
+func (d *localDirectory) open(name string, creationMode CreationMode, flag int) (*os.File, error) {
+	if err := validateFilename(name); err != nil {
+		return nil, err
+	}
+	defer runtime.KeepAlive(d)
+
+	fd, err := unix.Openat(d.fd, name, flag|creationMode.flags|unix.O_NOFOLLOW, uint32(creationMode.permissions))
+	if err != nil {
+		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
+			// FreeBSD erroneously returns EMLINK.
+			return nil, syscall.ELOOP
+		}
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), name), nil
+}
+
+func (d *localDirectory) OpenAppend(name string, creationMode CreationMode) (FileAppender, error) {
+	return d.open(name, creationMode, os.O_APPEND|os.O_WRONLY)
+}
+
+func (d *localDirectory) OpenRead(name string) (FileReader, error) {
+	return d.open(name, DontCreate, os.O_RDONLY)
+}
+
+func (d *localDirectory) OpenReadWrite(name string, creationMode CreationMode) (FileReadWriter, error) {
+	return d.open(name, creationMode, os.O_RDWR)
+}
+
+func (d *localDirectory) OpenWrite(name string, creationMode CreationMode) (FileWriter, error) {
+	return d.open(name, creationMode, os.O_WRONLY)
 }
 
 func (d *localDirectory) Link(oldName string, newDirectory Directory, newName string) error {
@@ -83,16 +121,12 @@ func (d *localDirectory) Link(oldName string, newDirectory Directory, newName st
 	return unix.Linkat(d.fd, oldName, d2.fd, newName, 0)
 }
 
-func (d *localDirectory) Lstat(name string) (FileInfo, error) {
-	if err := validateFilename(name); err != nil {
-		return FileInfo{}, err
-	}
+func (d *localDirectory) lstat(name string) (FileType, deviceNumber, error) {
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
-	err := unix.Fstatat(d.fd, name, &stat, unix.AT_SYMLINK_NOFOLLOW)
-	if err != nil {
-		return FileInfo{}, err
+	if err := unix.Fstatat(d.fd, name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return FileTypeOther, 0, err
 	}
 	fileType := FileTypeOther
 	switch stat.Mode & syscall.S_IFMT {
@@ -107,6 +141,17 @@ func (d *localDirectory) Lstat(name string) (FileInfo, error) {
 			fileType = FileTypeRegularFile
 		}
 	}
+	return fileType, stat.Dev, nil
+}
+
+func (d *localDirectory) Lstat(name string) (FileInfo, error) {
+	if err := validateFilename(name); err != nil {
+		return FileInfo{}, err
+	}
+	fileType, _, err := d.lstat(name)
+	if err != nil {
+		return FileInfo{}, err
+	}
 	return NewFileInfo(name, fileType), nil
 }
 
@@ -119,24 +164,7 @@ func (d *localDirectory) Mkdir(name string, perm os.FileMode) error {
 	return unix.Mkdirat(d.fd, name, uint32(perm))
 }
 
-func (d *localDirectory) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
-	if err := validateFilename(name); err != nil {
-		return nil, err
-	}
-	defer runtime.KeepAlive(d)
-
-	fd, err := unix.Openat(d.fd, name, flag|unix.O_NOFOLLOW, uint32(perm))
-	if err != nil {
-		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
-			// FreeBSD erroneously returns EMLINK.
-			return nil, syscall.ELOOP
-		}
-		return nil, err
-	}
-	return os.NewFile(uintptr(fd), name), nil
-}
-
-func (d *localDirectory) ReadDir() ([]FileInfo, error) {
+func (d *localDirectory) readdirnames() ([]string, error) {
 	defer runtime.KeepAlive(d)
 
 	// Obtain filenames in current directory.
@@ -147,13 +175,18 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	f := os.NewFile(uintptr(fd), ".")
 	names, err := f.Readdirnames(-1)
 	f.Close()
+	return names, err
+}
+
+func (d *localDirectory) ReadDir() ([]FileInfo, error) {
+	names, err := d.readdirnames()
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(names)
 
 	// Obtain file info.
-	var list []FileInfo
+	list := make([]FileInfo, 0, len(names))
 	for _, name := range names {
 		info, err := d.Lstat(name)
 		if err != nil {
@@ -208,16 +241,51 @@ func (d *localDirectory) Remove(name string) error {
 	return err2
 }
 
-func (d *localDirectory) RemoveAllChildren() error {
+var workingDirectoryLock sync.Mutex
+
+func (d *localDirectory) unmount(name string) error {
 	defer runtime.KeepAlive(d)
 
-	children, err := d.ReadDir()
+	// POSIX systems provide no umountat() system call that permits
+	// us to unmount by directory handle. Use fchdir() to switch to
+	// the parent directory first. Pick up a global lock to prevent
+	// races on the working directory.
+	workingDirectoryLock.Lock()
+	defer workingDirectoryLock.Unlock()
+
+	if err := syscall.Fchdir(d.fd); err != nil {
+		return err
+	}
+	return syscall.Unmount(name, 0)
+}
+
+func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) error {
+	defer runtime.KeepAlive(d)
+
+	names, err := d.readdirnames()
 	if err != nil {
 		return err
 	}
-	for _, child := range children {
-		name := child.Name()
-		if child.Type() == FileTypeDirectory {
+	for _, name := range names {
+		fileType, childDeviceNumber, err := d.lstat(name)
+		if err != nil {
+			return err
+		}
+
+		// The directory entry is a mount point. Repeatedly call
+		// unmount until the remaining directory is on the same
+		// file system.
+		for parentDeviceNumber != childDeviceNumber {
+			if err := d.unmount(name); err != nil {
+				return err
+			}
+			fileType, childDeviceNumber, err = d.lstat(name)
+			if err != nil {
+				return err
+			}
+		}
+
+		if fileType == FileTypeDirectory {
 			// A directory. Remove all children. Adjust permissions
 			// to ensure we can delete directories with degenerate
 			// permissions.
@@ -225,11 +293,11 @@ func (d *localDirectory) RemoveAllChildren() error {
 			// Unfortunately, this is broken on Linux.
 			// Details: https://github.com/golang/go/issues/20130
 			unix.Fchmodat(d.fd, name, 0700, 0)
-			subdirectory, err := d.Enter(name)
+			subdirectory, err := d.enter(name)
 			if err != nil {
 				return err
 			}
-			err = subdirectory.RemoveAllChildren()
+			err = subdirectory.removeAllChildren(childDeviceNumber)
 			subdirectory.Close()
 			if err != nil {
 				return err
@@ -245,6 +313,16 @@ func (d *localDirectory) RemoveAllChildren() error {
 		}
 	}
 	return nil
+}
+
+func (d *localDirectory) RemoveAllChildren() error {
+	defer runtime.KeepAlive(d)
+
+	var stat unix.Stat_t
+	if err := unix.Fstat(d.fd, &stat); err != nil {
+		return err
+	}
+	return d.removeAllChildren(stat.Dev)
 }
 
 func (d *localDirectory) RemoveAll(name string) error {

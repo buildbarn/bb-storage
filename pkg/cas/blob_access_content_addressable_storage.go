@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -19,7 +20,7 @@ import (
 )
 
 type blobAccessContentAddressableStorage struct {
-	blobAccess         blobstore.BlobAccess
+	blobAccess              blobstore.BlobAccess
 	maximumMessageSizeBytes uint64
 }
 
@@ -28,7 +29,7 @@ type blobAccessContentAddressableStorage struct {
 // Storage (CAS) objects from a BlobAccess based store.
 func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes uint64) ContentAddressableStorage {
 	return &blobAccessContentAddressableStorage{
-		blobAccess:         blobAccess,
+		blobAccess:              blobAccess,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
@@ -89,7 +90,8 @@ func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, dig
 	if isExecutable {
 		mode = 0555
 	}
-	w, err := directory.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+
+	w, err := directory.OpenAppend(name, filesystem.CreateExcl(mode))
 	if err != nil {
 		return err
 	}
@@ -140,28 +142,46 @@ func (cas *blobAccessContentAddressableStorage) putMessage(ctx context.Context, 
 }
 
 func (cas *blobAccessContentAddressableStorage) PutFile(ctx context.Context, directory filesystem.Directory, name string, parentDigest *util.Digest) (*util.Digest, error) {
-	file, err := directory.OpenFile(name, os.O_RDONLY, 0)
+	file, err := directory.OpenRead(name)
 	if err != nil {
 		return nil, err
 	}
 
 	// Walk through the file to compute the digest.
 	digestGenerator := parentDigest.NewDigestGenerator()
-	if _, err = io.Copy(digestGenerator, file); err != nil {
+	sizeBytes, err := io.Copy(digestGenerator, io.NewSectionReader(file, 0, math.MaxInt64))
+	if err != nil {
 		file.Close()
 		return nil, err
 	}
 	digest := digestGenerator.Sum()
 
-	// Rewind and store it.
-	if _, err := file.Seek(0, 0); err != nil {
-		file.Close()
-		return nil, err
-	}
-	if err := cas.blobAccess.Put(ctx, digest, digest.GetSizeBytes(), file); err != nil {
+	// Rewind and store it. Limit uploading to the size that was
+	// used to compute the digest. This ensures uploads succeed,
+	// even if more data gets appended in the meantime. This is not
+	// uncommon, especially for stdout and stderr logs.
+	if err := cas.blobAccess.Put(
+		ctx,
+		digest,
+		digest.GetSizeBytes(),
+		newSectionReadCloser(file, 0, sizeBytes)); err != nil {
 		return nil, err
 	}
 	return digest, nil
+}
+
+// newSectionReadCloser returns an io.ReadCloser that reads from r at a
+// given offset, but stops with EOF after n bytes. This function is
+// identical to io.NewSectionReader(), except that it provides an
+// io.ReadCloser instead of an io.Reader.
+func newSectionReadCloser(r filesystem.FileReader, off int64, n int64) io.ReadCloser {
+	return &struct {
+		io.SectionReader
+		io.Closer
+	}{
+		SectionReader: *io.NewSectionReader(r, off, n),
+		Closer:        r,
+	}
 }
 
 func (cas *blobAccessContentAddressableStorage) PutLog(ctx context.Context, log []byte, parentDigest *util.Digest) (*util.Digest, error) {
