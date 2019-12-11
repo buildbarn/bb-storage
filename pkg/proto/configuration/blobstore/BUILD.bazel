@@ -5,7 +5,10 @@ proto_library(
     name = "blobstore_proto",
     srcs = ["blobstore.proto"],
     visibility = ["//visibility:public"],
-    deps = ["@go_googleapis//google/rpc:status_proto"],
+    deps = [
+        "//pkg/proto/configuration/tls:tls_proto",
+        "@go_googleapis//google/rpc:status_proto",
+    ],
 )
 
 go_proto_library(
@@ -13,7 +16,10 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore",
     proto = ":blobstore_proto",
     visibility = ["//visibility:public"],
-    deps = ["@go_googleapis//google/rpc:status_go_proto"],
+    deps = [
+        "//pkg/proto/configuration/tls:go_default_library",
+        "@go_googleapis//google/rpc:status_go_proto",
+    ],
 )
 
 go_library(

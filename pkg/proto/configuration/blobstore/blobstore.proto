@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.blobstore;
 
 import "google/rpc/status.proto";
+import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
@@ -117,6 +118,10 @@ message RedisBlobAccessConfiguration {
 
   // Numerical ID of the database.
   int32 db = 2;
+
+  // TLS configuration for the Redis connection. TLS will not be enabled
+  // when not set.
+  buildbarn.configuration.tls.TLSClientConfiguration tls = 4;
 }
 
 message RemoteBlobAccessConfiguration {
