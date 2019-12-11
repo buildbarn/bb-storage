@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -75,11 +74,11 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			return nil, err
 		}
 		defer circularDirectory.Close()
-		dataFile, err := circularDirectory.OpenFile("data", os.O_RDWR|os.O_CREATE, 0644)
+		dataFile, err := circularDirectory.OpenReadWrite("data", filesystem.CreateReuse(0644))
 		if err != nil {
 			return nil, err
 		}
-		stateFile, err := circularDirectory.OpenFile("state", os.O_RDWR|os.O_CREATE, 0644)
+		stateFile, err := circularDirectory.OpenReadWrite("state", filesystem.CreateReuse(0644))
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +88,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		case util.DigestKeyWithoutInstance:
 			// Open a single offset file for all entries. This is
 			// sufficient for the Content Addressable Storage.
-			offsetFile, err := circularDirectory.OpenFile("offset", os.O_RDWR|os.O_CREATE, 0644)
+			offsetFile, err := circularDirectory.OpenReadWrite("offset", filesystem.CreateReuse(0644))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +100,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			// required for the Action Cache.
 			offsetStores := map[string]circular.OffsetStore{}
 			for _, instance := range backend.Circular.Instance {
-				offsetFile, err := circularDirectory.OpenFile("offset."+instance, os.O_RDWR|os.O_CREATE, 0644)
+				offsetFile, err := circularDirectory.OpenReadWrite("offset."+instance, filesystem.CreateReuse(0644))
 				if err != nil {
 					return nil, err
 				}

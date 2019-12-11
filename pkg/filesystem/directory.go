@@ -4,6 +4,50 @@ import (
 	"os"
 )
 
+// CreationMode specifies whether and how Directory.Open*() should
+// create new files.
+type CreationMode struct {
+	flags       int
+	permissions os.FileMode
+}
+
+// ShouldCreate returns whether a new file should be created if it
+// doesn't exist yet.
+func (c CreationMode) ShouldCreate() bool {
+	return (c.flags & os.O_CREATE) != 0
+}
+
+// ShouldFailWhenExists returns whether a new file must be created. When
+// true, opening must fail in case the target file already exists.
+func (c CreationMode) ShouldFailWhenExists() bool {
+	return (c.flags & os.O_EXCL) != 0
+}
+
+// GetPermissions returns the file permissions the newly created file
+// should have.
+func (c CreationMode) GetPermissions() os.FileMode {
+	return c.permissions
+}
+
+var (
+	// DontCreate indicates that opening should fail in case the
+	// target file does not exist.
+	DontCreate = CreationMode{}
+)
+
+// CreateReuse indicates that a new file should be created if it doesn't
+// already exist. If the target file already exists, that file will be
+// opened instead.
+func CreateReuse(perm os.FileMode) CreationMode {
+	return CreationMode{flags: os.O_CREATE, permissions: perm}
+}
+
+// CreateExcl indicates that a new file should be created. If the target
+// file already exists, opening shall fail.
+func CreateExcl(perm os.FileMode) CreationMode {
+	return CreationMode{flags: os.O_CREATE | os.O_EXCL, permissions: perm}
+}
+
 // Directory is an abstraction for accessing a subtree of the file
 // system. Each of the functions should be implemented in such a way
 // that they reject access to data stored outside of the subtree. This
@@ -18,14 +62,24 @@ type Directory interface {
 	// Close any resources associated with the current directory.
 	Close() error
 
+	// Open a file contained within the directory for writing, only
+	// allowing data to be appended to the end of the file.
+	OpenAppend(name string, creationMode CreationMode) (FileAppender, error)
+	// Open a file contained within the directory for reading. The
+	// CreationMode is assumed to be equal to DontCreate.
+	OpenRead(name string) (FileReader, error)
+	// Open a file contained within the current directory for both
+	// reading and writing.
+	OpenReadWrite(name string, creationMode CreationMode) (FileReadWriter, error)
+	// Open a file contained within the current directory for writing.
+	OpenWrite(name string, creationMode CreationMode) (FileWriter, error)
+
 	// Link is the equivalent of os.Link().
 	Link(oldName string, newDirectory Directory, newName string) error
 	// Lstat is the equivalent of os.Lstat().
 	Lstat(name string) (FileInfo, error)
 	// Mkdir is the equivalent of os.Mkdir().
 	Mkdir(name string, perm os.FileMode) error
-	// OpenFile is the equivalent of os.OpenFile().
-	OpenFile(name string, flag int, perm os.FileMode) (File, error)
 	// ReadDir is the equivalent of ioutil.ReadDir().
 	ReadDir() ([]FileInfo, error)
 	// Readlink is the equivalent of os.Readlink().
