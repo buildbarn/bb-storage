@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.bb_storage;
 
 import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
 
@@ -30,11 +31,14 @@ message StorageConfiguration {
   // Address on which to listen to expose Prometheus metrics. Defaults to ":80".
   string metrics_listen_address = 3;
 
-  // Address on which to listen for RPCs. Defaults to ":8980".
-  string grpc_listen_address = 4;
+  // gRPC servers to spawn to listen for requests from clients.
+  repeated buildbarn.configuration.grpc.GRPCServerConfiguration grpc_servers =
+      4;
 
-  // List of schedulers available capable of building, mapping name to endpoints.
-  map<string, string> schedulers = 5;
+  // List of schedulers available capable of building, mapping name to
+  // endpoints.
+  map<string, buildbarn.configuration.grpc.GRPCClientConfiguration> schedulers =
+      5;
 
   // List of instances which can upload to the Action Cache.
   repeated string allow_ac_updates_for_instances = 6;

@@ -34,8 +34,5 @@ func setDefaultStorageValues(configuration *pb.StorageConfiguration) {
 	if configuration.MetricsListenAddress == "" {
 		configuration.MetricsListenAddress = ":80"
 	}
-	if configuration.GrpcListenAddress == "" {
-		configuration.GrpcListenAddress = ":8980"
-	}
 	setDefaultJaegerValues(configuration.Jaeger, "bb_storage")
 }

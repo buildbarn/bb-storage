@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package buildbarn.configuration.grpc;
+
+import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/tls/tls.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
+
+message GRPCClientConfiguration {
+  // Address of the gRPC server to which to connect. This string may be
+  // in the form of "address:port" or "unix:///path/of/unix/socket".
+  string address = 1;
+
+  // TLS configuration. TLS is not enabled when left unset.
+  buildbarn.configuration.tls.TLSClientConfiguration tls = 2;
+}
+
+message GRPCServerConfiguration {
+  // Network addresses on which to listen (e.g., ":8980").
+  repeated string listen_addresses = 1;
+
+  // UNIX socket paths on which to listen (e.g., "/var/run/runner.sock").
+  repeated string listen_paths = 2;
+
+  // TLS configuration. TLS is not enabled when left unset.
+  buildbarn.configuration.tls.TLSServerConfiguration tls = 3;
+
+  // Policy for authenticating clients against the gRPC server.
+  AuthenticationPolicy authentication_policy = 4;
+
+  // Maximum size of a Protobuf message that may be received by this
+  // server.
+  int64 maximum_received_message_size_bytes = 5;
+}
+
+message AuthenticationPolicy {
+  oneof policy {
+    // Allow all incoming requests.
+    google.protobuf.Empty allow = 1;
+
+    // Allow incoming requests if one of multiple authentication
+    // policies allows it, similar to Python's any() function.
+    AnyAuthenticationPolicy any = 2;
+
+    // Allow incoming requests in case they present a valid TLS
+    // certificate.
+    TLSClientCertificateAuthenticationPolicy tls_client_certificate = 3;
+  }
+}
+
+message AnyAuthenticationPolicy {
+  // Set of backing authentication policies.
+  repeated AuthenticationPolicy policies = 1;
+}
+
+message TLSClientCertificateAuthenticationPolicy {
+  // PEM data for the certificate authorities that should be used to
+  // validate the remote TLS client.
+  string client_certificate_authorities = 1;
+}

@@ -221,3 +221,8 @@ def bb_storage_go_dependencies():
         importpath = "github.com/fatih/color",
     )
 
+    go_repository(
+        name = "com_github_grpc_ecosystem_go_grpc_middleware",
+        importpath = "github.com/grpc-ecosystem/go-grpc-middleware",
+        commit = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d",
+    )

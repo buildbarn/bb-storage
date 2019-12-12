@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -13,16 +12,14 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/configuration"
+	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/opencensus"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"go.opencensus.io/plugin/ocgrpc"
 )
 
 func main() {
@@ -34,12 +31,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-
-	// Web server for metrics and profiling.
-	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, nil))
-	}()
 
 	if storageConfiguration.Jaeger != nil {
 		opencensus.Initialize(storageConfiguration.Jaeger)
@@ -67,11 +58,7 @@ func main() {
 
 	// Backends capable of compiling.
 	for name, endpoint := range storageConfiguration.Schedulers {
-		scheduler, err := grpc.Dial(
-			endpoint,
-			grpc.WithInsecure(),
-			grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
+		scheduler, err := bb_grpc.NewGRPCClientFromConfiguration(endpoint)
 		if err != nil {
 			log.Fatal("Failed to create scheduler RPC client: ", err)
 		}
@@ -85,25 +72,21 @@ func main() {
 		return scheduler, nil
 	})
 
-	// RPC server.
-	s := grpc.NewServer(
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
-	)
-	remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
-	remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
-	bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
-	remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
-	remoteexecution.RegisterExecutionServer(s, buildQueue)
-	grpc_prometheus.EnableHandlingTimeHistogram()
-	grpc_prometheus.Register(s)
+	go func() {
+		log.Fatal(
+			"gRPC server failure: ",
+			bb_grpc.NewGRPCServersFromConfigurationAndServe(
+				storageConfiguration.GrpcServers,
+				func(s *grpc.Server) {
+					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
+					remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
+					bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
+					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
+					remoteexecution.RegisterExecutionServer(s, buildQueue)
+				}))
+	}()
 
-	sock, err := net.Listen("tcp", storageConfiguration.GrpcListenAddress)
-	if err != nil {
-		log.Fatal("Failed to create listening socket: ", err)
-	}
-	if err := s.Serve(sock); err != nil {
-		log.Fatal("Failed to serve RPC server: ", err)
-	}
+	// Web server for metrics and profiling.
+	http.Handle("/metrics", promhttp.Handler())
+	log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, nil))
 }

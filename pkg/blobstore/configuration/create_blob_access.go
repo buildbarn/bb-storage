@@ -13,10 +13,10 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
+	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
@@ -30,7 +30,6 @@ import (
 	"gocloud.dev/gcp"
 
 	"golang.org/x/oauth2/google"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -201,11 +200,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		implementation = blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error))
 	case *pb.BlobAccessConfiguration_Grpc:
 		backendType = "grpc"
-		client, err := grpc.Dial(
-			backend.Grpc.Endpoint,
-			grpc.WithInsecure(),
-			grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
+		client, err := bb_grpc.NewGRPCClientFromConfiguration(backend.Grpc)
 		if err != nil {
 			return nil, err
 		}

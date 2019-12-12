@@ -23,6 +23,25 @@ gomock(
 )
 
 gomock(
+    name = "clock",
+    out = "clock.go",
+    interfaces = [
+        "Clock",
+        "Timer",
+    ],
+    library = "//pkg/clock:go_default_library",
+    package = "mock",
+)
+
+gomock(
+    name = "grpc",
+    out = "grpc.go",
+    interfaces = ["Authenticator"],
+    library = "//pkg/grpc:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "remoteexecution",
     out = "remoteexecution.go",
     interfaces = [
@@ -38,12 +57,15 @@ go_library(
     srcs = [
         ":blobstore.go",
         ":builder.go",
+        ":clock.go",
+        ":grpc.go",
         ":remoteexecution.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
         "//pkg/builder:go_default_library",
+        "//pkg/clock:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
