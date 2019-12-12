@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -14,7 +13,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/configuration"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/opencensus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/gorilla/mux"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -87,6 +87,7 @@ func main() {
 	}()
 
 	// Web server for metrics and profiling.
-	http.Handle("/metrics", promhttp.Handler())
-	log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, nil))
+	router := mux.NewRouter()
+	util.RegisterAdministrativeHTTPEndpoints(router)
+	log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, router))
 }

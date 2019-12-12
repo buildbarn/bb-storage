@@ -226,3 +226,9 @@ def bb_storage_go_dependencies():
         importpath = "github.com/grpc-ecosystem/go-grpc-middleware",
         commit = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d",
     )
+
+    go_repository(
+        name = "com_github_gorilla_mux",
+        importpath = "github.com/gorilla/mux",
+        commit = "49c01487a141b49f8ffe06277f3dca3ee80a55fa",
+    )
