@@ -27,7 +27,7 @@ func NewRedisBlobAccess(redisClient *redis.Client, blobKeyFormat util.DigestKeyF
 }
 
 func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
-	if err := ctx.Err(); err != nil {
+	if err := util.StatusFromContext(ctx); err != nil {
 		return 0, nil, err
 	}
 	value, err := ba.redisClient.Get(digest.GetKey(ba.blobKeyFormat)).Bytes()
@@ -41,7 +41,7 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64,
 }
 
 func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
-	if err := ctx.Err(); err != nil {
+	if err := util.StatusFromContext(ctx); err != nil {
 		r.Close()
 		return err
 	}
@@ -61,7 +61,7 @@ func (ba *redisBlobAccess) Delete(ctx context.Context, digest *util.Digest) erro
 }
 
 func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	if err := ctx.Err(); err != nil {
+	if err := util.StatusFromContext(ctx); err != nil {
 		return nil, err
 	}
 	if len(digests) == 0 {
