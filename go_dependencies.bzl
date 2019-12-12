@@ -124,8 +124,10 @@ def bb_storage_go_dependencies():
 
     go_repository(
         name = "dev_gocloud",
-        commit = "a68836e8e108ad55d26e8e2d21579028090c8aa5",
         importpath = "gocloud.dev",
+        sha256 = "e8d952e0a78473e822b368c5ee1d6a45d2e531d76758db86ee56dbd1eb623f6e",
+        strip_prefix = "go-cloud-0.18.0",
+        urls = ["https://github.com/google/go-cloud/archive/v0.18.0.tar.gz"],
     )
 
     go_repository(
@@ -166,7 +168,7 @@ def bb_storage_go_dependencies():
 
     go_repository(
         name = "org_golang_x_xerrors",
-        commit = "385005612d73f6925de56cb1886917aeaf90e3c5",
+        commit = "a985d3407aa71f30cf86696ee0a2f409709f22e1",
         importpath = "golang.org/x/xerrors",
     )
 
@@ -180,8 +182,10 @@ def bb_storage_go_dependencies():
 
     go_repository(
         name = "com_github_googleapis_gax_go",
-        commit = "9e334198cafcf7b281a9673424d7b1c3a02ebd50",
         importpath = "github.com/googleapis/gax-go",
+        sha256 = "3089affe6f5e27f7a6d494cb399aa6baf232384f763f548ad5ddfbea0e88e59c",
+        strip_prefix = "gax-go-2.0.5",
+        urls = ["https://github.com/googleapis/gax-go/archive/v2.0.5.tar.gz"],
     )
 
     go_repository(
@@ -198,14 +202,18 @@ def bb_storage_go_dependencies():
 
     go_repository(
         name = "com_github_azure_azure_pipeline_go",
-        commit = "55fedc85a614dcd0e942a66f302ae3efb83d563c",
         importpath = "github.com/Azure/azure-pipeline-go",
+        sha256 = "dc0d15949088e17e74da35c3ae2730f52240ad73e25cf795f532b7282de68e2f",
+        strip_prefix = "azure-pipeline-go-0.2.2",
+        urls = ["https://github.com/Azure/azure-pipeline-go/archive/v0.2.2.tar.gz"],
     )
 
     go_repository(
         name = "com_github_azure_azure_storage_blob_go",
-        commit = "8a1deeeabe0a24f918d29630ede0da2a1c8f3b2f",
         importpath = "github.com/Azure/azure-storage-blob-go",
+        sha256 = "e50db03bc05b952159e0a1d393c841c217c3aecd6ce745f8b9c42fd498e476c7",
+        strip_prefix = "azure-storage-blob-go-0.8.0",
+        urls = ["https://github.com/Azure/azure-storage-blob-go/archive/v0.8.0.tar.gz"],
     )
 
     go_repository(
@@ -231,4 +239,18 @@ def bb_storage_go_dependencies():
         name = "com_github_gorilla_mux",
         importpath = "github.com/gorilla/mux",
         commit = "49c01487a141b49f8ffe06277f3dca3ee80a55fa",
+    )
+
+    go_repository(
+        name = "com_github_googleapis_gax_go_v2",
+        importpath = "github.com/googleapis/gax-go/v2",
+        sha256 = "3089affe6f5e27f7a6d494cb399aa6baf232384f763f548ad5ddfbea0e88e59c",
+        strip_prefix = "gax-go-2.0.5/v2",
+        urls = ["https://github.com/googleapis/gax-go/archive/v2.0.5.tar.gz"],
+    )
+
+    go_repository(
+        name = "com_github_mattn_go_ieproxy",
+        commit = "7c0f6868bffe087073376feaab3ace57f2ef90b2",
+        importpath = "github.com/mattn/go-ieproxy",
     )
