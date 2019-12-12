@@ -17,6 +17,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
+	"github.com/google/uuid"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
@@ -208,7 +209,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		case "ac":
 			implementation = blobstore.NewActionCacheBlobAccess(client)
 		case "cas":
-			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, 65536)
+			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, uuid.NewRandom, 65536)
 		}
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
