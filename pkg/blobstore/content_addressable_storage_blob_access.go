@@ -20,6 +20,7 @@ import (
 type contentAddressableStorageBlobAccess struct {
 	byteStreamClient                bytestream.ByteStreamClient
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
+	uuidGenerator                   util.UUIDGenerator
 	readChunkSize                   int
 }
 
@@ -28,10 +29,11 @@ type contentAddressableStorageBlobAccess struct {
 // bytestream.ByteStream and remoteexecution.ContentAddressableStorage
 // services. Those are the services that Bazel uses to access blobs
 // stored in the Content Addressable Storage.
-func NewContentAddressableStorageBlobAccess(client *grpc.ClientConn, readChunkSize int) BlobAccess {
+func NewContentAddressableStorageBlobAccess(client *grpc.ClientConn, uuidGenerator util.UUIDGenerator, readChunkSize int) BlobAccess {
 	return &contentAddressableStorageBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
+		uuidGenerator:                   uuidGenerator,
 		readChunkSize:                   readChunkSize,
 	}
 }
@@ -99,9 +101,9 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *
 
 	var resourceName string
 	if instance := digest.GetInstance(); instance == "" {
-		resourceName = fmt.Sprintf("uploads/%s/blobs/%s/%d", uuid.Must(uuid.NewRandom()), digest.GetHashString(), digest.GetSizeBytes())
+		resourceName = fmt.Sprintf("uploads/%s/blobs/%s/%d", uuid.Must(ba.uuidGenerator()), digest.GetHashString(), digest.GetSizeBytes())
 	} else {
-		resourceName = fmt.Sprintf("%s/uploads/%s/blobs/%s/%d", instance, uuid.Must(uuid.NewRandom()), digest.GetHashString(), digest.GetSizeBytes())
+		resourceName = fmt.Sprintf("%s/uploads/%s/blobs/%s/%d", instance, uuid.Must(ba.uuidGenerator()), digest.GetHashString(), digest.GetSizeBytes())
 	}
 
 	writeOffset := int64(0)
