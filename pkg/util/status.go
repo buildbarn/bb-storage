@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 
 	"google.golang.org/grpc/codes"
@@ -32,4 +33,15 @@ func StatusWrapWithCode(err error, code codes.Code, msg string) error {
 // existing error, while replacing the error code.
 func StatusWrapfWithCode(err error, code codes.Code, format string, args ...interface{}) error {
 	return StatusWrapWithCode(err, code, fmt.Sprintf(format, args...))
+}
+
+// StatusFromContext converts the error associated with a context to a
+// gRPC Status error. This function ensures that errors such as
+// context.DeadlineExceeded are properly converted to Status objects
+// having the code DEADLINE_EXCEEDED.
+func StatusFromContext(ctx context.Context) error {
+	if s := status.FromContextError(ctx.Err()); s != nil {
+		return s.Err()
+	}
+	return nil
 }
