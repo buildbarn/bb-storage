@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.blobstore;
 
 import "google/rpc/status.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
@@ -43,7 +44,7 @@ message BlobAccessConfiguration {
 
     // Read objects from/write objects to a GRPC service that
     // implements the remote execution protocol.
-    GRPCBlobAccessConfiguration grpc = 7;
+    buildbarn.configuration.grpc.GRPCClientConfiguration grpc = 7;
 
     // Always fail with a fixed error response.
     google.rpc.Status error = 8;
@@ -105,11 +106,6 @@ message GCSBlobAccessConfiguration {
 
   // The JWT credentials to authenticate against GCP.
   string credentials = 2;
-}
-
-message GRPCBlobAccessConfiguration {
-  // Endpoint address of the GRPC server (e.g., "localhost:8982").
-  string endpoint = 1;
 }
 
 message RedisBlobAccessConfiguration {
