@@ -8,12 +8,12 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
-	blobstore "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
+	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
-	"github.com/buildbarn/bb-storage/pkg/configuration"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/opencensus"
+	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
 
@@ -25,22 +25,21 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		log.Fatal("Usage: bb-storage bb-storage.jsonnet")
+		log.Fatal("Usage: bb_storage bb_storage.jsonnet")
 	}
-
-	storageConfiguration, err := configuration.GetStorageConfiguration(os.Args[1])
-	if err != nil {
+	var configuration bb_storage.ApplicationConfiguration
+	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
 
-	if storageConfiguration.Jaeger != nil {
-		opencensus.Initialize(storageConfiguration.Jaeger)
+	if configuration.Jaeger != nil {
+		opencensus.Initialize(configuration.Jaeger)
 	}
 
 	// Storage access.
-	contentAddressableStorageBlobAccess, actionCache, err := blobstore.CreateBlobAccessObjectsFromConfig(
-		storageConfiguration.Blobstore,
-		int(storageConfiguration.MaximumMessageSizeBytes))
+	contentAddressableStorageBlobAccess, actionCache, err := blobstore_configuration.CreateBlobAccessObjectsFromConfig(
+		configuration.Blobstore,
+		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal("Failed to create blob access: ", err)
 	}
@@ -50,15 +49,15 @@ func main() {
 	// be configured to verify that all objects referenced by
 	// ActionResults are present in the Content Addressable Storage.
 	// Such validation is required by Bazel.
-	if storageConfiguration.VerifyActionResultCompleteness {
+	if configuration.VerifyActionResultCompleteness {
 		actionCache = completenesschecking.NewCompletenessCheckingBlobAccess(
 			actionCache,
 			cas.NewBlobAccessContentAddressableStorage(
 				contentAddressableStorageBlobAccess,
-				int(storageConfiguration.MaximumMessageSizeBytes)),
+				int(configuration.MaximumMessageSizeBytes)),
 			contentAddressableStorageBlobAccess,
 			100,
-			int(storageConfiguration.MaximumMessageSizeBytes))
+			int(configuration.MaximumMessageSizeBytes))
 	}
 
 	// Let GetCapabilities() work, even for instances that don't
@@ -66,16 +65,16 @@ func main() {
 	// results into the Action Cache.
 	schedulers := map[string]builder.BuildQueue{}
 	allowActionCacheUpdatesForInstances := map[string]bool{}
-	if len(storageConfiguration.AllowAcUpdatesForInstances) > 0 {
+	if len(configuration.AllowAcUpdatesForInstances) > 0 {
 		fallback := builder.NewNonExecutableBuildQueue()
-		for _, instance := range storageConfiguration.AllowAcUpdatesForInstances {
+		for _, instance := range configuration.AllowAcUpdatesForInstances {
 			schedulers[instance] = fallback
 			allowActionCacheUpdatesForInstances[instance] = true
 		}
 	}
 
 	// Backends capable of compiling.
-	for name, endpoint := range storageConfiguration.Schedulers {
+	for name, endpoint := range configuration.Schedulers {
 		scheduler, err := bb_grpc.NewGRPCClientFromConfiguration(endpoint)
 		if err != nil {
 			log.Fatal("Failed to create scheduler RPC client: ", err)
@@ -94,9 +93,9 @@ func main() {
 		log.Fatal(
 			"gRPC server failure: ",
 			bb_grpc.NewGRPCServersFromConfigurationAndServe(
-				storageConfiguration.GrpcServers,
+				configuration.GrpcServers,
 				func(s *grpc.Server) {
-					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances, int(storageConfiguration.MaximumMessageSizeBytes)))
+					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances, int(configuration.MaximumMessageSizeBytes)))
 					remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 					bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
@@ -107,5 +106,5 @@ func main() {
 	// Web server for metrics and profiling.
 	router := mux.NewRouter()
 	util.RegisterAdministrativeHTTPEndpoints(router)
-	log.Fatal(http.ListenAndServe(storageConfiguration.MetricsListenAddress, router))
+	log.Fatal(http.ListenAndServe(configuration.HttpListenAddress, router))
 }
