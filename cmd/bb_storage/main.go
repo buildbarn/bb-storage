@@ -7,6 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	blobstore "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
@@ -42,6 +43,22 @@ func main() {
 		int(storageConfiguration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal("Failed to create blob access: ", err)
+	}
+
+	// If this instance of bb-storage has access to all data (as in,
+	// it's not a single shard within a distributed setup), it can
+	// be configured to verify that all objects referenced by
+	// ActionResults are present in the Content Addressable Storage.
+	// Such validation is required by Bazel.
+	if storageConfiguration.VerifyActionResultCompleteness {
+		actionCache = completenesschecking.NewCompletenessCheckingBlobAccess(
+			actionCache,
+			cas.NewBlobAccessContentAddressableStorage(
+				contentAddressableStorageBlobAccess,
+				int(storageConfiguration.MaximumMessageSizeBytes)),
+			contentAddressableStorageBlobAccess,
+			100,
+			int(storageConfiguration.MaximumMessageSizeBytes))
 	}
 
 	// Let GetCapabilities() work, even for instances that don't
