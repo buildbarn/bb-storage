@@ -56,6 +56,13 @@ message BlobAccessConfiguration {
 
     // Read objects from/write objects to various cloud-based backends.
     CloudBlobAccessConfiguration cloud = 10;
+
+    // Store blobs on the local system.
+    //
+    // TODO: Right now this backend can only be used to store data in
+    // memory. We should work towards letting this backend replace
+    // circular by supporting on-disk storage.
+    LocalBlobAccessConfiguration local = 15;
   }
 }
 
@@ -235,4 +242,86 @@ message SizeDistinguishingBlobAccessConfiguration {
 
   // Maximum size of blobs read from/written to the backend for small blobs.
   int64 cutoff_size_bytes = 3;
+}
+
+message LocalBlobAccessConfiguration {
+  // The digest-location map is a hash table that is used by this
+  // storage backend to resolve digests to locations where data is
+  // stored. Because entries are small (64 bytes in size), it is
+  // recommended to make this map relatively large to reduce collisions.
+  //
+  // Recommended value: between 2 and 10 times the expected number of
+  // objects stored.
+  int64 digest_location_map_size = 1;
+
+  // The number of indices a Get() call on the digest-location map may
+  // attempt to access. The lower the utilization rate of the
+  // digest-location map, the lower this value may be set. For example,
+  // if the size of the digest-location map is set in such a way that it
+  // is only utilized by 10% (factor 0.1), setting this field to 16
+  // means there is only a 0.1^8 chance that inserting an entry
+  // prematurely displaces another object from storage.
+  //
+  // Recommended value: 8
+  uint32 digest_location_map_maximum_get_attempts = 2;
+
+  // The number of mutations that a Put() on the digest-location map may
+  // perform. Because the digest-location map uses a scheme similar to
+  // cuckoo hashing, insertions may cause other entries to be displaced.
+  // Those entries may then cause even more entries to be displaced.
+  // Because of that, it is recommended to set this field to a small
+  // multiple of the maximum Get() attempts.
+  //
+  // Recommended value: 32
+  int64 digest_location_map_maximum_put_attempts = 3;
+
+  // Data is stored in a list of blocks. The total number of blocks
+  // constant over time, with small fluctuations to deal with lingering
+  // requests when removing a block.
+  //
+  // Recommended value: (total space available) /
+  //                    (old_blocks + current_blocks + new_blocks)
+  int64 block_size_bytes = 4;
+
+  // The number of blocks, where attempting to access any data stored
+  // within will cause it to be refreshed (i.e., copied into new
+  // blocks).
+  //
+  // Setting the number of old blocks too low may cause builds to fail,
+  // due to data disappearing prematurely. Setting the number of old
+  // blocks too high may cause an excessive amount of duplication in the
+  // data set. For example, if old_blocks == current_blocks + new_blocks,
+  // there may be a redundancy in the data set up to a factor of two.
+  //
+  // Recommended value: 8
+  int32 old_blocks = 5;
+
+  // The number of blocks, where attempting to access data stored within
+  // will not cause data to be refreshed immediately. The containing
+  // block will first need to become old for data to be eligible for
+  // refreshes.
+  //
+  // Recommended value: 24
+  int32 current_blocks = 6;
+
+  // The number of blocks where new data needs to be written. It is
+  // valid to set this to just 1. Setting it to a slightly higher value
+  // has the advantage that frequently used objects will over time get
+  // smeared out across the data set. This spreads out the cost
+  // refreshing data from old to new blocks.
+  //
+  // Because the probability of storing objects in new blocks has an
+  // inverse exponential distribution, it is not recommended to set this
+  // to any value higher than 4. Whereas the first new block will at
+  // times be somewhere between 50% and 100% full, the fourth new block
+  // will only be between 6.25% and 12.5% full, which is wasteful.
+  //
+  // Recommended value: 3
+  int32 new_blocks = 7;
+
+  // Instances for which to store objects. For the Content Addressable
+  // Storage, this field may be omitted, as data for all instances is
+  // stored together. For the Action Cache, this field is required, as
+  // every instance needs its own digest-location map.
+  repeated string instances = 8;
 }
