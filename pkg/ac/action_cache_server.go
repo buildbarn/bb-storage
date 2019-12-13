@@ -4,6 +4,8 @@ import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -11,16 +13,18 @@ import (
 )
 
 type actionCacheServer struct {
-	actionCache              ActionCache
+	blobAccess               blobstore.BlobAccess
 	allowUpdatesForInstances map[string]bool
+	maximumMessageSizeBytes  int
 }
 
 // NewActionCacheServer creates a GRPC service for serving the contents
 // of a Bazel Action Cache (AC) to Bazel.
-func NewActionCacheServer(actionCache ActionCache, allowUpdatesForInstances map[string]bool) remoteexecution.ActionCacheServer {
+func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstances map[string]bool, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
 	return &actionCacheServer{
-		actionCache:              actionCache,
+		blobAccess:               blobAccess,
 		allowUpdatesForInstances: allowUpdatesForInstances,
+		maximumMessageSizeBytes:  maximumMessageSizeBytes,
 	}
 }
 
@@ -29,7 +33,7 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 	if err != nil {
 		return nil, err
 	}
-	return s.actionCache.GetActionResult(ctx, digest)
+	return s.blobAccess.Get(ctx, digest).ToActionResult(s.maximumMessageSizeBytes)
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {
@@ -40,5 +44,8 @@ func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteex
 	if instance := digest.GetInstance(); !s.allowUpdatesForInstances[instance] {
 		return nil, status.Errorf(codes.Unimplemented, "This service can only be used to get action results for instance %#v", instance)
 	}
-	return in.ActionResult, s.actionCache.PutActionResult(ctx, digest, in.ActionResult)
+	return in.ActionResult, s.blobAccess.Put(
+		ctx,
+		digest,
+		buffer.NewACBufferFromActionResult(in.ActionResult, buffer.UserProvided))
 }

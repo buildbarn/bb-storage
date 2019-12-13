@@ -42,4 +42,7 @@ message StorageConfiguration {
 
   // List of instances which can upload to the Action Cache.
   repeated string allow_ac_updates_for_instances = 6;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 8;
 }

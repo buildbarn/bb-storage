@@ -2,22 +2,39 @@ package blobstore
 
 import (
 	"context"
-	"io"
+	"sync"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	blobAccessOperationsStartedTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
+	blobAccessOperationsPrometheusMetrics sync.Once
+
+	blobAccessOperationsBlobSizeBytes = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "blob_access_operations_started_total",
-			Help:      "Total number of operations started on blob access objects.",
+			Name:      "blob_access_operations_blob_size_bytes",
+			Help:      "Size of blobs being inserted/retrieved, in bytes.",
+			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
 		[]string{"name", "operation"})
+	blobAccessOperationsFindMissingBatchSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "buildbarn",
+			Subsystem: "blobstore",
+			Name:      "blob_access_operations_find_missing_batch_size",
+			Help:      "Number of digests provided to FindMissing().",
+			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
+		},
+		[]string{"name"})
 	blobAccessOperationsDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -26,70 +43,92 @@ var (
 			Help:      "Amount of time spent per operation on blob access objects, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"name", "operation"})
+		[]string{"name", "operation", "grpc_code"})
 )
 
-func init() {
-	prometheus.MustRegister(blobAccessOperationsStartedTotal)
-	prometheus.MustRegister(blobAccessOperationsDurationSeconds)
-}
-
 type metricsBlobAccess struct {
-	blobAccess                                     BlobAccess
-	blobAccessOperationsStartedTotalGet            prometheus.Counter
-	blobAccessOperationsDurationSecondsGet         prometheus.Observer
-	blobAccessOperationsStartedTotalPut            prometheus.Counter
-	blobAccessOperationsDurationSecondsPut         prometheus.Observer
-	blobAccessOperationsStartedTotalDelete         prometheus.Counter
-	blobAccessOperationsDurationSecondsDelete      prometheus.Observer
-	blobAccessOperationsStartedTotalFindMissing    prometheus.Counter
-	blobAccessOperationsDurationSecondsFindMissing prometheus.Observer
+	blobAccess BlobAccess
+	clock      clock.Clock
+
+	getBlobSizeBytes           prometheus.Observer
+	getDurationSeconds         prometheus.ObserverVec
+	putBlobSizeBytes           prometheus.Observer
+	putDurationSeconds         prometheus.ObserverVec
+	findMissingBatchSize       prometheus.Observer
+	findMissingDurationSeconds prometheus.ObserverVec
 }
 
 // NewMetricsBlobAccess creates an adapter for BlobAccess that adds
 // basic instrumentation in the form of Prometheus metrics.
-func NewMetricsBlobAccess(blobAccess BlobAccess, name string) BlobAccess {
+func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, name string) BlobAccess {
+	blobAccessOperationsPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(blobAccessOperationsBlobSizeBytes)
+		prometheus.MustRegister(blobAccessOperationsFindMissingBatchSize)
+		prometheus.MustRegister(blobAccessOperationsDurationSeconds)
+	})
+
 	return &metricsBlobAccess{
-		blobAccess:                                     blobAccess,
-		blobAccessOperationsStartedTotalGet:            blobAccessOperationsStartedTotal.WithLabelValues(name, "Get"),
-		blobAccessOperationsDurationSecondsGet:         blobAccessOperationsDurationSeconds.WithLabelValues(name, "Get"),
-		blobAccessOperationsStartedTotalPut:            blobAccessOperationsStartedTotal.WithLabelValues(name, "Put"),
-		blobAccessOperationsDurationSecondsPut:         blobAccessOperationsDurationSeconds.WithLabelValues(name, "Put"),
-		blobAccessOperationsStartedTotalDelete:         blobAccessOperationsStartedTotal.WithLabelValues(name, "Delete"),
-		blobAccessOperationsDurationSecondsDelete:      blobAccessOperationsDurationSeconds.WithLabelValues(name, "Delete"),
-		blobAccessOperationsStartedTotalFindMissing:    blobAccessOperationsStartedTotal.WithLabelValues(name, "FindMissing"),
-		blobAccessOperationsDurationSecondsFindMissing: blobAccessOperationsDurationSeconds.WithLabelValues(name, "FindMissing"),
+		blobAccess: blobAccess,
+		clock:      clock,
+
+		getBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(name, "Get"),
+		getDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "Get"}),
+		putBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(name, "Put"),
+		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "Put"}),
+		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(name),
+		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "FindMissing"}),
 	}
 }
 
-func (ba *metricsBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
-	ba.blobAccessOperationsStartedTotalGet.Inc()
-	timeStart := time.Now()
-	length, r, err := ba.blobAccess.Get(ctx, digest)
-	ba.blobAccessOperationsDurationSecondsGet.Observe(time.Now().Sub(timeStart).Seconds())
-	return length, r, err
+func (ba *metricsBlobAccess) updateDurationSeconds(vec prometheus.ObserverVec, code codes.Code, timeStart time.Time) {
+	vec.WithLabelValues(code.String()).Observe(ba.clock.Now().Sub(timeStart).Seconds())
 }
 
-func (ba *metricsBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
-	ba.blobAccessOperationsStartedTotalPut.Inc()
-	timeStart := time.Now()
-	err := ba.blobAccess.Put(ctx, digest, sizeBytes, r)
-	ba.blobAccessOperationsDurationSecondsPut.Observe(time.Now().Sub(timeStart).Seconds())
-	return err
+func (ba *metricsBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ba.getBlobSizeBytes.Observe(float64(digest.GetSizeBytes()))
+	return buffer.WithErrorHandler(
+		ba.blobAccess.Get(ctx, digest),
+		&metricsErrorHandler{
+			blobAccess: ba,
+			timeStart:  ba.clock.Now(),
+			errorCode:  codes.OK,
+		})
 }
 
-func (ba *metricsBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	ba.blobAccessOperationsStartedTotalDelete.Inc()
-	timeStart := time.Now()
-	err := ba.blobAccess.Delete(ctx, digest)
-	ba.blobAccessOperationsDurationSecondsDelete.Observe(time.Now().Sub(timeStart).Seconds())
+func (ba *metricsBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ba.putBlobSizeBytes.Observe(float64(digest.GetSizeBytes()))
+	timeStart := ba.clock.Now()
+	err := ba.blobAccess.Put(ctx, digest, b)
+	ba.updateDurationSeconds(ba.putDurationSeconds, status.Code(err), timeStart)
 	return err
 }
 
 func (ba *metricsBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	ba.blobAccessOperationsStartedTotalFindMissing.Inc()
-	timeStart := time.Now()
+	// Discard zero-sized FindMissing() requests. These may, for
+	// example, be generated by SizeDistinguishingBlobAccess. Such
+	// calls would skew the batch size and duration metrics.
+	if len(digests) == 0 {
+		return nil, nil
+	}
+
+	ba.findMissingBatchSize.Observe(float64(len(digests)))
+	timeStart := ba.clock.Now()
 	digests, err := ba.blobAccess.FindMissing(ctx, digests)
-	ba.blobAccessOperationsDurationSecondsFindMissing.Observe(time.Now().Sub(timeStart).Seconds())
+	ba.updateDurationSeconds(ba.findMissingDurationSeconds, status.Code(err), timeStart)
 	return digests, err
+}
+
+type metricsErrorHandler struct {
+	blobAccess *metricsBlobAccess
+	timeStart  time.Time
+	errorCode  codes.Code
+}
+
+func (eh *metricsErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	eh.errorCode = status.Code(err)
+	return nil, err
+}
+
+func (eh *metricsErrorHandler) Done() {
+	eh.blobAccess.updateDurationSeconds(eh.blobAccess.getDurationSeconds, eh.errorCode, eh.timeStart)
 }

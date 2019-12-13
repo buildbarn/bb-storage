@@ -2,27 +2,27 @@ package sharding
 
 import (
 	"context"
-	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 type shardingBlobAccess struct {
 	backends           []blobstore.BlobAccess
 	shardPermuter      ShardPermuter
-	digestKeyFormat    util.DigestKeyFormat
+	storageType        blobstore.StorageType
 	hashInitialization uint64
 }
 
 // NewShardingBlobAccess is an adapter for BlobAccess that partitions
 // requests across backends by hashing the digest. A ShardPermuter is
 // used to map hashes to backends.
-func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardPermuter, digestKeyFormat util.DigestKeyFormat, hashInitialization uint64) blobstore.BlobAccess {
+func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardPermuter, storageType blobstore.StorageType, hashInitialization uint64) blobstore.BlobAccess {
 	return &shardingBlobAccess{
 		backends:           backends,
 		shardPermuter:      shardPermuter,
-		digestKeyFormat:    digestKeyFormat,
+		storageType:        storageType,
 		hashInitialization: hashInitialization,
 	}
 }
@@ -30,7 +30,7 @@ func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardP
 func (ba *shardingBlobAccess) getBackend(digest *util.Digest) blobstore.BlobAccess {
 	// Hash the key using FNV-1a.
 	h := ba.hashInitialization
-	for _, c := range digest.GetKey(ba.digestKeyFormat) {
+	for _, c := range ba.storageType.GetDigestKey(digest) {
 		h ^= uint64(c)
 		h *= 1099511628211
 	}
@@ -44,16 +44,12 @@ func (ba *shardingBlobAccess) getBackend(digest *util.Digest) blobstore.BlobAcce
 	return backend
 }
 
-func (ba *shardingBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *shardingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	return ba.getBackend(digest).Get(ctx, digest)
 }
 
-func (ba *shardingBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
-	return ba.getBackend(digest).Put(ctx, digest, sizeBytes, r)
-}
-
-func (ba *shardingBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return ba.getBackend(digest).Delete(ctx, digest)
+func (ba *shardingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	return ba.getBackend(digest).Put(ctx, digest, b)
 }
 
 type findMissingResults struct {

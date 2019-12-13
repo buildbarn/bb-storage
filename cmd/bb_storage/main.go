@@ -37,11 +37,12 @@ func main() {
 	}
 
 	// Storage access.
-	contentAddressableStorageBlobAccess, actionCacheBlobAccess, err := blobstore.CreateBlobAccessObjectsFromConfig(storageConfiguration.Blobstore)
+	contentAddressableStorageBlobAccess, actionCache, err := blobstore.CreateBlobAccessObjectsFromConfig(
+		storageConfiguration.Blobstore,
+		int(storageConfiguration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal("Failed to create blob access: ", err)
 	}
-	actionCache := ac.NewBlobAccessActionCache(actionCacheBlobAccess)
 
 	// Let GetCapabilities() work, even for instances that don't
 	// have a scheduler attached to them, but do allow uploading
@@ -78,7 +79,7 @@ func main() {
 			bb_grpc.NewGRPCServersFromConfigurationAndServe(
 				storageConfiguration.GrpcServers,
 				func(s *grpc.Server) {
-					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances))
+					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances, int(storageConfiguration.MaximumMessageSizeBytes)))
 					remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess))
 					bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)

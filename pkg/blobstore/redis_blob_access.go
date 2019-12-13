@@ -1,61 +1,101 @@
 package blobstore
 
 import (
-	"bytes"
 	"context"
-	"io"
-	"io/ioutil"
+	"fmt"
+	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
 
 	"google.golang.org/grpc/codes"
 )
 
+// RedisClient is an interface that contains the set of functions of the
+// Redis library that is used by this package. This permits unit testing
+// and uniform switching between clustered and single-node Redis.
+type RedisClient interface {
+	redis.Cmdable
+	Process(cmd redis.Cmder) error
+}
+
 type redisBlobAccess struct {
-	redisClient   *redis.Client
-	blobKeyFormat util.DigestKeyFormat
+	redisClient        RedisClient
+	storageType        StorageType
+	keyTTL             time.Duration
+	replicationCount   int64
+	replicationTimeout int
 }
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient *redis.Client, blobKeyFormat util.DigestKeyFormat) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient,
+	storageType StorageType,
+	keyTTL time.Duration,
+	replicationCount int64,
+	replicationTimeout time.Duration) BlobAccess {
 	return &redisBlobAccess{
-		redisClient:   redisClient,
-		blobKeyFormat: blobKeyFormat,
+		redisClient:        redisClient,
+		storageType:        storageType,
+		keyTTL:             keyTTL,
+		replicationCount:   int64(replicationCount),
+		replicationTimeout: int(replicationTimeout.Milliseconds()),
 	}
 }
 
-func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	if err := util.StatusFromContext(ctx); err != nil {
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	}
-	value, err := ba.redisClient.Get(digest.GetKey(ba.blobKeyFormat)).Bytes()
-	if err != nil {
-		if err == redis.Nil {
-			return 0, nil, util.StatusWrapWithCode(err, codes.NotFound, "Failed to get blob")
-		}
-		return 0, nil, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to get blob")
+	key := ba.storageType.GetDigestKey(digest)
+	value, err := ba.redisClient.Get(key).Bytes()
+	if err == redis.Nil {
+		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.NotFound, "Blob not found"))
+	} else if err != nil {
+		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Unavailable, "Failed to get blob"))
 	}
-	return int64(len(value)), ioutil.NopCloser(bytes.NewBuffer(value)), nil
+	return ba.storageType.NewBufferFromByteSlice(
+		digest,
+		value,
+		buffer.Reparable(digest, func() error {
+			return ba.redisClient.Del(key).Err()
+		}))
 }
 
-func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
 	if err := util.StatusFromContext(ctx); err != nil {
-		r.Close()
+		b.Discard()
 		return err
 	}
-	value, err := ioutil.ReadAll(r)
-	r.Close()
+	// Redis can only store values up to 512 MiB in size.
+	value, err := b.ToByteSlice(512 * 1024 * 1024)
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
-	return ba.redisClient.Set(digest.GetKey(ba.blobKeyFormat), value, 0).Err()
+	if err := ba.redisClient.Set(ba.storageType.GetDigestKey(digest), value, ba.keyTTL).Err(); err != nil {
+		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
+	}
+	return ba.waitIfReplicationEnabled()
 }
 
-func (ba *redisBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	if err := ba.redisClient.Del(digest.GetKey(ba.blobKeyFormat)).Err(); err != nil {
-		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to delete blob")
+func (ba *redisBlobAccess) waitIfReplicationEnabled() error {
+	if ba.replicationCount == 0 {
+		return nil
+	}
+	var command *redis.IntCmd
+	if ba.replicationTimeout > 0 {
+		command = redis.NewIntCmd("wait", ba.replicationCount, ba.replicationTimeout)
+	} else {
+		command = redis.NewIntCmd("wait", ba.replicationCount)
+	}
+	ba.redisClient.Process(command)
+	replicatedCount, err := command.Result()
+	if err != nil {
+		return util.StatusWrapWithCode(err, codes.Internal, "Error replicating blob")
+	}
+	if replicatedCount < ba.replicationCount {
+		return util.StatusWrapWithCode(err, codes.Internal, fmt.Sprintf("Replication not completed. Requested %d, actual %d", ba.replicationCount, replicatedCount))
 	}
 	return nil
 }
@@ -70,9 +110,9 @@ func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests []*util.Dige
 
 	// Execute "EXISTS" requests all in a single pipeline.
 	pipeline := ba.redisClient.Pipeline()
-	var cmds []*redis.IntCmd
+	cmds := make([]*redis.IntCmd, 0, len(digests))
 	for _, digest := range digests {
-		cmds = append(cmds, pipeline.Exists(digest.GetKey(ba.blobKeyFormat)))
+		cmds = append(cmds, pipeline.Exists(ba.storageType.GetDigestKey(digest)))
 	}
 	if _, err := pipeline.Exec(); err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")

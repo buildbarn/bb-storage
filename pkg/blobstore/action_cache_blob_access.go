@@ -1,14 +1,11 @@
 package blobstore
 
 import (
-	"bytes"
 	"context"
-	"io"
-	"io/ioutil"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -16,56 +13,43 @@ import (
 )
 
 type actionCacheBlobAccess struct {
-	actionCacheClient remoteexecution.ActionCacheClient
+	actionCacheClient       remoteexecution.ActionCacheClient
+	maximumMessageSizeBytes int
 }
 
 // NewActionCacheBlobAccess creates a BlobAccess handle that relays any
 // requests to a GRPC service that implements the
 // remoteexecution.ActionCache service. That is the service that Bazel
 // uses to access action results stored in the Action Cache.
-func NewActionCacheBlobAccess(client *grpc.ClientConn) BlobAccess {
+func NewActionCacheBlobAccess(client *grpc.ClientConn, maximumMessageSizeBytes int) BlobAccess {
 	return &actionCacheBlobAccess{
-		actionCacheClient: remoteexecution.NewActionCacheClient(client),
+		actionCacheClient:       remoteexecution.NewActionCacheClient(client),
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
-func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	actionResult, err := ba.actionCacheClient.GetActionResult(ctx, &remoteexecution.GetActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
 	})
 	if err != nil {
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	}
-
-	data, err := proto.Marshal(actionResult)
-	if err != nil {
-		return 0, nil, err
-	}
-	return int64(len(data)), ioutil.NopCloser(bytes.NewBuffer(data)), nil
+	return buffer.NewACBufferFromActionResult(actionResult, buffer.Irreparable)
 }
 
-func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
-	data, err := ioutil.ReadAll(r)
-	r.Close()
+func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	actionResult, err := b.ToActionResult(ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
 	}
-	var actionResult remoteexecution.ActionResult
-	if err := proto.Unmarshal(data, &actionResult); err != nil {
-		return err
-	}
-
 	_, err = ba.actionCacheClient.UpdateActionResult(ctx, &remoteexecution.UpdateActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
-		ActionResult: &actionResult,
+		ActionResult: actionResult,
 	})
 	return err
-}
-
-func (ba *actionCacheBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return status.Error(codes.Unimplemented, "Bazel remote execution protocol does not support object deletion")
 }
 
 func (ba *actionCacheBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {

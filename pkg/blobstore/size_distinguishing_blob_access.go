@@ -2,8 +2,8 @@ package blobstore
 
 import (
 	"context"
-	"io"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
@@ -26,27 +26,20 @@ func NewSizeDistinguishingBlobAccess(smallBlobAccess BlobAccess, largeBlobAccess
 	}
 }
 
-func (ba *sizeDistinguishingBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *sizeDistinguishingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	if digest.GetSizeBytes() <= ba.cutoffSizeBytes {
 		return ba.smallBlobAccess.Get(ctx, digest)
 	}
 	return ba.largeBlobAccess.Get(ctx, digest)
 }
 
-func (ba *sizeDistinguishingBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *sizeDistinguishingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
 	// Use the size that's in the digest; not the size provided. We
 	// can't re-obtain that in the other operations.
 	if digest.GetSizeBytes() <= ba.cutoffSizeBytes {
-		return ba.smallBlobAccess.Put(ctx, digest, sizeBytes, r)
+		return ba.smallBlobAccess.Put(ctx, digest, b)
 	}
-	return ba.largeBlobAccess.Put(ctx, digest, sizeBytes, r)
-}
-
-func (ba *sizeDistinguishingBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	if digest.GetSizeBytes() <= ba.cutoffSizeBytes {
-		return ba.smallBlobAccess.Delete(ctx, digest)
-	}
-	return ba.largeBlobAccess.Delete(ctx, digest)
+	return ba.largeBlobAccess.Put(ctx, digest, b)
 }
 
 type findMissingResults struct {

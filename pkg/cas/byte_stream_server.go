@@ -8,6 +8,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -59,45 +60,39 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int) byt
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
-	if in.ReadOffset != 0 || in.ReadLimit != 0 {
+	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
-
 	digest, err := util.NewDigestFromBytestreamPath(in.ResourceName)
 	if err != nil {
 		return err
 	}
-	_, r, err := s.blobAccess.Get(out.Context(), digest)
-	if err != nil {
-		return err
-	}
+
+	r := s.blobAccess.Get(out.Context(), digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
 	defer r.Close()
 
 	for {
-		readBuf := make([]byte, s.readChunkSize)
-		n, err := r.Read(readBuf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n > 0 {
-			if err := out.Send(&bytestream.ReadResponse{Data: readBuf[:n]}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
+		readBuf, readErr := r.Read()
+		if readErr == io.EOF {
 			return nil
+		}
+		if readErr != nil {
+			return readErr
+		}
+		if writeErr := out.Send(&bytestream.ReadResponse{Data: readBuf}); writeErr != nil {
+			return writeErr
 		}
 	}
 }
 
-type byteStreamWriteServerReader struct {
+type byteStreamWriteServerChunkReader struct {
 	stream        bytestream.ByteStream_WriteServer
 	writeOffset   int64
 	data          []byte
 	finishedWrite bool
 }
 
-func (r *byteStreamWriteServerReader) setRequest(request *bytestream.WriteRequest) error {
+func (r *byteStreamWriteServerChunkReader) setRequest(request *bytestream.WriteRequest) error {
 	if r.finishedWrite {
 		return status.Error(codes.InvalidArgument, "Client closed stream twice")
 	}
@@ -111,30 +106,27 @@ func (r *byteStreamWriteServerReader) setRequest(request *bytestream.WriteReques
 	return nil
 }
 
-func (r *byteStreamWriteServerReader) Read(p []byte) (int, error) {
+func (r *byteStreamWriteServerChunkReader) Read() ([]byte, error) {
 	// Read next chunk if no data is present.
 	if len(r.data) == 0 {
 		request, err := r.stream.Recv()
 		if err != nil {
 			if err == io.EOF && !r.finishedWrite {
-				return 0, status.Error(codes.InvalidArgument, "Client closed stream without finishing write")
+				return nil, status.Error(codes.InvalidArgument, "Client closed stream without finishing write")
 			}
-			return 0, err
+			return nil, err
 		}
 		if err := r.setRequest(request); err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
-	// Copy data from previously read partial chunk.
-	c := copy(p, r.data)
-	r.data = r.data[c:]
-	return c, nil
+	data := r.data
+	r.data = nil
+	return data, nil
 }
 
-func (r *byteStreamWriteServerReader) Close() error {
-	return nil
-}
+func (r *byteStreamWriteServerChunkReader) Close() {}
 
 func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error {
 	request, err := stream.Recv()
@@ -145,16 +137,18 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return err
 	}
-	r := &byteStreamWriteServerReader{stream: stream}
+	r := &byteStreamWriteServerChunkReader{stream: stream}
 	if err := r.setRequest(request); err != nil {
 		return err
 	}
-	sizeBytes := digest.GetSizeBytes()
-	if err := s.blobAccess.Put(stream.Context(), digest, sizeBytes, r); err != nil {
+	if err := s.blobAccess.Put(
+		stream.Context(),
+		digest,
+		buffer.NewCASBufferFromChunkReader(digest, r, buffer.UserProvided)); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
-		CommittedSize: sizeBytes,
+		CommittedSize: digest.GetSizeBytes(),
 	})
 }
 
