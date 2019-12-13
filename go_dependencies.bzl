@@ -105,9 +105,17 @@ def bb_storage_go_dependencies():
     go_repository(
         name = "com_github_stretchr_testify",
         importpath = "github.com/stretchr/testify",
-        sha256 = "0cd9c199a72b8d80621624b37c0ed5ac724352d458506a31dfa86710551e7fc5",
-        strip_prefix = "testify-1.3.0",
-        urls = ["https://github.com/stretchr/testify/archive/v1.3.0.tar.gz"],
+        sha256 = "3ae072321569a8cd6d77de8f3be774165e136198ce808df0a31589237ba59698",
+        strip_prefix = "testify-1.4.0",
+        urls = ["https://github.com/stretchr/testify/archive/v1.4.0.tar.gz"],
+    )
+
+    go_repository(
+        name = "in_gopkg_yaml_v2",
+        importpath = "gopkg.in/yaml.v2",
+        sha256 = "74afe4be0fa4482de73cfaf952dc6c8d41088b687c3f9de4a7ced86d2bbe0cb4",
+        strip_prefix = "yaml-2.2.7",
+        urls = ["https://github.com/go-yaml/yaml/archive/v2.2.7.tar.gz"],
     )
 
     go_repository(
