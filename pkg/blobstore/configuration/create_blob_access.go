@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
@@ -282,10 +284,49 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType blo
 			return nil, err
 		}
 		implementation = blobstore.NewSizeDistinguishingBlobAccess(small, large, backend.SizeDistinguishing.CutoffSizeBytes)
+	case *pb.BlobAccessConfiguration_Local:
+		backendType = "local"
+
+		var digestLocationMap local.DigestLocationMap
+		switch storageType {
+		case blobstore.CASStorageType:
+			// Let the CAS use a single store for all
+			// objects, regardless of the instance name that
+			// was used to store them. There is no need to
+			// distinguish, due to objects being content
+			// addressed.
+			digestLocationMap = createDigestLocationMap(backend.Local)
+		case blobstore.ACStorageType:
+			// Let the AC use a single store per instance name.
+			maps := map[string]local.DigestLocationMap{}
+			for _, instance := range backend.Local.Instances {
+				maps[instance] = createDigestLocationMap(backend.Local)
+			}
+			digestLocationMap = local.NewPerInstanceDigestLocationMap(maps)
+		}
+
+		implementation = local.NewLocalBlobAccess(
+			digestLocationMap,
+			local.NewInMemoryBlockAllocator(
+				int(backend.Local.BlockSizeBytes)),
+			storageTypeName,
+			backend.Local.BlockSizeBytes,
+			int(backend.Local.OldBlocks),
+			int(backend.Local.CurrentBlocks),
+			int(backend.Local.NewBlocks))
 	default:
 		return nil, errors.New("Configuration did not contain a backend")
 	}
 	return blobstore.NewMetricsBlobAccess(implementation, clock.SystemClock, fmt.Sprintf("%s_%s", storageTypeName, backendType)), nil
+}
+
+func createDigestLocationMap(config *pb.LocalBlobAccessConfiguration) local.DigestLocationMap {
+	return local.NewHashingDigestLocationMap(
+		local.NewInMemoryLocationRecordArray(int(config.DigestLocationMapSize)),
+		int(config.DigestLocationMapSize),
+		rand.Uint64(),
+		config.DigestLocationMapMaximumGetAttempts,
+		int(config.DigestLocationMapMaximumPutAttempts))
 }
 
 func createCircularBlobAccess(config *pb.CircularBlobAccessConfiguration, storageType blobstore.StorageType, storageTypeName string) (blobstore.BlobAccess, error) {

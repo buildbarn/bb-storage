@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/circular:go_default_library",
+        "//pkg/blobstore/local:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/filesystem:go_default_library",

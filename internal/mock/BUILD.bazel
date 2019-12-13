@@ -23,6 +23,19 @@ gomock(
 )
 
 gomock(
+    name = "blobstore_local",
+    out = "blobstore_local.go",
+    interfaces = [
+        "Block",
+        "BlockAllocator",
+        "DigestLocationMap",
+        "LocationRecordArray",
+    ],
+    library = "//pkg/blobstore/local:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "buffer",
     out = "buffer.go",
     interfaces = [
@@ -107,6 +120,7 @@ go_library(
     srcs = [
         ":aliases.go",
         ":blobstore.go",
+        ":blobstore_local.go",
         ":buffer.go",
         ":builder.go",
         ":cas.go",
@@ -120,6 +134,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//pkg/blobstore/buffer:go_default_library",
+        "//pkg/blobstore/local:go_default_library",
         "//pkg/builder:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/filesystem:go_default_library",
