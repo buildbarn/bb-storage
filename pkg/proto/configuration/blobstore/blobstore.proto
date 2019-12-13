@@ -37,6 +37,10 @@ message BlobAccessConfiguration {
     // Read objects from/write objects to a Bazel remote build cache server.
     RemoteBlobAccessConfiguration remote = 3;
 
+    // Cache reads from a slow remote storage backend into a fast
+    // local storage backend.
+    ReadCachingBlobAccessConfiguration read_caching = 4;
+
     // Split up objects across two storage backends by digest size.
     SizeDistinguishingBlobAccessConfiguration size_distinguishing = 5;
 
@@ -123,6 +127,18 @@ message GCSBlobAccessConfiguration {
 
   // The JWT credentials to authenticate against GCP.
   string credentials = 2;
+}
+
+message ReadCachingBlobAccessConfiguration {
+  // A remote storage backend that can only be accessed slowly. This
+  // storage backend is treated as the source of truth. Write
+  // operations are forwarded to this backend.
+  BlobAccessConfiguration slow = 1;
+
+  // A local storage backend that can be accessed quickly. This
+  // storage backend is treated as a cache. Objects will only be
+  // written into it when requested for reading.
+  BlobAccessConfiguration fast = 2;
 }
 
 message ClusteredRedisBlobAccessConfiguration {

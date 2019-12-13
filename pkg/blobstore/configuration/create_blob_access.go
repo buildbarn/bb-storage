@@ -158,6 +158,17 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType blo
 		case blobstore.CASStorageType:
 			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, uuid.NewRandom, 65536)
 		}
+	case *pb.BlobAccessConfiguration_ReadCaching:
+		backendType = "read_caching"
+		slow, err := createBlobAccess(backend.ReadCaching.Slow, storageType, storageTypeName, maximumMessageSizeBytes)
+		if err != nil {
+			return nil, err
+		}
+		fast, err := createBlobAccess(backend.ReadCaching.Fast, storageType, storageTypeName, maximumMessageSizeBytes)
+		if err != nil {
+			return nil, err
+		}
+		implementation = blobstore.NewReadCachingBlobAccess(slow, fast)
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
 
