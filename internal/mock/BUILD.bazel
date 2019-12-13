@@ -46,6 +46,14 @@ gomock(
 )
 
 gomock(
+    name = "cas",
+    out = "cas.go",
+    interfaces = ["ContentAddressableStorage"],
+    library = "//pkg/cas:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "clock",
     out = "clock.go",
     interfaces = [
@@ -101,6 +109,7 @@ go_library(
         ":blobstore.go",
         ":buffer.go",
         ":builder.go",
+        ":cas.go",
         ":clock.go",
         ":filesystem.go",
         ":grpc.go",
@@ -114,6 +123,7 @@ go_library(
         "//pkg/builder:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/filesystem:go_default_library",
+        "//pkg/proto/cas:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_go_redis_redis//:go_default_library",
