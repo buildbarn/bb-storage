@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/ioutil"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"go.opencensus.io/trace"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 // OffsetStore maps a digest to an offset within the data file. This is
@@ -27,7 +29,7 @@ type OffsetStore interface {
 // length.
 type DataStore interface {
 	Put(r io.Reader, offset uint64) error
-	Get(offset uint64, size int64) io.ReadCloser
+	Get(offset uint64, size int64) io.Reader
 }
 
 // StateStore is where global metadata of the circular storage backend
@@ -41,7 +43,8 @@ type StateStore interface {
 
 type circularBlobAccess struct {
 	// Fields that are constant or lockless.
-	dataStore DataStore
+	dataStore   DataStore
+	storageType blobstore.StorageType
 
 	// Fields protected by the lock.
 	lock        sync.Mutex
@@ -52,34 +55,56 @@ type circularBlobAccess struct {
 // NewCircularBlobAccess creates a new circular storage backend. Instead
 // of writing data to storage directly, all three storage files are
 // injected through separate interfaces.
-func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateStore StateStore) blobstore.BlobAccess {
+func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateStore StateStore, storageType blobstore.StorageType) blobstore.BlobAccess {
 	return &circularBlobAccess{
 		offsetStore: offsetStore,
 		dataStore:   dataStore,
 		stateStore:  stateStore,
+		storageType: storageType,
 	}
 }
 
-func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Get")
 	defer span.End()
+
 	ba.lock.Lock()
 	span.Annotate(nil, "Lock obtained, calling GetCursors")
 	cursors := ba.stateStore.GetCursors()
 	offset, length, ok, err := ba.offsetStore.Get(digest, cursors)
-	span.Annotate([]trace.Attribute{trace.Int64Attribute("offset", int64(offset)), trace.Int64Attribute("length", length), trace.BoolAttribute("object_found", ok)}, "offsetStore.Get completed")
+	span.Annotate([]trace.Attribute{
+		trace.Int64Attribute("offset", int64(offset)),
+		trace.Int64Attribute("length", length),
+		trace.BoolAttribute("object_found", ok),
+	}, "offsetStore.Get completed")
 	ba.lock.Unlock()
 	if err != nil {
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	} else if ok {
-		span.Annotate(nil, "Obtaining body ReadCloser")
-		return length, ba.dataStore.Get(offset, length), nil
+		return ba.storageType.NewBufferFromReader(
+			digest,
+			ioutil.NopCloser(ba.dataStore.Get(offset, length)),
+			buffer.Reparable(digest, func() error {
+				ba.lock.Lock()
+				defer ba.lock.Unlock()
+				return ba.stateStore.Invalidate(offset, length)
+			}))
 	}
-	return 0, nil, status.Errorf(codes.NotFound, "Blob not found")
+	return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "Blob not found"))
 }
 
-func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	sizeBytes, err := b.GetSizeBytes()
+	if err != nil {
+		b.Discard()
+		return err
+	}
+
+	// TODO: This would be more efficient if it passed the buffer
+	// down, so IntoWriter() could be used.
+	r := b.ToReader()
 	defer r.Close()
+
 	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Put")
 	defer span.End()
 
@@ -110,19 +135,6 @@ func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, size
 	}
 	ba.lock.Unlock()
 	return err
-}
-
-func (ba *circularBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	ba.lock.Lock()
-	defer ba.lock.Unlock()
-
-	cursors := ba.stateStore.GetCursors()
-	if offset, length, ok, err := ba.offsetStore.Get(digest, cursors); err != nil {
-		return err
-	} else if ok {
-		return ba.stateStore.Invalidate(offset, length)
-	}
-	return nil
 }
 
 func (ba *circularBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {

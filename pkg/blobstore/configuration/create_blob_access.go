@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,19 +13,23 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
+	ptypes "github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+
 	// Although not explicitly used here, we want to support a file blob
 	// backend for debug.
 	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
+
 	// Same thing for in-memory blob storage.
 	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/blob/s3blob"
@@ -40,25 +45,20 @@ import (
 // CreateBlobAccessObjectsFromConfig creates a pair of BlobAccess
 // objects for the Content Addressable Storage and Action cache based on
 // a configuration file.
-func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
+func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	// Create two stores based on definitions in configuration.
-	contentAddressableStorage, err := createBlobAccess(configuration.GetContentAddressableStorage(), "cas", util.DigestKeyWithoutInstance)
+	contentAddressableStorage, err := createBlobAccess(configuration.ContentAddressableStorage, blobstore.CASStorageType, "cas", maximumMessageSizeBytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	actionCache, err := createBlobAccess(configuration.ActionCache, "ac", util.DigestKeyWithInstance)
+	actionCache, err := createBlobAccess(configuration.ActionCache, blobstore.ACStorageType, "ac", maximumMessageSizeBytes)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Stack a mandatory layer on top to protect against data corruption.
-	contentAddressableStorage = blobstore.NewMetricsBlobAccess(
-		blobstore.NewMerkleBlobAccess(contentAddressableStorage),
-		"cas_merkle")
 	return contentAddressableStorage, actionCache, nil
 }
 
-func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType string, digestKeyFormat util.DigestKeyFormat) (blobstore.BlobAccess, error) {
+func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType blobstore.StorageType, storageTypeName string, maximumMessageSizeBytes int) (blobstore.BlobAccess, error) {
 	var implementation blobstore.BlobAccess
 	var backendType string
 	if configuration == nil {
@@ -68,66 +68,11 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 	case *pb.BlobAccessConfiguration_Circular:
 		backendType = "circular"
 
-		// Open input files.
-		circularDirectory, err := filesystem.NewLocalDirectory(backend.Circular.Directory)
+		var err error
+		implementation, err = createCircularBlobAccess(backend.Circular, storageType, storageTypeName)
 		if err != nil {
 			return nil, err
 		}
-		defer circularDirectory.Close()
-		dataFile, err := circularDirectory.OpenReadWrite("data", filesystem.CreateReuse(0644))
-		if err != nil {
-			return nil, err
-		}
-		stateFile, err := circularDirectory.OpenReadWrite("state", filesystem.CreateReuse(0644))
-		if err != nil {
-			return nil, err
-		}
-
-		var offsetStore circular.OffsetStore
-		switch digestKeyFormat {
-		case util.DigestKeyWithoutInstance:
-			// Open a single offset file for all entries. This is
-			// sufficient for the Content Addressable Storage.
-			offsetFile, err := circularDirectory.OpenReadWrite("offset", filesystem.CreateReuse(0644))
-			if err != nil {
-				return nil, err
-			}
-			offsetStore = circular.NewCachingOffsetStore(
-				circular.NewFileOffsetStore(offsetFile, backend.Circular.OffsetFileSizeBytes),
-				uint(backend.Circular.OffsetCacheSize))
-		case util.DigestKeyWithInstance:
-			// Open an offset file for every instance. This is
-			// required for the Action Cache.
-			offsetStores := map[string]circular.OffsetStore{}
-			for _, instance := range backend.Circular.Instance {
-				offsetFile, err := circularDirectory.OpenReadWrite("offset."+instance, filesystem.CreateReuse(0644))
-				if err != nil {
-					return nil, err
-				}
-				offsetStores[instance] = circular.NewCachingOffsetStore(
-					circular.NewFileOffsetStore(offsetFile, backend.Circular.OffsetFileSizeBytes),
-					uint(backend.Circular.OffsetCacheSize))
-			}
-			offsetStore = circular.NewDemultiplexingOffsetStore(func(instance string) (circular.OffsetStore, error) {
-				offsetStore, ok := offsetStores[instance]
-				if !ok {
-					return nil, status.Errorf(codes.InvalidArgument, "Unknown instance name")
-				}
-				return offsetStore, nil
-			})
-		}
-		stateStore, err := circular.NewFileStateStore(stateFile, backend.Circular.DataFileSizeBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		implementation = circular.NewCircularBlobAccess(
-			offsetStore,
-			circular.NewFileDataStore(dataFile, backend.Circular.DataFileSizeBytes),
-			circular.NewPositiveSizedBlobStateStore(
-				circular.NewBulkAllocatingStateStore(
-					stateStore,
-					backend.Circular.DataAllocationChunkSizeBytes)))
 	case *pb.BlobAccessConfiguration_Cloud:
 		backendType = "cloud"
 		switch backendConfig := backend.Cloud.Config.(type) {
@@ -137,7 +82,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			if err != nil {
 				return nil, err
 			}
-			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, storageType)
 		case *pb.CloudBlobAccessConfiguration_Azure:
 			backendType = "azure"
 			credential, err := azureblob.NewCredential(azureblob.AccountName(backendConfig.Azure.AccountName), azureblob.AccountKey(backendConfig.Azure.AccountKey))
@@ -150,7 +95,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			if err != nil {
 				return nil, err
 			}
-			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, storageType)
 		case *pb.CloudBlobAccessConfiguration_Gcs:
 			backendType = "gcs"
 			var creds *google.Credentials
@@ -172,7 +117,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			if err != nil {
 				return nil, err
 			}
-			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, storageType)
 		case *pb.CloudBlobAccessConfiguration_S3:
 			backendType = "s3"
 			cfg := aws.Config{
@@ -192,7 +137,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			if err != nil {
 				return nil, err
 			}
-			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, digestKeyFormat)
+			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, storageType)
 		default:
 			return nil, errors.New("Cloud configuration did not contain a backend")
 		}
@@ -206,9 +151,9 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			return nil, err
 		}
 		switch storageType {
-		case "ac":
-			implementation = blobstore.NewActionCacheBlobAccess(client)
-		case "cas":
+		case blobstore.ACStorageType:
+			implementation = blobstore.NewActionCacheBlobAccess(client, maximumMessageSizeBytes)
+		case blobstore.CASStorageType:
 			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, uuid.NewRandom, 65536)
 		}
 	case *pb.BlobAccessConfiguration_Redis:
@@ -219,29 +164,93 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 			return nil, err
 		}
 
-		implementation = blobstore.NewRedisBlobAccess(
-			redis.NewClient(
-				&redis.Options{
-					Addr:      backend.Redis.Endpoint,
-					DB:        int(backend.Redis.Db),
-					TLSConfig: tlsConfig,
-				}),
-			digestKeyFormat)
+		var keyTTL time.Duration
+		if backend.Redis.KeyTtl != nil {
+			keyTTL, err = ptypes.Duration(backend.Redis.KeyTtl)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		var replicationTimeout time.Duration
+		if backend.Redis.ReplicationTimeout != nil {
+			replicationTimeout, err = ptypes.Duration(backend.Redis.ReplicationTimeout)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		switch mode := backend.Redis.Mode.(type) {
+		case *pb.RedisBlobAccessConfiguration_Clustered:
+			// Gather retry configuration (min/max delay and overall retry attempts)
+			minRetryDur := time.Millisecond * 32
+			if mode.Clustered.MinimumRetryBackoff != nil {
+				minRetryDur, err = ptypes.Duration(mode.Clustered.MinimumRetryBackoff)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			maxRetryDur := time.Millisecond * 2048
+			if mode.Clustered.MaximumRetryBackoff != nil {
+				maxRetryDur, err = ptypes.Duration(mode.Clustered.MaximumRetryBackoff)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			maxRetries := 16 // Default will be 16
+			if mode.Clustered.MaximumRetries != 0 {
+				maxRetries = int(mode.Clustered.MaximumRetries)
+			}
+
+			implementation = blobstore.NewRedisBlobAccess(
+				redis.NewClusterClient(
+					&redis.ClusterOptions{
+						Addrs:           mode.Clustered.Endpoints,
+						TLSConfig:       tlsConfig,
+						ReadOnly:        true,
+						MaxRetries:      maxRetries,
+						MinRetryBackoff: minRetryDur,
+						MaxRetryBackoff: maxRetryDur,
+						DialTimeout:     10 * time.Second,
+						ReadTimeout:     100 * time.Second,
+						WriteTimeout:    100 * time.Second,
+					}),
+				storageType,
+				keyTTL,
+				backend.Redis.ReplicationCount,
+				replicationTimeout)
+		case *pb.RedisBlobAccessConfiguration_Single:
+			implementation = blobstore.NewRedisBlobAccess(
+				redis.NewClient(
+					&redis.Options{
+						Addr:      mode.Single.Endpoint,
+						DB:        int(mode.Single.Db),
+						TLSConfig: tlsConfig,
+					}),
+				storageType,
+				keyTTL,
+				backend.Redis.ReplicationCount,
+				replicationTimeout)
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, "Redis configuration must either be clustered or single server")
+		}
 	case *pb.BlobAccessConfiguration_Remote:
 		backendType = "remote"
-		implementation = blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageType)
+		implementation = blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageTypeName, storageType)
 	case *pb.BlobAccessConfiguration_Sharding:
 		backendType = "sharding"
-		var backends []blobstore.BlobAccess
-		var weights []uint32
+		backends := make([]blobstore.BlobAccess, 0, len(backend.Sharding.Shards))
+		weights := make([]uint32, 0, len(backend.Sharding.Shards))
 		hasUndrainedBackend := false
-		for _, shard := range backend.Sharding.Shard {
+		for _, shard := range backend.Sharding.Shards {
 			if shard.Backend == nil {
 				// Drained backend.
 				backends = append(backends, nil)
 			} else {
 				// Undrained backend.
-				backend, err := createBlobAccess(shard.Backend, storageType, digestKeyFormat)
+				backend, err := createBlobAccess(shard.Backend, storageType, storageTypeName, maximumMessageSizeBytes)
 				if err != nil {
 					return nil, err
 				}
@@ -260,15 +269,15 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 		implementation = sharding.NewShardingBlobAccess(
 			backends,
 			sharding.NewWeightedShardPermuter(weights),
-			digestKeyFormat,
+			storageType,
 			backend.Sharding.HashInitialization)
 	case *pb.BlobAccessConfiguration_SizeDistinguishing:
 		backendType = "size_distinguishing"
-		small, err := createBlobAccess(backend.SizeDistinguishing.Small, storageType, digestKeyFormat)
+		small, err := createBlobAccess(backend.SizeDistinguishing.Small, storageType, storageTypeName, maximumMessageSizeBytes)
 		if err != nil {
 			return nil, err
 		}
-		large, err := createBlobAccess(backend.SizeDistinguishing.Large, storageType, digestKeyFormat)
+		large, err := createBlobAccess(backend.SizeDistinguishing.Large, storageType, storageTypeName, maximumMessageSizeBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -276,5 +285,69 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType str
 	default:
 		return nil, errors.New("Configuration did not contain a backend")
 	}
-	return blobstore.NewMetricsBlobAccess(implementation, fmt.Sprintf("%s_%s", storageType, backendType)), nil
+	return blobstore.NewMetricsBlobAccess(implementation, clock.SystemClock, fmt.Sprintf("%s_%s", storageTypeName, backendType)), nil
+}
+
+func createCircularBlobAccess(config *pb.CircularBlobAccessConfiguration, storageType blobstore.StorageType, storageTypeName string) (blobstore.BlobAccess, error) {
+	// Open input files.
+	circularDirectory, err := filesystem.NewLocalDirectory(config.Directory)
+	if err != nil {
+		return nil, err
+	}
+	defer circularDirectory.Close()
+	dataFile, err := circularDirectory.OpenReadWrite("data", filesystem.CreateReuse(0644))
+	if err != nil {
+		return nil, err
+	}
+	stateFile, err := circularDirectory.OpenReadWrite("state", filesystem.CreateReuse(0644))
+	if err != nil {
+		return nil, err
+	}
+
+	var offsetStore circular.OffsetStore
+	switch storageType {
+	case blobstore.CASStorageType:
+		// Open a single offset file for all entries. This is
+		// sufficient for the Content Addressable Storage.
+		offsetFile, err := circularDirectory.OpenReadWrite("offset", filesystem.CreateReuse(0644))
+		if err != nil {
+			return nil, err
+		}
+		offsetStore = circular.NewCachingOffsetStore(
+			circular.NewFileOffsetStore(offsetFile, config.OffsetFileSizeBytes),
+			uint(config.OffsetCacheSize))
+	case blobstore.ACStorageType:
+		// Open an offset file for every instance. This is
+		// required for the Action Cache.
+		offsetStores := map[string]circular.OffsetStore{}
+		for _, instance := range config.Instances {
+			offsetFile, err := circularDirectory.OpenReadWrite("offset."+instance, filesystem.CreateReuse(0644))
+			if err != nil {
+				return nil, err
+			}
+			offsetStores[instance] = circular.NewCachingOffsetStore(
+				circular.NewFileOffsetStore(offsetFile, config.OffsetFileSizeBytes),
+				uint(config.OffsetCacheSize))
+		}
+		offsetStore = circular.NewDemultiplexingOffsetStore(func(instance string) (circular.OffsetStore, error) {
+			offsetStore, ok := offsetStores[instance]
+			if !ok {
+				return nil, status.Errorf(codes.InvalidArgument, "Unknown instance name")
+			}
+			return offsetStore, nil
+		})
+	}
+	stateStore, err := circular.NewFileStateStore(stateFile, config.DataFileSizeBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return circular.NewCircularBlobAccess(
+		offsetStore,
+		circular.NewFileDataStore(dataFile, config.DataFileSizeBytes),
+		circular.NewPositiveSizedBlobStateStore(
+			circular.NewBulkAllocatingStateStore(
+				stateStore,
+				config.DataAllocationChunkSizeBytes)),
+		storageType), nil
 }

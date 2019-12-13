@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +27,8 @@ const (
 )
 
 var (
+	operationsPrometheusMetrics sync.Once
+
 	operationsIterations = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -43,10 +46,6 @@ var (
 	operationsIterationsPutError             = operationsIterations.WithLabelValues("Put", "Error")
 	operationsIterationsPutSuccess           = operationsIterations.WithLabelValues("Put", "Success")
 )
-
-func init() {
-	prometheus.MustRegister(operationsIterations)
-}
 
 // offsetRecord contains the hash table entries written to disk. They
 // consist of four components:
@@ -121,6 +120,10 @@ type fileOffsetStore struct {
 // slots by objects with a higher offset. In other words, more recently
 // stored blobs displace older ones.
 func NewFileOffsetStore(file ReadWriterAt, size uint64) OffsetStore {
+	operationsPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(operationsIterations)
+	})
+
 	return &fileOffsetStore{
 		file: file,
 		size: size,

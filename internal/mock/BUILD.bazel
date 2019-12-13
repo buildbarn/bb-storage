@@ -57,10 +57,29 @@ gomock(
 )
 
 gomock(
+    name = "filesystem",
+    out = "filesystem.go",
+    interfaces = [
+        "Directory",
+        "FileReader",
+    ],
+    library = "//pkg/filesystem:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "grpc",
     out = "grpc.go",
     interfaces = ["Authenticator"],
     library = "//pkg/grpc:go_default_library",
+    package = "mock",
+)
+
+gomock(
+    name = "redis",
+    out = "redis.go",
+    interfaces = ["RedisClient"],
+    library = "//pkg/blobstore:go_default_library",
     package = "mock",
 )
 
@@ -83,7 +102,9 @@ go_library(
         ":buffer.go",
         ":builder.go",
         ":clock.go",
+        ":filesystem.go",
         ":grpc.go",
+        ":redis.go",
         ":remoteexecution.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
@@ -92,8 +113,10 @@ go_library(
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/builder:go_default_library",
         "//pkg/clock:go_default_library",
+        "//pkg/filesystem:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@com_github_go_redis_redis//:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@go_googleapis//google/longrunning:longrunning_go_proto",
         "@org_golang_google_grpc//metadata:go_default_library",

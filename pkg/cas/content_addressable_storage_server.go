@@ -1,12 +1,11 @@
 package cas
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -26,7 +25,7 @@ func NewContentAddressableStorageServer(contentAddressableStorage blobstore.Blob
 }
 
 func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
-	var inDigests []*util.Digest
+	inDigests := make([]*util.Digest, 0, len(in.BlobDigests))
 	for _, partialDigest := range in.BlobDigests {
 		digest, err := util.NewDigest(in.InstanceName, partialDigest)
 		if err != nil {
@@ -38,7 +37,7 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	var partialDigests []*remoteexecution.Digest
+	partialDigests := make([]*remoteexecution.Digest, 0, len(outDigests))
 	for _, outDigest := range outDigests {
 		partialDigests = append(partialDigests, outDigest.GetPartialDigest())
 	}
@@ -61,8 +60,7 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 				err = s.contentAddressableStorage.Put(
 					ctx,
 					digest,
-					int64(len(request.Data)),
-					ioutil.NopCloser(bytes.NewBuffer(request.Data)))
+					buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
 			}
 			responsesChan <- &remoteexecution.BatchUpdateBlobsResponse_Response{
 				Digest: request.Digest,

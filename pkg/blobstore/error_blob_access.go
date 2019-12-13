@@ -2,9 +2,9 @@ package blobstore
 
 import (
 	"context"
-	"io"
 	"log"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
@@ -24,15 +24,12 @@ func NewErrorBlobAccess(err error) BlobAccess {
 	}
 }
 
-func (ba *errorBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
-	return 0, nil, ba.err
+func (ba *errorBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	return buffer.NewBufferFromError(ba.err)
 }
 
-func (ba *errorBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
-	return ba.err
-}
-
-func (ba *errorBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
+func (ba *errorBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	b.Discard()
 	return ba.err
 }
 

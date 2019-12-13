@@ -2,8 +2,8 @@ package blobstore
 
 import (
 	"context"
-	"io"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
@@ -11,8 +11,7 @@ import (
 // hold both a Bazel Action Cache (AC) and Content Addressable Storage
 // (CAS).
 type BlobAccess interface {
-	Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error)
-	Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error
-	Delete(ctx context.Context, digest *util.Digest) error
+	Get(ctx context.Context, digest *util.Digest) buffer.Buffer
+	Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error
 	FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error)
 }

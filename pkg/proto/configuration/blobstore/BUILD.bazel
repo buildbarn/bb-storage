@@ -8,6 +8,7 @@ proto_library(
     deps = [
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/tls:tls_proto",
+        "@com_google_protobuf//:duration_proto",
         "@go_googleapis//google/rpc:status_proto",
     ],
 )

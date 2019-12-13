@@ -18,7 +18,7 @@ type weightedShardPermuter struct {
 // traffic.
 func NewWeightedShardPermuter(weights []uint32) ShardPermuter {
 	// Compute cumulative weights for binary searching.
-	var cumulativeWeights []uint64
+	cumulativeWeights := make([]uint64, 0, len(weights))
 	totalWeight := uint64(0)
 	for _, weight := range weights {
 		totalWeight += uint64(weight)

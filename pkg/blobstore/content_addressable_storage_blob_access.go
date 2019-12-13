@@ -1,13 +1,12 @@
 package blobstore
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
 
@@ -38,60 +37,43 @@ func NewContentAddressableStorageBlobAccess(client *grpc.ClientConn, uuidGenerat
 	}
 }
 
-type byteStreamBlobReader struct {
-	client  bytestream.ByteStream_ReadClient
-	partial []byte
+type byteStreamChunkReader struct {
+	client bytestream.ByteStream_ReadClient
+	cancel context.CancelFunc
 }
 
-func (r *byteStreamBlobReader) Read(p []byte) (int, error) {
-	// Chunk of data left from previous call.
-	if len(r.partial) > 0 {
-		n := copy(p, r.partial)
-		r.partial = r.partial[n:]
-		return n, nil
-	}
-
-	// Read next chunk.
+func (r *byteStreamChunkReader) Read() ([]byte, error) {
 	chunk, err := r.client.Recv()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	n := copy(p, chunk.Data)
-	r.partial = chunk.Data[n:]
-	return n, nil
+	return chunk.Data, nil
 }
 
-func (r *byteStreamBlobReader) Close() error {
-	return nil
+func (r *byteStreamChunkReader) Close() {
+	r.cancel()
 }
 
-func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	var readRequest bytestream.ReadRequest
-	sizeBytes := digest.GetSizeBytes()
 	if instance := digest.GetInstance(); instance == "" {
-		readRequest.ResourceName = fmt.Sprintf("blobs/%s/%d", digest.GetHashString(), sizeBytes)
+		readRequest.ResourceName = fmt.Sprintf("blobs/%s/%d", digest.GetHashString(), digest.GetSizeBytes())
 	} else {
-		readRequest.ResourceName = fmt.Sprintf("%s/blobs/%s/%d", instance, digest.GetHashString(), sizeBytes)
+		readRequest.ResourceName = fmt.Sprintf("%s/blobs/%s/%d", instance, digest.GetHashString(), digest.GetSizeBytes())
 	}
-	client, err := ba.byteStreamClient.Read(ctx, &readRequest)
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	client, err := ba.byteStreamClient.Read(ctxWithCancel, &readRequest)
 	if err != nil {
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	}
-
-	// Read first chunk to detect errors eagerly.
-	chunk, err := client.Recv()
-	if err == io.EOF {
-		return sizeBytes, ioutil.NopCloser(bytes.NewBuffer(nil)), nil
-	} else if err != nil {
-		return 0, nil, err
-	}
-	return sizeBytes, &byteStreamBlobReader{
-		client:  client,
-		partial: chunk.Data,
-	}, nil
+	return buffer.NewCASBufferFromChunkReader(digest, &byteStreamChunkReader{
+		client: client,
+		cancel: cancel,
+	}, buffer.Irreparable)
 }
 
-func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	r := b.ToChunkReader(0, ba.readChunkSize)
 	defer r.Close()
 
 	client, err := ba.byteStreamClient.Write(ctx)
@@ -108,17 +90,16 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *
 
 	writeOffset := int64(0)
 	for {
-		readBuf := make([]byte, ba.readChunkSize)
-		if n, err := r.Read(readBuf[:]); err == nil {
+		if data, err := r.Read(); err == nil {
 			// Non-terminating chunk.
 			if err := client.Send(&bytestream.WriteRequest{
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
-				Data:         readBuf[:n],
+				Data:         data,
 			}); err != nil {
 				return err
 			}
-			writeOffset += int64(n)
+			writeOffset += int64(len(data))
 			resourceName = ""
 		} else if err == io.EOF {
 			// Terminating chunk.
@@ -126,7 +107,6 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
 				FinishWrite:  true,
-				Data:         readBuf[:n],
 			}); err != nil {
 				return err
 			}
@@ -136,10 +116,6 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *
 			return err
 		}
 	}
-}
-
-func (ba *contentAddressableStorageBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return status.Error(codes.Unimplemented, "Bazel remote execution protocol does not support object deletion")
 }
 
 func (ba *contentAddressableStorageBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
@@ -164,7 +140,7 @@ func (ba *contentAddressableStorageBlobAccess) FindMissing(ctx context.Context, 
 	}
 
 	// Convert results back.
-	var outDigests []*util.Digest
+	outDigests := make([]*util.Digest, 0, len(response.MissingBlobDigests))
 	for _, partialDigest := range response.MissingBlobDigests {
 		digest, err := util.NewDigest(instance, partialDigest)
 		if err != nil {

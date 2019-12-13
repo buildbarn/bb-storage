@@ -3,9 +3,9 @@ package blobstore
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/net/context/ctxhttp"
@@ -15,8 +15,9 @@ import (
 )
 
 type remoteBlobAccess struct {
-	address string
-	prefix  string
+	address     string
+	prefix      string
+	storageType StorageType
 }
 
 func convertHTTPUnexpectedStatus(resp *http.Response) error {
@@ -26,35 +27,41 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewRemoteBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewRemoteBlobAccess(address, prefix string) BlobAccess {
+func NewRemoteBlobAccess(address string, prefix string, storageType StorageType) BlobAccess {
 	return &remoteBlobAccess{
-		address: address,
-		prefix:  prefix,
+		address:     address,
+		prefix:      prefix,
+		storageType: storageType,
 	}
 }
 
-func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
+func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 	if err != nil {
-		fmt.Printf("Error getting digest. %s\n", err)
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	}
 
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		resp.Body.Close()
-		return 0, nil, status.Error(codes.NotFound, url)
+		return buffer.NewBufferFromError(status.Error(codes.NotFound, url))
 	case http.StatusOK:
-		return resp.ContentLength, resp.Body, nil
+		return ba.storageType.NewBufferFromReader(digest, resp.Body, buffer.Irreparable)
 	default:
 		resp.Body.Close()
-		return 0, nil, convertHTTPUnexpectedStatus(resp)
+		return buffer.NewBufferFromError(convertHTTPUnexpectedStatus(resp))
 	}
 }
 
-func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	sizeBytes, err := b.GetSizeBytes()
+	if err != nil {
+		b.Discard()
+		return err
+	}
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
+	r := b.ToReader()
 	req, err := http.NewRequest(http.MethodPut, url, r)
 	if err != nil {
 		r.Close()
@@ -63,10 +70,6 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBy
 	req.ContentLength = sizeBytes
 	_, err = ctxhttp.Do(ctx, http.DefaultClient, req)
 	return err
-}
-
-func (ba *remoteBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return status.Error(codes.Unimplemented, "Bazel HTTP caching protocol does not support object deletion")
 }
 
 func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {

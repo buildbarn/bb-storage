@@ -1,33 +1,29 @@
 package cas
 
 import (
-	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	cas_proto "github.com/buildbarn/bb-storage/pkg/proto/cas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type blobAccessContentAddressableStorage struct {
 	blobAccess              blobstore.BlobAccess
-	maximumMessageSizeBytes uint64
+	maximumMessageSizeBytes int
 }
 
 // NewBlobAccessContentAddressableStorage creates a
 // ContentAddressableStorage that reads and writes Content Addressable
 // Storage (CAS) objects from a BlobAccess based store.
-func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes uint64) ContentAddressableStorage {
+func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) ContentAddressableStorage {
 	return &blobAccessContentAddressableStorage{
 		blobAccess:              blobAccess,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
@@ -35,18 +31,7 @@ func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, max
 }
 
 func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest *util.Digest, message proto.Message) error {
-	if sizeBytes := digest.GetSizeBytes(); uint64(sizeBytes) > cas.maximumMessageSizeBytes {
-		return status.Errorf(
-			codes.InvalidArgument,
-			"Refusing to unmarshal message of size %d, as it exceeds the maximum size of %d",
-			sizeBytes, cas.maximumMessageSizeBytes)
-	}
-	_, r, err := cas.blobAccess.Get(ctx, digest)
-	if err != nil {
-		return err
-	}
-	data, err := ioutil.ReadAll(r)
-	r.Close()
+	data, err := cas.blobAccess.Get(ctx, digest).ToByteSlice(cas.maximumMessageSizeBytes)
 	if err != nil {
 		return err
 	}
@@ -97,18 +82,12 @@ func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, dig
 	}
 	defer w.Close()
 
-	_, r, err := cas.blobAccess.Get(ctx, digest)
-	if err != nil {
+	if err := cas.blobAccess.Get(ctx, digest).IntoWriter(w); err != nil {
+		// Ensure no traces are left behind upon failure.
+		directory.Remove(name)
 		return err
 	}
-	_, err = io.Copy(w, r)
-	r.Close()
-
-	// Ensure no traces are left behind upon failure.
-	if err != nil {
-		directory.Remove(name)
-	}
-	return err
+	return nil
 }
 
 func (cas *blobAccessContentAddressableStorage) GetTree(ctx context.Context, digest *util.Digest) (*remoteexecution.Tree, error) {
@@ -127,7 +106,7 @@ func (cas *blobAccessContentAddressableStorage) putBlob(ctx context.Context, dat
 	}
 	digest := digestGenerator.Sum()
 
-	if err := cas.blobAccess.Put(ctx, digest, digest.GetSizeBytes(), ioutil.NopCloser(bytes.NewBuffer(data))); err != nil {
+	if err := cas.blobAccess.Put(ctx, digest, buffer.NewValidatedBufferFromByteSlice(data)); err != nil {
 		return nil, err
 	}
 	return digest, nil
@@ -163,8 +142,10 @@ func (cas *blobAccessContentAddressableStorage) PutFile(ctx context.Context, dir
 	if err := cas.blobAccess.Put(
 		ctx,
 		digest,
-		digest.GetSizeBytes(),
-		newSectionReadCloser(file, 0, sizeBytes)); err != nil {
+		buffer.NewCASBufferFromReader(
+			digest,
+			newSectionReadCloser(file, 0, sizeBytes),
+			buffer.UserProvided)); err != nil {
 		return nil, err
 	}
 	return digest, nil

@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.blobstore;
 
 import "google/rpc/status.proto";
+import "google/protobuf/duration.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -76,7 +77,7 @@ message CircularBlobAccessConfiguration {
   // Storage, this field may be omitted, as data for all instances is
   // stored together. For the Action Cache, this field is required, as
   // every instance needs its own offset file and cache.
-  repeated string instance = 5;
+  repeated string instances = 5;
 
   // Amount of space to allocate in the data file at once. Setting
   // this value too low may cause an excessive number of writes to the
@@ -108,16 +109,59 @@ message GCSBlobAccessConfiguration {
   string credentials = 2;
 }
 
-message RedisBlobAccessConfiguration {
+message ClusteredRedisBlobAccessConfiguration {
+  // Endpoint addresses of the Redis servers.
+  repeated string endpoints = 1;
+
+  // Retry configuration, defaults to 16 if not set
+  uint32 maximum_retries = 2;
+
+  // After each attempt, the delay will be randomly selected from values
+  // between: 0 and min((2^attempt * minimum_retry_backoff),
+  // maximum_retry_backoff)
+  google.protobuf.Duration minimum_retry_backoff = 3;
+  google.protobuf.Duration maximum_retry_backoff = 4;
+}
+
+message SingleRedisBlobAccessConfiguration {
   // Endpoint address of the Redis server (e.g., "localhost:6379").
   string endpoint = 1;
 
   // Numerical ID of the database.
   int32 db = 2;
+}
+
+message RedisBlobAccessConfiguration {
+  oneof mode {
+    // Redis is configured in clustered mode.
+    ClusteredRedisBlobAccessConfiguration clustered = 1;
+
+    // Redis is configured as a single server.
+    SingleRedisBlobAccessConfiguration single = 2;
+  }
 
   // TLS configuration for the Redis connection. TLS will not be enabled
   // when not set.
   buildbarn.configuration.tls.TLSClientConfiguration tls = 4;
+
+  // How long to keep a cache key in Redis, specified as a duration.
+  // When unset, this means keys do not expire and and rely on Redis
+  // eviction policy to efficiently remove keys when storage gets full.
+  // A reasonable number for this would allow keys to live long enough
+  // objects to be found in the CAS once the client uploads them.
+  google.protobuf.Duration key_ttl = 7;
+
+  // The minimum number of replicas to successfully replicate put calls to
+  // before considering it successful.
+  // If unset, no guarantee is made on the number of replicas that contain
+  // the contents of a Redis write and master failures can lose data.
+  int64 replication_count = 8;
+
+  // The maximum tolerated replication delay expressed in seconds.
+  // If unset, Redis write calls return immediately and no attempt is made to
+  // ensure that replication succeeds. This can result in data loss when
+  // the master is lost.
+  google.protobuf.Duration replication_timeout = 9;
 }
 
 message RemoteBlobAccessConfiguration {
@@ -129,7 +173,8 @@ message S3BlobAccessConfiguration {
   // URL of the S3 bucket (e.g., "http://localhost:9000" when using Minio).
   string endpoint = 1;
 
-  // AWS Access Key ID. If unspecified, AWS will search the default credential provider chain.
+  // AWS Access Key ID. If unspecified, AWS will search the default credential
+  // provider chain.
   string access_key_id = 2;
 
   // AWS Secret Access Key.
@@ -178,7 +223,7 @@ message ShardingBlobAccessConfiguration {
   // total weight up to a given number. Newly added backends may
   // allocate their weight from this backend, thereby causing most of
   // the keyspace to still be routed to its original backend.
-  repeated Shard shard = 2;
+  repeated Shard shards = 2;
 }
 
 message SizeDistinguishingBlobAccessConfiguration {

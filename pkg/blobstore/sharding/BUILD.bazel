@@ -11,6 +11,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore:go_default_library",
+        "//pkg/blobstore/buffer:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_lazybeaver_xorshift//:go_default_library",
     ],

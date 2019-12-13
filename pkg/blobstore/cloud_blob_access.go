@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"gocloud.dev/blob"
@@ -14,33 +15,42 @@ import (
 )
 
 type cloudBlobAccess struct {
-	bucket        *blob.Bucket
-	keyPrefix     string
-	blobKeyFormat util.DigestKeyFormat
+	bucket      *blob.Bucket
+	keyPrefix   string
+	storageType StorageType
 }
 
 // NewCloudBlobAccess creates a BlobAccess that uses a cloud-based blob storage
 // as a backend.
-func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, keyFormat util.DigestKeyFormat) BlobAccess {
+func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, storageType StorageType) BlobAccess {
 	return &cloudBlobAccess{
-		bucket:        bucket,
-		keyPrefix:     keyPrefix,
-		blobKeyFormat: keyFormat,
+		bucket:      bucket,
+		keyPrefix:   keyPrefix,
+		storageType: storageType,
 	}
 }
 
-func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) (int64, io.ReadCloser, error) {
-	result, err := ba.bucket.NewReader(ctx, ba.getKey(digest), nil)
+func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	key := ba.getKey(digest)
+	result, err := ba.bucket.NewReader(ctx, key, nil)
 	if err != nil {
 		if gcerrors.Code(err) == gcerrors.NotFound {
 			err = status.Errorf(codes.NotFound, err.Error())
 		}
-		return 0, nil, err
+		return buffer.NewBufferFromError(err)
 	}
-	return result.Size(), result, err
+	return ba.storageType.NewBufferFromReader(
+		digest,
+		result,
+		buffer.Reparable(digest, func() error {
+			return ba.bucket.Delete(ctx, key)
+		}))
 }
 
-func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeBytes int64, r io.ReadCloser) error {
+func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	r := b.ToReader()
+	defer r.Close()
+
 	ctx, cancel := context.WithCancel(ctx)
 	w, err := ba.bucket.NewWriter(ctx, ba.getKey(digest), nil)
 	if err != nil {
@@ -59,10 +69,6 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, sizeByt
 	return nil
 }
 
-func (ba *cloudBlobAccess) Delete(ctx context.Context, digest *util.Digest) error {
-	return ba.bucket.Delete(ctx, ba.getKey(digest))
-}
-
 func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
 	var missing []*util.Digest
 	for _, digest := range digests {
@@ -76,5 +82,5 @@ func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests []*util.Dige
 }
 
 func (ba *cloudBlobAccess) getKey(digest *util.Digest) string {
-	return ba.keyPrefix + digest.GetKey(ba.blobKeyFormat)
+	return ba.keyPrefix + ba.storageType.GetDigestKey(digest)
 }

@@ -30,22 +30,24 @@ func (ds *fileDataStore) Put(r io.Reader, offset uint64) error {
 		if copyLength > ds.size-writeOffset {
 			copyLength = ds.size - writeOffset
 		}
-		n, err := r.Read(b[:copyLength])
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			return err
+		n, readErr := r.Read(b[:copyLength])
+		if readErr != nil && readErr != io.EOF {
+			return readErr
 		}
 
 		// Write data to storage.
-		if _, err := ds.file.WriteAt(b[:n], int64(writeOffset)); err != nil {
-			return err
+		if _, writeErr := ds.file.WriteAt(b[:n], int64(writeOffset)); writeErr != nil {
+			return writeErr
 		}
 		offset += uint64(n)
+
+		if readErr == io.EOF {
+			return nil
+		}
 	}
 }
 
-func (ds *fileDataStore) Get(offset uint64, size int64) io.ReadCloser {
+func (ds *fileDataStore) Get(offset uint64, size int64) io.Reader {
 	return &fileDataStoreReader{
 		ds:     ds,
 		offset: offset,
@@ -84,8 +86,4 @@ func (f *fileDataStoreReader) Read(b []byte) (n int, err error) {
 	f.offset += readLength
 	f.size -= readLength
 	return int(readLength), nil
-}
-
-func (f *fileDataStoreReader) Close() error {
-	return nil
 }
