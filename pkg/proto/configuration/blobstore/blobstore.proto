@@ -57,6 +57,15 @@ message BlobAccessConfiguration {
     // Read objects from/write objects to various cloud-based backends.
     CloudBlobAccessConfiguration cloud = 10;
 
+    // Store blobs in two backends. Blobs present in exactly one backend
+    // are automatically replicated to the other backend.
+    //
+    // This backend does not guarantee high availability, as it does not
+    // function in case one backend is unavailable. Crashed backends
+    // need to be replaced with functional empty instances. These will
+    // be refilled automatically.
+    MirroredBlobAccessConfiguration mirrored = 14;
+
     // Store blobs on the local system.
     //
     // TODO: Right now this backend can only be used to store data in
@@ -242,6 +251,14 @@ message SizeDistinguishingBlobAccessConfiguration {
 
   // Maximum size of blobs read from/written to the backend for small blobs.
   int64 cutoff_size_bytes = 3;
+}
+
+message MirroredBlobAccessConfiguration {
+  // Primary backend.
+  BlobAccessConfiguration backend_a = 1;
+
+  // Secondary backend.
+  BlobAccessConfiguration backend_b = 2;
 }
 
 message LocalBlobAccessConfiguration {

@@ -11,6 +11,7 @@ go_library(
         "content_addressable_storage_blob_access.go",
         "error_blob_access.go",
         "metrics_blob_access.go",
+        "mirrored_blob_access.go",
         "redis_blob_access.go",
         "remote_blob_access.go",
         "size_distinguishing_blob_access.go",
@@ -38,7 +39,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["redis_blob_access_test.go"],
+    srcs = [
+        "mirrored_blob_access_test.go",
+        "redis_blob_access_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//internal/mock:go_default_library",
