@@ -60,20 +60,17 @@ func main() {
 			int(configuration.MaximumMessageSizeBytes))
 	}
 
-	// Let GetCapabilities() work, even for instances that don't
-	// have a scheduler attached to them, but do allow uploading
-	// results into the Action Cache.
+	// Ensure that instance names for which we don't have a
+	// scheduler, but allow AC updates, at least have a no-op
+	// scheduler. This ensures that GetCapabilities() works for
+	// those instances.
 	schedulers := map[string]builder.BuildQueue{}
-	allowActionCacheUpdatesForInstances := map[string]bool{}
-	if len(configuration.AllowAcUpdatesForInstances) > 0 {
-		fallback := builder.NewNonExecutableBuildQueue()
-		for _, instance := range configuration.AllowAcUpdatesForInstances {
-			schedulers[instance] = fallback
-			allowActionCacheUpdatesForInstances[instance] = true
-		}
+	nonExecutableScheduler := builder.NewNonExecutableBuildQueue()
+	for _, instance := range configuration.AllowAcUpdatesForInstances {
+		schedulers[instance] = nonExecutableScheduler
 	}
 
-	// Backends capable of compiling.
+	// Register schedulers for instances capable of compiling.
 	for name, endpoint := range configuration.Schedulers {
 		scheduler, err := bb_grpc.NewGRPCClientFromConfiguration(endpoint)
 		if err != nil {
@@ -88,6 +85,14 @@ func main() {
 		}
 		return scheduler, nil
 	})
+
+	// Wrap all schedulers for which the Action Cache is writable to
+	// announce this through GetCapabilities().
+	allowActionCacheUpdatesForInstances := map[string]bool{}
+	for _, instance := range configuration.AllowAcUpdatesForInstances {
+		schedulers[instance] = builder.NewUpdatableActionCacheBuildQueue(schedulers[instance])
+		allowActionCacheUpdatesForInstances[instance] = true
+	}
 
 	go func() {
 		log.Fatal(

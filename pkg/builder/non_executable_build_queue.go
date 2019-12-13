@@ -27,7 +27,7 @@ func (bq *nonExecutableBuildQueue) GetCapabilities(ctx context.Context, in *remo
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
 			DigestFunction: util.SupportedDigestFunctions,
 			ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
-				UpdateEnabled: true,
+				UpdateEnabled: false,
 			},
 			// CachePriorityCapabilities: Priorities not supported.
 			// MaxBatchTotalSize: Not used by Bazel yet.
