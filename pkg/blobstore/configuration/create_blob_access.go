@@ -284,6 +284,17 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, storageType blo
 			return nil, err
 		}
 		implementation = blobstore.NewSizeDistinguishingBlobAccess(small, large, backend.SizeDistinguishing.CutoffSizeBytes)
+	case *pb.BlobAccessConfiguration_Mirrored:
+		backendType = "mirrored"
+		backendA, err := createBlobAccess(backend.Mirrored.BackendA, storageType, storageTypeName, maximumMessageSizeBytes)
+		if err != nil {
+			return nil, err
+		}
+		backendB, err := createBlobAccess(backend.Mirrored.BackendB, storageType, storageTypeName, maximumMessageSizeBytes)
+		if err != nil {
+			return nil, err
+		}
+		implementation = blobstore.NewMirroredBlobAccess(backendA, backendB)
 	case *pb.BlobAccessConfiguration_Local:
 		backendType = "local"
 
