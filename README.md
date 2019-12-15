@@ -30,7 +30,7 @@ source, create container image and push it into the Docker daemon
 running on the current system:
 
 ```
-$ bazel run //cmd/bb_storage:bb_storage_container
+$ bazel run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_storage:bb_storage_container
 ...
 Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 ```
@@ -38,60 +38,66 @@ Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 This container image can then be launched using Docker as follows:
 
 ```
-$ cat config/bb_storage.json
+$ cat config/bb_storage.jsonnet
 {
-  "blobstore": {
-    "contentAddressableStorage": {
-      "circular": {
-        "directory": "storage-cas",
-        "offsetFileSizeBytes": 16777216,
-        "offsetCacheSize": 10000,
-        "dataFileSizeBytes": 10737418240,
-        "dataAllocationChunkSizeBytes": 16777216
-      }
+  blobstore: {
+    contentAddressableStorage: {
+      circular: {
+        directory: '/storage-cas',
+        offsetFileSizeBytes: 16 * 1024 * 1024,
+        offsetCacheSize: 10000,
+        dataFileSizeBytes: 10 * 1024 * 1024 * 1024,
+        dataAllocationChunkSizeBytes: 16 * 1024 * 1024,
+      },
     },
-    "actionCache": {
-      "circular": {
-        "directory": "storage-ac",
-        "offsetFileSizeBytes": 1048576,
-        "offsetCacheSize": 1000,
-        "dataFileSizeBytes": 104857600,
-        "dataAllocationChunkSizeBytes": 1048576,
-        "instance": ["foo", "bar"]
-      }
-    }
+    actionCache: {
+      circular: {
+        directory: '/storage-ac',
+        offsetFileSizeBytes: 1024 * 1024,
+        offsetCacheSize: 1000,
+        dataFileSizeBytes: 100 * 1024 * 1024,
+        dataAllocationChunkSizeBytes: 1024 * 1024,
+        instances: ['foo', 'bar'],
+      },
+    },
   },
-  "jaeger": {},
-  "schedulers": {
-    "bar": "bar-scheduler:8981"
+  httpListenAddress: ':9980',
+  grpcServers: [{
+    listenAddresses: [':8980'],
+    authenticationPolicy: { allow: {} },
+  }],
+  schedulers: {
+    bar: { address: 'bar-scheduler:8981' },
   },
-  "allowAcUpdatesForInstances": ["foo"]
+  allowAcUpdatesForInstances: ['foo'],
+  verifyActionResultCompleteness: true,
+  maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 
 $ docker run \
       -p 8980:8980 \
+      -p 9980:9980 \
       -v $(pwd)/config:/config \
       -v $(pwd)/storage-cas:/storage-cas \
       -v $(pwd)/storage-ac:/storage-ac \
       bazel/cmd/bb_storage:bb_storage_container \
-      /config/bb_storage.json'
+      /config/bb_storage.jsonnet
 ```
 
 In the example above, the daemon is configured to store a single on-disk
 CAS. Two ACs are made, corresponding with instance names `foo` and
 `bar`. The former is intended just for remote caching, which is why it's
-made client-writable by adding `allow-ac-updates-for-instance` in the
+made client-writable by adding `allowAcUpdatesForInstances` in the
 configuration file. The latter is intended for remote execution, which
 is why `schedulers` is used to forward build action execution requests
-to a separate scheduler service at address `bar-scheduler:8981`. By
-using an empty `jaeger`, tracing is configured to use default values
-as documented in the [configuration schema](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/bb_storage/bb_storage.proto).
-Omitting it will disable tracing altogether.
+to a separate scheduler service at address `bar-scheduler:8981`.
+Please refer to the [configuration schema](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/bb_storage/bb_storage.proto)
+for an overview of all available options.
 
 Bazel can be configured to use the remote cache as follows:
 
 ```
-$ bazel build --remote_cache=localhost:8980 --remote_instance_name=foo //...
+$ bazel build --remote_cache=grpc://localhost:8980 --remote_instance_name=foo //...
 ```
 
 Prebuilt container images of the Buildbarn storage daemon may be found
