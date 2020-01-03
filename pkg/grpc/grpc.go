@@ -50,6 +50,11 @@ func NewGRPCClientFromConfiguration(configuration *configuration.GRPCClientConfi
 // network addresses of UNIX socket paths provided.
 func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.GRPCServerConfiguration, registrationFunc func(*grpc.Server)) error {
 	serveErrors := make(chan error)
+
+	if len(configurations) == 0 {
+		return status.Error(codes.InvalidArgument, "Expected GRPC server configuration is missing")
+	}
+
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
@@ -86,6 +91,10 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.GRP
 		// Add Prometheus timing metrics.
 		grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 		grpc_prometheus.Register(s)
+
+		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
+			return status.Error(codes.InvalidArgument,"GRPC server configured without any listen addresses or paths")
+		}
 
 		// TCP sockets.
 		for _, listenAddress := range configuration.ListenAddresses {
