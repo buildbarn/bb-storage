@@ -57,6 +57,13 @@ def bb_storage_go_dependencies():
         urls = ["https://github.com/go-redis/redis/archive/v6.15.1.tar.gz"],
     )
 
+    # v1.26.0
+    go_repository(
+        name = "org_golang_google_grpc",
+        commit = "f5b0812e6fe574d90da76b205e9eb51f6ddb1919",
+        importpath = "google.golang.org/grpc",
+    )
+
     go_repository(
         name = "com_github_grpc_ecosystem_go_grpc_prometheus",
         importpath = "github.com/grpc-ecosystem/go-grpc-prometheus",
