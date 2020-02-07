@@ -8,16 +8,10 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-jsonnet"
-	"github.com/google/go-jsonnet/ast"
-	"github.com/google/go-jsonnet/astgen"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-func init() {
-	ast.StdAst = astgen.StdAst
-}
 
 // UnmarshalConfigurationFromFile reads a Jsonnet file, evaluates it and
 // unmarshals the output into a Protobuf message.

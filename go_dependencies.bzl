@@ -229,7 +229,7 @@ def bb_storage_go_dependencies():
 
     go_repository(
         name = "com_github_google_go_jsonnet",
-        commit = "8cd516f2addca9148dc7f014e81ea3632ba90223",
+        commit = "0959f85501584da690e34871b31e280242226e1f",
         importpath = "github.com/google/go-jsonnet",
         patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_google_go_jsonnet/astgen.diff"],
     )

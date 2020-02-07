@@ -19,8 +19,6 @@ go_library(
         "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_google_go_jsonnet//:go_default_library",
-        "@com_github_google_go_jsonnet//ast:go_default_library",
-        "@com_github_google_go_jsonnet//astgen:go_default_library",
         "@com_github_google_uuid//:go_default_library",
         "@com_github_gorilla_mux//:go_default_library",
         "@com_github_prometheus_client_golang//prometheus/promhttp:go_default_library",
