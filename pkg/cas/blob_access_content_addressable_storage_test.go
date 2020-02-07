@@ -5,11 +5,10 @@ import (
 	"io"
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/cas"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -46,14 +45,9 @@ func TestBlobAccessContentAddressableStoragePutFileSuccess(t *testing.T) {
 	// Operations that should appear against the BlobAccess. Read
 	// all the data to ensure all file operations are triggered.
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	helloWorldDigest := util.MustNewDigest(
-		"default-scheduler",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	helloWorldDigest := digest.MustNewDigest("default-scheduler", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	blobAccess.EXPECT().Put(ctx, helloWorldDigest, gomock.Any()).DoAndReturn(
-		func(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+		func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			data, err := b.ToByteSlice(100)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello world"), data)
@@ -61,12 +55,11 @@ func TestBlobAccessContentAddressableStoragePutFileSuccess(t *testing.T) {
 		})
 
 	contentAddressableStorage := cas.NewBlobAccessContentAddressableStorage(blobAccess, 1000)
-	digest, err := contentAddressableStorage.PutFile(ctx, directory, "hello", util.MustNewDigest(
-		"default-scheduler",
-		&remoteexecution.Digest{
-			Hash:      "d41d8cd98f00b204e9800998ecf8427e",
-			SizeBytes: 123,
-		}))
+	digest, err := contentAddressableStorage.PutFile(
+		ctx,
+		directory,
+		"hello",
+		digest.MustNewDigest("default-scheduler", "d41d8cd98f00b204e9800998ecf8427e", 123))
 	require.NoError(t, err)
 	require.Equal(t, digest, helloWorldDigest)
 }

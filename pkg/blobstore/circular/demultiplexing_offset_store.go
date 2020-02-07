@@ -1,6 +1,7 @@
 package circular
 
 import (
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
@@ -23,7 +24,7 @@ func NewDemultiplexingOffsetStore(offsetStoreGetter OffsetStoreGetter) OffsetSto
 	}
 }
 
-func (os *demultiplexingOffsetStore) Get(digest *util.Digest, cursors Cursors) (uint64, int64, bool, error) {
+func (os *demultiplexingOffsetStore) Get(digest digest.Digest, cursors Cursors) (uint64, int64, bool, error) {
 	instance := digest.GetInstance()
 	backend, err := os.offsetStoreGetter(instance)
 	if err != nil {
@@ -32,7 +33,7 @@ func (os *demultiplexingOffsetStore) Get(digest *util.Digest, cursors Cursors) (
 	return backend.Get(digest, cursors)
 }
 
-func (os *demultiplexingOffsetStore) Put(digest *util.Digest, offset uint64, length int64, cursors Cursors) error {
+func (os *demultiplexingOffsetStore) Put(digest digest.Digest, offset uint64, length int64, cursors Cursors) error {
 	instance := digest.GetInstance()
 	backend, err := os.offsetStoreGetter(instance)
 	if err != nil {

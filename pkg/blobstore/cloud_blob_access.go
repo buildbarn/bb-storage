@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
@@ -30,7 +30,7 @@ func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, storageType Stora
 	}
 }
 
-func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	key := ba.getKey(digest)
 	result, err := ba.bucket.NewReader(ctx, key, nil)
 	if err != nil {
@@ -47,7 +47,7 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 		}))
 }
 
-func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	r := b.ToReader()
 	defer r.Close()
 
@@ -69,18 +69,18 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffe
 	return nil
 }
 
-func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	var missing []*util.Digest
-	for _, digest := range digests {
-		if exists, err := ba.bucket.Exists(ctx, ba.getKey(digest)); err != nil {
-			return nil, err
+func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	missing := digest.NewSetBuilder()
+	for _, blobDigest := range digests.Items() {
+		if exists, err := ba.bucket.Exists(ctx, ba.getKey(blobDigest)); err != nil {
+			return digest.EmptySet, err
 		} else if !exists {
-			missing = append(missing, digest)
+			missing.Add(blobDigest)
 		}
 	}
-	return missing, nil
+	return missing.Build(), nil
 }
 
-func (ba *cloudBlobAccess) getKey(digest *util.Digest) string {
+func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
 	return ba.keyPrefix + ba.storageType.GetDigestKey(digest)
 }

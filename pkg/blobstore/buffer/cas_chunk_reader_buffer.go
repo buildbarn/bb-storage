@@ -4,18 +4,18 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type casChunkReaderBuffer struct {
-	digest         *util.Digest
+	digest         digest.Digest
 	r              ChunkReader
 	repairStrategy RepairStrategy
 }
 
 // NewCASBufferFromChunkReader creates a buffer for an object stored in
 // the Content Addressable Storage, backed by a ChunkReader.
-func NewCASBufferFromChunkReader(digest *util.Digest, r ChunkReader, repairStrategy RepairStrategy) Buffer {
+func NewCASBufferFromChunkReader(digest digest.Digest, r ChunkReader, repairStrategy RepairStrategy) Buffer {
 	return &casChunkReaderBuffer{
 		digest:         digest,
 		r:              r,

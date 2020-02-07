@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis"
 
@@ -44,7 +45,7 @@ func NewRedisBlobAccess(redisClient RedisClient,
 	}
 }
 
-func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *redisBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	if err := util.StatusFromContext(ctx); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
@@ -63,7 +64,7 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 		}))
 }
 
-func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	if err := util.StatusFromContext(ctx); err != nil {
 		b.Discard()
 		return err
@@ -100,29 +101,31 @@ func (ba *redisBlobAccess) waitIfReplicationEnabled() error {
 	return nil
 }
 
-func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	if err := util.StatusFromContext(ctx); err != nil {
-		return nil, err
+		return digest.EmptySet, err
 	}
-	if len(digests) == 0 {
-		return nil, nil
+	if digests.Empty() {
+		return digest.EmptySet, nil
 	}
 
 	// Execute "EXISTS" requests all in a single pipeline.
 	pipeline := ba.redisClient.Pipeline()
-	cmds := make([]*redis.IntCmd, 0, len(digests))
-	for _, digest := range digests {
+	cmds := make([]*redis.IntCmd, 0, digests.Length())
+	for _, digest := range digests.Items() {
 		cmds = append(cmds, pipeline.Exists(ba.storageType.GetDigestKey(digest)))
 	}
 	if _, err := pipeline.Exec(); err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")
+		return digest.EmptySet, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")
 	}
 
-	var missing []*util.Digest
-	for i, cmd := range cmds {
-		if cmd.Val() == 0 {
-			missing = append(missing, digests[i])
+	missing := digest.NewSetBuilder()
+	i := 0
+	for _, digest := range digests.Items() {
+		if cmds[i].Val() == 0 {
+			missing.Add(digest)
 		}
+		i++
 	}
-	return missing, nil
+	return missing.Build(), nil
 }

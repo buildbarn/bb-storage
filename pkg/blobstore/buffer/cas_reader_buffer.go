@@ -5,14 +5,14 @@ import (
 	"io/ioutil"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type casReaderBuffer struct {
-	digest         *util.Digest
+	digest         digest.Digest
 	r              io.ReadCloser
 	repairStrategy RepairStrategy
 }
@@ -20,7 +20,7 @@ type casReaderBuffer struct {
 // NewCASBufferFromReader creates a buffer for an object stored in the
 // Content Addressable Storage, whose contents may be obtained through a
 // ReadCloser.
-func NewCASBufferFromReader(digest *util.Digest, r io.ReadCloser, repairStrategy RepairStrategy) Buffer {
+func NewCASBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy RepairStrategy) Buffer {
 	return &casReaderBuffer{
 		digest:         digest,
 		r:              r,

@@ -7,7 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
@@ -237,7 +237,7 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (Block, Location) {
 	}
 }
 
-func (ba *localBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	// Look up the blob in the offset store.
 	ba.lock.Lock()
 	readLocation, err := ba.digestLocationMap.Get(digest, &ba.locationValidator)
@@ -273,7 +273,7 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 	return b1
 }
 
-func (ba *localBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *localBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -302,7 +302,7 @@ func (ba *localBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffe
 }
 
 type blobRefresh struct {
-	digest        *util.Digest
+	digest        digest.Digest
 	sizeBytes     int64
 	readBlock     Block
 	readOffset    int64
@@ -310,20 +310,20 @@ type blobRefresh struct {
 	writeLocation Location
 }
 
-func (ba *localBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Scan the offset store to determine which blobs are present.
 	ba.lock.Lock()
-	var missing []*util.Digest
+	missing := digest.NewSetBuilder()
 	var blobRefreshes []blobRefresh
-	for _, digest := range digests {
-		readLocation, err := ba.digestLocationMap.Get(digest, &ba.locationValidator)
+	for _, blobDigest := range digests.Items() {
+		readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator)
 		if err == nil {
 			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
 				// Blob is present, but it is stored in an "old"
 				// block. Prepare to copy it to a "new" block.
 				writeBlock, writeLocation := ba.allocateSpace(readLocation.SizeBytes)
 				blobRefreshes = append(blobRefreshes, blobRefresh{
-					digest:        digest,
+					digest:        blobDigest,
 					readBlock:     readBlock,
 					readOffset:    readLocation.Offset,
 					writeBlock:    writeBlock,
@@ -331,10 +331,10 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests []*util.Dige
 				})
 			}
 		} else if status.Code(err) == codes.NotFound {
-			missing = append(missing, digest)
+			missing.Add(blobDigest)
 		} else {
 			ba.lock.Unlock()
-			return nil, err
+			return digest.EmptySet, err
 		}
 	}
 	ba.lock.Unlock()
@@ -364,5 +364,5 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests []*util.Dige
 		}
 		ba.lock.Unlock()
 	}
-	return missing, err
+	return missing.Build(), err
 }

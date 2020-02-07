@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -51,7 +52,7 @@ func NewMirroredBlobAccess(backendA BlobAccess, backendB BlobAccess) BlobAccess 
 	}
 }
 
-func (ba *mirroredBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	// Alternate requests between storage backends.
 	var firstBackend, secondBackend BlobAccess
 	var firstBackendName, secondBackendName string
@@ -75,7 +76,7 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest *util.Digest) buff
 		})
 }
 
-func (ba *mirroredBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	// Store object in both storage backends.
 	b1, b2 := b.CloneStream()
 	errAChan := make(chan error, 1)
@@ -92,7 +93,7 @@ func (ba *mirroredBlobAccess) Put(ctx context.Context, digest *util.Digest, b bu
 	return nil
 }
 
-func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Call FindMissing() on both backends.
 	resultsAChan := make(chan findMissingResults, 1)
 	go func() {
@@ -101,42 +102,29 @@ func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests []*util.D
 	resultsB := callFindMissing(ctx, ba.backendB, digests)
 	resultsA := <-resultsAChan
 	if resultsA.err != nil {
-		return nil, util.StatusWrap(resultsA.err, "Backend A")
+		return digest.EmptySet, util.StatusWrap(resultsA.err, "Backend A")
 	}
 	if resultsB.err != nil {
-		return nil, util.StatusWrap(resultsB.err, "Backend B")
-	}
-
-	missingFromB := map[string]*util.Digest{}
-	for _, digest := range resultsB.missing {
-		missingFromB[digest.String()] = digest
+		return digest.EmptySet, util.StatusWrap(resultsB.err, "Backend B")
 	}
 
 	// Synchronize blobs that are missing in A from B.
-	var missingFromBoth []*util.Digest
-	missingFromA := 0
-	for _, digest := range resultsA.missing {
-		key := digest.String()
-		if _, ok := missingFromB[key]; ok {
-			missingFromBoth = append(missingFromBoth, digest)
-			delete(missingFromB, key)
-		} else {
-			if err := ba.backendA.Put(ctx, digest, ba.backendB.Get(ctx, digest)); err != nil {
-				return nil, util.StatusWrapf(err, "Failed to synchronize blob %s from backend B to backend A", digest)
-			}
-			missingFromA++
+	missingFromA, missingFromBoth, missingFromB := digest.GetDifferenceAndIntersection(resultsA.missing, resultsB.missing)
+	for _, blobDigest := range missingFromA.Items() {
+		if err := ba.backendA.Put(ctx, blobDigest, ba.backendB.Get(ctx, blobDigest)); err != nil {
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to synchronize blob %s from backend B to backend A", blobDigest)
 		}
 	}
 
 	// Synchronize blobs that are missing in B from A.
-	for _, digest := range missingFromB {
-		if err := ba.backendB.Put(ctx, digest, ba.backendA.Get(ctx, digest)); err != nil {
-			return nil, util.StatusWrapf(err, "Failed to synchronize blob %s from backend A to backend B", digest)
+	for _, blobDigest := range missingFromB.Items() {
+		if err := ba.backendB.Put(ctx, blobDigest, ba.backendA.Get(ctx, blobDigest)); err != nil {
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to synchronize blob %s from backend A to backend B", blobDigest)
 		}
 	}
 
-	mirroredBlobAccessFindMissingSynchronizationsFromAToB.Observe(float64(len(missingFromB)))
-	mirroredBlobAccessFindMissingSynchronizationsFromBToA.Observe(float64(missingFromA))
+	mirroredBlobAccessFindMissingSynchronizationsFromAToB.Observe(float64(missingFromB.Length()))
+	mirroredBlobAccessFindMissingSynchronizationsFromBToA.Observe(float64(missingFromA.Length()))
 
 	return missingFromBoth, nil
 }
@@ -147,7 +135,7 @@ type mirroredErrorHandler struct {
 	secondBackend     BlobAccess
 	secondBackendName string
 	context           context.Context
-	digest            *util.Digest
+	digest            digest.Digest
 }
 
 func (eh *mirroredErrorHandler) attemptedBothBackends() bool {

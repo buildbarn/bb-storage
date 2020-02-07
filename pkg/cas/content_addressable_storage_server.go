@@ -6,7 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,20 +25,20 @@ func NewContentAddressableStorageServer(contentAddressableStorage blobstore.Blob
 }
 
 func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
-	inDigests := make([]*util.Digest, 0, len(in.BlobDigests))
+	inDigests := digest.NewSetBuilder()
 	for _, partialDigest := range in.BlobDigests {
-		digest, err := util.NewDigest(in.InstanceName, partialDigest)
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, partialDigest)
 		if err != nil {
 			return nil, err
 		}
-		inDigests = append(inDigests, digest)
+		inDigests.Add(digest)
 	}
-	outDigests, err := s.contentAddressableStorage.FindMissing(ctx, inDigests)
+	outDigests, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
 	if err != nil {
 		return nil, err
 	}
-	partialDigests := make([]*remoteexecution.Digest, 0, len(outDigests))
-	for _, outDigest := range outDigests {
+	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
+	for _, outDigest := range outDigests.Items() {
 		partialDigests = append(partialDigests, outDigest.GetPartialDigest())
 	}
 	return &remoteexecution.FindMissingBlobsResponse{
@@ -55,7 +55,7 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 	responsesChan := make(chan *remoteexecution.BatchUpdateBlobsResponse_Response, len(in.Requests))
 	for _, request := range in.Requests {
 		go func(request *remoteexecution.BatchUpdateBlobsRequest_Request) {
-			digest, err := util.NewDigest(in.InstanceName, request.Digest)
+			digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
 			if err == nil {
 				err = s.contentAddressableStorage.Put(
 					ctx,

@@ -3,7 +3,7 @@ package local
 import (
 	"sync"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
@@ -138,7 +138,7 @@ func (dlm *hashingDigestLocationMap) getSlot(k *LocationRecordKey) int {
 	return int(k.Hash(dlm.hashInitialization) % uint64(dlm.recordsCount))
 }
 
-func (dlm *hashingDigestLocationMap) Get(digest *util.Digest, validator *LocationValidator) (Location, error) {
+func (dlm *hashingDigestLocationMap) Get(digest digest.Digest, validator *LocationValidator) (Location, error) {
 	key := NewLocationRecordKey(digest)
 	for {
 		slot := dlm.getSlot(&key)
@@ -163,7 +163,7 @@ func (dlm *hashingDigestLocationMap) Get(digest *util.Digest, validator *Locatio
 	}
 }
 
-func (dlm *hashingDigestLocationMap) Put(digest *util.Digest, validator *LocationValidator, location Location) error {
+func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *LocationValidator, location Location) error {
 	if !validator.IsValid(location) {
 		hashingDigestLocationMapPutIgnoreInvalid.Inc()
 		return nil

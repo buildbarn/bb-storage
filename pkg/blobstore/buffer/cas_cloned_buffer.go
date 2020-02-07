@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 
 type casClonedBuffer struct {
 	base           Buffer
-	digest         *util.Digest
+	digest         digest.Digest
 	repairStrategy RepairStrategy
 
 	lock                  sync.Mutex
@@ -28,7 +28,7 @@ type casClonedBuffer struct {
 // that permits concurrent access to the same buffer. All consumers will
 // be synchronized, meaning that they will get access to the buffer's
 // contents at the same pace.
-func newCASClonedBuffer(base Buffer, digest *util.Digest, repairStrategy RepairStrategy) Buffer {
+func newCASClonedBuffer(base Buffer, digest digest.Digest, repairStrategy RepairStrategy) Buffer {
 	return &casClonedBuffer{
 		base:           base,
 		digest:         digest,

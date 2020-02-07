@@ -4,20 +4,20 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type casStorageType struct{}
 
-func (f casStorageType) GetDigestKey(digest *util.Digest) string {
-	return digest.GetKey(util.DigestKeyWithoutInstance)
+func (f casStorageType) GetDigestKey(blobDigest digest.Digest) string {
+	return blobDigest.GetKey(digest.KeyWithoutInstance)
 }
 
-func (f casStorageType) NewBufferFromByteSlice(digest *util.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer {
+func (f casStorageType) NewBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer {
 	return buffer.NewCASBufferFromByteSlice(digest, data, repairStrategy)
 }
 
-func (f casStorageType) NewBufferFromReader(digest *util.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer {
+func (f casStorageType) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer {
 	return buffer.NewCASBufferFromReader(digest, r, repairStrategy)
 }
 

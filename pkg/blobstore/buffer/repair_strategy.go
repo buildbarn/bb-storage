@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"log"
 
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -26,7 +27,7 @@ type RepairFunc func() error
 // specify a strategy for how to deal with data consistency issues.
 type RepairStrategy struct {
 	errorCode  codes.Code
-	digest     *util.Digest
+	digest     digest.Digest
 	repairFunc RepairFunc
 }
 
@@ -113,7 +114,7 @@ var (
 // Reparable indicates that the buffer was obtained from storage and
 // that the storage backend provides a method for repairing data
 // inconsistencies. A callback is provided to trigger repairs.
-func Reparable(digest *util.Digest, repairFunc RepairFunc) RepairStrategy {
+func Reparable(digest digest.Digest, repairFunc RepairFunc) RepairStrategy {
 	return RepairStrategy{
 		errorCode:  codes.Internal,
 		digest:     digest,

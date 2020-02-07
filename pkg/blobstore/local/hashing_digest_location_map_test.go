@@ -3,10 +3,9 @@ package local_test
 import (
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -18,18 +17,8 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 	array := mock.NewMockLocationRecordArray(ctrl)
 	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2)
 
-	digest1 := util.MustNewDigest(
-		"hello",
-		&remoteexecution.Digest{
-			Hash:      "ca2bd6c9c99e7bc00a440973d6e1a369",
-			SizeBytes: 473,
-		})
-	digest2 := util.MustNewDigest(
-		"hello",
-		&remoteexecution.Digest{
-			Hash:      "4942691f5907d5eddb71818f658f2071",
-			SizeBytes: 8347,
-		})
+	digest1 := digest.MustNewDigest("hello", "ca2bd6c9c99e7bc00a440973d6e1a369", 473)
+	digest2 := digest.MustNewDigest("hello", "4942691f5907d5eddb71818f658f2071", 8347)
 	validator := local.LocationValidator{
 		OldestBlockID: 13,
 		NewestBlockID: 20,

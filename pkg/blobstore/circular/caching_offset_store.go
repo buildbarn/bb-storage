@@ -3,7 +3,7 @@ package circular
 import (
 	"encoding/binary"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type cachedRecord struct {
@@ -33,7 +33,7 @@ func NewCachingOffsetStore(backend OffsetStore, size uint) OffsetStore {
 	}
 }
 
-func (os *cachingOffsetStore) Get(digest *util.Digest, cursors Cursors) (uint64, int64, bool, error) {
+func (os *cachingOffsetStore) Get(digest digest.Digest, cursors Cursors) (uint64, int64, bool, error) {
 	simpleDigest := newSimpleDigest(digest)
 	slot := binary.LittleEndian.Uint32(simpleDigest[:]) % uint32(len(os.table))
 	foundRecord := os.table[slot]
@@ -52,7 +52,7 @@ func (os *cachingOffsetStore) Get(digest *util.Digest, cursors Cursors) (uint64,
 	return offset, length, found, err
 }
 
-func (os *cachingOffsetStore) Put(digest *util.Digest, offset uint64, length int64, cursors Cursors) error {
+func (os *cachingOffsetStore) Put(digest digest.Digest, offset uint64, length int64, cursors Cursors) error {
 	if err := os.backend.Put(digest, offset, length, cursors); err != nil {
 		return err
 	}

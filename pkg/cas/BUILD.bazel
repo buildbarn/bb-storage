@@ -13,9 +13,9 @@ go_library(
     deps = [
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
+        "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
         "//pkg/proto/cas:go_default_library",
-        "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@go_googleapis//google/bytestream:bytestream_go_proto",
@@ -34,8 +34,7 @@ go_test(
     deps = [
         "//internal/mock:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
-        "//pkg/util:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "//pkg/digest:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
         "@go_googleapis//google/bytestream:bytestream_go_proto",

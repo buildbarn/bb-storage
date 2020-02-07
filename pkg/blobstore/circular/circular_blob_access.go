@@ -9,7 +9,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,8 +20,8 @@ import (
 // OffsetStore maps a digest to an offset within the data file. This is
 // where the blob's contents may be found.
 type OffsetStore interface {
-	Get(digest *util.Digest, cursors Cursors) (uint64, int64, bool, error)
-	Put(digest *util.Digest, offset uint64, length int64, cursors Cursors) error
+	Get(digest digest.Digest, cursors Cursors) (uint64, int64, bool, error)
+	Put(digest digest.Digest, offset uint64, length int64, cursors Cursors) error
 }
 
 // DataStore is where the data corresponding with a blob is stored. Data
@@ -64,7 +64,7 @@ func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateSt
 	}
 }
 
-func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *circularBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Get")
 	defer span.End()
 
@@ -93,7 +93,7 @@ func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) buff
 	return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "Blob not found"))
 }
 
-func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *circularBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -137,18 +137,18 @@ func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, b bu
 	return err
 }
 
-func (ba *circularBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *circularBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
 
 	cursors := ba.stateStore.GetCursors()
-	var missingDigests []*util.Digest
-	for _, digest := range digests {
-		if _, _, ok, err := ba.offsetStore.Get(digest, cursors); err != nil {
-			return nil, err
+	missingDigests := digest.NewSetBuilder()
+	for _, blobDigest := range digests.Items() {
+		if _, _, ok, err := ba.offsetStore.Get(blobDigest, cursors); err != nil {
+			return digest.EmptySet, err
 		} else if !ok {
-			missingDigests = append(missingDigests, digest)
+			missingDigests.Add(blobDigest)
 		}
 	}
-	return missingDigests, nil
+	return missingDigests.Build(), nil
 }

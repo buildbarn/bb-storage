@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -31,12 +30,7 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 	// After starting up, there should be a uniform distribution on
 	// the "current" blocks and an inverse exponential distribution
 	// on the "new" blocks.
-	digest := util.MustNewDigest(
-		"example",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("example", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	allocationAttemptsPerBlock := []int{16, 16, 16, 16, 8, 4, 2, 1}
 	for i := 0; i < 10; i++ {
 		for j := 0; j < len(blocks); j++ {

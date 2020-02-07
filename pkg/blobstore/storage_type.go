@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 // StorageType is passed to many implementations of BlobAccess to be
@@ -15,12 +15,12 @@ type StorageType interface {
 	// GetDigestKey creates a string key that may be used as an
 	// identifier for a blob. This function is, for example, used to
 	// determine the name of keys in S3 and Redis.
-	GetDigestKey(digest *util.Digest) string
+	GetDigestKey(digest digest.Digest) string
 
 	// NewBufferFromByteSlice creates a buffer from a byte slice
 	// that is either suitable for storage in the CAS or AC.
-	NewBufferFromByteSlice(digest *util.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer
+	NewBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer
 	// NewBufferFromByteSlice creates a buffer from a reader that is
 	// either suitable for storage in the CAS or AC.
-	NewBufferFromReader(digest *util.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer
+	NewBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer
 }

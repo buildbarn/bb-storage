@@ -4,6 +4,7 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
 
@@ -59,7 +60,7 @@ func readAtViaChunkReader(r ChunkReader, p []byte, off int64) (int, error) {
 	}
 }
 
-func toByteSliceViaChunkReader(r ChunkReader, digest *util.Digest, maximumSizeBytes int) ([]byte, error) {
+func toByteSliceViaChunkReader(r ChunkReader, digest digest.Digest, maximumSizeBytes int) ([]byte, error) {
 	defer r.Close()
 
 	expectedSizeBytes := digest.GetSizeBytes()

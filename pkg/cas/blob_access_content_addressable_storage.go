@@ -9,9 +9,9 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	cas_proto "github.com/buildbarn/bb-storage/pkg/proto/cas"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -30,7 +30,7 @@ func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, max
 	}
 }
 
-func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest *util.Digest, message proto.Message) error {
+func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest digest.Digest, message proto.Message) error {
 	data, err := cas.blobAccess.Get(ctx, digest).ToByteSlice(cas.maximumMessageSizeBytes)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, 
 	return proto.Unmarshal(data, message)
 }
 
-func (cas *blobAccessContentAddressableStorage) GetAction(ctx context.Context, digest *util.Digest) (*remoteexecution.Action, error) {
+func (cas *blobAccessContentAddressableStorage) GetAction(ctx context.Context, digest digest.Digest) (*remoteexecution.Action, error) {
 	var action remoteexecution.Action
 	if err := cas.getMessage(ctx, digest, &action); err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (cas *blobAccessContentAddressableStorage) GetAction(ctx context.Context, d
 	return &action, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) GetUncachedActionResult(ctx context.Context, digest *util.Digest) (*cas_proto.UncachedActionResult, error) {
+func (cas *blobAccessContentAddressableStorage) GetUncachedActionResult(ctx context.Context, digest digest.Digest) (*cas_proto.UncachedActionResult, error) {
 	var uncachedActionResult cas_proto.UncachedActionResult
 	if err := cas.getMessage(ctx, digest, &uncachedActionResult); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (cas *blobAccessContentAddressableStorage) GetUncachedActionResult(ctx cont
 	return &uncachedActionResult, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) GetCommand(ctx context.Context, digest *util.Digest) (*remoteexecution.Command, error) {
+func (cas *blobAccessContentAddressableStorage) GetCommand(ctx context.Context, digest digest.Digest) (*remoteexecution.Command, error) {
 	var command remoteexecution.Command
 	if err := cas.getMessage(ctx, digest, &command); err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (cas *blobAccessContentAddressableStorage) GetCommand(ctx context.Context, 
 	return &command, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) GetDirectory(ctx context.Context, digest *util.Digest) (*remoteexecution.Directory, error) {
+func (cas *blobAccessContentAddressableStorage) GetDirectory(ctx context.Context, digest digest.Digest) (*remoteexecution.Directory, error) {
 	var directory remoteexecution.Directory
 	if err := cas.getMessage(ctx, digest, &directory); err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (cas *blobAccessContentAddressableStorage) GetDirectory(ctx context.Context
 	return &directory, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, digest *util.Digest, directory filesystem.Directory, name string, isExecutable bool) error {
+func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, digest digest.Digest, directory filesystem.Directory, name string, isExecutable bool) error {
 	var mode os.FileMode = 0444
 	if isExecutable {
 		mode = 0555
@@ -90,7 +90,7 @@ func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, dig
 	return nil
 }
 
-func (cas *blobAccessContentAddressableStorage) GetTree(ctx context.Context, digest *util.Digest) (*remoteexecution.Tree, error) {
+func (cas *blobAccessContentAddressableStorage) GetTree(ctx context.Context, digest digest.Digest) (*remoteexecution.Tree, error) {
 	var tree remoteexecution.Tree
 	if err := cas.getMessage(ctx, digest, &tree); err != nil {
 		return nil, err
@@ -98,42 +98,42 @@ func (cas *blobAccessContentAddressableStorage) GetTree(ctx context.Context, dig
 	return &tree, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) putBlob(ctx context.Context, data []byte, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) putBlob(ctx context.Context, data []byte, parentDigest digest.Digest) (digest.Digest, error) {
 	// Compute new digest of data.
-	digestGenerator := parentDigest.NewDigestGenerator()
+	digestGenerator := parentDigest.NewGenerator()
 	if _, err := digestGenerator.Write(data); err != nil {
-		return nil, err
+		return digest.BadDigest, err
 	}
-	digest := digestGenerator.Sum()
+	blobDigest := digestGenerator.Sum()
 
-	if err := cas.blobAccess.Put(ctx, digest, buffer.NewValidatedBufferFromByteSlice(data)); err != nil {
-		return nil, err
+	if err := cas.blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice(data)); err != nil {
+		return digest.BadDigest, err
 	}
-	return digest, nil
+	return blobDigest, nil
 }
 
-func (cas *blobAccessContentAddressableStorage) putMessage(ctx context.Context, message proto.Message, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) putMessage(ctx context.Context, message proto.Message, parentDigest digest.Digest) (digest.Digest, error) {
 	data, err := proto.Marshal(message)
 	if err != nil {
-		return nil, err
+		return digest.BadDigest, err
 	}
 	return cas.putBlob(ctx, data, parentDigest)
 }
 
-func (cas *blobAccessContentAddressableStorage) PutFile(ctx context.Context, directory filesystem.Directory, name string, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) PutFile(ctx context.Context, directory filesystem.Directory, name string, parentDigest digest.Digest) (digest.Digest, error) {
 	file, err := directory.OpenRead(name)
 	if err != nil {
-		return nil, err
+		return digest.BadDigest, err
 	}
 
 	// Walk through the file to compute the digest.
-	digestGenerator := parentDigest.NewDigestGenerator()
+	digestGenerator := parentDigest.NewGenerator()
 	sizeBytes, err := io.Copy(digestGenerator, io.NewSectionReader(file, 0, math.MaxInt64))
 	if err != nil {
 		file.Close()
-		return nil, err
+		return digest.BadDigest, err
 	}
-	digest := digestGenerator.Sum()
+	blobDigest := digestGenerator.Sum()
 
 	// Rewind and store it. Limit uploading to the size that was
 	// used to compute the digest. This ensures uploads succeed,
@@ -141,14 +141,14 @@ func (cas *blobAccessContentAddressableStorage) PutFile(ctx context.Context, dir
 	// uncommon, especially for stdout and stderr logs.
 	if err := cas.blobAccess.Put(
 		ctx,
-		digest,
+		blobDigest,
 		buffer.NewCASBufferFromReader(
-			digest,
+			blobDigest,
 			newSectionReadCloser(file, 0, sizeBytes),
 			buffer.UserProvided)); err != nil {
-		return nil, err
+		return digest.BadDigest, err
 	}
-	return digest, nil
+	return blobDigest, nil
 }
 
 // newSectionReadCloser returns an io.ReadCloser that reads from r at a
@@ -165,14 +165,14 @@ func newSectionReadCloser(r filesystem.FileReader, off int64, n int64) io.ReadCl
 	}
 }
 
-func (cas *blobAccessContentAddressableStorage) PutLog(ctx context.Context, log []byte, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) PutLog(ctx context.Context, log []byte, parentDigest digest.Digest) (digest.Digest, error) {
 	return cas.putBlob(ctx, log, parentDigest)
 }
 
-func (cas *blobAccessContentAddressableStorage) PutTree(ctx context.Context, tree *remoteexecution.Tree, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) PutTree(ctx context.Context, tree *remoteexecution.Tree, parentDigest digest.Digest) (digest.Digest, error) {
 	return cas.putMessage(ctx, tree, parentDigest)
 }
 
-func (cas *blobAccessContentAddressableStorage) PutUncachedActionResult(ctx context.Context, uncachedActionResult *cas_proto.UncachedActionResult, parentDigest *util.Digest) (*util.Digest, error) {
+func (cas *blobAccessContentAddressableStorage) PutUncachedActionResult(ctx context.Context, uncachedActionResult *cas_proto.UncachedActionResult, parentDigest digest.Digest) (digest.Digest, error) {
 	return cas.putMessage(ctx, uncachedActionResult, parentDigest)
 }

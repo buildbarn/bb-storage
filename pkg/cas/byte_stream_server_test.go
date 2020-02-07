@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/cas"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -84,10 +83,10 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the small blob without an instance name.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("", &remoteexecution.Digest{
-			Hash:      "09f7e02f1290be211da707a266f153b3",
-			SizeBytes: 5,
-		})).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("", "09f7e02f1290be211da707a266f153b3", 5),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
@@ -102,10 +101,10 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessNonEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the large blob with an instance name.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("debian8", &remoteexecution.Digest{
-			Hash:      "3538d378083b9afa5ffad767f7269509",
-			SizeBytes: 22,
-		})).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This is a long message")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("debian8", "3538d378083b9afa5ffad767f7269509", 22),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This is a long message")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
@@ -126,10 +125,10 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadNegativeReadOffset", func(t *testing.T) {
 		// Attempt to fetch a blob with a negative offset.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("ubuntu1804", &remoteexecution.Digest{
-			Hash:      "6fc422233a40a75a1f028e11c3cd1140",
-			SizeBytes: 7,
-		})).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Goodbye")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("ubuntu1804", "6fc422233a40a75a1f028e11c3cd1140", 7),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Goodbye")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/6fc422233a40a75a1f028e11c3cd1140/7",
@@ -142,10 +141,10 @@ func TestByteStreamServer(t *testing.T) {
 	t.Run("ReadOffsetBeyondEnd", func(t *testing.T) {
 		// Attempt to fetch a blob with a offset beyond the size
 		// of the blob.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("ubuntu1804", &remoteexecution.Digest{
-			Hash:      "ad3c8ac9eef32188da352082244b3598",
-			SizeBytes: 13,
-		})).Return(buffer.NewValidatedBufferFromByteSlice([]byte("short message")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("ubuntu1804", "ad3c8ac9eef32188da352082244b3598", 13),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("short message")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/ad3c8ac9eef32188da352082244b3598/13",
@@ -157,10 +156,10 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessWithOffset", func(t *testing.T) {
 		// Attempt to fetch a lblob with an instance name and offset.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("ubuntu1804", &remoteexecution.Digest{
-			Hash:      "da39a3ee5e6b4b0d3255bfef95601890",
-			SizeBytes: 19,
-		})).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This offset message")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("ubuntu1804", "da39a3ee5e6b4b0d3255bfef95601890", 19),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This offset message")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/da39a3ee5e6b4b0d3255bfef95601890/19",
@@ -179,10 +178,10 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadNonexistentBlob", func(t *testing.T) {
 		// Attempt to fetch a nonexistent blob.
-		blobAccess.EXPECT().Get(gomock.Any(), util.MustNewDigest("fedora28", &remoteexecution.Digest{
-			Hash:      "09f34d28e9c8bb445ec996388968a9e8",
-			SizeBytes: 7,
-		})).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("fedora28", "09f34d28e9c8bb445ec996388968a9e8", 7),
+		).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "///fedora28//blobs/09f34d28e9c8bb445ec996388968a9e8/////7/",
@@ -206,10 +205,11 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to write a blob without an instance name.
-		blobAccess.EXPECT().Put(gomock.Any(), util.MustNewDigest("", &remoteexecution.Digest{
-			Hash:      "581c1053f832a1c719fb6528a588ccfd",
-			SizeBytes: 14,
-		}), gomock.Any()).DoAndReturn(func(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("", "581c1053f832a1c719fb6528a588ccfd", 14),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			data, err := b.ToByteSlice(100)
 			require.NoError(t, err)
 			require.Equal(t, []byte("LaputanMachine"), data)
@@ -234,10 +234,11 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteSuccessWithoutFinish", func(t *testing.T) {
 		// Attempt to write without finishing properly.
-		blobAccess.EXPECT().Put(gomock.Any(), util.MustNewDigest("", &remoteexecution.Digest{
-			Hash:      "f10e562d8825ec2e17e0d9f58646f8084a658cfa",
-			SizeBytes: 6,
-		}), gomock.Any()).DoAndReturn(func(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("", "f10e562d8825ec2e17e0d9f58646f8084a658cfa", 6),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
 			require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
 			return err
@@ -255,10 +256,11 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteFailFinishTwice", func(t *testing.T) {
 		// Attempted to write while finishing twice.
-		blobAccess.EXPECT().Put(gomock.Any(), util.MustNewDigest("fedora28", &remoteexecution.Digest{
-			Hash:      "cbd8f7984c654c25512e3d9241ae569f",
-			SizeBytes: 3,
-		}), gomock.Any()).DoAndReturn(func(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("fedora28", "cbd8f7984c654c25512e3d9241ae569f", 3),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
 			require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
 			return err
@@ -282,10 +284,11 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteFailBadOffset", func(t *testing.T) {
 		// Attempted to write with a bad write offset.
-		blobAccess.EXPECT().Put(gomock.Any(), util.MustNewDigest("windows10", &remoteexecution.Digest{
-			Hash:      "68e109f0f40ca72a15e05cc22786f8e6",
-			SizeBytes: 10,
-		}), gomock.Any()).DoAndReturn(func(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("windows10", "68e109f0f40ca72a15e05cc22786f8e6", 10),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
 			require.Equal(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
 			return err

@@ -5,12 +5,12 @@ import (
 	"hash"
 	"io"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type casValidatingChunkReader struct {
 	ChunkReader
-	digest         *util.Digest
+	digest         digest.Digest
 	repairStrategy RepairStrategy
 
 	err            error
@@ -23,7 +23,7 @@ type casValidatingChunkReader struct {
 // by the Content Addressable Storage. It has been implemented in such a
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
-func newCASValidatingChunkReader(r ChunkReader, digest *util.Digest, repairStrategy RepairStrategy) ChunkReader {
+func newCASValidatingChunkReader(r ChunkReader, digest digest.Digest, repairStrategy RepairStrategy) ChunkReader {
 	return &casValidatingChunkReader{
 		ChunkReader:    r,
 		digest:         digest,

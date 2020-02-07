@@ -8,7 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -30,12 +30,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		5,
 		1000)
 
-	actionDigest := util.MustNewDigest(
-		"hello",
-		&remoteexecution.Digest{
-			Hash:      "d41d8cd98f00b204e9800998ecf8427e",
-			SizeBytes: 123,
-		})
+	actionDigest := digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 123)
 
 	t.Run("ActionCacheFailure", func(t *testing.T) {
 		// Errors on the backing action cache should be passed
@@ -86,27 +81,17 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					},
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(ctx, []*util.Digest{
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "8b1a9953c4611296a827abf8c47804d7",
-					SizeBytes: 5,
-				}),
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "6fc422233a40a75a1f028e11c3cd1140",
-					SizeBytes: 7,
-				}),
-		}).Return([]*util.Digest{
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "8b1a9953c4611296a827abf8c47804d7",
-					SizeBytes: 5,
-				}),
-		}, nil)
+		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build(),
+		).Return(
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Build(),
+			nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
 		require.Equal(t, err, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"))
@@ -124,14 +109,12 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					},
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(ctx, []*util.Digest{
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "6fc422233a40a75a1f028e11c3cd1140",
-					SizeBytes: 7,
-				}),
-		}).Return(nil, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
+		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build(),
+		).Return(digest.EmptySet, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
 		require.Equal(t, err, status.Error(codes.Internal, "Failed to determine existence of child objects: Hard disk has a case of the Mondays"))
@@ -156,12 +139,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.Reparable(actionDigest, repairFunc.Call)))
 		contentAddressableStorage.EXPECT().GetTree(
 			ctx,
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "8b1a9953c4611296a827abf8c47804d7",
-					SizeBytes: 5,
-				}),
+			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
 		).Return(nil, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
@@ -217,12 +195,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.Reparable(actionDigest, repairFunc.Call)))
 		contentAddressableStorage.EXPECT().GetTree(
 			ctx,
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "8b1a9953c4611296a827abf8c47804d7",
-					SizeBytes: 5,
-				}),
+			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
 		).Return(&remoteexecution.Tree{
 			Root: &remoteexecution.Directory{
 				// Directory digests should not be part of
@@ -259,46 +232,22 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				{},
 			},
 		}, nil)
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(ctx, []*util.Digest{
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "38837949e2518a6e8a912ffb29942788",
-					SizeBytes: 10,
-				}),
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "ebbbb099e9d2f7892d97ab3640ae8283",
-					SizeBytes: 9,
-				}),
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "136de6de72514772b9302d4776e5c3d2",
-					SizeBytes: 4,
-				}),
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "41d7247285b686496aa91b56b4c48395",
-					SizeBytes: 11,
-				}),
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "eda14e187a768b38eda999457c9cca1e",
-					SizeBytes: 6,
-				}),
-		}).Return(nil, nil)
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(ctx, []*util.Digest{
-			util.MustNewDigest(
-				"hello",
-				&remoteexecution.Digest{
-					Hash:      "6c396013ff0ebff6a2a96cdc20a4ba4c",
-					SizeBytes: 5,
-				}),
-		}).Return(nil, nil)
+		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "38837949e2518a6e8a912ffb29942788", 10)).
+				Add(digest.MustNewDigest("hello", "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
+				Add(digest.MustNewDigest("hello", "136de6de72514772b9302d4776e5c3d2", 4)).
+				Add(digest.MustNewDigest("hello", "41d7247285b686496aa91b56b4c48395", 11)).
+				Add(digest.MustNewDigest("hello", "eda14e187a768b38eda999457c9cca1e", 6)).
+				Build(),
+		).Return(digest.EmptySet, nil)
+		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "6c396013ff0ebff6a2a96cdc20a4ba4c", 5)).
+				Build(),
+		).Return(digest.EmptySet, nil)
 
 		actualResult, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
 		require.NoError(t, err)

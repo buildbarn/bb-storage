@@ -2,7 +2,7 @@ package buffer_test
 
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 var (
@@ -38,17 +38,13 @@ var (
 		0x66, 0x63, 0x34, 0x37, 0x34, 0x35, 0x61, 0x35,
 		0x33, 0x38, 0x36, 0x10, 0x84, 0x26,
 	}
-	exampleActionResultDigest = util.MustNewDigest(
+	exampleActionResultDigest = digest.MustNewDigest(
 		"qux",
-		&remoteexecution.Digest{
-			Hash:      "d555bf579673a15bb6301f4b2f0593a8",
-			SizeBytes: 134,
-		})
+		"d555bf579673a15bb6301f4b2f0593a8",
+		134)
 
-	exampleDigest = util.MustNewDigest(
+	exampleDigest = digest.MustNewDigest(
 		"hello",
-		&remoteexecution.Digest{
-			Hash:      "d41d8cd98f00b204e9800998ecf8427e",
-			SizeBytes: 123,
-		})
+		"d41d8cd98f00b204e9800998ecf8427e",
+		123)
 )

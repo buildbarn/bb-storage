@@ -6,10 +6,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
@@ -78,12 +77,7 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	// ErrorHandler evaluation. It is sufficient to only test
 	// ToByteSlice().
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("ImmediateSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -130,12 +124,7 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -321,12 +310,7 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -423,12 +407,7 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -508,12 +487,7 @@ func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
@@ -539,12 +513,7 @@ func TestWithErrorHandlerOnCASBuffersCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	digest := util.MustNewDigest(
-		"instance",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)

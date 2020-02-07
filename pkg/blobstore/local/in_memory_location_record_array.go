@@ -6,7 +6,7 @@ type inMemoryLocationRecordArray struct {
 
 // NewInMemoryLocationRecordArray creates a LocationRecordArray that
 // stores its data in memory. LocalBlobAccess relies on being able to
-// store a mapping from util.Digests to a location in memory or on disk.
+// store a mapping from digest.Digests to a location in memory or on disk.
 // This type implements a non-persistent storage of such a map in
 // memory.
 func NewInMemoryLocationRecordArray(size int) LocationRecordArray {

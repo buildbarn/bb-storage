@@ -4,20 +4,20 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type acStorageType struct{}
 
-func (f acStorageType) GetDigestKey(digest *util.Digest) string {
-	return digest.GetKey(util.DigestKeyWithInstance)
+func (f acStorageType) GetDigestKey(blobDigest digest.Digest) string {
+	return blobDigest.GetKey(digest.KeyWithInstance)
 }
 
-func (f acStorageType) NewBufferFromByteSlice(digest *util.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer {
+func (f acStorageType) NewBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer {
 	return buffer.NewACBufferFromByteSlice(data, repairStrategy)
 }
 
-func (f acStorageType) NewBufferFromReader(digest *util.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer {
+func (f acStorageType) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer {
 	return buffer.NewACBufferFromReader(r, repairStrategy)
 }
 

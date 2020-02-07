@@ -3,10 +3,9 @@ package local_test
 import (
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -24,18 +23,8 @@ func TestPerInstanceDigestLocationMap(t *testing.T) {
 			"valid": validDLM,
 		})
 
-	validDigest := util.MustNewDigest(
-		"valid",
-		&remoteexecution.Digest{
-			Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			SizeBytes: 123,
-		})
-	invalidDigest := util.MustNewDigest(
-		"invalid",
-		&remoteexecution.Digest{
-			Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			SizeBytes: 123,
-		})
+	validDigest := digest.MustNewDigest("valid", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
+	invalidDigest := digest.MustNewDigest("invalid", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
 	validator := local.LocationValidator{
 		OldestBlockID: 12,
 		NewestBlockID: 15,

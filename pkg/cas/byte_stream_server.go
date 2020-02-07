@@ -6,10 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc/codes"
@@ -22,26 +21,21 @@ import (
 // - ${instance}/uploads/${uuid}/blobs/${hash}/${size}
 //
 // In the process, the hash, size and instance are extracted.
-func parseResourceNameWrite(resourceName string) (*util.Digest, error) {
+func parseResourceNameWrite(resourceName string) (digest.Digest, error) {
 	fields := strings.FieldsFunc(resourceName, func(r rune) bool { return r == '/' })
 	l := len(fields)
 	if (l != 5 && l != 6) || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	size, err := strconv.ParseInt(fields[l-1], 10, 64)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	instance := ""
 	if l == 6 {
 		instance = fields[0]
 	}
-	return util.NewDigest(
-		instance,
-		&remoteexecution.Digest{
-			Hash:      fields[l-2],
-			SizeBytes: size,
-		})
+	return digest.NewDigest(instance, fields[l-2], size)
 }
 
 type byteStreamServer struct {
@@ -63,7 +57,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
-	digest, err := util.NewDigestFromBytestreamPath(in.ResourceName)
+	digest, err := digest.NewDigestFromBytestreamPath(in.ResourceName)
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,7 +28,7 @@ func NewActionCacheBlobAccess(client *grpc.ClientConn, maximumMessageSizeBytes i
 	}
 }
 
-func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	actionResult, err := ba.actionCacheClient.GetActionResult(ctx, &remoteexecution.GetActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
@@ -39,7 +39,7 @@ func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) b
 	return buffer.NewACBufferFromActionResult(actionResult, buffer.Irreparable)
 }
 
-func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	actionResult, err := b.ToActionResult(ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
@@ -52,6 +52,6 @@ func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest *util.Digest, b
 	return err
 }
 
-func (ba *actionCacheBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	return nil, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
+func (ba *actionCacheBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 }

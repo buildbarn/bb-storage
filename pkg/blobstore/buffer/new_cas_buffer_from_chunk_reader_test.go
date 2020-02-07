@@ -5,10 +5,9 @@ import (
 	"io"
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
@@ -21,12 +20,7 @@ func TestNewCASBufferFromChunkReaderGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "8b1a9953c4611296a827abf8c47804d7",
-			SizeBytes: 5,
-		})
+	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()
 
@@ -41,12 +35,7 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "8b1a9953c4611296a827abf8c47804d7",
-			SizeBytes: 5,
-		})
+	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -98,12 +87,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "8b1a9953c4611296a827abf8c47804d7",
-			SizeBytes: 5,
-		})
+	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -306,12 +290,7 @@ func TestNewCASBufferFromChunkReaderToActionResult(t *testing.T) {
 		chunkReader.EXPECT().Close()
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 
-		helloDigest := util.MustNewDigest(
-			"foo",
-			&remoteexecution.Digest{
-				Hash:      "8b1a9953c4611296a827abf8c47804d7",
-				SizeBytes: 5,
-			})
+		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 		_, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
@@ -347,12 +326,7 @@ func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 		chunkReader.EXPECT().Close()
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 
-		helloDigest := util.MustNewDigest(
-			"foo",
-			&remoteexecution.Digest{
-				Hash:      "8b1a9953c4611296a827abf8c47804d7",
-				SizeBytes: 5,
-			})
+		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 		data, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
@@ -370,12 +344,7 @@ func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 		chunkReader.EXPECT().Close()
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 
-		emptyDigest := util.MustNewDigest(
-			"empty",
-			&remoteexecution.Digest{
-				Hash:      "d41d8cd98f00b204e9800998ecf8427e",
-				SizeBytes: 0,
-			})
+		emptyDigest := digest.MustNewDigest("empty", "d41d8cd98f00b204e9800998ecf8427e", 0)
 		data, err := buffer.NewCASBufferFromChunkReader(
 			emptyDigest,
 			chunkReader,
@@ -389,12 +358,7 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -529,12 +493,7 @@ func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "3e25960a79dbc69b674cd4ec67a72c62",
-			SizeBytes: 11,
-		})
+	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -606,12 +565,7 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "8b1a9953c4611296a827abf8c47804d7",
-			SizeBytes: 5,
-		})
+	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -693,12 +647,7 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	helloDigest := util.MustNewDigest(
-		"foo",
-		&remoteexecution.Digest{
-			Hash:      "8b1a9953c4611296a827abf8c47804d7",
-			SizeBytes: 5,
-		})
+	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)

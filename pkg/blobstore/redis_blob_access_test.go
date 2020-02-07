@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -25,12 +24,7 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 
 	canceledCtx, cancel := context.WithCancel(ctx)
 	cancel()
-	digest := util.MustNewDigest(
-		"example",
-		&remoteexecution.Digest{
-			Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			SizeBytes: 0,
-		})
+	blobDigest := digest.MustNewDigest("example", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
 
 	// Calls to Get(), Put() and FindMissing() should not yield
 	// calls into the Redis client if the context associated with
@@ -40,12 +34,12 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 	// This means that if these checks were not in place, a larger
 	// piece of code that calls into Redis multiple times would not
 	// have any cancelation points.
-	_, err := blobAccess.Get(canceledCtx, digest).ToByteSlice(100)
+	_, err := blobAccess.Get(canceledCtx, blobDigest).ToByteSlice(100)
 	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
 
-	err = blobAccess.Put(canceledCtx, digest, buffer.NewValidatedBufferFromByteSlice(nil))
+	err = blobAccess.Put(canceledCtx, blobDigest, buffer.NewValidatedBufferFromByteSlice(nil))
 	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
 
-	_, err = blobAccess.FindMissing(canceledCtx, []*util.Digest{digest})
+	_, err = blobAccess.FindMissing(canceledCtx, digest.EmptySet)
 	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
 }

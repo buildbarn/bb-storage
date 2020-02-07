@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type errorBlobAccess struct {
@@ -24,15 +24,15 @@ func NewErrorBlobAccess(err error) BlobAccess {
 	}
 }
 
-func (ba *errorBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *errorBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return buffer.NewBufferFromError(ba.err)
 }
 
-func (ba *errorBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *errorBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	b.Discard()
 	return ba.err
 }
 
-func (ba *errorBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	return nil, ba.err
+func (ba *errorBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	return digest.EmptySet, ba.err
 }

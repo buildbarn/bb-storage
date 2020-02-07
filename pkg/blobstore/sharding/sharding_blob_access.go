@@ -5,7 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type shardingBlobAccess struct {
@@ -27,7 +27,7 @@ func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardP
 	}
 }
 
-func (ba *shardingBlobAccess) getBackend(digest *util.Digest) blobstore.BlobAccess {
+func (ba *shardingBlobAccess) getBackend(digest digest.Digest) blobstore.BlobAccess {
 	// Hash the key using FNV-1a.
 	h := ba.hashInitialization
 	for _, c := range ba.storageType.GetDigestKey(digest) {
@@ -44,50 +44,56 @@ func (ba *shardingBlobAccess) getBackend(digest *util.Digest) blobstore.BlobAcce
 	return backend
 }
 
-func (ba *shardingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *shardingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return ba.getBackend(digest).Get(ctx, digest)
 }
 
-func (ba *shardingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *shardingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	return ba.getBackend(digest).Put(ctx, digest, b)
 }
 
 type findMissingResults struct {
-	missing []*util.Digest
+	missing digest.Set
 	err     error
 }
 
-func callFindMissing(ctx context.Context, blobAccess blobstore.BlobAccess, digests []*util.Digest) findMissingResults {
+func callFindMissing(ctx context.Context, blobAccess blobstore.BlobAccess, digests digest.Set) findMissingResults {
 	missing, err := blobAccess.FindMissing(ctx, digests)
 	return findMissingResults{missing: missing, err: err}
 }
 
-func (ba *shardingBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *shardingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Determine which backends to contact.
-	digestsPerBackend := map[blobstore.BlobAccess][]*util.Digest{}
-	for _, digest := range digests {
-		backend := ba.getBackend(digest)
-		digestsPerBackend[backend] = append(digestsPerBackend[backend], digest)
+	digestsPerBackend := map[blobstore.BlobAccess]digest.SetBuilder{}
+	for _, blobDigest := range digests.Items() {
+		backend := ba.getBackend(blobDigest)
+		if _, ok := digestsPerBackend[backend]; !ok {
+			digestsPerBackend[backend] = digest.NewSetBuilder()
+		}
+		digestsPerBackend[backend].Add(blobDigest)
 	}
 
 	// Asynchronously call FindMissing() on backends.
 	resultsChan := make(chan findMissingResults, len(digestsPerBackend))
 	for backend, digests := range digestsPerBackend {
-		go func(backend blobstore.BlobAccess, digests []*util.Digest) {
-			resultsChan <- callFindMissing(ctx, backend, digests)
+		go func(backend blobstore.BlobAccess, digests digest.SetBuilder) {
+			resultsChan <- callFindMissing(ctx, backend, digests.Build())
 		}(backend, digests)
 	}
 
 	// Recombine results.
-	var missingDigests []*util.Digest
+	missingDigestSets := make([]digest.Set, 0, len(digestsPerBackend))
 	var err error
 	for i := 0; i < len(digestsPerBackend); i++ {
 		results := <-resultsChan
 		if results.err == nil {
-			missingDigests = append(missingDigests, results.missing...)
+			missingDigestSets = append(missingDigestSets, results.missing)
 		} else {
 			err = results.err
 		}
 	}
-	return missingDigests, err
+	if err != nil {
+		return digest.EmptySet, err
+	}
+	return digest.GetUnion(missingDigestSets), nil
 }

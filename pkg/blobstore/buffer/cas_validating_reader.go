@@ -5,12 +5,12 @@ import (
 	"hash"
 	"io"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type casValidatingReader struct {
 	io.ReadCloser
-	digest         *util.Digest
+	digest         digest.Digest
 	repairStrategy RepairStrategy
 
 	err            error
@@ -23,7 +23,7 @@ type casValidatingReader struct {
 // by the Content Addressable Storage. It has been implemented in such a
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
-func newCASValidatingReader(r io.ReadCloser, digest *util.Digest, repairStrategy RepairStrategy) io.ReadCloser {
+func newCASValidatingReader(r io.ReadCloser, digest digest.Digest, repairStrategy RepairStrategy) io.ReadCloser {
 	return &casValidatingReader{
 		ReadCloser:     r,
 		digest:         digest,

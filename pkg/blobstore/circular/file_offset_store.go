@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -150,7 +150,7 @@ func (os *fileOffsetStore) putRecordAtPosition(record offsetRecord, position int
 	return err
 }
 
-func (os *fileOffsetStore) Get(digest *util.Digest, cursors Cursors) (uint64, int64, bool, error) {
+func (os *fileOffsetStore) Get(digest digest.Digest, cursors Cursors) (uint64, int64, bool, error) {
 	record := newOffsetRecord(newSimpleDigest(digest), 0, 0)
 	for iteration := uint32(1); ; iteration++ {
 		if iteration >= maximumIterations {
@@ -213,7 +213,7 @@ func (os *fileOffsetStore) putRecord(record offsetRecord, cursors Cursors) (offs
 	return record.withAttempt(attempt + 1), true, nil
 }
 
-func (os *fileOffsetStore) Put(digest *util.Digest, offset uint64, length int64, cursors Cursors) error {
+func (os *fileOffsetStore) Put(digest digest.Digest, offset uint64, length int64, cursors Cursors) error {
 	// Insert the new record. Doing this may yield another that got
 	// displaced. Iteratively try to re-insert those.
 	record := newOffsetRecord(newSimpleDigest(digest), offset, length)

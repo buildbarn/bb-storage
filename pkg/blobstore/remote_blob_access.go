@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"golang.org/x/net/context/ctxhttp"
 
@@ -35,7 +35,7 @@ func NewRemoteBlobAccess(address string, prefix string, storageType StorageType)
 	}
 }
 
-func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *remoteBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 	if err != nil {
@@ -54,7 +54,7 @@ func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer
 	}
 }
 
-func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *remoteBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -72,24 +72,24 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, b buff
 	return err
 }
 
-func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
-	var missing []*util.Digest
-	for _, digest := range digests {
-		url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
+func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	missing := digest.NewSetBuilder()
+	for _, blobDigest := range digests.Items() {
+		url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, blobDigest.GetHashString())
 		resp, err := ctxhttp.Head(ctx, http.DefaultClient, url)
 		if err != nil {
-			return nil, err
+			return digest.EmptySet, err
 		}
 
 		switch resp.StatusCode {
 		case http.StatusNotFound:
-			missing = append(missing, digest)
+			missing.Add(blobDigest)
 		case http.StatusOK:
 			continue
 		default:
-			return nil, convertHTTPUnexpectedStatus(resp)
+			return digest.EmptySet, convertHTTPUnexpectedStatus(resp)
 		}
 	}
 
-	return missing, nil
+	return missing.Build(), nil
 }

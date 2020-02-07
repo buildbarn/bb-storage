@@ -1,7 +1,7 @@
 package local
 
 import (
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,7 +20,7 @@ func NewPerInstanceDigestLocationMap(maps map[string]DigestLocationMap) DigestLo
 	}
 }
 
-func (dlm perInstanceDigestLocationMap) getMap(digest *util.Digest) (DigestLocationMap, error) {
+func (dlm perInstanceDigestLocationMap) getMap(digest digest.Digest) (DigestLocationMap, error) {
 	instanceName := digest.GetInstance()
 	if m, ok := dlm.maps[instanceName]; ok {
 		return m, nil
@@ -28,7 +28,7 @@ func (dlm perInstanceDigestLocationMap) getMap(digest *util.Digest) (DigestLocat
 	return nil, status.Errorf(codes.InvalidArgument, "Invalid instance name: %#v", instanceName)
 }
 
-func (dlm perInstanceDigestLocationMap) Get(digest *util.Digest, validator *LocationValidator) (Location, error) {
+func (dlm perInstanceDigestLocationMap) Get(digest digest.Digest, validator *LocationValidator) (Location, error) {
 	m, err := dlm.getMap(digest)
 	if err != nil {
 		return Location{}, err
@@ -36,7 +36,7 @@ func (dlm perInstanceDigestLocationMap) Get(digest *util.Digest, validator *Loca
 	return m.Get(digest, validator)
 }
 
-func (dlm perInstanceDigestLocationMap) Put(digest *util.Digest, validator *LocationValidator, location Location) error {
+func (dlm perInstanceDigestLocationMap) Put(digest digest.Digest, validator *LocationValidator, location Location) error {
 	m, err := dlm.getMap(digest)
 	if err != nil {
 		return err

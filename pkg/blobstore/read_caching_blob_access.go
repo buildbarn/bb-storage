@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,7 +27,7 @@ func NewReadCachingBlobAccess(slow BlobAccess, fast BlobAccess) BlobAccess {
 	}
 }
 
-func (ba *readCachingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *readCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return buffer.WithErrorHandler(
 		ba.fast.Get(ctx, digest),
 		&readCachingErrorHandler{
@@ -37,18 +37,18 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest *util.Digest) b
 		})
 }
 
-func (ba *readCachingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+func (ba *readCachingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	return ba.slow.Put(ctx, digest, b)
 }
 
-func (ba *readCachingBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+func (ba *readCachingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return ba.slow.FindMissing(ctx, digests)
 }
 
 type readCachingErrorHandler struct {
 	blobAccess *readCachingBlobAccess
 	context    context.Context
-	digest     *util.Digest
+	digest     digest.Digest
 }
 
 func (eh *readCachingErrorHandler) OnError(observedErr error) (buffer.Buffer, error) {

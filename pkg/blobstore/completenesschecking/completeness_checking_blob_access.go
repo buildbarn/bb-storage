@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -17,41 +18,41 @@ import (
 // batches, as opposed to calling it for individual digests.
 type findMissingQueue struct {
 	context                   context.Context
-	baseDigest                *util.Digest
+	baseDigest                digest.Digest
 	contentAddressableStorage blobstore.BlobAccess
 	batchSize                 int
 
-	pending []*util.Digest
+	pending digest.SetBuilder
 }
 
 // deriveDigest converts a digest embedded into an action result from
 // the wire format to an in-memory representation. If that fails, we
 // assume that some data corruption has occurred. In that case, we
 // should destroy the action result.
-func (q *findMissingQueue) deriveDigest(digest *remoteexecution.Digest) (*util.Digest, error) {
-	derivedDigest, err := q.baseDigest.NewDerivedDigest(digest)
+func (q *findMissingQueue) deriveDigest(blobDigest *remoteexecution.Digest) (digest.Digest, error) {
+	derivedDigest, err := q.baseDigest.NewDerivedDigest(blobDigest)
 	if err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.NotFound, "Action result contained malformed digest")
+		return digest.BadDigest, util.StatusWrapWithCode(err, codes.NotFound, "Action result contained malformed digest")
 	}
 	return derivedDigest, err
 }
 
 // Add a digest to the list of digests that are pending to be checked
 // for existence in the Content Addressable Storage.
-func (q *findMissingQueue) add(digest *remoteexecution.Digest) error {
-	if digest != nil {
-		derivedDigest, err := q.deriveDigest(digest)
+func (q *findMissingQueue) add(blobDigest *remoteexecution.Digest) error {
+	if blobDigest != nil {
+		derivedDigest, err := q.deriveDigest(blobDigest)
 		if err != nil {
 			return err
 		}
 
-		if len(q.pending) >= q.batchSize {
+		if q.pending.Length() >= q.batchSize {
 			if err := q.finalize(); err != nil {
 				return err
 			}
-			q.pending = nil
+			q.pending = digest.NewSetBuilder()
 		}
-		q.pending = append(q.pending, derivedDigest)
+		q.pending.Add(derivedDigest)
 	}
 	return nil
 }
@@ -72,14 +73,12 @@ func (q *findMissingQueue) addDirectory(directory *remoteexecution.Directory) er
 
 // Finalize by checking the last batch of digests for existence.
 func (q *findMissingQueue) finalize() error {
-	if len(q.pending) > 0 {
-		missing, err := q.contentAddressableStorage.FindMissing(q.context, q.pending)
-		if err != nil {
-			return util.StatusWrap(err, "Failed to determine existence of child objects")
-		}
-		if len(missing) > 0 {
-			return status.Errorf(codes.NotFound, "Object %s referenced by the action result is not present in the Content Addressable Storage", missing[0])
-		}
+	missing, err := q.contentAddressableStorage.FindMissing(q.context, q.pending.Build())
+	if err != nil {
+		return util.StatusWrap(err, "Failed to determine existence of child objects")
+	}
+	if digest, ok := missing.First(); ok {
+		return status.Errorf(codes.NotFound, "Object %s referenced by the action result is not present in the Content Addressable Storage", digest)
 	}
 	return nil
 }
@@ -116,12 +115,13 @@ func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, content
 	}
 }
 
-func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, digest *util.Digest, actionResult *remoteexecution.ActionResult) error {
+func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, baseDigest digest.Digest, actionResult *remoteexecution.ActionResult) error {
 	findMissingQueue := findMissingQueue{
 		context:                   ctx,
-		baseDigest:                digest,
+		baseDigest:                baseDigest,
 		contentAddressableStorage: ba.contentAddressableStorageBlobAccess,
 		batchSize:                 ba.batchSize,
+		pending:                   digest.NewSetBuilder(),
 	}
 
 	// Iterate over all remoteexecution.Digest fields contained
@@ -162,7 +162,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	return findMissingQueue.finalize()
 }
 
-func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	b1, b2 := ba.BlobAccess.Get(ctx, digest).CloneCopy(ba.maximumMessageSizeBytes)
 	actionResult, err := b1.ToActionResult(ba.maximumMessageSizeBytes)
 	if err != nil {

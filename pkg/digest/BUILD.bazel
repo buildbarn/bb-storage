@@ -3,22 +3,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "build_queue.go",
-        "demultiplexing_build_queue.go",
-        "forwarding_build_queue.go",
-        "non_executable_build_queue.go",
-        "updatable_action_cache_build_queue.go",
+        "digest.go",
+        "set.go",
+        "set_builder.go",
     ],
-    importpath = "github.com/buildbarn/bb-storage/pkg/builder",
+    importpath = "github.com/buildbarn/bb-storage/pkg/digest",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/digest:go_default_library",
-        "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/semver:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-        "@go_googleapis//google/longrunning:longrunning_go_proto",
-        "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
     ],
@@ -26,12 +18,14 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["demultiplexing_build_queue_test.go"],
+    srcs = [
+        "digest_test.go",
+        "set_builder_test.go",
+        "set_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
-        "//internal/mock:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
