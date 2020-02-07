@@ -57,12 +57,7 @@ type blobAccessCreationOptions struct {
 // a configuration file.
 func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	// Create two stores based on definitions in configuration.
-	contentAddressableStorage, err := createBlobAccess(configuration.ActionCache, &blobAccessCreationOptions{
-		storageType:             blobstore.CASStorageType,
-		storageTypeName:         "cas",
-		keyFormat:               digest.KeyWithoutInstance,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
-	})
+	contentAddressableStorage, err := CreateCASBlobAccessObjectFromConfig(configuration.ContentAddressableStorage, maximumMessageSizeBytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,6 +71,18 @@ func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration,
 		return nil, nil, err
 	}
 	return contentAddressableStorage, actionCache, nil
+}
+
+// CreateCASBlobAccessObjectFromConfig creates a BlobAccess object for
+// the Content Addressable Storage based on a configuration file.
+func CreateCASBlobAccessObjectFromConfig(configuration *pb.BlobAccessConfiguration, maximumMessageSizeBytes int) (blobstore.BlobAccess, error) {
+	return createBlobAccess(configuration, &blobAccessCreationOptions{
+		storageType:             blobstore.CASStorageType,
+		storageTypeName:         "cas",
+		keyFormat:               digest.KeyWithoutInstance,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
+	})
+
 }
 
 func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAccessCreationOptions) (blobstore.BlobAccess, error) {
