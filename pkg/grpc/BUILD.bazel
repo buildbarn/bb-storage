@@ -6,6 +6,7 @@ go_library(
         "allow_authenticator.go",
         "any_authenticator.go",
         "authenticator.go",
+        "deny_authenticator.go",
         "grpc.go",
         "tls_client_certificate_authenticator.go",
     ],
@@ -32,6 +33,7 @@ go_test(
     srcs = [
         "allow_authenticator_test.go",
         "any_authenticator_test.go",
+        "deny_authenticator_test.go",
         "tls_client_certificate_authenticator_test.go",
     ],
     embed = [":go_default_library"],

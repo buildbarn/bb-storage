@@ -38,6 +38,8 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			children = append(children, child)
 		}
 		return NewAnyAuthenticator(children), nil
+	case *configuration.AuthenticationPolicy_Deny:
+		return NewDenyAuthenticator(policyKind.Deny), nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:
 		clientCAs := x509.NewCertPool()
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {

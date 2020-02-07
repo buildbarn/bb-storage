@@ -43,9 +43,13 @@ message AuthenticationPolicy {
     // policies allows it, similar to Python's any() function.
     AnyAuthenticationPolicy any = 2;
 
+    // Deny all incoming requests, returning a fixed error message back
+    // to the client.
+    string deny = 3;
+
     // Allow incoming requests in case they present a valid TLS
     // certificate.
-    TLSClientCertificateAuthenticationPolicy tls_client_certificate = 3;
+    TLSClientCertificateAuthenticationPolicy tls_client_certificate = 4;
   }
 }
 
