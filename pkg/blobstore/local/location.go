@@ -4,16 +4,16 @@ package local
 // LocalBlobAccess. A location consists of a number that identifies a
 // block and the region within the block.
 type Location struct {
-	BlockID   int
-	Offset    int64
-	SizeBytes int64
+	BlockID     int
+	OffsetBytes int64
+	SizeBytes   int64
 }
 
 // IsOlder returns true if the receiving Location is stored in Block
 // that is older than the Location argument, or if it is stored prior to
 // the Location argument within the same Block.
 func (a Location) IsOlder(b Location) bool {
-	return a.BlockID < b.BlockID || (a.BlockID == b.BlockID && a.Offset < b.Offset)
+	return a.BlockID < b.BlockID || (a.BlockID == b.BlockID && a.OffsetBytes < b.OffsetBytes)
 }
 
 // LocationValidator assesses whether a Location of where a blob is

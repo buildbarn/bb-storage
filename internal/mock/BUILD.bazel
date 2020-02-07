@@ -83,6 +83,7 @@ gomock(
     interfaces = [
         "Directory",
         "FileReader",
+        "FileReadWriter",
     ],
     library = "//pkg/filesystem:go_default_library",
     package = "mock",

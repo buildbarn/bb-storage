@@ -25,33 +25,99 @@ var (
 			Help:      "Time at which the last removed block was inserted into the \"old\" queue, which is an indicator for the worst-case blob retention time",
 		},
 		[]string{"name"})
+	localBlobAccessOldBlobRotationToNew = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "buildbarn",
+			Subsystem: "blobstore",
+			Name:      "local_blob_access_old_blobs_rotated_to_new",
+			Help:      "The number of blobs in old blocks, rotated to new blocks",
+			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
+		},
+		[]string{"name", "operation"})
 )
 
+// sharedBlock is a reference counted Block. Whereas Block can only be
+// released once, sharedBlock has a pair of acquire() and release()
+// functions. This type is used for being able to call Put() on a Block
+// in such a way that the underlying Block does not disappear.
+//
+// The reference count stored by sharedBlock is not updated atomically.
+// It can only be mutated safely by locking the containing
+// localBlobAccess.
+type sharedBlock struct {
+	b        Block
+	refcount uint64
+}
+
+func newSharedBlock(b Block) *sharedBlock {
+	return &sharedBlock{
+		b:        b,
+		refcount: 1,
+	}
+}
+
+func (sb *sharedBlock) acquire() {
+	if sb.refcount == 0 {
+		panic("Invalid reference count")
+	}
+	sb.refcount++
+}
+
+func (sb *sharedBlock) release() {
+	if sb.refcount == 0 {
+		panic("Invalid reference count")
+	}
+	sb.refcount--
+	if sb.refcount == 0 {
+		sb.b.Release()
+	}
+}
+
+// deadBlock is a placeholder implementation of Block. It is used to
+// initialize all "old" blocks of LocalBlobAccess. This is done to
+// ensure that any attempts to access or release these blocks don't lead
+// to nil pointer dereferences.
+type deadBlock struct{}
+
+func (db deadBlock) Get(digest digest.Digest, offset int64, sizeBytes int64) buffer.Buffer {
+	return buffer.NewBufferFromError(status.Error(codes.Internal, "Attempted to read blob from dead block"))
+}
+
+func (db deadBlock) Put(offset int64, b buffer.Buffer) error {
+	return status.Error(codes.Internal, "Attempted to write blob into dead block")
+}
+
+func (db deadBlock) Release() {}
+
 type oldBlock struct {
-	block         Block
+	block         *sharedBlock
 	insertionTime float64
 }
 
 type newBlock struct {
-	block  Block
+	block  *sharedBlock
 	offset int64
 }
 
 type localBlobAccess struct {
-	blockSize             int64
+	sectorSizeBytes       int
+	blockSectorCount      int64
 	blockAllocator        BlockAllocator
 	desiredNewBlocksCount int
 
 	lock                        sync.Mutex
+	refreshLock                 sync.Mutex
 	digestLocationMap           DigestLocationMap
 	oldBlocks                   []oldBlock
-	currentBlocks               []Block
+	currentBlocks               []*sharedBlock
 	newBlocks                   []newBlock
 	locationValidator           LocationValidator
 	allocationBlockIndex        int
 	allocationAttemptsRemaining int
 
 	lastRemovedOldBlockInsertionTime prometheus.Gauge
+	oldBlobRotationToNewGet          prometheus.Observer
+	oldBlobRotationToNewFindMissing  prometheus.Observer
 }
 
 func unixTime() float64 {
@@ -122,14 +188,16 @@ func unixTime() float64 {
 // being LRU-like. Setting it too high is also not recommended, as this
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
-func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, name string, blockSize int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) blobstore.BlobAccess {
+func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
 	localBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(localBlobAccessLastRemovedOldBlockInsertionTime)
+		prometheus.MustRegister(localBlobAccessOldBlobRotationToNew)
 	})
 
 	ba := &localBlobAccess{
-		blockSize:      blockSize,
-		blockAllocator: blockAllocator,
+		sectorSizeBytes:  sectorSizeBytes,
+		blockSectorCount: blockSectorCount,
+		blockAllocator:   blockAllocator,
 
 		digestLocationMap: digestLocationMap,
 		locationValidator: LocationValidator{
@@ -139,6 +207,8 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 		desiredNewBlocksCount: newBlocksCount,
 
 		lastRemovedOldBlockInsertionTime: localBlobAccessLastRemovedOldBlockInsertionTime.WithLabelValues(name),
+		oldBlobRotationToNewGet:          localBlobAccessOldBlobRotationToNew.WithLabelValues(name, "Get"),
+		oldBlobRotationToNewFindMissing:  localBlobAccessOldBlobRotationToNew.WithLabelValues(name, "FindMissing"),
 	}
 
 	// Insert placeholders for the initial set of "old" blocks.
@@ -146,22 +216,30 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 	ba.lastRemovedOldBlockInsertionTime.Set(now)
 	for i := 0; i < oldBlocksCount; i++ {
 		ba.oldBlocks = append(ba.oldBlocks, oldBlock{
+			block:         newSharedBlock(deadBlock{}),
 			insertionTime: now,
 		})
 	}
 
 	// Allocate initial set of "new" blocks.
 	for i := 0; i < currentBlocksCount+newBlocksCount; i++ {
+		block, err := blockAllocator.NewBlock()
+		if err != nil {
+			for _, newBlock := range ba.newBlocks {
+				newBlock.block.release()
+			}
+			return nil, err
+		}
 		ba.newBlocks = append(ba.newBlocks, newBlock{
-			block: blockAllocator.NewBlock(),
+			block: newSharedBlock(block),
 		})
 	}
 	ba.startAllocatingFromBlock(0)
-	return ba
+	return ba, nil
 }
 
 // getBlock returns the block associated with a numerical block ID.
-func (ba *localBlobAccess) getBlock(blockID int) (block Block, isOld bool) {
+func (ba *localBlobAccess) getBlock(blockID int) (block *sharedBlock, isOld bool) {
 	blockID -= ba.locationValidator.OldestBlockID
 	if blockID < len(ba.oldBlocks) {
 		return ba.oldBlocks[blockID].block, true
@@ -189,11 +267,17 @@ func (ba *localBlobAccess) startAllocatingFromBlock(i int) {
 	}
 }
 
-func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (Block, Location) {
+func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Location, error) {
+	// Determine the number of sectors needed to store the object.
+	// TODO: This can be wasteful for storing small objects with
+	// large sector sizes. Should we add logic for packing small
+	// objects together into a single sector?
+	sectors := (sizeBytes + int64(ba.sectorSizeBytes) - 1) / int64(ba.sectorSizeBytes)
+
 	// Move the first "new" block(s) to "current" whenever they no
 	// longer have enough space to fit a blob. This ensures that the
 	// next loop is always capable of finding some block with space.
-	for ba.blockSize-ba.newBlocks[0].offset < sizeBytes {
+	for ba.blockSectorCount-ba.newBlocks[0].offset < sectors {
 		if len(ba.newBlocks) > ba.desiredNewBlocksCount {
 			// This is still an excessive block from the
 			// initialization phase.
@@ -201,14 +285,19 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (Block, Location) {
 			ba.newBlocks = append([]newBlock{}, ba.newBlocks[1:]...)
 		} else {
 			// The initialization phase is way behind us.
+			block, err := ba.blockAllocator.NewBlock()
+			if err != nil {
+				return nil, Location{}, err
+			}
 			ba.lastRemovedOldBlockInsertionTime.Set(ba.oldBlocks[0].insertionTime)
+			ba.oldBlocks[0].block.release()
 			ba.oldBlocks = append(append([]oldBlock{}, ba.oldBlocks[1:]...), oldBlock{
 				block:         ba.currentBlocks[0],
 				insertionTime: unixTime(),
 			})
-			ba.currentBlocks = append(append([]Block{}, ba.currentBlocks[1:]...), ba.newBlocks[0].block)
+			ba.currentBlocks = append(append([]*sharedBlock{}, ba.currentBlocks[1:]...), ba.newBlocks[0].block)
 			ba.newBlocks = append(append([]newBlock{}, ba.newBlocks[1:]...), newBlock{
-				block: ba.blockAllocator.NewBlock(),
+				block: newSharedBlock(block),
 			})
 			ba.locationValidator.OldestBlockID++
 			ba.locationValidator.NewestBlockID++
@@ -220,17 +309,17 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (Block, Location) {
 	for {
 		if ba.allocationAttemptsRemaining > 0 {
 			newBlock := &ba.newBlocks[ba.allocationBlockIndex]
-			if offset := newBlock.offset; ba.blockSize-offset >= sizeBytes {
+			if offset := newBlock.offset; ba.blockSectorCount-offset >= sectors {
 				ba.allocationAttemptsRemaining--
-				newBlock.offset += sizeBytes
+				newBlock.offset += sectors
 				return newBlock.block, Location{
 					BlockID: ba.locationValidator.OldestBlockID +
 						len(ba.oldBlocks) +
 						len(ba.currentBlocks) +
 						ba.allocationBlockIndex,
-					Offset:    offset,
-					SizeBytes: sizeBytes,
-				}
+					OffsetBytes: offset * int64(ba.sectorSizeBytes),
+					SizeBytes:   sizeBytes,
+				}, nil
 			}
 		}
 		ba.startAllocatingFromBlock((ba.allocationBlockIndex + 1) % len(ba.newBlocks))
@@ -249,25 +338,41 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 	readBlock, isOld := ba.getBlock(readLocation.BlockID)
 	if !isOld {
 		// Blob was found in a "new" or "current" block.
+		b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 		ba.lock.Unlock()
-		return readBlock.Get(readLocation.Offset, readLocation.SizeBytes)
+		return b
 	}
 
 	// Blob was found, but it is stored in an "old" block. Allocate
-	// new space and copy the blob on the fly. Do require Get() to
-	// block until copying has finished to apply back-pressure.
-	writeBlock, writeLocation := ba.allocateSpace(readLocation.SizeBytes)
+	// new space to copy the blob on the fly.
+	//
+	// TODO: Instead of copying data on the fly, should this be done
+	// immediately, so that we can prevent potential duplication by
+	// picking up the refresh lock?
+	writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
+	if err != nil {
+		ba.lock.Unlock()
+		return buffer.NewBufferFromError(err)
+	}
+	writeBlock.acquire()
+	b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 	ba.lock.Unlock()
-	b1, b2 := readBlock.Get(readLocation.Offset, readLocation.SizeBytes).CloneStream()
+
+	// Copy the object while it's been returned. Block until copying
+	// has finished to apply back-pressure.
+	b1, b2 := b.CloneStream()
 	b1, t := buffer.WithBackgroundTask(b1)
 	go func() {
-		if err := writeBlock.Put(writeLocation.Offset, b2); err != nil {
-			t.Finish(err)
-			return
-		}
+		err := writeBlock.b.Put(writeLocation.OffsetBytes, b2)
+
 		ba.lock.Lock()
-		err := ba.digestLocationMap.Put(digest, &ba.locationValidator, writeLocation)
+		writeBlock.release()
+		if err == nil {
+			err = ba.digestLocationMap.Put(digest, &ba.locationValidator, writeLocation)
+			ba.oldBlobRotationToNewGet.Observe(float64(1))
+		}
 		ba.lock.Unlock()
+
 		t.Finish(err)
 	}()
 	return b1
@@ -279,90 +384,110 @@ func (ba *localBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 		b.Discard()
 		return err
 	}
-	if sizeBytes > ba.blockSize {
+	if blockSizeBytes := int64(ba.sectorSizeBytes) * ba.blockSectorCount; sizeBytes > blockSizeBytes {
 		return status.Errorf(
 			codes.InvalidArgument,
 			"Blob is %d bytes in size, while this backend is only capable of storing blobs of up to %d bytes in size",
 			sizeBytes,
-			ba.blockSize)
+			blockSizeBytes)
 	}
 
 	ba.lock.Lock()
-	block, location := ba.allocateSpace(sizeBytes)
-	ba.lock.Unlock()
+	defer ba.lock.Unlock()
 
-	if err := block.Put(location.Offset, b); err != nil {
+	// Allocate space to store the object.
+	block, location, err := ba.allocateSpace(sizeBytes)
+	if err != nil {
 		return err
 	}
 
-	ba.lock.Lock()
-	err = ba.digestLocationMap.Put(digest, &ba.locationValidator, location)
+	// Copy the the object into storage. This needs to acquire the
+	// block to prevent it from disappearing during transfer.
+	block.acquire()
 	ba.lock.Unlock()
-	return err
-}
+	err = block.b.Put(location.OffsetBytes, b)
+	ba.lock.Lock()
+	block.release()
+	if err != nil {
+		return err
+	}
 
-type blobRefresh struct {
-	digest        digest.Digest
-	sizeBytes     int64
-	readBlock     Block
-	readOffset    int64
-	writeBlock    Block
-	writeLocation Location
+	// Upon successful completion, expose the object in storage.
+	return ba.digestLocationMap.Put(digest, &ba.locationValidator, location)
 }
 
 func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	// Scan the offset store to determine which blobs are present.
 	ba.lock.Lock()
+	defer ba.lock.Unlock()
+
+	var old []digest.Digest
 	missing := digest.NewSetBuilder()
-	var blobRefreshes []blobRefresh
 	for _, blobDigest := range digests.Items() {
-		readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator)
-		if err == nil {
-			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
-				// Blob is present, but it is stored in an "old"
-				// block. Prepare to copy it to a "new" block.
-				writeBlock, writeLocation := ba.allocateSpace(readLocation.SizeBytes)
-				blobRefreshes = append(blobRefreshes, blobRefresh{
-					digest:        blobDigest,
-					readBlock:     readBlock,
-					readOffset:    readLocation.Offset,
-					writeBlock:    writeBlock,
-					writeLocation: writeLocation,
-				})
+		if readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator); err == nil {
+			if _, isOld := ba.getBlock(readLocation.BlockID); isOld {
+				// Blob is present, but it must be
+				// refreshed for it to remain in storage.
+				old = append(old, blobDigest)
 			}
 		} else if status.Code(err) == codes.NotFound {
+			// Blob is absent.
 			missing.Add(blobDigest)
 		} else {
-			ba.lock.Unlock()
 			return digest.EmptySet, err
 		}
 	}
+	if len(old) == 0 {
+		return missing.Build(), nil
+	}
+
+	// One or more blobs need to be refreshed.
+	//
+	// We should prevent concurrent FindMissing() calls from
+	// refreshing the same blobs, as that would cause data to be
+	// duplicated and load to increase significantly. Pick up the
+	// refresh lock to ensure bandwidth of refreshing is limited to
+	// one thread.
 	ba.lock.Unlock()
+	ba.refreshLock.Lock()
+	defer ba.refreshLock.Unlock()
+	ba.lock.Lock()
 
-	// Copy all blobs from "old" to "new".
-	var err error
 	blobsRefreshedSuccessfully := 0
-	for _, br := range blobRefreshes {
-		err = br.writeBlock.Put(
-			br.writeLocation.Offset,
-			br.readBlock.Get(br.readOffset, br.writeLocation.SizeBytes))
-		if err != nil {
-			break
-		}
-		blobsRefreshedSuccessfully++
-	}
+	for _, blobDigest := range old {
+		if readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator); err == nil {
+			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
+				// Blob is present and still old.
+				// Allocate space for a copy.
+				writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
+				if err != nil {
+					return digest.EmptySet, err
+				}
+				b := readBlock.b.Get(blobDigest, readLocation.OffsetBytes, readLocation.SizeBytes)
 
-	// Adjust the offset store to let all blobs point to their new
-	// locations in the "new" blocks.
-	if blobsRefreshedSuccessfully > 0 {
-		ba.lock.Lock()
-		for _, br := range blobRefreshes[:blobsRefreshedSuccessfully] {
-			putErr := ba.digestLocationMap.Put(br.digest, &ba.locationValidator, br.writeLocation)
-			if err == nil {
-				err = putErr
+				// Copy the data while unlocked, so that
+				// concurrent requests for non-old data
+				// continue to be serviced.
+				writeBlock.acquire()
+				ba.lock.Unlock()
+				err = writeBlock.b.Put(writeLocation.OffsetBytes, b)
+				ba.lock.Lock()
+				writeBlock.release()
+				if err != nil {
+					return digest.EmptySet, err
+				}
+
+				if err := ba.digestLocationMap.Put(blobDigest, &ba.locationValidator, writeLocation); err != nil {
+					return digest.EmptySet, err
+				}
+				blobsRefreshedSuccessfully++
 			}
+		} else if status.Code(err) == codes.NotFound {
+			// Blob disappeared after the first iteration.
+			missing.Add(blobDigest)
+		} else {
+			return digest.EmptySet, err
 		}
-		ba.lock.Unlock()
+		ba.oldBlobRotationToNewFindMissing.Observe(float64(blobsRefreshedSuccessfully))
 	}
-	return missing.Build(), err
+	return missing.Build(), nil
 }

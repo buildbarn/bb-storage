@@ -22,9 +22,9 @@ func TestInMemoryLocationRecordArray(t *testing.T) {
 				"3e25960a79dbc69b674cd4ec67a72c62",
 				123)),
 		Location: local.Location{
-			BlockID:   123,
-			Offset:    456,
-			SizeBytes: 789,
+			BlockID:     123,
+			OffsetBytes: 456,
+			SizeBytes:   789,
 		},
 	}
 	array.Put(123, record1)
@@ -38,9 +38,9 @@ func TestInMemoryLocationRecordArray(t *testing.T) {
 				"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 				123)),
 		Location: local.Location{
-			BlockID:   483,
-			Offset:    32984729387,
-			SizeBytes: 58974582,
+			BlockID:     483,
+			OffsetBytes: 32984729387,
+			SizeBytes:   58974582,
 		},
 	}
 	array.Put(123, record2)

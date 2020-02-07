@@ -23,9 +23,10 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		block := mock.NewMockBlock(ctrl)
 		blocks = append(blocks, block)
-		blockAllocator.EXPECT().NewBlock().Return(block)
+		blockAllocator.EXPECT().NewBlock().Return(block, nil)
 	}
-	blobAccess := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 16, 2, 4, 4)
+	blobAccess, err := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 1, 16, 2, 4, 4)
+	require.NoError(t, err)
 
 	// After starting up, there should be a uniform distribution on
 	// the "current" blocks and an inverse exponential distribution
@@ -37,9 +38,9 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 			for k := 0; k < allocationAttemptsPerBlock[j]; k++ {
 				blocks[j].EXPECT().Put(int64(0), gomock.Any()).Return(nil)
 				digestLocationMap.EXPECT().Put(digest, gomock.Any(), local.Location{
-					BlockID:   3 + j,
-					Offset:    0,
-					SizeBytes: 0,
+					BlockID:     3 + j,
+					OffsetBytes: 0,
+					SizeBytes:   0,
 				})
 				require.NoError(t, blobAccess.Put(ctx, digest, buffer.NewValidatedBufferFromByteSlice(nil)))
 			}

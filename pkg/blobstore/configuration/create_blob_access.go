@@ -325,8 +325,6 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		}
 		implementation = blobstore.NewMirroredBlobAccess(backendA, backendB)
 	case *pb.BlobAccessConfiguration_Local:
-		backendType = "local"
-
 		var digestLocationMap local.DigestLocationMap
 		switch options.storageType {
 		case blobstore.CASStorageType:
@@ -345,15 +343,56 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			digestLocationMap = local.NewPerInstanceDigestLocationMap(maps)
 		}
 
-		implementation = local.NewLocalBlobAccess(
+		var sectorSizeBytes int
+		var blockSectorCount int64
+		var blockAllocator local.BlockAllocator
+		switch dataBackend := backend.Local.DataBackend.(type) {
+		case *pb.LocalBlobAccessConfiguration_InMemory_:
+			backendType = "local_in_memory"
+			// All data must be stored in memory. Because we
+			// are not dealing with physical storage, there
+			// is no need to take sector sizes into account.
+			// Use a sector size of 1 byte to achieve
+			// maximum storage density.
+			sectorSizeBytes = 1
+			blockSectorCount = dataBackend.InMemory.BlockSizeBytes
+			blockAllocator = local.NewInMemoryBlockAllocator(int(dataBackend.InMemory.BlockSizeBytes))
+		case *pb.LocalBlobAccessConfiguration_BlockDevice_:
+			backendType = "local_block_device"
+			// Data may be stored on a block device that is
+			// memory mapped. Automatically determine the
+			// block size based on the size of the block
+			// device and the number of blocks.
+			var f local.ReadWriterAt
+			var sectorCount int64
+			var err error
+			f, sectorSizeBytes, sectorCount, err = memoryMapBlockDevice(dataBackend.BlockDevice.Path)
+			if err != nil {
+				return nil, util.StatusWrapf(err, "Failed to open block device %#v", dataBackend.BlockDevice.Path)
+			}
+			blockCount := dataBackend.BlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
+			blockSectorCount = sectorCount / int64(blockCount)
+			blockAllocator = local.NewPartitioningBlockAllocator(
+				f,
+				options.storageType,
+				sectorSizeBytes,
+				blockSectorCount,
+				int(blockCount))
+		}
+
+		var err error
+		implementation, err = local.NewLocalBlobAccess(
 			digestLocationMap,
-			local.NewInMemoryBlockAllocator(
-				int(backend.Local.BlockSizeBytes)),
+			blockAllocator,
 			options.storageTypeName,
-			backend.Local.BlockSizeBytes,
+			sectorSizeBytes,
+			blockSectorCount,
 			int(backend.Local.OldBlocks),
 			int(backend.Local.CurrentBlocks),
 			int(backend.Local.NewBlocks))
+		if err != nil {
+			return nil, err
+		}
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
 		backendType = "existence_caching"
 		base, err := createBlobAccess(backend.ExistenceCaching.Backend, options)

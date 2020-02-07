@@ -74,8 +74,8 @@ message BlobAccessConfiguration {
     // Store blobs on the local system.
     //
     // TODO: Right now this backend can only be used to store data in
-    // memory. We should work towards letting this backend replace
-    // circular by supporting on-disk storage.
+    // a non-persistent way. We should work towards letting this backend
+    // replace circular by supporting persistent on-disk storage.
     LocalBlobAccessConfiguration local = 15;
 
     // Cache knowledge of which blobs exist locally.
@@ -330,14 +330,6 @@ message LocalBlobAccessConfiguration {
   // Recommended value: 32
   int64 digest_location_map_maximum_put_attempts = 3;
 
-  // Data is stored in a list of blocks. The total number of blocks
-  // constant over time, with small fluctuations to deal with lingering
-  // requests when removing a block.
-  //
-  // Recommended value: (total space available) /
-  //                    (old_blocks + current_blocks + new_blocks)
-  int64 block_size_bytes = 4;
-
   // The number of blocks, where attempting to access any data stored
   // within will cause it to be refreshed (i.e., copied into new
   // blocks).
@@ -379,6 +371,47 @@ message LocalBlobAccessConfiguration {
   // stored together. For the Action Cache, this field is required, as
   // every instance needs its own digest-location map.
   repeated string instances = 8;
+
+  message InMemory {
+    // Data is stored in a list of blocks. The total number of blocks
+    // constant over time, with small fluctuations to deal with lingering
+    // requests when removing a block. This option sets the size of an
+    // individual block.
+    //
+    // Recommended value: (total space available) /
+    //                    (old_blocks + current_blocks + new_blocks)
+    int64 block_size_bytes = 1;
+  }
+
+  message BlockDevice {
+    // Path of the block device where data needs to be stored.
+    string path = 1;
+
+    // To deal with lingering read requests, a small number of old
+    // blocks may need to be retained for a short period of time. This
+    // option determines how many of such blocks are allocated.
+    //
+    // Unlike in-memory storage, where the block size is configured
+    // explicitly, block device backed storage automatically infers an
+    // optimal block size. The block size is equal to:
+    //
+    // block_size = (size of block device) /
+    //              (spare_blocks + old_blocks + current_blocks + new_blocks)
+    //
+    // Recommended value: 3
+    int32 spare_blocks = 2;
+  }
+
+  oneof data_backend {
+    // Store all data in memory.
+    InMemory in_memory = 9;
+
+    // Store the blocks containing data directly on a block device. The
+    // digest-location map is still stored in memory, meaning that
+    // setting this option does not introduce persistency. It is only
+    // intended to grow capacity beyond the size of memory.
+    BlockDevice block_device = 10;
+  }
 }
 
 message ExistenceCachingBlobAccessConfiguration {

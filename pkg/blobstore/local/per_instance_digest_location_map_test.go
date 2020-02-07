@@ -30,9 +30,9 @@ func TestPerInstanceDigestLocationMap(t *testing.T) {
 		NewestBlockID: 15,
 	}
 	location := local.Location{
-		BlockID:   14,
-		Offset:    21,
-		SizeBytes: 30,
+		BlockID:     14,
+		OffsetBytes: 21,
+		SizeBytes:   30,
 	}
 
 	t.Run("GetValid", func(t *testing.T) {

@@ -24,19 +24,19 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		NewestBlockID: 20,
 	}
 	outdatedLocation := local.Location{
-		BlockID:   12,
-		Offset:    923843,
-		SizeBytes: 8975495,
+		BlockID:     12,
+		OffsetBytes: 923843,
+		SizeBytes:   8975495,
 	}
 	oldLocation := local.Location{
-		BlockID:   14,
-		Offset:    859,
-		SizeBytes: 12930,
+		BlockID:     14,
+		OffsetBytes: 859,
+		SizeBytes:   12930,
 	}
 	newLocation := local.Location{
-		BlockID:   17,
-		Offset:    864,
-		SizeBytes: 12,
+		BlockID:     17,
+		OffsetBytes: 864,
+		SizeBytes:   12,
 	}
 
 	t.Run("SimpleInsertion", func(t *testing.T) {
