@@ -86,20 +86,31 @@ func (ba *metricsBlobAccess) updateDurationSeconds(vec prometheus.ObserverVec, c
 }
 
 func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	ba.getBlobSizeBytes.Observe(float64(digest.GetSizeBytes()))
-	return buffer.WithErrorHandler(
+	b := buffer.WithErrorHandler(
 		ba.blobAccess.Get(ctx, digest),
 		&metricsErrorHandler{
 			blobAccess: ba,
 			timeStart:  ba.clock.Now(),
 			errorCode:  codes.OK,
 		})
+	if sizeBytes, err := b.GetSizeBytes(); err == nil {
+		ba.getBlobSizeBytes.Observe(float64(sizeBytes))
+	}
+	return b
 }
 
 func (ba *metricsBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	ba.putBlobSizeBytes.Observe(float64(digest.GetSizeBytes()))
+	// If the Buffer is in a known error state, return the error
+	// here instead of propagating the error to the underlying
+	// BlobAccess. Such a Put() call wouldn't have any effect.
+	sizeBytes, err := b.GetSizeBytes()
+	if err != nil {
+		return err
+	}
+	ba.putBlobSizeBytes.Observe(float64(sizeBytes))
+
 	timeStart := ba.clock.Now()
-	err := ba.blobAccess.Put(ctx, digest, b)
+	err = ba.blobAccess.Put(ctx, digest, b)
 	ba.updateDurationSeconds(ba.putDurationSeconds, status.Code(err), timeStart)
 	return err
 }
