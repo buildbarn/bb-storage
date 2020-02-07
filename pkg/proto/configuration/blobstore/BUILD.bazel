@@ -7,9 +7,11 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/digest:digest_proto",
+        "//pkg/proto/configuration/eviction:eviction_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/tls:tls_proto",
         "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:empty_proto",
         "@go_googleapis//google/rpc:status_proto",
     ],
 )
@@ -21,6 +23,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/digest:go_default_library",
+        "//pkg/proto/configuration/eviction:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
         "//pkg/proto/configuration/tls:go_default_library",
         "@go_googleapis//google/rpc:status_go_proto",

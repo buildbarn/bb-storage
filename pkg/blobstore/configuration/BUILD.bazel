@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "create_blob_access.go",
+        "create_blob_replicator.go",
         "memory_map_block_device_disabled.go",
         "memory_map_block_device_linux.go",
     ],
@@ -13,6 +14,7 @@ go_library(
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/circular:go_default_library",
         "//pkg/blobstore/local:go_default_library",
+        "//pkg/blobstore/mirrored:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/digest:go_default_library",

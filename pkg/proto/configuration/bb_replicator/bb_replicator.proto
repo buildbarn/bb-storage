@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package buildbarn.configuration.bb_replicator;
+
+import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator";
+
+message ApplicationConfiguration {
+  // Address on which to listen to expose Prometheus metrics.
+  string http_listen_address = 1;
+
+  // gRPC servers to spawn to listen for requests from clients.
+  repeated buildbarn.configuration.grpc.GRPCServerConfiguration grpc_servers =
+      2;
+
+  // Content Addressable Storage where data needs to be read.
+  buildbarn.configuration.blobstore.BlobAccessConfiguration source = 3;
+
+  // Content Addressable Storage where data needs to be written.
+  buildbarn.configuration.blobstore.BlobAccessConfiguration sink = 4;
+
+  // Content Addressable Storage where data needs to be written.
+  buildbarn.configuration.blobstore.BlobReplicatorConfiguration replicator = 5;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 6;
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -330,7 +331,15 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		if err != nil {
 			return nil, err
 		}
-		implementation = blobstore.NewMirroredBlobAccess(backendA, backendB)
+		replicatorAToB, err := CreateBlobReplicatorFromConfig(backend.Mirrored.ReplicatorAToB, backendA, backendB, options.keyFormat)
+		if err != nil {
+			return nil, err
+		}
+		replicatorBToA, err := CreateBlobReplicatorFromConfig(backend.Mirrored.ReplicatorBToA, backendB, backendA, options.keyFormat)
+		if err != nil {
+			return nil, err
+		}
+		implementation = mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 	case *pb.BlobAccessConfiguration_Local:
 		var digestLocationMap local.DigestLocationMap
 		switch options.storageType {

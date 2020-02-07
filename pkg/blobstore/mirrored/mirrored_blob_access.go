@@ -1,10 +1,11 @@
-package blobstore
+package mirrored
 
 import (
 	"context"
 	"sync"
 	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -31,9 +32,11 @@ var (
 )
 
 type mirroredBlobAccess struct {
-	backendA BlobAccess
-	backendB BlobAccess
-	round    uint32
+	backendA       blobstore.BlobAccess
+	backendB       blobstore.BlobAccess
+	replicatorAToB BlobReplicator
+	replicatorBToA BlobReplicator
+	round          uint32
 }
 
 // NewMirroredBlobAccess creates a BlobAccess that applies operations to
@@ -41,36 +44,40 @@ type mirroredBlobAccess struct {
 // inconsistencies between the two storage backends are detected (i.e.,
 // a blob is only present in one of the backends), the blob is
 // replicated.
-func NewMirroredBlobAccess(backendA BlobAccess, backendB BlobAccess) BlobAccess {
+func NewMirroredBlobAccess(backendA blobstore.BlobAccess, backendB blobstore.BlobAccess, replicatorAToB BlobReplicator, replicatorBToA BlobReplicator) blobstore.BlobAccess {
 	mirroredBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(mirroredBlobAccessFindMissingSynchronizations)
 	})
 
 	return &mirroredBlobAccess{
-		backendA: backendA,
-		backendB: backendB,
+		backendA:       backendA,
+		backendB:       backendB,
+		replicatorAToB: replicatorAToB,
+		replicatorBToA: replicatorBToA,
 	}
 }
 
 func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	// Alternate requests between storage backends.
-	var firstBackend, secondBackend BlobAccess
+	var firstBackend blobstore.BlobAccess
 	var firstBackendName, secondBackendName string
+	var replicator BlobReplicator
 	if atomic.AddUint32(&ba.round, 1)%2 == 1 {
-		firstBackend, secondBackend = ba.backendA, ba.backendB
+		firstBackend = ba.backendA
 		firstBackendName, secondBackendName = "Backend A", "Backend B"
+		replicator = ba.replicatorBToA
 	} else {
-		firstBackend, secondBackend = ba.backendB, ba.backendA
+		firstBackend = ba.backendB
 		firstBackendName, secondBackendName = "Backend B", "Backend A"
+		replicator = ba.replicatorAToB
 	}
 
 	return buffer.WithErrorHandler(
 		firstBackend.Get(ctx, digest),
 		&mirroredErrorHandler{
-			firstBackend:      firstBackend,
 			firstBackendName:  firstBackendName,
-			secondBackend:     secondBackend,
 			secondBackendName: secondBackendName,
+			replicator:        replicator,
 			context:           ctx,
 			digest:            digest,
 		})
@@ -93,6 +100,16 @@ func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b b
 	return nil
 }
 
+type findMissingResults struct {
+	missing digest.Set
+	err     error
+}
+
+func callFindMissing(ctx context.Context, blobAccess blobstore.BlobAccess, digests digest.Set) findMissingResults {
+	missing, err := blobAccess.FindMissing(ctx, digests)
+	return findMissingResults{missing: missing, err: err}
+}
+
 func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Call FindMissing() on both backends.
 	resultsAChan := make(chan findMissingResults, 1)
@@ -108,38 +125,37 @@ func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 		return digest.EmptySet, util.StatusWrap(resultsB.err, "Backend B")
 	}
 
-	// Synchronize blobs that are missing in A from B.
+	// Determine inconsistencies between both backends.
 	missingFromA, missingFromBoth, missingFromB := digest.GetDifferenceAndIntersection(resultsA.missing, resultsB.missing)
-	for _, blobDigest := range missingFromA.Items() {
-		if err := ba.backendA.Put(ctx, blobDigest, ba.backendB.Get(ctx, blobDigest)); err != nil {
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to synchronize blob %s from backend B to backend A", blobDigest)
-		}
-	}
-
-	// Synchronize blobs that are missing in B from A.
-	for _, blobDigest := range missingFromB.Items() {
-		if err := ba.backendB.Put(ctx, blobDigest, ba.backendA.Get(ctx, blobDigest)); err != nil {
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to synchronize blob %s from backend A to backend B", blobDigest)
-		}
-	}
-
 	mirroredBlobAccessFindMissingSynchronizationsFromAToB.Observe(float64(missingFromB.Length()))
 	mirroredBlobAccessFindMissingSynchronizationsFromBToA.Observe(float64(missingFromA.Length()))
 
+	// Exchange objects back and forth.
+	errAToBChan := make(chan error, 1)
+	go func() {
+		errAToBChan <- ba.replicatorAToB.ReplicateMultiple(ctx, missingFromB)
+	}()
+	errBToA := ba.replicatorBToA.ReplicateMultiple(ctx, missingFromA)
+	errAToB := <-errAToBChan
+	if errAToB != nil {
+		return digest.EmptySet, util.StatusWrap(errAToB, "Failed to synchronize from backend A to backend B")
+	}
+	if errBToA != nil {
+		return digest.EmptySet, util.StatusWrap(errBToA, "Failed to synchronize from backend B to backend A")
+	}
 	return missingFromBoth, nil
 }
 
 type mirroredErrorHandler struct {
-	firstBackend      BlobAccess
 	firstBackendName  string
-	secondBackend     BlobAccess
 	secondBackendName string
+	replicator        BlobReplicator
 	context           context.Context
 	digest            digest.Digest
 }
 
 func (eh *mirroredErrorHandler) attemptedBothBackends() bool {
-	return eh.secondBackend == nil
+	return eh.replicator == nil
 }
 
 func (eh *mirroredErrorHandler) OnError(err error) (buffer.Buffer, error) {
@@ -161,17 +177,9 @@ func (eh *mirroredErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	// Consult the other storage backend. It may still have a copy
 	// of the object. Attempt to sync it back to repair this
 	// inconsistency.
-	b1, b2 := eh.secondBackend.Get(eh.context, eh.digest).CloneStream()
-	eh.secondBackend = nil
-	b1, t := buffer.WithBackgroundTask(b1)
-	go func() {
-		err := eh.firstBackend.Put(eh.context, eh.digest, b2)
-		if err != nil {
-			err = util.StatusWrap(err, eh.firstBackendName)
-		}
-		t.Finish(err)
-	}()
-	return b1, nil
+	b := eh.replicator.ReplicateSingle(eh.context, eh.digest)
+	eh.replicator = nil
+	return b, nil
 }
 
 func (eh *mirroredErrorHandler) Done() {}

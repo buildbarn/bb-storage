@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package buildbarn.replicator;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/replicator";
+
+// Replicator service, as implemented by bb_replicator.
+//
+// MirroredBlobAccess can be used to place two storage backends in a
+// mirrored setup. Because both storage backends operate autonomously,
+// it is not unusual for objects to only exist in one of the two storage
+// backends. MirroredBlobAccess is capable of repairing these
+// inconsistencies by replicating such objects on the fly.
+//
+// The downside of letting MirroredBlobAccess perform these replications
+// is that it may cause excessive traffic in case the number of clients
+// is large. It may also cause multiple clients to replicate the same
+// object.
+//
+// To mitigate this, MirroredBlobAccess is also capable of calling into
+// a dedicated gRPC service to perform these replications. Such a
+// service may deduplicate requests for the same object and impose
+// concurrency limits.
+//
+// This service is only designed to replicate objects stored in the
+// Content Addressable Storage (CAS). Traffic on the Action Cache (AC)
+// is typically low enough that a dedicated replication service is not
+// necessary.
+service Replicator {
+  rpc ReplicateBlobs(ReplicateBlobsRequest) returns (google.protobuf.Empty);
+}
+
+message ReplicateBlobsRequest {
+  // The instance name for all objects listed. Buildbarn generally
+  // ignores the instance name for objects stored in the Content
+  // Addressable Storage. This field is mainly present for consistency
+  // with REv2's FindMissingBlobsRequest.
+  string instance_name = 1;
+
+  // A list of blobs to replicate.
+  repeated build.bazel.remote.execution.v2.Digest blob_digests = 2;
+}
