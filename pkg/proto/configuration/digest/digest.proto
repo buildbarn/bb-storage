@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package buildbarn.configuration.digest;
+
+import "google/protobuf/duration.proto";
+import "pkg/proto/configuration/eviction/eviction.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest";
+
+message ExistenceCacheConfiguration {
+  // The number of elements that may be stored in this cache.
+  int64 cache_size = 1;
+
+  // The validity of entries stored in the cache. This value may not
+  // exceed the worst-case retention of the backend service, as that
+  // would cause nonexistent objects to be announced as present.
+  //
+  // Adequate performance gains can already be achieved by setting this
+  // to a low value (e.g., '1m').
+  google.protobuf.Duration cache_duration = 2;
+
+  // The cache replacement policy that should be applied. It is advised
+  // that this is set to LEAST_RECENTLY_USED.
+  buildbarn.configuration.eviction.CacheReplacementPolicy
+      cache_replacement_policy = 3;
+}

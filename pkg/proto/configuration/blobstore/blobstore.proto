@@ -4,6 +4,7 @@ package buildbarn.configuration.blobstore;
 
 import "google/rpc/status.proto";
 import "google/protobuf/duration.proto";
+import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -76,6 +77,27 @@ message BlobAccessConfiguration {
     // memory. We should work towards letting this backend replace
     // circular by supporting on-disk storage.
     LocalBlobAccessConfiguration local = 15;
+
+    // Cache knowledge of which blobs exist locally.
+    //
+    // Bazel doesn't have a client-side cache with knowledge on which
+    // objects are present inside a remote cache. This means that it
+    // will often call ContentAddressableStorage.FindMissingBlobs() with
+    // sets that have a strong overlap with what was requested
+    // previously.
+    //
+    // This decorator can be used to introduce such a cache server side.
+    // It is especially useful for multi-level storage setups. It can
+    // cause a reduction in load on storage nodes when this cache
+    // enabled on frontend nodes.
+    //
+    // It only makes sense to use this decorator for the Content
+    // Addressable Storage, as FindMissingBlobs() is never called
+    // against the Action Cache. The storage backend must also be robust
+    // enough to guarantee that objects don't disappear shortly after
+    // calling ContentAddressableStorage.FindMissingBlobs(), as that
+    // would cause this decorator to cache invalid data.
+    ExistenceCachingBlobAccessConfiguration existence_caching = 16;
   }
 }
 
@@ -357,4 +379,16 @@ message LocalBlobAccessConfiguration {
   // stored together. For the Action Cache, this field is required, as
   // every instance needs its own digest-location map.
   repeated string instances = 8;
+}
+
+message ExistenceCachingBlobAccessConfiguration {
+  // The backend for which results of
+  // ContentAddressableStorage.FindMissingBlobs() results need to be
+  // cached.
+  BlobAccessConfiguration backend = 1;
+
+  // Parameters for the cache data structure that is used by this
+  // decorator.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
+      2;
 }

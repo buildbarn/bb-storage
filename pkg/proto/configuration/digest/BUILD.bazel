@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "digest_proto",
+    srcs = ["digest.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/eviction:eviction_proto",
+        "@com_google_protobuf//:duration_proto",
+    ],
+)
+
+go_proto_library(
+    name = "digest_go_proto",
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest",
+    proto = ":digest_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/eviction:go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":digest_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest",
+    visibility = ["//visibility:public"],
+)

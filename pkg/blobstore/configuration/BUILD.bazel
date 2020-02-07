@@ -11,6 +11,7 @@ go_library(
         "//pkg/blobstore/local:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
         "//pkg/clock:go_default_library",
+        "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
         "//pkg/grpc:go_default_library",
         "//pkg/proto/configuration/blobstore:go_default_library",
