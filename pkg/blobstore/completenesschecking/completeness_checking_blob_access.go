@@ -125,9 +125,17 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	}
 
 	// Iterate over all remoteexecution.Digest fields contained
-	// within the ActionResult.
+	// within the ActionResult. Check the existence of output
+	// directories, even though they are loaded through GetTree()
+	// later on. GetTree() may not necessarily cause those objects
+	// to be touched.
 	for _, outputFile := range actionResult.OutputFiles {
 		if err := findMissingQueue.add(outputFile.Digest); err != nil {
+			return err
+		}
+	}
+	for _, outputDirectory := range actionResult.OutputDirectories {
+		if err := findMissingQueue.add(outputDirectory.TreeDigest); err != nil {
 			return err
 		}
 	}

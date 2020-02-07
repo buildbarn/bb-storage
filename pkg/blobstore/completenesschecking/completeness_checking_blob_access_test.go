@@ -148,11 +148,11 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// Successful checking of existence of dependencies.
-		// Below is an ActionResult that contains four
-		// references to blobs and one to a Tree object. The
-		// Tree contains two references to files. As the batch
-		// size of FindMissing() is five, we should see two
-		// FindMissing() calls (as ceil((4 + 2) / 5) == 2).
+		// Below is an ActionResult that contains five
+		// references to blobs, of which one is a Tree object.
+		// The Tree contains two references to files. As the
+		// batch size of FindMissing() is five, we should see
+		// two FindMissing() calls (as ceil((5 + 2) / 5) == 2).
 		actionResult := remoteexecution.ActionResult{
 			OutputFiles: []*remoteexecution.OutputFile{
 				{
@@ -237,14 +237,15 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", "38837949e2518a6e8a912ffb29942788", 10)).
 				Add(digest.MustNewDigest("hello", "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
+				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("hello", "136de6de72514772b9302d4776e5c3d2", 4)).
 				Add(digest.MustNewDigest("hello", "41d7247285b686496aa91b56b4c48395", 11)).
-				Add(digest.MustNewDigest("hello", "eda14e187a768b38eda999457c9cca1e", 6)).
 				Build(),
 		).Return(digest.EmptySet, nil)
 		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", "eda14e187a768b38eda999457c9cca1e", 6)).
 				Add(digest.MustNewDigest("hello", "6c396013ff0ebff6a2a96cdc20a4ba4c", 5)).
 				Build(),
 		).Return(digest.EmptySet, nil)
