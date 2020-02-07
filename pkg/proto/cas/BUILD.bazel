@@ -1,9 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
-# Force the use of @com_github_bazelbuild_remote_apis.
-# gazelle:ignore
-
 proto_library(
     name = "cas_proto",
     srcs = ["cas.proto"],
