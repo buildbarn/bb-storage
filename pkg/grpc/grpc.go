@@ -93,7 +93,7 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.GRP
 		grpc_prometheus.Register(s)
 
 		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
-			return status.Error(codes.InvalidArgument,"GRPC server configured without any listen addresses or paths")
+			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
 		}
 
 		// TCP sockets.
