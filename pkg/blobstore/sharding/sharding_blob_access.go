@@ -6,6 +6,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"go.opencensus.io/trace"
 )
 
 type shardingBlobAccess struct {
@@ -45,10 +47,16 @@ func (ba *shardingBlobAccess) getBackend(digest *util.Digest) blobstore.BlobAcce
 }
 
 func (ba *shardingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ShardingBlobAccess.Get")
+	defer span.End()
+
 	return ba.getBackend(digest).Get(ctx, digest)
 }
 
 func (ba *shardingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ShardingBlobAccess.Put")
+	defer span.End()
+
 	return ba.getBackend(digest).Put(ctx, digest, b)
 }
 
@@ -63,6 +71,9 @@ func callFindMissing(ctx context.Context, blobAccess blobstore.BlobAccess, diges
 }
 
 func (ba *shardingBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ShardingBlobAccess.FindMissing")
+	defer span.End()
+
 	// Determine which backends to contact.
 	digestsPerBackend := map[blobstore.BlobAccess][]*util.Digest{}
 	for _, digest := range digests {

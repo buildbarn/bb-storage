@@ -14,6 +14,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type contentAddressableStorageBlobAccess struct {
@@ -55,6 +57,9 @@ func (r *byteStreamChunkReader) Close() {
 }
 
 func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ContentAddressableStorageBlobAccess.Get")
+	defer span.End()
+
 	var readRequest bytestream.ReadRequest
 	if instance := digest.GetInstance(); instance == "" {
 		readRequest.ResourceName = fmt.Sprintf("blobs/%s/%d", digest.GetHashString(), digest.GetSizeBytes())
@@ -73,6 +78,9 @@ func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest *
 }
 
 func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ContentAddressableStorageBlobAccess.Put")
+	defer span.End()
+
 	r := b.ToChunkReader(0, ba.readChunkSize)
 	defer r.Close()
 
@@ -119,6 +127,9 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest *
 }
 
 func (ba *contentAddressableStorageBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ContentAddressableStorageBlobAccess.FindMissing")
+	defer span.End()
+
 	// Convert digests to line format.
 	if len(digests) == 0 {
 		return nil, nil

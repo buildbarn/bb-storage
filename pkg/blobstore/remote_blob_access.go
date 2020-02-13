@@ -12,6 +12,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type remoteBlobAccess struct {
@@ -36,6 +38,9 @@ func NewRemoteBlobAccess(address string, prefix string, storageType StorageType)
 }
 
 func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RemoteBlobAccess.Get")
+	defer span.End()
+
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 	if err != nil {
@@ -55,6 +60,9 @@ func (ba *remoteBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer
 }
 
 func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RemoteBlobAccess.Put")
+	defer span.End()
+
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -73,6 +81,9 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest *util.Digest, b buff
 }
 
 func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RemoteBlobAccess.FindMissing")
+	defer span.End()
+
 	var missing []*util.Digest
 	for _, digest := range digests {
 		url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())

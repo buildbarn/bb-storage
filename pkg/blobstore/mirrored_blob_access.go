@@ -11,6 +11,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 var (
@@ -52,6 +54,9 @@ func NewMirroredBlobAccess(backendA BlobAccess, backendB BlobAccess) BlobAccess 
 }
 
 func (ba *mirroredBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.MirroredBlobAccess.Get")
+	defer span.End()
+
 	// Alternate requests between storage backends.
 	var firstBackend, secondBackend BlobAccess
 	var firstBackendName, secondBackendName string
@@ -76,6 +81,9 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest *util.Digest) buff
 }
 
 func (ba *mirroredBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.MirroredBlobAccess.Get")
+	defer span.End()
+
 	// Store object in both storage backends.
 	b1, b2 := b.CloneStream()
 	errAChan := make(chan error, 1)

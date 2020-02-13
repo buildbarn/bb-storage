@@ -23,6 +23,7 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
+        "@io_opencensus_go//trace:go_default_library",
     ],
 )
 

@@ -12,6 +12,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type cloudBlobAccess struct {
@@ -31,6 +33,9 @@ func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, storageType Stora
 }
 
 func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.CloudBlobAccess.Get")
+	defer span.End()
+
 	key := ba.getKey(digest)
 	result, err := ba.bucket.NewReader(ctx, key, nil)
 	if err != nil {
@@ -48,6 +53,9 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 }
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.CloudBlobAccess.Put")
+	defer span.End()
+
 	r := b.ToReader()
 	defer r.Close()
 
@@ -70,6 +78,9 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffe
 }
 
 func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.CloudBlobAccess.FindMissing")
+	defer span.End()
+
 	var missing []*util.Digest
 	for _, digest := range digests {
 		if exists, err := ba.bucket.Exists(ctx, ba.getKey(digest)); err != nil {

@@ -10,6 +10,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type actionCacheServer struct {
@@ -29,6 +31,8 @@ func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstan
 }
 
 func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecution.GetActionResultRequest) (*remoteexecution.ActionResult, error) {
+	ctx, span := trace.StartSpan(ctx, "actionResult.Get")
+	defer span.End()
 	digest, err := util.NewDigest(in.InstanceName, in.ActionDigest)
 	if err != nil {
 		return nil, err
@@ -37,6 +41,8 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {
+	ctx, span := trace.StartSpan(ctx, "actionResult.Update")
+	defer span.End()
 	digest, err := util.NewDigest(in.InstanceName, in.ActionDigest)
 	if err != nil {
 		return nil, err

@@ -65,7 +65,7 @@ func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateSt
 }
 
 func (ba *circularBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
-	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Get")
+	ctx, span := trace.StartSpan(ctx, "blobstore.CircularBlobAccess.Get")
 	defer span.End()
 
 	ba.lock.Lock()
@@ -105,7 +105,7 @@ func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, b bu
 	r := b.ToReader()
 	defer r.Close()
 
-	ctx, span := trace.StartSpan(ctx, "circularBlobAccess.Put")
+	ctx, span := trace.StartSpan(ctx, "blobstore.CircularBlobAccess.Put")
 	defer span.End()
 
 	// Allocate space in the data store.
@@ -138,6 +138,9 @@ func (ba *circularBlobAccess) Put(ctx context.Context, digest *util.Digest, b bu
 }
 
 func (ba *circularBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.CircularBlobAccess.FindMissing")
+	defer span.End()
+
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
 

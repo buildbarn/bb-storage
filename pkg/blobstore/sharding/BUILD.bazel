@@ -14,6 +14,7 @@ go_library(
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_lazybeaver_xorshift//:go_default_library",
+        "@io_opencensus_go//trace:go_default_library",
     ],
 )
 

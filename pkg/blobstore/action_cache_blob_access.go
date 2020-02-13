@@ -10,6 +10,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type actionCacheBlobAccess struct {
@@ -29,6 +31,9 @@ func NewActionCacheBlobAccess(client *grpc.ClientConn, maximumMessageSizeBytes i
 }
 
 func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ActionCacheBlobAccess.Get")
+	defer span.End()
+
 	actionResult, err := ba.actionCacheClient.GetActionResult(ctx, &remoteexecution.GetActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
@@ -40,8 +45,16 @@ func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest *util.Digest) b
 }
 
 func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ActionCacheBlobAccess.Put")
+	span.AddAttributes(
+		trace.StringAttribute("instance-name", digest.GetInstance()),
+		trace.StringAttribute("digest-hash", digest.GetHashString()),
+	)
+	defer span.End()
+
 	actionResult, err := b.ToActionResult(ba.maximumMessageSizeBytes)
 	if err != nil {
+		span.SetStatus(trace.Status{Code: 1, Message: err.Error()})
 		return err
 	}
 	_, err = ba.actionCacheClient.UpdateActionResult(ctx, &remoteexecution.UpdateActionResultRequest{

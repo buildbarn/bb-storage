@@ -14,6 +14,8 @@ import (
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 // parseResourceNameWrite parses resource name strings in one of the following two forms:
@@ -60,6 +62,9 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int) byt
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
+	ctx, span := trace.StartSpan(out.Context(), "cas.ByteStreamServer.Read")
+	defer span.End()
+
 	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
@@ -68,7 +73,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		return err
 	}
 
-	r := s.blobAccess.Get(out.Context(), digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
+	r := s.blobAccess.Get(ctx, digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
 	defer r.Close()
 
 	for {

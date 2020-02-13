@@ -8,6 +8,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type readCachingBlobAccess struct {
@@ -28,6 +30,9 @@ func NewReadCachingBlobAccess(slow BlobAccess, fast BlobAccess) BlobAccess {
 }
 
 func (ba *readCachingBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ReadCachingBlobAccess.Get")
+	defer span.End()
+
 	return buffer.WithErrorHandler(
 		ba.fast.Get(ctx, digest),
 		&readCachingErrorHandler{
@@ -38,10 +43,14 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest *util.Digest) b
 }
 
 func (ba *readCachingBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ReadCachingBlobAccess.Put")
+	defer span.End()
 	return ba.slow.Put(ctx, digest, b)
 }
 
 func (ba *readCachingBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.ReadCachingBlobAccess.FindMissing")
+	defer span.End()
 	return ba.slow.FindMissing(ctx, digests)
 }
 

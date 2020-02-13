@@ -10,6 +10,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 type contentAddressableStorageServer struct {
@@ -25,6 +27,9 @@ func NewContentAddressableStorageServer(contentAddressableStorage blobstore.Blob
 }
 
 func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
+	ctx, span := trace.StartSpan(ctx, "cas.FindMissingBlobs")
+	defer span.End()
+
 	inDigests := make([]*util.Digest, 0, len(in.BlobDigests))
 	for _, partialDigest := range in.BlobDigests {
 		digest, err := util.NewDigest(in.InstanceName, partialDigest)
@@ -52,9 +57,13 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
 	// Asynchronously call Put() for every blob.
+	ctx, span := trace.StartSpan(ctx, "cas.UpdateBlobs")
+	defer span.End()
 	responsesChan := make(chan *remoteexecution.BatchUpdateBlobsResponse_Response, len(in.Requests))
 	for _, request := range in.Requests {
 		go func(request *remoteexecution.BatchUpdateBlobsRequest_Request) {
+			ctx, innerSpan := trace.StartSpan(ctx, "cas.UpdateBlobs.Response")
+			defer innerSpan.End()
 			digest, err := util.NewDigest(in.InstanceName, request.Digest)
 			if err == nil {
 				err = s.contentAddressableStorage.Put(

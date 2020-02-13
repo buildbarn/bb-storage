@@ -10,6 +10,8 @@ import (
 	"github.com/go-redis/redis"
 
 	"google.golang.org/grpc/codes"
+
+	"go.opencensus.io/trace"
 )
 
 // RedisClient is an interface that contains the set of functions of the
@@ -45,6 +47,9 @@ func NewRedisBlobAccess(redisClient RedisClient,
 }
 
 func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RedisBlobAccess.Get")
+	defer span.End()
+
 	if err := util.StatusFromContext(ctx); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
@@ -64,6 +69,9 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 }
 
 func (ba *redisBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RedisBlobAccess.Put")
+	defer span.End()
+
 	if err := util.StatusFromContext(ctx); err != nil {
 		b.Discard()
 		return err
@@ -101,6 +109,9 @@ func (ba *redisBlobAccess) waitIfReplicationEnabled() error {
 }
 
 func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.RedisBlobAccess.FindMissing")
+	defer span.End()
+
 	if err := util.StatusFromContext(ctx); err != nil {
 		return nil, err
 	}

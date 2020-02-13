@@ -41,7 +41,8 @@ func NewGRPCClientFromConfiguration(configuration *configuration.GRPCClientConfi
 		configuration.Address,
 		securityOption,
 		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
+		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+		grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
 }
 
 // NewGRPCServersFromConfigurationAndServe creates a series of gRPC

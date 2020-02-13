@@ -11,6 +11,8 @@ import (
 	"google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 // BuildQueueGetter is the callback invoked by the demultiplexing build
@@ -34,6 +36,9 @@ func NewDemultiplexingBuildQueue(buildQueueGetter BuildQueueGetter) BuildQueue {
 }
 
 func (bq *demultiplexingBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
+	ctx, span := trace.StartSpan(ctx, "buildqueue.Demultiplexing.GetCapabilities")
+	defer span.End()
+
 	if strings.ContainsRune(in.InstanceName, '|') {
 		return nil, status.Errorf(codes.InvalidArgument, "Instance name cannot contain a pipe character")
 	}
@@ -44,7 +49,20 @@ func (bq *demultiplexingBuildQueue) GetCapabilities(ctx context.Context, in *rem
 	return backend.GetCapabilities(ctx, in)
 }
 
+type executeServerWrapper struct {
+	remoteexecution.Execution_ExecuteServer
+	ctx context.Context
+}
+
+func (w executeServerWrapper) Context() context.Context { return w.ctx }
+
 func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
+	ctx, span := trace.StartSpan(out.Context(), "buildqueue.Demultiplexing.Execute")
+	span.AddAttributes(
+		trace.StringAttribute("instance-name", in.InstanceName),
+	)
+	defer span.End()
+
 	if strings.ContainsRune(in.InstanceName, '|') {
 		return status.Errorf(codes.InvalidArgument, "Instance name cannot contain a pipe character")
 	}
@@ -53,12 +71,22 @@ func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, 
 		return util.StatusWrapf(err, "Failed to obtain backend for instance %#v", in.InstanceName)
 	}
 	return backend.Execute(in, &operationNamePrepender{
-		Execution_ExecuteServer: out,
+		Execution_ExecuteServer: executeServerWrapper{Execution_ExecuteServer: out, ctx: ctx},
 		prefix:                  in.InstanceName,
 	})
 }
 
+type waitExecuteServerWrapper struct {
+	remoteexecution.Execution_WaitExecutionServer
+	ctx context.Context
+}
+
+func (w waitExecuteServerWrapper) Context() context.Context { return w.ctx }
+
 func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
+	ctx, span := trace.StartSpan(out.Context(), "buildqueue.Demultiplexing.WaitExecution")
+	defer span.End()
+
 	target := strings.SplitN(in.Name, "|", 2)
 	if len(target) != 2 {
 		return status.Errorf(codes.InvalidArgument, "Unable to extract instance from operation name")
@@ -67,10 +95,13 @@ func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecut
 	if err != nil {
 		return util.StatusWrapf(err, "Failed to obtain backend for instance %#v", target[0])
 	}
+	span.AddAttributes(
+		trace.StringAttribute("instance-name", target[0]),
+	)
 	requestCopy := *in
 	requestCopy.Name = target[1]
 	return backend.WaitExecution(in, &operationNamePrepender{
-		Execution_ExecuteServer: out,
+		Execution_ExecuteServer: waitExecuteServerWrapper{Execution_WaitExecutionServer: out, ctx: ctx},
 		prefix:                  target[1],
 	})
 }

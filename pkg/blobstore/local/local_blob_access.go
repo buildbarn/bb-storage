@@ -12,6 +12,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/trace"
 )
 
 var (
@@ -238,6 +240,9 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (Block, Location) {
 }
 
 func (ba *localBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.Buffer {
+	ctx, span := trace.StartSpan(ctx, "blobstore.LocalBlobAccess.Get")
+	defer span.End()
+
 	// Look up the blob in the offset store.
 	ba.lock.Lock()
 	readLocation, err := ba.digestLocationMap.Get(digest, &ba.locationValidator)
@@ -274,6 +279,9 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest *util.Digest) buffer.
 }
 
 func (ba *localBlobAccess) Put(ctx context.Context, digest *util.Digest, b buffer.Buffer) error {
+	ctx, span := trace.StartSpan(ctx, "blobstore.LocalBlobAccess.Put")
+	defer span.End()
+
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -311,6 +319,9 @@ type blobRefresh struct {
 }
 
 func (ba *localBlobAccess) FindMissing(ctx context.Context, digests []*util.Digest) ([]*util.Digest, error) {
+	ctx, span := trace.StartSpan(ctx, "blobstore.LocalBlobAccess.FindMissing")
+	defer span.End()
+
 	// Scan the offset store to determine which blobs are present.
 	ba.lock.Lock()
 	var missing []*util.Digest
