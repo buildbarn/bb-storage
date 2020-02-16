@@ -47,6 +47,9 @@ message BlobAccessConfiguration {
     SizeDistinguishingBlobAccessConfiguration size_distinguishing = 5;
 
     // Read objects from/write objects to a circular file on disk.
+    // TODO: CircularBlobAccess should be considered deprecated as it is
+    // prone to data corruption. LocalBlobAccess should be used instead
+    // if at all possible.
     CircularBlobAccessConfiguration circular = 6;
 
     // Read objects from/write objects to a GRPC service that
