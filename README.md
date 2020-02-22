@@ -1,4 +1,4 @@
-# The Buildbarn storage daemon [![Build status](https://badge.buildkite.com/212ccc2e6aab9f4df6490b30390492365c5641e65a768e5a51.svg)](https://buildkite.com/buildbarn/bb-storage) [![GoDoc](https://godoc.org/github.com/buildbarn/bb-storage?status.svg)](https://godoc.org/github.com/buildbarn/bb-storage)
+# The Buildbarn storage daemon [![Build status](https://github.com/buildbarn/bb-storage/workflows/CI/badge.svg)](https://github.com/buildbarn/bb-storage/actions) [![GoDoc](https://godoc.org/github.com/buildbarn/bb-storage?status.svg)](https://godoc.org/github.com/buildbarn/bb-storage)
 
 The Buildbarn project provides an implementation of the
 [Remote Execution protocol](https://github.com/bazelbuild/remote-apis).
