@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.grpc;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -14,6 +15,24 @@ message ClientConfiguration {
 
   // TLS configuration. TLS is not enabled when left unset.
   buildbarn.configuration.tls.ClientConfiguration tls = 2;
+
+  // Keepalive messages for point-to-point healthchecking. Keepalive is
+  // not enabled when left unset.
+  ClientKeepaliveConfiguration keepalive = 3;
+}
+
+message ClientKeepaliveConfiguration {
+  // Amount of time without server activity that should pass before the
+  // client starts sending keepalive requests.
+  google.protobuf.Duration time = 1;
+
+  // Amount of time the server may take to respond to keepalive
+  // requests.
+  google.protobuf.Duration timeout = 2;
+
+  // Whether the client should send keepalive requests even if no RPC
+  // activity is taking place.
+  bool permit_without_stream = 3;
 }
 
 message ServerConfiguration {

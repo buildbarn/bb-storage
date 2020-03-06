@@ -6,12 +6,14 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -36,22 +38,40 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
+	dialOptions := []grpc.DialOption{
+		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
+		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+	}
+
+	// Optional: TLS.
 	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(configuration.Tls)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create TLS configuration")
 	}
-	var securityOption grpc.DialOption
 	if tlsConfig != nil {
-		securityOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
-		securityOption = grpc.WithInsecure()
+		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
 
-	return grpc.Dial(
-		configuration.Address,
-		securityOption,
-		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor))
+	// Optional: Keepalive.
+	if configuration.Keepalive != nil {
+		time, err := ptypes.Duration(configuration.Keepalive.Time)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse keepalive time")
+		}
+		timeout, err := ptypes.Duration(configuration.Keepalive.Timeout)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse keepalive timeout")
+		}
+		dialOptions = append(dialOptions, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                time,
+			Timeout:             timeout,
+			PermitWithoutStream: configuration.Keepalive.PermitWithoutStream,
+		}))
+	}
+
+	return grpc.Dial(configuration.Address, dialOptions...)
 }
 
 // NewGRPCServersFromConfigurationAndServe creates a series of gRPC
