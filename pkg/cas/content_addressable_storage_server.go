@@ -47,7 +47,36 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in *remoteexecution.BatchReadBlobsRequest) (*remoteexecution.BatchReadBlobsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support batched reading of blobs")
+	// Asynchronously call Get() for every blob.
+	responsesChan := make(chan *remoteexecution.BatchReadBlobsResponse_Response, len(in.Digests))
+	for _, reqDigest := range in.Digests {
+		go func(reqDigest *remoteexecution.Digest) {
+			digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
+			var buf buffer.Buffer
+			if err == nil {
+				buf = s.contentAddressableStorage.Get(
+					ctx,
+					digest)
+			}
+			maxSizeBytes, err := buf.GetSizeBytes()
+			var data []byte
+			if err == nil {
+				data, err = buf.ToByteSlice(int(maxSizeBytes))
+			}
+			responsesChan <- &remoteexecution.BatchReadBlobsResponse_Response{
+				Digest: reqDigest,
+				Data:   data,
+				Status: status.Convert(err).Proto(),
+			}
+		}(reqDigest)
+	}
+
+	// Recombine results.
+	var response remoteexecution.BatchReadBlobsResponse
+	for i := 0; i < len(in.Digests); i++ {
+		response.Responses = append(response.Responses, <-responsesChan)
+	}
+	return &response, nil
 }
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
