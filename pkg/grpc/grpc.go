@@ -8,7 +8,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,6 +17,16 @@ import (
 
 	"go.opencensus.io/plugin/ocgrpc"
 )
+
+func init() {
+	// Add Prometheus timing metrics.
+	grpc_prometheus.EnableClientHandlingTimeHistogram(
+		grpc_prometheus.WithHistogramBuckets(
+			util.DecimalExponentialBuckets(-3, 6, 2)))
+	grpc_prometheus.EnableHandlingTimeHistogram(
+		grpc_prometheus.WithHistogramBuckets(
+			util.DecimalExponentialBuckets(-3, 6, 2)))
+}
 
 // NewGRPCClientFromConfiguration creates a gRPC client based on a
 // configuration stored in a Protobuf message. This Protobuf message is
@@ -88,9 +97,6 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.Ser
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
 		registrationFunc(s)
-
-		// Add Prometheus timing metrics.
-		grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 		grpc_prometheus.Register(s)
 
 		// Enable grpc reflection.
