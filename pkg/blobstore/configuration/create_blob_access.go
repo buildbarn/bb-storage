@@ -261,12 +261,41 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 				backend.Redis.ReplicationCount,
 				replicationTimeout)
 		case *pb.RedisBlobAccessConfiguration_Single:
+
+			dialTimeout := 5 * time.Second
+			if mode.Single.DialTimeout != nil {
+				dialTimeout, err = ptypes.Duration(mode.Single.DialTimeout)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			readTimeout := 3 * time.Second
+			if mode.Single.ReadTimeout != nil {
+				readTimeout, err = ptypes.Duration(mode.Single.ReadTimeout)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			writeTimeout := readTimeout * time.Second
+			if mode.Single.WriteTimeout != nil {
+				writeTimeout, err = ptypes.Duration(mode.Single.WriteTimeout)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			implementation = blobstore.NewRedisBlobAccess(
 				redis.NewClient(
 					&redis.Options{
-						Addr:      mode.Single.Endpoint,
-						DB:        int(mode.Single.Db),
-						TLSConfig: tlsConfig,
+						Addr:         mode.Single.Endpoint,
+						Password:     mode.Single.Password,
+						DB:           int(mode.Single.Db),
+						TLSConfig:    tlsConfig,
+						DialTimeout:  dialTimeout * time.Second,
+						ReadTimeout:  readTimeout * time.Second,
+						WriteTimeout: writeTimeout * time.Second,
 					}),
 				options.storageType,
 				keyTTL,
