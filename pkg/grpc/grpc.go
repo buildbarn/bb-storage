@@ -22,7 +22,7 @@ import (
 // NewGRPCClientFromConfiguration creates a gRPC client based on a
 // configuration stored in a Protobuf message. This Protobuf message is
 // used within all configuration files of Buildbarn applications.
-func NewGRPCClientFromConfiguration(configuration *configuration.GRPCClientConfiguration) (*grpc.ClientConn, error) {
+func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfiguration) (*grpc.ClientConn, error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
@@ -49,7 +49,7 @@ func NewGRPCClientFromConfiguration(configuration *configuration.GRPCClientConfi
 // servers based on a configuration stored in a list of Protobuf
 // messages. In then lets all of these gRPC servers listen on the
 // network addresses of UNIX socket paths provided.
-func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.GRPCServerConfiguration, registrationFunc func(*grpc.Server)) error {
+func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(*grpc.Server)) error {
 	serveErrors := make(chan error)
 
 	if len(configurations) == 0 {

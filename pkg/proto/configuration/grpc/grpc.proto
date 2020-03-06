@@ -7,16 +7,16 @@ import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
 
-message GRPCClientConfiguration {
+message ClientConfiguration {
   // Address of the gRPC server to which to connect. This string may be
   // in the form of "address:port" or "unix:///path/of/unix/socket".
   string address = 1;
 
   // TLS configuration. TLS is not enabled when left unset.
-  buildbarn.configuration.tls.TLSClientConfiguration tls = 2;
+  buildbarn.configuration.tls.ClientConfiguration tls = 2;
 }
 
-message GRPCServerConfiguration {
+message ServerConfiguration {
   // Network addresses on which to listen (e.g., ":8980").
   repeated string listen_addresses = 1;
 
@@ -24,7 +24,7 @@ message GRPCServerConfiguration {
   repeated string listen_paths = 2;
 
   // TLS configuration. TLS is not enabled when left unset.
-  buildbarn.configuration.tls.TLSServerConfiguration tls = 3;
+  buildbarn.configuration.tls.ServerConfiguration tls = 3;
 
   // Policy for authenticating clients against the gRPC server.
   AuthenticationPolicy authentication_policy = 4;

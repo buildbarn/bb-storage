@@ -12,8 +12,7 @@ message ApplicationConfiguration {
   string http_listen_address = 1;
 
   // gRPC servers to spawn to listen for requests from clients.
-  repeated buildbarn.configuration.grpc.GRPCServerConfiguration grpc_servers =
-      2;
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 2;
 
   // Content Addressable Storage where data needs to be read.
   buildbarn.configuration.blobstore.BlobAccessConfiguration source = 3;

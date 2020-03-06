@@ -14,7 +14,7 @@ import (
 // object based on parameters specified in a Protobuf message for use
 // with a TLS client. This Protobuf message is embedded in Buildbarn
 // configuration files.
-func NewTLSConfigFromClientConfiguration(configuration *configuration.TLSClientConfiguration) (*tls.Config, error) {
+func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConfiguration) (*tls.Config, error) {
 	if configuration == nil {
 		return nil, nil
 	}
@@ -46,7 +46,7 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.TLSClientC
 // object based on parameters specified in a Protobuf message for use
 // with a TLS server. This Protobuf message is embedded in Buildbarn
 // configuration files.
-func NewTLSConfigFromServerConfiguration(configuration *configuration.TLSServerConfiguration) (*tls.Config, error) {
+func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConfiguration) (*tls.Config, error) {
 	if configuration == nil {
 		return nil, nil
 	}

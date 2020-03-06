@@ -32,13 +32,11 @@ message ApplicationConfiguration {
   string http_listen_address = 3;
 
   // gRPC servers to spawn to listen for requests from clients.
-  repeated buildbarn.configuration.grpc.GRPCServerConfiguration grpc_servers =
-      4;
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 4;
 
   // List of schedulers available capable of building, mapping name to
   // endpoints.
-  map<string, buildbarn.configuration.grpc.GRPCClientConfiguration> schedulers =
-      5;
+  map<string, buildbarn.configuration.grpc.ClientConfiguration> schedulers = 5;
 
   // List of instances which can upload to the Action Cache.
   repeated string allow_ac_updates_for_instances = 6;
