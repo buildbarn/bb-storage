@@ -191,19 +191,6 @@ message SingleRedisBlobAccessConfiguration {
   // Redis Auth Password, "" for NO Password
   string password = 3;
 
-  // Dial timeout for establishing new connections.
-  // Default value can be overidden (e.g, '30s').
-  google.protobuf.Duration dial_timeout = 4;
-
-  // Timeout for socket reads. If reached, commands will fail with a timeout
-  // instead of blocking. Use value -1 for no timeout and 0 for default.
-  // Default value can be overidden (e.g, '300s').
-  google.protobuf.Duration read_timeout = 5;
-
-  // Timeout for socket writes. If reached, commands will fail with a timeout 
-  // instead of blocking. Defaults to ReadTimeout, 
-  // can be overidden (e.g, '300s').
-  google.protobuf.Duration write_timeout = 6;
 }
 
 message RedisBlobAccessConfiguration {
@@ -237,6 +224,20 @@ message RedisBlobAccessConfiguration {
   // ensure that replication succeeds. This can result in data loss when
   // the master is lost.
   google.protobuf.Duration replication_timeout = 9;
+
+    // Dial timeout for establishing new connections.
+  // Default value can be overidden (e.g, '30s').
+  google.protobuf.Duration dial_timeout = 10;
+
+  // Timeout for socket reads. If reached, commands will fail with a timeout
+  // instead of blocking. Use value -1 for no timeout and 0 for default.
+  // Default value can be overidden (e.g, '300s').
+  google.protobuf.Duration read_timeout = 11;
+
+  // Timeout for socket writes. If reached, commands will fail with a timeout 
+  // instead of blocking. Defaults to ReadTimeout, 
+  // can be overidden (e.g, '300s').
+  google.protobuf.Duration write_timeout = 12;
 }
 
 message RemoteBlobAccessConfiguration {
