@@ -134,6 +134,7 @@ func TestByteStreamServer(t *testing.T) {
 			ResourceName: "ubuntu1804/blobs/6fc422233a40a75a1f028e11c3cd1140/7",
 			ReadOffset:   -4,
 		})
+		require.NoError(t, err)
 		_, err = req.Recv()
 		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -4"), err)
 	})
@@ -150,6 +151,7 @@ func TestByteStreamServer(t *testing.T) {
 			ResourceName: "ubuntu1804/blobs/ad3c8ac9eef32188da352082244b3598/13",
 			ReadOffset:   100,
 		})
+		require.NoError(t, err)
 		_, err = req.Recv()
 		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 13 bytes in size, while a read at offset 100 was requested"), err)
 	})
