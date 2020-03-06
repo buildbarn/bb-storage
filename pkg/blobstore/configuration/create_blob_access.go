@@ -200,14 +200,14 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 
 		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(backend.Redis.Tls)
 		if err != nil {
-			return nil, util.StatusWrap(err, "failed to obtain new tls")
+			return nil, util.StatusWrap(err, "Failed to obtain TLS configuration")
 		}
 
 		var keyTTL time.Duration
 		if backend.Redis.KeyTtl != nil {
 			keyTTL, err = ptypes.Duration(backend.Redis.KeyTtl)
 			if err != nil {
-				return nil, util.StatusWrap(err, "failed to obtain key ttl")
+				return nil, util.StatusWrap(err, "Failed to obtain key TTL configuration")
 			}
 		}
 
@@ -215,7 +215,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		if backend.Redis.ReplicationTimeout != nil {
 			replicationTimeout, err = ptypes.Duration(backend.Redis.ReplicationTimeout)
 			if err != nil {
-				return nil, util.StatusWrap(err, "failed to obtain replication timeout")
+				return nil, util.StatusWrap(err, "Failed to obtain replication timeout")
 			}
 		}
 
@@ -223,7 +223,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		if backend.Redis.DialTimeout != nil {
 			dialTimeout, err = ptypes.Duration(backend.Redis.DialTimeout)
 			if err != nil {
-				return nil, util.StatusWrap(err, "failed to obtain dial timeout")
+				return nil, util.StatusWrap(err, "Failed to obtain dial timeout configuration")
 			}
 		}
 
@@ -231,7 +231,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		if backend.Redis.ReadTimeout != nil {
 			readTimeout, err = ptypes.Duration(backend.Redis.ReadTimeout)
 			if err != nil {
-				return nil, util.StatusWrap(err, "failed to obtain read timeout")
+				return nil, util.StatusWrap(err, "Failed to obtain read timeout configuration")
 			}
 		}
 
@@ -239,7 +239,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		if backend.Redis.WriteTimeout != nil {
 			writeTimeout, err = ptypes.Duration(backend.Redis.WriteTimeout)
 			if err != nil {
-				return nil, util.StatusWrap(err, "failed to obtain write timeout")
+				return nil, util.StatusWrap(err, "Failed to obtain write timeout configuration")
 			}
 		}
 
@@ -250,7 +250,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			if mode.Clustered.MinimumRetryBackoff != nil {
 				minRetryDur, err = ptypes.Duration(mode.Clustered.MinimumRetryBackoff)
 				if err != nil {
-					return nil, util.StatusWrap(err, "failed to obtain minimum retry back off")
+					return nil, util.StatusWrap(err, "Failed to obtain minimum retry back off configuration")
 				}
 			}
 
@@ -258,7 +258,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			if mode.Clustered.MaximumRetryBackoff != nil {
 				maxRetryDur, err = ptypes.Duration(mode.Clustered.MaximumRetryBackoff)
 				if err != nil {
-					return nil, util.StatusWrap(err, "failed to obtain maximum retry back off")
+					return nil, util.StatusWrap(err, "Failed to obtain maximum retry back off")
 				}
 			}
 

@@ -192,17 +192,17 @@ message SingleRedisBlobAccessConfiguration {
   string password = 3;
 
   // Dial timeout for establishing new connections.
-  // Default is 5 (seconds) or you could select your own seconds '30s'
+  // Default value can be overidden (e.g, '30s').
   google.protobuf.Duration dial_timeout = 4;
 
   // Timeout for socket reads. If reached, commands will fail with a timeout
   // instead of blocking. Use value -1 for no timeout and 0 for default.
-  // Default is 3 seconds, can be changed using '3s' in config.
+  // Default value can be overidden (e.g, '300s').
   google.protobuf.Duration read_timeout = 5;
 
   // Timeout for socket writes. If reached, commands will fail with a timeout 
-  // instead of blocking.
-  // Default is ReadTimeout, can be changed using '3s' in config.
+  // instead of blocking. Defaults to ReadTimeout, 
+  // can be overidden (e.g, '300s').
   google.protobuf.Duration write_timeout = 6;
 }
 
