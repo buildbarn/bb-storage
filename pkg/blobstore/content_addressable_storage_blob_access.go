@@ -63,6 +63,7 @@ func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest d
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	client, err := ba.byteStreamClient.Read(ctxWithCancel, &readRequest)
 	if err != nil {
+		cancel()
 		return buffer.NewBufferFromError(err)
 	}
 	return buffer.NewCASBufferFromChunkReader(digest, &byteStreamChunkReader{
