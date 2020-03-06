@@ -13,9 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
@@ -47,10 +49,11 @@ import (
 )
 
 type blobAccessCreationOptions struct {
-	storageType             blobstore.StorageType
-	storageTypeName         string
-	keyFormat               digest.KeyFormat
-	maximumMessageSizeBytes int
+	storageType               blobstore.StorageType
+	storageTypeName           string
+	keyFormat                 digest.KeyFormat
+	maximumMessageSizeBytes   int
+	contentAddressableStorage blobstore.BlobAccess
 }
 
 // CreateBlobAccessObjectsFromConfig creates a pair of BlobAccess
@@ -63,10 +66,11 @@ func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration,
 		return nil, nil, err
 	}
 	actionCache, err := createBlobAccess(configuration.ActionCache, &blobAccessCreationOptions{
-		storageType:             blobstore.ACStorageType,
-		storageTypeName:         "ac",
-		keyFormat:               digest.KeyWithInstance,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		storageType:               blobstore.ACStorageType,
+		storageTypeName:           "ac",
+		keyFormat:                 digest.KeyWithInstance,
+		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		contentAddressableStorage: contentAddressableStorage,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -448,6 +452,23 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			return nil, err
 		}
 		implementation = blobstore.NewExistenceCachingBlobAccess(base, existenceCache)
+	case *pb.BlobAccessConfiguration_CompletenessChecking:
+		backendType = "completeness_checking"
+		if options.contentAddressableStorage == nil {
+			return nil, status.Error(codes.InvalidArgument, "ActionResult completeness checking can only be enabled on the Action Cache")
+		}
+		base, err := createBlobAccess(backend.CompletenessChecking, options)
+		if err != nil {
+			return nil, err
+		}
+		implementation = completenesschecking.NewCompletenessCheckingBlobAccess(
+			base,
+			cas.NewBlobAccessContentAddressableStorage(
+				options.contentAddressableStorage,
+				options.maximumMessageSizeBytes),
+			options.contentAddressableStorage,
+			100,
+			options.maximumMessageSizeBytes)
 	default:
 		return nil, errors.New("Configuration did not contain a backend")
 	}

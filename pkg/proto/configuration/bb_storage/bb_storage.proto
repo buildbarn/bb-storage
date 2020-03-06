@@ -41,9 +41,9 @@ message ApplicationConfiguration {
   // List of instances which can upload to the Action Cache.
   repeated string allow_ac_updates_for_instances = 6;
 
-  // Only return ActionResult messages for which all output files are
-  // present in the Content Addressable Storage.
-  bool verify_action_result_completeness = 7;
+  // Was 'verify_action_result_completeness'. This can now be enabled by
+  // using BlobAccessConfiguration.completeness_checking.
+  reserved 7;
 
   // Maximum Protobuf message size to unmarshal.
   int64 maximum_message_size_bytes = 8;

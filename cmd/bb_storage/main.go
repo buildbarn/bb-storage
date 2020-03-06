@@ -7,7 +7,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/ac"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
@@ -37,27 +36,11 @@ func main() {
 	}
 
 	// Storage access.
-	contentAddressableStorageBlobAccess, actionCache, err := blobstore_configuration.CreateBlobAccessObjectsFromConfig(
+	contentAddressableStorage, actionCache, err := blobstore_configuration.CreateBlobAccessObjectsFromConfig(
 		configuration.Blobstore,
 		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal("Failed to create blob access: ", err)
-	}
-
-	// If this instance of bb-storage has access to all data (as in,
-	// it's not a single shard within a distributed setup), it can
-	// be configured to verify that all objects referenced by
-	// ActionResults are present in the Content Addressable Storage.
-	// Such validation is required by Bazel.
-	if configuration.VerifyActionResultCompleteness {
-		actionCache = completenesschecking.NewCompletenessCheckingBlobAccess(
-			actionCache,
-			cas.NewBlobAccessContentAddressableStorage(
-				contentAddressableStorageBlobAccess,
-				int(configuration.MaximumMessageSizeBytes)),
-			contentAddressableStorageBlobAccess,
-			100,
-			int(configuration.MaximumMessageSizeBytes))
 	}
 
 	// Ensure that instance names for which we don't have a
@@ -101,8 +84,8 @@ func main() {
 				configuration.GrpcServers,
 				func(s *grpc.Server) {
 					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances, int(configuration.MaximumMessageSizeBytes)))
-					remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorageBlobAccess, configuration.MaximumMessageSizeBytes))
-					bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorageBlobAccess, 1<<16))
+					remoteexecution.RegisterContentAddressableStorageServer(s, cas.NewContentAddressableStorageServer(contentAddressableStorage, configuration.MaximumMessageSizeBytes))
+					bytestream.RegisterByteStreamServer(s, cas.NewByteStreamServer(contentAddressableStorage, 1<<16))
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
 					remoteexecution.RegisterExecutionServer(s, buildQueue)
 				}))

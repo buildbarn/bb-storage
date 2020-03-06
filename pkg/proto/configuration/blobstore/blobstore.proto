@@ -102,6 +102,15 @@ message BlobAccessConfiguration {
     // calling ContentAddressableStorage.FindMissingBlobs(), as that
     // would cause this decorator to cache invalid data.
     ExistenceCachingBlobAccessConfiguration existence_caching = 16;
+
+    // Only return ActionResult messages for which all output files are
+    // present in the Content Addressable Storage (CAS). Certain
+    // clients, such as Bazel, require the use of this decorator. To
+    // reduce latency, it is advised that this decorator is used at the
+    // lowest level that has a full view of the entire CAS.
+    //
+    // This decorator must be placed on the Action Cache.
+    BlobAccessConfiguration completeness_checking = 17;
   }
 }
 

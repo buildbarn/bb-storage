@@ -13,9 +13,11 @@ go_library(
     deps = [
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/circular:go_default_library",
+        "//pkg/blobstore/completenesschecking:go_default_library",
         "//pkg/blobstore/local:go_default_library",
         "//pkg/blobstore/mirrored:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
+        "//pkg/cas:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
