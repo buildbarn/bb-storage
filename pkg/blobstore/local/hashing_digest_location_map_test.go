@@ -15,7 +15,7 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 	defer ctrl.Finish()
 
 	array := mock.NewMockLocationRecordArray(ctrl)
-	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2)
+	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
 
 	digest1 := digest.MustNewDigest("hello", "ca2bd6c9c99e7bc00a440973d6e1a369", 473)
 	digest2 := digest.MustNewDigest("hello", "4942691f5907d5eddb71818f658f2071", 8347)

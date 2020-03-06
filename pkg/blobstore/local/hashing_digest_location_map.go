@@ -13,76 +13,49 @@ import (
 var (
 	hashingDigestLocationMapPrometheusMetrics sync.Once
 
-	hashingDigestLocationMapGetNotFound = prometheus.NewHistogram(
+	hashingDigestLocationMapGetAttempts = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_get_not_found",
-			Help:      "Number of attempts it took for Get() to determine an entry was not found",
+			Name:      "hashing_digest_location_map_get_attempts",
+			Help:      "Number of attempts it took for Get()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 6),
-		})
-	hashingDigestLocationMapGetFound = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: "buildbarn",
-			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_get_found",
-			Help:      "Number of attempts it took for Get() to determine an entry was found",
-			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 6),
-		})
-	hashingDigestLocationMapGetTooManyAttempts = prometheus.NewCounter(
+		},
+		[]string{"name", "outcome"})
+	hashingDigestLocationMapGetTooManyAttempts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "hashing_digest_location_map_get_too_many_attempts_total",
 			Help:      "Number of times Get() took the maximum number of attempts and still did not find the entry, which may indicate the hash table is too small",
-		})
+		},
+		[]string{"name"})
 
-	hashingDigestLocationMapPutIgnoreInvalid = prometheus.NewCounter(
+	hashingDigestLocationMapPutIgnoredInvalid = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_put_ignore_invalid_total",
+			Name:      "hashing_digest_location_map_put_ignored_invalid_total",
 			Help:      "Number of times Put() was called with an invalid location",
-		})
-	hashingDigestLocationMapPutSet = prometheus.NewHistogram(
+		},
+		[]string{"name"})
+	hashingDigestLocationMapPutIterations = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_put_set",
-			Help:      "Number of iterations it took for Put() to write an entry to an unused slot",
+			Name:      "hashing_digest_location_map_put_iterations",
+			Help:      "Number of iterations it took for Put()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
-		})
-	hashingDigestLocationMapPutUpdate = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: "buildbarn",
-			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_put_update",
-			Help:      "Number of iterations it took for Put() to overwrite an existing entry",
-			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
-		})
-	hashingDigestLocationMapPutIgnoreOlder = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: "buildbarn",
-			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_put_ignore_older",
-			Help:      "Number of iterations it took for Put() to determine the entry was older than the one that exists",
-			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
-		})
-	hashingDigestLocationMapPutTooManyAttempts = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: "buildbarn",
-			Subsystem: "blobstore",
-			Name:      "hashing_digest_location_map_put_too_many_attempts",
-			Help:      "Number of times Put() discarded an entry, because it would be placed in a location not reachable by Get(), which may indicate the hash table is too small",
-			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
-		})
-	hashingDigestLocationMapPutTooManyIterations = prometheus.NewCounter(
+		},
+		[]string{"name", "outcome"})
+	hashingDigestLocationMapPutTooManyIterations = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "hashing_digest_location_map_put_too_many_iterations_total",
 			Help:      "Number of times Put() discarded an entry, because it took the maximum number of iterations, which may indicate the hash table is too small",
-		})
+		},
+		[]string{"name"})
 )
 
 type hashingDigestLocationMap struct {
@@ -91,6 +64,17 @@ type hashingDigestLocationMap struct {
 	hashInitialization uint64
 	maximumGetAttempts uint32
 	maximumPutAttempts int
+
+	getNotFound        prometheus.Observer
+	getFound           prometheus.Observer
+	getTooManyAttempts prometheus.Counter
+
+	putIgnoredInvalid    prometheus.Counter
+	putInserted          prometheus.Observer
+	putUpdated           prometheus.Observer
+	putIgnoredOlder      prometheus.Observer
+	putTooManyAttempts   prometheus.Observer
+	putTooManyIterations prometheus.Counter
 }
 
 // NewHashingDigestLocationMap creates a DigestLocationMap backed by a
@@ -111,17 +95,13 @@ type hashingDigestLocationMap struct {
 // discarded once the upper bound is reached. Though this may sound
 // harmful, there is a very high probability that the entry being
 // discarded is one of the older ones.
-func NewHashingDigestLocationMap(recordArray LocationRecordArray, recordsCount int, hashInitialization uint64, maximumGetAttempts uint32, maximumPutAttempts int) DigestLocationMap {
+func NewHashingDigestLocationMap(recordArray LocationRecordArray, recordsCount int, hashInitialization uint64, maximumGetAttempts uint32, maximumPutAttempts int, name string) DigestLocationMap {
 	hashingDigestLocationMapPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(hashingDigestLocationMapGetNotFound)
-		prometheus.MustRegister(hashingDigestLocationMapGetFound)
+		prometheus.MustRegister(hashingDigestLocationMapGetAttempts)
 		prometheus.MustRegister(hashingDigestLocationMapGetTooManyAttempts)
 
-		prometheus.MustRegister(hashingDigestLocationMapPutIgnoreInvalid)
-		prometheus.MustRegister(hashingDigestLocationMapPutSet)
-		prometheus.MustRegister(hashingDigestLocationMapPutUpdate)
-		prometheus.MustRegister(hashingDigestLocationMapPutIgnoreOlder)
-		prometheus.MustRegister(hashingDigestLocationMapPutTooManyAttempts)
+		prometheus.MustRegister(hashingDigestLocationMapPutIgnoredInvalid)
+		prometheus.MustRegister(hashingDigestLocationMapPutIterations)
 		prometheus.MustRegister(hashingDigestLocationMapPutTooManyIterations)
 	})
 
@@ -131,6 +111,17 @@ func NewHashingDigestLocationMap(recordArray LocationRecordArray, recordsCount i
 		hashInitialization: hashInitialization,
 		maximumGetAttempts: maximumGetAttempts,
 		maximumPutAttempts: maximumPutAttempts,
+
+		getNotFound:        hashingDigestLocationMapGetAttempts.WithLabelValues(name, "NotFound"),
+		getFound:           hashingDigestLocationMapGetAttempts.WithLabelValues(name, "Found"),
+		getTooManyAttempts: hashingDigestLocationMapGetTooManyAttempts.WithLabelValues(name),
+
+		putIgnoredInvalid:    hashingDigestLocationMapPutIgnoredInvalid.WithLabelValues(name),
+		putInserted:          hashingDigestLocationMapPutIterations.WithLabelValues(name, "Inserted"),
+		putUpdated:           hashingDigestLocationMapPutIterations.WithLabelValues(name, "Updated"),
+		putIgnoredOlder:      hashingDigestLocationMapPutIterations.WithLabelValues(name, "IgnoredOlder"),
+		putTooManyAttempts:   hashingDigestLocationMapPutIterations.WithLabelValues(name, "TooManyAttempts"),
+		putTooManyIterations: hashingDigestLocationMapPutTooManyIterations.WithLabelValues(name),
 	}
 }
 
@@ -148,16 +139,16 @@ func (dlm *hashingDigestLocationMap) Get(digest digest.Digest, validator *Locati
 			// exists. There is no need to continue
 			// searching, as everything we find after this
 			// point is even older.
-			hashingDigestLocationMapGetNotFound.Observe(float64(key.Attempt + 1))
+			dlm.getNotFound.Observe(float64(key.Attempt + 1))
 			return Location{}, status.Error(codes.NotFound, "Object not found")
 		}
 		if record.Key == key {
-			hashingDigestLocationMapGetFound.Observe(float64(key.Attempt + 1))
+			dlm.getFound.Observe(float64(key.Attempt + 1))
 			return record.Location, nil
 		}
 		key.Attempt++
 		if record.Key.Attempt >= dlm.maximumGetAttempts {
-			hashingDigestLocationMapGetTooManyAttempts.Inc()
+			dlm.getTooManyAttempts.Inc()
 			return Location{}, status.Error(codes.NotFound, "Object not found")
 		}
 	}
@@ -165,7 +156,7 @@ func (dlm *hashingDigestLocationMap) Get(digest digest.Digest, validator *Locati
 
 func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *LocationValidator, location Location) error {
 	if !validator.IsValid(location) {
-		hashingDigestLocationMapPutIgnoreInvalid.Inc()
+		dlm.putIgnoredInvalid.Inc()
 		return nil
 	}
 	record := LocationRecord{
@@ -178,7 +169,7 @@ func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *Locati
 		if !validator.IsValid(oldRecord.Location) {
 			// The existing record may be overwritten directly.
 			dlm.recordArray.Put(slot, record)
-			hashingDigestLocationMapPutSet.Observe(float64(iteration))
+			dlm.putInserted.Observe(float64(iteration))
 			return nil
 		}
 		if oldRecord.Key == record.Key {
@@ -186,10 +177,10 @@ func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *Locati
 			// to a newer version of the same blob.
 			if oldRecord.Location.IsOlder(record.Location) {
 				dlm.recordArray.Put(slot, record)
-				hashingDigestLocationMapPutUpdate.Observe(float64(iteration))
+				dlm.putUpdated.Observe(float64(iteration))
 				return nil
 			}
-			hashingDigestLocationMapPutIgnoreOlder.Observe(float64(iteration))
+			dlm.putIgnoredOlder.Observe(float64(iteration))
 			return nil
 		}
 		if oldRecord.Location.IsOlder(record.Location) {
@@ -203,10 +194,10 @@ func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *Locati
 		record.Key.Attempt++
 		if record.Key.Attempt >= dlm.maximumGetAttempts {
 			// No need to generate records that Get() cannot reach.
-			hashingDigestLocationMapPutTooManyAttempts.Observe(float64(iteration))
+			dlm.putTooManyAttempts.Observe(float64(iteration))
 			return nil
 		}
 	}
-	hashingDigestLocationMapPutTooManyIterations.Inc()
+	dlm.putTooManyIterations.Inc()
 	return nil
 }
