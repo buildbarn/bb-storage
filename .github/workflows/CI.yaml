@@ -7,26 +7,20 @@ on:
     branches:
     - master
 jobs:
-  gofmt:
-    runs-on: ubuntu-latest
-    container: docker://golang:1.13
-    steps:
-    - uses: actions/checkout@v1
-    - name: run gofmt
-      run: test -z "$(gofmt -d . | tee /dev/stderr)"
-  buildifier:
-    runs-on: ubuntu-latest
-    container: docker://golang:1.13
-    steps:
-    - uses: actions/checkout@v1
-    - name: install buildifier
-      run: go get github.com/bazelbuild/buildtools/buildifier
-    - name: run buildifier
-      run: buildifier -mode=check -r .
   build_and_test:
     runs-on: ubuntu-latest
     container: docker://l.gcr.io/google/bazel:2.1.0
     steps:
     - uses: actions/checkout@v1
-    - name: build and test
+    - name: Bazel build and test
       run: bazel test //...
+    - name: Buildifier
+      run: bazel run @com_github_bazelbuild_buildtools//:buildifier
+    - name: Gazelle
+      run: bazel run //:gazelle
+    - name: Gofmt
+      run: bazel run @go_sdk//:bin/gofmt -- -s -w .
+    - name: Clang format
+      run: find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +
+    - name: Test style conformance
+      run: git diff --exit-code HEAD --
