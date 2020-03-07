@@ -68,8 +68,14 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest digest.Digest, b buf
 		return err
 	}
 	req.ContentLength = sizeBytes
-	_, err = ctxhttp.Do(ctx, http.DefaultClient, req)
-	return err
+	resp, err := ctxhttp.Do(ctx, http.DefaultClient, req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return convertHTTPUnexpectedStatus(resp)
+	}
+	return nil
 }
 
 func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
