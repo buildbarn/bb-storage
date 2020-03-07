@@ -190,7 +190,6 @@ message SingleRedisBlobAccessConfiguration {
 
   // Redis Auth Password, "" for NO Password
   string password = 3;
-
 }
 
 message RedisBlobAccessConfiguration {
@@ -234,8 +233,8 @@ message RedisBlobAccessConfiguration {
   // Default value can be overidden (e.g, '300s').
   google.protobuf.Duration read_timeout = 11;
 
-  // Timeout for socket writes. If reached, commands will fail with a timeout 
-  // instead of blocking. Defaults to ReadTimeout, 
+  // Timeout for socket writes. If reached, commands will fail with a timeout
+  // instead of blocking. Defaults to ReadTimeout,
   // can be overidden (e.g, '300s').
   google.protobuf.Duration write_timeout = 12;
 }
