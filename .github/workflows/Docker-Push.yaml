@@ -13,5 +13,7 @@ jobs:
       run: mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json
       env:
         DOCKER_CONFIG_JSON: ${{ secrets.DOCKER_CONFIG_JSON }}
+    - name: Push container bb-replicator
+      run: bazel run //cmd/bb_replicator:bb_replicator_container_push
     - name: Push container bb-storage
       run: bazel run //cmd/bb_storage:bb_storage_container_push
