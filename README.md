@@ -104,3 +104,9 @@ Prebuilt container images of the Buildbarn storage daemon may be found
 on [Docker Hub](https://hub.docker.com/r/buildbarn/bb-storage). More
 examples of how the Buildbarn storage daemon may be deployed can be
 found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-deployments).
+
+# Join us on Slack!
+
+There is a [#buildbarn channel on buildteamworld.slack.com](https://bit.ly/2SG1amT)
+that you can join to get in touch with other people who use and hack on
+Buildbarn.
