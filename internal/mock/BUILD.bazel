@@ -39,7 +39,6 @@ gomock(
     name = "buffer",
     out = "buffer.go",
     interfaces = [
-        "Buffer",
         "ChunkReader",
         "ErrorHandler",
         "RepairFunc",
