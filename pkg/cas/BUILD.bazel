@@ -29,6 +29,7 @@ go_test(
     srcs = [
         "blob_access_content_addressable_storage_test.go",
         "byte_stream_server_test.go",
+        "content_addressable_storage_server_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
