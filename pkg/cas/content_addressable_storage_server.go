@@ -14,13 +14,15 @@ import (
 
 type contentAddressableStorageServer struct {
 	contentAddressableStorage blobstore.BlobAccess
+	maximumMessageSizeBytes   int64
 }
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		contentAddressableStorage: contentAddressableStorage,
+		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
 }
 
@@ -47,33 +49,57 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in *remoteexecution.BatchReadBlobsRequest) (*remoteexecution.BatchReadBlobsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support batched reading of blobs")
+	bytesRemaining := s.maximumMessageSizeBytes
+	digests := make([]digest.Digest, 0, len(in.Digests))
+	for _, reqDigest := range in.Digests {
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
+		if err != nil {
+			return nil, err
+		}
+		sizeBytes := digest.GetSizeBytes()
+		if sizeBytes > bytesRemaining {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"Attempted to read a total of at least %d bytes, while a maximum of %d bytes is permitted",
+				uint64(s.maximumMessageSizeBytes-bytesRemaining)+uint64(sizeBytes),
+				s.maximumMessageSizeBytes)
+		}
+		bytesRemaining -= sizeBytes
+		digests = append(digests, digest)
+	}
+
+	var response remoteexecution.BatchReadBlobsResponse
+	for i, reqDigest := range in.Digests {
+		data, err := s.contentAddressableStorage.Get(
+			ctx,
+			digests[i]).ToByteSlice(int(digests[i].GetSizeBytes()))
+		response.Responses = append(response.Responses, &remoteexecution.BatchReadBlobsResponse_Response{
+			Digest: reqDigest,
+			Data:   data,
+			Status: status.Convert(err).Proto(),
+		})
+	}
+
+	return &response, nil
 }
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
-	// Asynchronously call Put() for every blob.
-	responsesChan := make(chan *remoteexecution.BatchUpdateBlobsResponse_Response, len(in.Requests))
+	var response remoteexecution.BatchUpdateBlobsResponse
 	for _, request := range in.Requests {
-		go func(request *remoteexecution.BatchUpdateBlobsRequest_Request) {
-			digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
-			if err == nil {
-				err = s.contentAddressableStorage.Put(
-					ctx,
-					digest,
-					buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
-			}
-			responsesChan <- &remoteexecution.BatchUpdateBlobsResponse_Response{
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
+		if err == nil {
+			err = s.contentAddressableStorage.Put(
+				ctx,
+				digest,
+				buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
+		}
+		response.Responses = append(response.Responses,
+			&remoteexecution.BatchUpdateBlobsResponse_Response{
 				Digest: request.Digest,
 				Status: status.Convert(err).Proto(),
-			}
-		}(request)
+			})
 	}
 
-	// Recombine results.
-	var response remoteexecution.BatchUpdateBlobsResponse
-	for i := 0; i < len(in.Requests); i++ {
-		response.Responses = append(response.Responses, <-responsesChan)
-	}
 	return &response, nil
 }
 
