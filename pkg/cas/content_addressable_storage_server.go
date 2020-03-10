@@ -14,13 +14,15 @@ import (
 
 type contentAddressableStorageServer struct {
 	contentAddressableStorage blobstore.BlobAccess
+	maximumMessageSizeBytes   int
 }
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess, maximumMessageSizeBytes int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		contentAddressableStorage: contentAddressableStorage,
+		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
 }
 
@@ -47,35 +49,38 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in *remoteexecution.BatchReadBlobsRequest) (*remoteexecution.BatchReadBlobsResponse, error) {
-	// Asynchronously call Get() for every blob.
-	responsesChan := make(chan *remoteexecution.BatchReadBlobsResponse_Response, len(in.Digests))
+	totalSize := int64(0)
 	for _, reqDigest := range in.Digests {
-		go func(reqDigest *remoteexecution.Digest) {
-			digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
-			var buf buffer.Buffer
-			if err == nil {
-				buf = s.contentAddressableStorage.Get(
-					ctx,
-					digest)
-			}
-			maxSizeBytes, err := buf.GetSizeBytes()
-			var data []byte
-			if err == nil {
-				data, err = buf.ToByteSlice(int(maxSizeBytes))
-			}
-			responsesChan <- &remoteexecution.BatchReadBlobsResponse_Response{
-				Digest: reqDigest,
-				Data:   data,
-				Status: status.Convert(err).Proto(),
-			}
-		}(reqDigest)
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
+		if err != nil {
+			return nil, err
+		}
+		totalSize += digest.GetSizeBytes()
+	}
+	if totalSize > int64(s.maximumMessageSizeBytes) {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"Attempted to read a total of %d bytes, while a maximum of %d bytes is permitted",
+			totalSize, s.maximumMessageSizeBytes)
 	}
 
-	// Recombine results.
 	var response remoteexecution.BatchReadBlobsResponse
-	for i := 0; i < len(in.Digests); i++ {
-		response.Responses = append(response.Responses, <-responsesChan)
+	for _, reqDigest := range in.Digests {
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
+		var buf buffer.Buffer
+		var data []byte
+		if err == nil {
+			buf = s.contentAddressableStorage.Get(
+				ctx,
+				digest)
+			data, err = buf.ToByteSlice(int(digest.GetSizeBytes()))
+		}
+		response.Responses = append(response.Responses, &remoteexecution.BatchReadBlobsResponse_Response{
+			Digest: reqDigest,
+			Data:   data,
+			Status: status.Convert(err).Proto(),
+		})
 	}
+
 	return &response, nil
 }
 
