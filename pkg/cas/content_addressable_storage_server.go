@@ -85,29 +85,22 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 }
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
-	// Asynchronously call Put() for every blob.
-	responsesChan := make(chan *remoteexecution.BatchUpdateBlobsResponse_Response, len(in.Requests))
+	var response remoteexecution.BatchUpdateBlobsResponse
 	for _, request := range in.Requests {
-		go func(request *remoteexecution.BatchUpdateBlobsRequest_Request) {
-			digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
-			if err == nil {
-				err = s.contentAddressableStorage.Put(
-					ctx,
-					digest,
-					buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
-			}
-			responsesChan <- &remoteexecution.BatchUpdateBlobsResponse_Response{
+		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
+		if err == nil {
+			err = s.contentAddressableStorage.Put(
+				ctx,
+				digest,
+				buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
+		}
+		response.Responses = append(response.Responses,
+			&remoteexecution.BatchUpdateBlobsResponse_Response{
 				Digest: request.Digest,
 				Status: status.Convert(err).Proto(),
-			}
-		}(request)
+			})
 	}
 
-	// Recombine results.
-	var response remoteexecution.BatchUpdateBlobsResponse
-	for i := 0; i < len(in.Requests); i++ {
-		response.Responses = append(response.Responses, <-responsesChan)
-	}
 	return &response, nil
 }
 
