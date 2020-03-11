@@ -265,3 +265,10 @@ def bb_storage_go_dependencies():
         commit = "7c0f6868bffe087073376feaab3ace57f2ef90b2",
         importpath = "github.com/mattn/go-ieproxy",
     )
+
+    go_repository(
+        name = "org_golang_google_grpc",
+        build_file_proto_mode = "disable",
+        commit = "6af3d372ceca1a2c17f8c7789446a3488a91b8c6",
+        importpath = "google.golang.org/grpc",
+    )

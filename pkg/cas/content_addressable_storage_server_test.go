@@ -66,7 +66,6 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 					SizeBytes: 123,
 				},
 				Data:   a,
-				Status: &status_pb.Status{},
 			},
 			{
 				Digest: &remoteexecution.Digest{
@@ -74,14 +73,12 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 					SizeBytes: 234,
 				},
 				Data:   b,
-				Status: &status_pb.Status{},
 			},
 			{
 				Digest: &remoteexecution.Digest{
 					Hash:      "7821919ee052d21515cf4e36788138a301c18c36931290270aece8d79ea2cca6",
 					SizeBytes: 345,
 				},
-				Data: nil,
 				Status: &status_pb.Status{
 					Code:    int32(codes.NotFound),
 					Message: "The object you requested could not be found",
