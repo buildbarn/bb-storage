@@ -17,7 +17,6 @@ go_library(
         "//pkg/proto/configuration/grpc:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
-        "@com_github_grpc_ecosystem_go_grpc_middleware//:go_default_library",
         "@com_github_grpc_ecosystem_go_grpc_prometheus//:go_default_library",
         "@io_opencensus_go//plugin/ocgrpc:go_default_library",
         "@org_golang_google_grpc//:go_default_library",

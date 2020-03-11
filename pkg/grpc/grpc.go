@@ -7,7 +7,6 @@ import (
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
@@ -94,12 +93,12 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.Ser
 
 		// Default server options.
 		serverOptions := []grpc.ServerOption{
-			grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc.ChainUnaryInterceptor(
 				grpc_prometheus.UnaryServerInterceptor,
-				NewAuthenticatingUnaryInterceptor(authenticator))),
-			grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+				NewAuthenticatingUnaryInterceptor(authenticator)),
+			grpc.ChainStreamInterceptor(
 				grpc_prometheus.StreamServerInterceptor,
-				NewAuthenticatingStreamInterceptor(authenticator))),
+				NewAuthenticatingStreamInterceptor(authenticator)),
 			grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 		}
 
