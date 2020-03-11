@@ -65,14 +65,14 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 					Hash:      "409a7f83ac6b31dc8c77e3ec18038f209bd2f545e0f4177c2e2381aa4e067b49",
 					SizeBytes: 123,
 				},
-				Data:   a,
+				Data: a,
 			},
 			{
 				Digest: &remoteexecution.Digest{
 					Hash:      "0479688f99e8cbc70291ce272876ff8e0db71a0889daf2752884b0996056b4a0",
 					SizeBytes: 234,
 				},
-				Data:   b,
+				Data: b,
 			},
 			{
 				Digest: &remoteexecution.Digest{
