@@ -37,9 +37,12 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
-	dialOptions := []grpc.DialOption{
-		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+	var dialOptions []grpc.DialOption
+	unaryInterceptors := []grpc.UnaryClientInterceptor{
+		grpc_prometheus.UnaryClientInterceptor,
+	}
+	streamInterceptors := []grpc.StreamClientInterceptor{
+		grpc_prometheus.StreamClientInterceptor,
 	}
 
 	// Optional: TLS.
@@ -70,6 +73,20 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		}))
 	}
 
+	// Optional: metadata forwarding.
+	if headers := configuration.ForwardMetadata; len(headers) > 0 {
+		unaryInterceptors = append(
+			unaryInterceptors,
+			NewMetadataForwardingUnaryClientInterceptor(headers))
+		streamInterceptors = append(
+			streamInterceptors,
+			NewMetadataForwardingStreamClientInterceptor(headers))
+	}
+
+	dialOptions = append(
+		dialOptions,
+		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
+		grpc.WithChainStreamInterceptor(streamInterceptors...))
 	return grpc.Dial(configuration.Address, dialOptions...)
 }
 

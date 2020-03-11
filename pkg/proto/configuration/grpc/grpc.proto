@@ -19,6 +19,22 @@ message ClientConfiguration {
   // Keepalive messages for point-to-point healthchecking. Keepalive is
   // not enabled when left unset.
   ClientKeepaliveConfiguration keepalive = 3;
+
+  // List of gRPC metadata headers to forward from the calling context.
+  // Valid header names include:
+  //
+  // - "authorization":
+  //   The bearer token (e.g. an OAuth2 access token) of the client.
+  // - "build.bazel.remote.execution.v2.requestmetadata-bin":
+  //   build.bazel.remote.execution.v2.RequestMetadata Protobuf message
+  //   provided by the client that contains the name of the build tool,
+  //   its version number and information about the target being built.
+  // - "user-agent":
+  //   Name and version of the low-level transport library used by the
+  //   client.
+  //
+  // Header names must be lower case.
+  repeated string forward_metadata = 4;
 }
 
 message ClientKeepaliveConfiguration {
