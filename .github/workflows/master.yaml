@@ -1,0 +1,34 @@
+name: master
+on:
+  push:
+    branches:
+    - master
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    container: docker://l.gcr.io/google/bazel:2.1.0
+    steps:
+    - uses: actions/checkout@v1
+    - name: Buildifier
+      run: bazel run @com_github_bazelbuild_buildtools//:buildifier
+    - name: Gazelle
+      run: bazel run //:gazelle
+    - name: Gofmt
+      run: bazel run @go_sdk//:bin/gofmt -- -s -w .
+    - name: Clang format
+      run: find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +
+    - name: Test style conformance
+      run: git diff --exit-code HEAD --
+    - name: Check for ineffective assignments
+      run: bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)
+    - name: Bazel build and test
+      run: bazel test //...
+
+    - name: Install Docker credentials
+      run: mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json
+      env:
+        DOCKER_CONFIG_JSON: ${{ secrets.DOCKER_CONFIG_JSON }}
+    - name: Push container bb-replicator
+      run: bazel run //cmd/bb_replicator:bb_replicator_container_push
+    - name: Push container bb-storage
+      run: bazel run //cmd/bb_storage:bb_storage_container_push

@@ -1,8 +1,5 @@
-name: CI
+name: pull-requests
 on:
-  push:
-    branches:
-    - master
   pull_request:
     branches:
     - master
@@ -12,8 +9,6 @@ jobs:
     container: docker://l.gcr.io/google/bazel:2.1.0
     steps:
     - uses: actions/checkout@v1
-    - name: Bazel build and test
-      run: bazel test //...
     - name: Buildifier
       run: bazel run @com_github_bazelbuild_buildtools//:buildifier
     - name: Gazelle
@@ -24,3 +19,7 @@ jobs:
       run: find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +
     - name: Test style conformance
       run: git diff --exit-code HEAD --
+    - name: Check for ineffective assignments
+      run: bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)
+    - name: Bazel build and test
+      run: bazel test //...
