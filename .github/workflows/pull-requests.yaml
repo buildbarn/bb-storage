@@ -9,6 +9,7 @@ jobs:
     container: docker://l.gcr.io/google/bazel:2.1.0
     steps:
     - uses: actions/checkout@v1
+
     - name: Buildifier
       run: bazel run @com_github_bazelbuild_buildtools//:buildifier
     - name: Gazelle
@@ -21,5 +22,8 @@ jobs:
       run: git diff --exit-code HEAD --
     - name: Check for ineffective assignments
       run: bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)
-    - name: Bazel build and test
-      run: bazel test //...
+
+    - name: Linux build and test
+      run: bazel test --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...
+    - name: macOS build
+      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
