@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     container: docker://l.gcr.io/google/bazel:2.1.0
     steps:
-    - uses: actions/checkout@v1
+    - name: Check out source code
+      uses: actions/checkout@v1
 
     - name: Buildifier
       run: bazel run @com_github_bazelbuild_buildtools//:buildifier
@@ -25,25 +26,28 @@ jobs:
 
     - name: Linux build and test
       run: bazel test --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...
-    - name: macOS build
-      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
-
-    - uses: actions/upload-artifact@v1
+    - name: Upload bb_replicator for Linux
+      uses: actions/upload-artifact@v2-preview
       with:
-        name: bb_replicator for Linux
+        name: bb_replicator.linux_amd64
         path: bazel-bin/cmd/bb_replicator/linux_amd64_pure_stripped/bb_replicator
-    - uses: actions/upload-artifact@v1
+    - name: Upload bb_storage for Linux
+      uses: actions/upload-artifact@v2-preview
       with:
-        name: bb_storage for Linux
+        name: bb_storage.linux_amd64
         path: bazel-bin/cmd/bb_storage/linux_amd64_pure_stripped/bb_storage
 
-    - uses: actions/upload-artifact@v1
+    - name: macOS build
+      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
+    - name: Upload replicator for macOS
+      uses: actions/upload-artifact@v2-preview
       with:
-        name: bb_replicator for macOS
+        name: bb_replicator.darwin_amd64
         path: bazel-bin/cmd/bb_replicator/darwin_amd64_pure_stripped/bb_replicator
-    - uses: actions/upload-artifact@v1
+    - name: Upload bb_storage for macOS
+      uses: actions/upload-artifact@v2-preview
       with:
-        name: bb_storage for macOS
+        name: bb_storage.darwin_amd64
         path: bazel-bin/cmd/bb_storage/darwin_amd64_pure_stripped/bb_storage
 
     - name: Install Docker credentials
