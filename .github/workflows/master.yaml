@@ -28,6 +28,24 @@ jobs:
     - name: macOS build
       run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
 
+    - uses: actions/upload-artifact@v1
+      with:
+        name: bb_replicator for Linux
+        path: bazel-bin/cmd/bb_replicator/linux_amd64_pure_stripped/bb_replicator
+    - uses: actions/upload-artifact@v1
+      with:
+        name: bb_storage for Linux
+        path: bazel-bin/cmd/bb_storage/linux_amd64_pure_stripped/bb_storage
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: bb_replicator for macOS
+        path: bazel-bin/cmd/bb_replicator/darwin_amd64_pure_stripped/bb_replicator
+    - uses: actions/upload-artifact@v1
+      with:
+        name: bb_storage for macOS
+        path: bazel-bin/cmd/bb_storage/darwin_amd64_pure_stripped/bb_storage
+
     - name: Install Docker credentials
       run: mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json
       env:
