@@ -2,7 +2,6 @@ package blobstore
 
 import (
 	"context"
-	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -48,18 +47,16 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 }
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	r := b.ToReader()
-	defer r.Close()
-
 	ctx, cancel := context.WithCancel(ctx)
 	w, err := ba.bucket.NewWriter(ctx, ba.getKey(digest), nil)
 	if err != nil {
 		cancel()
+		b.Discard()
 		return err
 	}
 	// In case of an error (e.g. network failure), we cancel before closing to
 	// request the write to be aborted.
-	if _, err = io.Copy(w, r); err != nil {
+	if err = b.IntoWriter(w); err != nil {
 		cancel()
 		w.Close()
 		return err
