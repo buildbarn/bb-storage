@@ -51,6 +51,7 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 	w, err := ba.bucket.NewWriter(ctx, ba.getKey(digest), nil)
 	if err != nil {
 		cancel()
+		b.Discard()
 		return err
 	}
 	// In case of an error (e.g. network failure), we cancel before closing to
