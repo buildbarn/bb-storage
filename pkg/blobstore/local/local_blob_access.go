@@ -336,9 +336,9 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 	}
 
 	readBlock, isOld := ba.getBlock(readLocation.BlockID)
+	b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 	if !isOld {
 		// Blob was found in a "new" or "current" block.
-		b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 		ba.lock.Unlock()
 		return b
 	}
@@ -352,10 +352,10 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 	writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
 	if err != nil {
 		ba.lock.Unlock()
+		b.Discard()
 		return buffer.NewBufferFromError(err)
 	}
 	writeBlock.acquire()
-	b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 	ba.lock.Unlock()
 
 	// Copy the object while it's been returned. Block until copying
@@ -458,11 +458,12 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
 				// Blob is present and still old.
 				// Allocate space for a copy.
+				b := readBlock.b.Get(blobDigest, readLocation.OffsetBytes, readLocation.SizeBytes)
 				writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
 				if err != nil {
+					b.Discard()
 					return digest.EmptySet, err
 				}
-				b := readBlock.b.Get(blobDigest, readLocation.OffsetBytes, readLocation.SizeBytes)
 
 				// Copy the data while unlocked, so that
 				// concurrent requests for non-old data
