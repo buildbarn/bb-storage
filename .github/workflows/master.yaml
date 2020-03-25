@@ -41,7 +41,7 @@ jobs:
 
     - name: macOS build
       run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
-    - name: Upload replicator for macOS
+    - name: Upload bb_replicator for macOS
       uses: actions/upload-artifact@v2-preview
       with:
         name: bb_replicator.darwin_amd64
