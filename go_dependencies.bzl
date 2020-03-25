@@ -278,3 +278,9 @@ def bb_storage_go_dependencies():
         commit = "7953dde2c7bf4ce700d9f14c2e41c0966763760c",
         importpath = "github.com/gordonklaus/ineffassign",
     )
+
+    go_repository(
+        name = "org_golang_x_lint",
+        commit = "738671d3881b9731cc63024d5d88cf28db875626",
+        importpath = "golang.org/x/lint",
+    )
