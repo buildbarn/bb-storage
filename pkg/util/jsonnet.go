@@ -16,7 +16,14 @@ import (
 // UnmarshalConfigurationFromFile reads a Jsonnet file, evaluates it and
 // unmarshals the output into a Protobuf message.
 func UnmarshalConfigurationFromFile(path string, configuration proto.Message) error {
-	jsonnetInput, err := ioutil.ReadFile(path)
+	// Read configuration file from disk or from stdin.
+	var jsonnetInput []byte
+	var err error
+	if path == "-" {
+		jsonnetInput, err = ioutil.ReadAll(os.Stdin)
+	} else {
+		jsonnetInput, err = ioutil.ReadFile(path)
+	}
 	if err != nil {
 		return StatusWrapf(err, "Failed to read file contents")
 	}
