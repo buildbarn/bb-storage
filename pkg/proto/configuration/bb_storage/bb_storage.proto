@@ -3,30 +3,17 @@ syntax = "proto3";
 package buildbarn.configuration.bb_storage;
 
 import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/global/global.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
-
-message JaegerConfiguration {
-  // Jaeger agent endpoint.
-  string agent_endpoint = 1;
-
-  // Jaeger collector endpoint.
-  string collector_endpoint = 2;
-
-  // OpenTracing service name.
-  string service_name = 3;
-
-  // Whether or not all traces should be sampled.
-  bool always_sample = 4;
-}
 
 message ApplicationConfiguration {
   // Blobstore configuration for the bb-storage instance.
   buildbarn.configuration.blobstore.BlobstoreConfiguration blobstore = 1;
 
-  // Jaeger configuration for tracing.
-  JaegerConfiguration jaeger = 2;
+  // Jaeger configuration has moved into 'global'.
+  reserved 2;
 
   // Address on which to listen to expose Prometheus metrics.
   string http_listen_address = 3;
@@ -47,4 +34,7 @@ message ApplicationConfiguration {
 
   // Maximum Protobuf message size to unmarshal.
   int64 maximum_message_size_bytes = 8;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 9;
 }

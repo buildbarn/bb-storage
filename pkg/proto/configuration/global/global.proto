@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package buildbarn.configuration.global;
+
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
+
+message JaegerConfiguration {
+  // Jaeger agent endpoint.
+  string agent_endpoint = 1;
+
+  // Jaeger collector endpoint.
+  string collector_endpoint = 2;
+
+  // OpenTracing service name.
+  string service_name = 3;
+
+  // Whether or not all traces should be sampled.
+  bool always_sample = 4;
+}
+
+message BasicAuthenticationConfiguration {
+  // Username to store in the "Authorization: Basic" header.
+  string username = 1;
+
+  // Password to store in the "Authorization: Basic" header.
+  string password = 2;
+}
+
+message PrometheusPushgatewayConfiguration {
+  // URL of the Prometheus Pushgateway server. Do not include the
+  // "/metrics/jobs/..." part in the URL.
+  string url = 1;
+
+  // Name of the job to announce to the Prometheus Pushgateway.
+  string job = 2;
+
+  // If set, enable the use of HTTP basic authentication.
+  BasicAuthenticationConfiguration basic_authentication = 3;
+
+  // Label pairs to use as the grouping key.
+  map<string, string> grouping = 4;
+
+  // Interval between metrics pushes.
+  google.protobuf.Duration push_interval = 5;
+}
+
+message Configuration {
+  // Jaeger configuration for tracing.
+  JaegerConfiguration jaeger = 1;
+
+  // Sets the runtime.SetMutexProfileFraction(), so that the HTTP debug
+  // endpoints used by pprof expose mutex profiling information.
+  int32 mutex_profile_fraction = 2;
+
+  // Periodically push metrics to a Prometheus Pushgateway, as opposed
+  // to letting the Prometheus server scrape the metrics.
+  PrometheusPushgatewayConfiguration prometheus_pushgateway = 3;
+}

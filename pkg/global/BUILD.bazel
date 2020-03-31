@@ -2,12 +2,15 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["init.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/opencensus",
+    srcs = ["apply_configuration.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/global",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/proto/configuration/bb_storage:go_default_library",
+        "//pkg/proto/configuration/global:go_default_library",
+        "//pkg/util:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@com_github_prometheus_client_golang//prometheus:go_default_library",
+        "@com_github_prometheus_client_golang//prometheus/push:go_default_library",
         "@io_opencensus_go//plugin/ocgrpc:go_default_library",
         "@io_opencensus_go//stats/view:go_default_library",
         "@io_opencensus_go//trace:go_default_library",

@@ -10,8 +10,8 @@ import (
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/buildbarn/bb-storage/pkg/opencensus"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
@@ -30,9 +30,8 @@ func main() {
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-
-	if configuration.Jaeger != nil {
-		opencensus.Initialize(configuration.Jaeger)
+	if err := global.ApplyConfiguration(configuration.Global); err != nil {
+		log.Fatal("Failed to apply global configuration options: ", err)
 	}
 
 	// Storage access.

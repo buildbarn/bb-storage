@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.bb_replicator;
 
 import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/global/global.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator";
@@ -25,4 +26,7 @@ message ApplicationConfiguration {
 
   // Maximum Protobuf message size to unmarshal.
   int64 maximum_message_size_bytes = 6;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 7;
 }
