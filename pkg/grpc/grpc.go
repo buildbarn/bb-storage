@@ -130,6 +130,18 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.Ser
 			serverOptions = append(serverOptions, grpc.MaxRecvMsgSize(int(maxRecvMsgSize)))
 		}
 
+		// Optional: Keepalive enforcement policy.
+		if policy := configuration.KeepaliveEnforcementPolicy; policy != nil {
+			minTime, err := ptypes.Duration(policy.MinTime)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive enforcement policy minimum time")
+			}
+			serverOptions = append(serverOptions, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+				MinTime:             minTime,
+				PermitWithoutStream: policy.PermitWithoutStream,
+			}))
+		}
+
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
 		registrationFunc(s)
