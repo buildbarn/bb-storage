@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"errors"
 	"os"
 	"runtime"
 	"sort"
@@ -35,7 +34,7 @@ func newLocalDirectoryFromFileDescriptor(fd int) (*localDirectory, error) {
 
 // NewLocalDirectory creates a directory handle that corresponds to a
 // local path on the system.
-func NewLocalDirectory(path string) (Directory, error) {
+func NewLocalDirectory(path string) (DirectoryCloser, error) {
 	fd, err := unix.Openat(unix.AT_FDCWD, path, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (d *localDirectory) enter(name string) (*localDirectory, error) {
 	return newLocalDirectoryFromFileDescriptor(fd)
 }
 
-func (d *localDirectory) Enter(name string) (Directory, error) {
+func (d *localDirectory) EnterDirectory(name string) (DirectoryCloser, error) {
 	return d.enter(name)
 }
 
@@ -112,13 +111,11 @@ func (d *localDirectory) Link(oldName string, newDirectory Directory, newName st
 		return err
 	}
 	defer runtime.KeepAlive(d)
-	defer runtime.KeepAlive(newDirectory)
-
-	d2, ok := newDirectory.(*localDirectory)
-	if !ok {
-		return errors.New("Source and target directory have different types")
-	}
-	return unix.Linkat(d.fd, oldName, d2.fd, newName, 0)
+	return newDirectory.Apply(localDirectoryLink{
+		oldFD:   d.fd,
+		oldName: oldName,
+		newName: newName,
+	})
 }
 
 func (d *localDirectory) lstat(name string) (FileType, deviceNumber, error) {
@@ -332,7 +329,7 @@ func (d *localDirectory) RemoveAll(name string) error {
 	defer runtime.KeepAlive(d)
 
 	// TODO(edsch): Call chmod(700) to ensure directory can be accessed?
-	if subdirectory, err := d.Enter(name); err == nil {
+	if subdirectory, err := d.EnterDirectory(name); err == nil {
 		// A directory. Remove all children.
 		err := subdirectory.RemoveAllChildren()
 		subdirectory.Close()
@@ -355,4 +352,20 @@ func (d *localDirectory) Symlink(oldName string, newName string) error {
 	defer runtime.KeepAlive(d)
 
 	return unix.Symlinkat(oldName, d.fd, newName)
+}
+
+type localDirectoryLink struct {
+	oldFD   int
+	oldName string
+	newName string
+}
+
+func (d *localDirectory) Apply(arg interface{}) error {
+	switch a := arg.(type) {
+	case localDirectoryLink:
+		defer runtime.KeepAlive(d)
+		return unix.Linkat(a.oldFD, a.oldName, d.fd, a.newName, 0)
+	default:
+		return syscall.EXDEV
+	}
 }

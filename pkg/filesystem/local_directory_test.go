@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func openTmpDir(t *testing.T) filesystem.Directory {
+func openTmpDir(t *testing.T) filesystem.DirectoryCloser {
 	p := filepath.Join(os.Getenv("TEST_TMPDIR"), t.Name())
 	require.NoError(t, os.Mkdir(p, 0777))
 	d, err := filesystem.NewLocalDirectory(p)
@@ -35,15 +35,15 @@ func TestLocalDirectoryEnterBadName(t *testing.T) {
 	d := openTmpDir(t)
 
 	// Empty filename.
-	_, err := d.Enter("")
+	_, err := d.EnterDirectory("")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), err)
 	// Attempt to bypass directory hierarchy.
-	_, err = d.Enter(".")
+	_, err = d.EnterDirectory(".")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), err)
-	_, err = d.Enter("..")
+	_, err = d.EnterDirectory("..")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), err)
 	// Skipping of intermediate directory levels.
-	_, err = d.Enter("foo/bar")
+	_, err = d.EnterDirectory("foo/bar")
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"foo/bar\""), err)
 
 	require.NoError(t, d.Close())
@@ -51,7 +51,7 @@ func TestLocalDirectoryEnterBadName(t *testing.T) {
 
 func TestLocalDirectoryEnterNonExistent(t *testing.T) {
 	d := openTmpDir(t)
-	_, err := d.Enter("nonexistent")
+	_, err := d.EnterDirectory("nonexistent")
 	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
@@ -61,7 +61,7 @@ func TestLocalDirectoryEnterFile(t *testing.T) {
 	f, err := d.OpenWrite("file", filesystem.CreateExcl(0666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	_, err = d.Enter("file")
+	_, err = d.EnterDirectory("file")
 	require.Equal(t, syscall.ENOTDIR, err)
 	require.NoError(t, d.Close())
 }
@@ -69,7 +69,7 @@ func TestLocalDirectoryEnterFile(t *testing.T) {
 func TestLocalDirectoryEnterSymlink(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", "symlink"))
-	_, err := d.Enter("symlink")
+	_, err := d.EnterDirectory("symlink")
 	require.Equal(t, syscall.ENOTDIR, err)
 	require.NoError(t, d.Close())
 }
@@ -77,7 +77,7 @@ func TestLocalDirectoryEnterSymlink(t *testing.T) {
 func TestLocalDirectoryEnterSuccess(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir("subdir", 0777))
-	sub, err := d.Enter("subdir")
+	sub, err := d.EnterDirectory("subdir")
 	require.NoError(t, err)
 	require.NoError(t, sub.Close())
 	require.NoError(t, d.Close())

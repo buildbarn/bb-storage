@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"io"
 	"os"
 )
 
@@ -56,11 +57,9 @@ func CreateExcl(perm os.FileMode) CreationMode {
 // By placing this in a separate interface, it's easier to stub out file
 // system handling as part of unit tests entirely.
 type Directory interface {
-	// Enter creates a derived directory handle for a subdirectory
-	// of the current subtree.
-	Enter(name string) (Directory, error)
-	// Close any resources associated with the current directory.
-	Close() error
+	// EnterDirectory creates a derived directory handle for a
+	// subdirectory of the current subtree.
+	EnterDirectory(name string) (DirectoryCloser, error)
 
 	// Open a file contained within the directory for writing, only
 	// allowing data to be appended to the end of the file.
@@ -93,4 +92,30 @@ type Directory interface {
 	RemoveAllChildren() error
 	// Symlink is the equivalent of os.Symlink().
 	Symlink(oldName string, newName string) error
+
+	// Function that base types may use to implement calls that
+	// require double dispatching, such as hardlinking and renaming.
+	Apply(arg interface{}) error
+}
+
+// DirectoryCloser is a Directory handle that can be released.
+type DirectoryCloser interface {
+	Directory
+	io.Closer
+}
+
+type nopDirectoryCloser struct {
+	Directory
+}
+
+// NopDirectoryCloser adds a no-op Close method to a Directory object,
+// similar to how ioutil.NopCloser() adds a Close method to a Reader.
+func NopDirectoryCloser(d Directory) DirectoryCloser {
+	return nopDirectoryCloser{
+		Directory: d,
+	}
+}
+
+func (d nopDirectoryCloser) Close() error {
+	return nil
 }
