@@ -153,7 +153,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1700000000, 0))
 		require.Equal(
 			t,
-			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid"),
+			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid: current time 2023-11-14T22:13:20Z is after 2020-11-17T09:03:34Z"),
 			authenticator.Authenticate(
 				peer.NewContext(
 					ctx,
