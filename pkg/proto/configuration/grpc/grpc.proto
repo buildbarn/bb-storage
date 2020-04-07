@@ -71,6 +71,11 @@ message ServerConfiguration {
   // Policy for allowing clients to send messages for point-to-point
   // healthchecking. The default policy is used when left unset.
   ServerKeepaliveEnforcementPolicy keepalive_enforcement_policy = 6;
+
+  // Service name for health check requests. The gRPC server will
+  // report itself healthy for this service via the grpc.health.v1
+  // protocol.
+  string health_check_service = 7;
 }
 
 message ServerKeepaliveEnforcementPolicy {
