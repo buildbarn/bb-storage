@@ -42,7 +42,7 @@ func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteex
 		return nil, err
 	}
 	if instance := digest.GetInstance(); !s.allowUpdatesForInstances[instance] {
-		return nil, status.Errorf(codes.Unimplemented, "This service can only be used to get action results for instance %#v", instance)
+		return nil, status.Errorf(codes.PermissionDenied, "This service does not accept action results for instance %#v", instance)
 	}
 	return in.ActionResult, s.blobAccess.Put(
 		ctx,
