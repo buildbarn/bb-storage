@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
@@ -149,6 +151,13 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.Ser
 
 		// Enable grpc reflection.
 		reflection.Register(s)
+
+		// Enable grpc health service
+		h := health.NewServer()
+		grpc_health_v1.RegisterHealthServer(s, h)
+		// TODO: construct an API for the caller to indicate when it is healthy and set this. Until then, we'll just track this function's extry and exit.
+		h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_SERVING)
+		defer h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
 		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
 			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
