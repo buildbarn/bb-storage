@@ -69,9 +69,9 @@ func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecut
 	}
 	requestCopy := *in
 	requestCopy.Name = target[1]
-	return backend.WaitExecution(in, &operationNamePrepender{
+	return backend.WaitExecution(&requestCopy, &operationNamePrepender{
 		Execution_ExecuteServer: out,
-		prefix:                  target[1],
+		prefix:                  target[0],
 	})
 }
 
