@@ -209,6 +209,7 @@ def bb_storage_go_dependencies():
         name = "com_github_google_wire",
         commit = "2183ee4806cf1878e136fea26f06f9abef9375b6",
         importpath = "github.com/google/wire",
+        build_extra_args = ["--exclude=internal/wire/testdata"],
     )
 
     go_repository(
