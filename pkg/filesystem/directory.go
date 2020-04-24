@@ -96,6 +96,8 @@ type Directory interface {
 	Lstat(name string) (FileInfo, error)
 	// Mkdir is the equivalent of os.Mkdir().
 	Mkdir(name string, perm os.FileMode) error
+	// Mknod is the equivalent of unix.Mknod().
+	Mknod(name string, perm os.FileMode, dev int) error
 	// ReadDir is the equivalent of ioutil.ReadDir().
 	ReadDir() ([]FileInfo, error)
 	// Readlink is the equivalent of os.Readlink().
