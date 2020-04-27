@@ -447,6 +447,11 @@ message LocalBlobAccessConfiguration {
     // The disadvantage of enabling this option is that data corruption
     // on the block device will not be detected.
     bool disable_integrity_checking = 3;
+
+    // Directory in which to store stateful information about the blob access.
+    // In particular, stores the digest location map and the mapping of blocks
+    // to locations in the storage.
+    string state_directory = 4;
   }
 
   oneof data_backend {
