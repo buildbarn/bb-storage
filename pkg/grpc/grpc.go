@@ -157,7 +157,6 @@ func NewGRPCServersFromConfigurationAndServe(configurations []*configuration.Ser
 		grpc_health_v1.RegisterHealthServer(s, h)
 		// TODO: construct an API for the caller to indicate when it is healthy and set this. Until then, we'll just track this function's extry and exit.
 		h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_SERVING)
-		defer h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
 		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
 			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
