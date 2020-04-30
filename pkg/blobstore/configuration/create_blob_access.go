@@ -422,14 +422,14 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 	return blobstore.NewMetricsBlobAccess(implementation, clock.SystemClock, fmt.Sprintf("%s_%s", options.storageTypeName, backendType)), nil
 }
 
-func createPersistentDigestLocationMap(config *pb.LocalBlobAccessConfiguration, options *blobAccessCreationOptions, recordFile filesystem.FileReadWriter) (local.DigestLocationMap, error) {
+func createPersistentDigestLocationMap(config *pb.LocalBlobAccessConfiguration, options *blobAccessCreationOptions, recordFile filesystem.FileReadWriter, hashInitialisation uint64) local.DigestLocationMap {
 	return local.NewHashingDigestLocationMap(
 		local.NewOnDiskLocationRecordArray(recordFile),
 		int(config.DigestLocationMapSize),
-		rand.Uint64(),
+		hashInitialisation,
 		config.DigestLocationMapMaximumGetAttempts,
 		int(config.DigestLocationMapMaximumPutAttempts),
-		options.storageTypeName), nil
+		options.storageTypeName)
 }
 
 func createDigestLocationMap(config *pb.LocalBlobAccessConfiguration, options *blobAccessCreationOptions) local.DigestLocationMap {
@@ -452,9 +452,12 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 	var blockSectorCount int64
 	var blockAllocator local.BlockAllocator
 
+	var stateFile string
+
 	switch dataBackend := config.DataBackend.(type) {
 	case *pb.LocalBlobAccessConfiguration_InMemory_:
 		backendType = "local_in_memory"
+		stateFile = ""
 		// All data must be stored in memory. Because we
 		// are not dealing with physical storage, there
 		// is no need to take sector sizes into account.
@@ -475,6 +478,14 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 		}
 	case *pb.LocalBlobAccessConfiguration_BlockDevice_:
 		backendType = "local_block_device"
+
+		stateDirectory, err := filesystem.NewLocalDirectory(dataBackend.BlockDevice.StateDirectory)
+		if err != nil {
+			return nil, backendType, err
+		}
+		defer stateDirectory.Close()
+		stateFile = dataBackend.BlockDevice.StateDirectory + "/_bb_storage_state_" + options.storageTypeName
+
 		// Data may be stored on a block device that is
 		// memory mapped. Automatically determine the
 		// block size based on the size of the block
@@ -487,18 +498,16 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 		}
 		blockCount := dataBackend.BlockDevice.SpareBlocks + config.OldBlocks + config.CurrentBlocks + config.NewBlocks
 		blockSectorCount = sectorCount / int64(blockCount)
-		blockAllocator = local.NewPartitioningBlockAllocator(
+		blockAllocator, err = local.NewPartitioningBlockAllocator(
 			f,
 			options.storageType,
 			sectorSizeBytes,
 			blockSectorCount,
-			int(blockCount))
-
-		stateDirectory, err := filesystem.NewLocalDirectory(dataBackend.BlockDevice.StateDirectory)
+			int(blockCount),
+			stateFile)
 		if err != nil {
 			return nil, backendType, err
 		}
-		defer stateDirectory.Close()
 
 		switch options.storageType {
 		case blobstore.CASStorageType:
@@ -506,10 +515,10 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 			if err != nil {
 				return nil, backendType, err
 			}
-			digestLocationMap, err = createPersistentDigestLocationMap(config, options, mapFile)
-			if err != nil {
+			if err = mapFile.Truncate(60 * config.DigestLocationMapSize); err != nil {
 				return nil, backendType, err
 			}
+			digestLocationMap = createPersistentDigestLocationMap(config, options, mapFile, dataBackend.BlockDevice.DigestLocationMapHashInitialisation)
 		case blobstore.ACStorageType:
 			maps := map[string]local.DigestLocationMap{}
 			for _, instance := range config.Instances {
@@ -517,10 +526,10 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 				if err != nil {
 					return nil, backendType, err
 				}
-				maps[instance], err = createPersistentDigestLocationMap(config, options, mapFile)
-				if err != nil {
+				if err = mapFile.Truncate(60 * config.DigestLocationMapSize); err != nil {
 					return nil, backendType, err
 				}
+				maps[instance] = createPersistentDigestLocationMap(config, options, mapFile, dataBackend.BlockDevice.DigestLocationMapHashInitialisation)
 			}
 		}
 	}
@@ -533,7 +542,8 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 		blockSectorCount,
 		int(config.OldBlocks),
 		int(config.CurrentBlocks),
-		int(config.NewBlocks))
+		int(config.NewBlocks),
+		stateFile)
 	if err != nil {
 		return nil, backendType, err
 	}

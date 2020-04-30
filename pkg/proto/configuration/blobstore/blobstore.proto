@@ -452,6 +452,9 @@ message LocalBlobAccessConfiguration {
     // In particular, stores the digest location map and the mapping of blocks
     // to locations in the storage.
     string state_directory = 4;
+
+    // Hash to initialise the digest location map with
+    uint64 digest_location_map_hash_initialisation = 5;
   }
 
   oneof data_backend {

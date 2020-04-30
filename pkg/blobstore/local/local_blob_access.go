@@ -2,6 +2,10 @@ package local
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,6 +91,10 @@ func (db deadBlock) Put(offset int64, b buffer.Buffer) error {
 	return status.Error(codes.Internal, "Attempted to write blob into dead block")
 }
 
+func (db deadBlock) GetOffset() int64 {
+	return -1
+}
+
 func (db deadBlock) Release() {}
 
 type oldBlock struct {
@@ -114,6 +122,7 @@ type localBlobAccess struct {
 	locationValidator           LocationValidator
 	allocationBlockIndex        int
 	allocationAttemptsRemaining int
+	stateFile                   string
 
 	lastRemovedOldBlockInsertionTime prometheus.Gauge
 	oldBlobRotationToNewGet          prometheus.Observer
@@ -188,7 +197,7 @@ func unixTime() float64 {
 // being LRU-like. Setting it too high is also not recommended, as this
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
-func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
+func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int, stateFile string) (blobstore.BlobAccess, error) {
 	localBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(localBlobAccessLastRemovedOldBlockInsertionTime)
 		prometheus.MustRegister(localBlobAccessOldBlobRotationToNew)
@@ -205,37 +214,146 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 			NewestBlockID: oldBlocksCount + currentBlocksCount + newBlocksCount,
 		},
 		desiredNewBlocksCount: newBlocksCount,
+		stateFile:             stateFile,
 
 		lastRemovedOldBlockInsertionTime: localBlobAccessLastRemovedOldBlockInsertionTime.WithLabelValues(name),
 		oldBlobRotationToNewGet:          localBlobAccessOldBlobRotationToNew.WithLabelValues(name, "Get"),
 		oldBlobRotationToNewFindMissing:  localBlobAccessOldBlobRotationToNew.WithLabelValues(name, "FindMissing"),
 	}
 
-	// Insert placeholders for the initial set of "old" blocks.
-	now := unixTime()
-	ba.lastRemovedOldBlockInsertionTime.Set(now)
-	for i := 0; i < oldBlocksCount; i++ {
-		ba.oldBlocks = append(ba.oldBlocks, oldBlock{
-			block:         newSharedBlock(deadBlock{}),
-			insertionTime: now,
-		})
-	}
-
-	// Allocate initial set of "new" blocks.
-	for i := 0; i < currentBlocksCount+newBlocksCount; i++ {
-		block, err := blockAllocator.NewBlock()
-		if err != nil {
-			for _, newBlock := range ba.newBlocks {
-				newBlock.block.release()
-			}
+	if _, err := os.Stat(stateFile); err == nil && stateFile != "" {
+		if err := ba.loadState(); err != nil {
 			return nil, err
 		}
-		ba.newBlocks = append(ba.newBlocks, newBlock{
-			block: newSharedBlock(block),
-		})
+	} else {
+		// Insert placeholders for the initial set of "old" blocks.
+		now := unixTime()
+		ba.lastRemovedOldBlockInsertionTime.Set(now)
+		for i := 0; i < oldBlocksCount; i++ {
+			ba.oldBlocks = append(ba.oldBlocks, oldBlock{
+				block:         newSharedBlock(deadBlock{}),
+				insertionTime: now,
+			})
+		}
+
+		// Allocate initial set of "new" blocks.
+		for i := 0; i < currentBlocksCount+newBlocksCount; i++ {
+			block, err := blockAllocator.NewBlock()
+			if err != nil {
+				for _, newBlock := range ba.newBlocks {
+					newBlock.block.release()
+				}
+				return nil, err
+			}
+			ba.newBlocks = append(ba.newBlocks, newBlock{
+				block: newSharedBlock(block),
+			})
+		}
 	}
 	ba.startAllocatingFromBlock(0)
+	err := ba.saveState()
+	if err != nil {
+		return nil, err
+	}
 	return ba, nil
+}
+
+func (ba *localBlobAccess) saveState() error {
+	if ba.stateFile == "" {
+		return nil
+	}
+	var state []byte
+	state = append(state, []byte(fmt.Sprintf("%d\n", ba.locationValidator.OldestBlockID))...)
+
+	for i := 0; i < len(ba.oldBlocks); i++ {
+		if _, ok := ba.oldBlocks[i].block.b.(deadBlock); ok == true {
+			state = append(state, []byte(fmt.Sprintf("%d,%s,%d\n", i, "O", -1))...)
+			continue
+		}
+		block, ok := ba.oldBlocks[i].block.b.(*partitioningBlock)
+		if ok == false {
+			return status.Error(codes.Internal, "Tried to save state of stateless backend!")
+		}
+		state = append(state, []byte(fmt.Sprintf("%d,%s,%d\n", i, "O", block.offset))...)
+	}
+
+	for i := 0; i < len(ba.currentBlocks); i++ {
+		block, ok := ba.currentBlocks[i].b.(*partitioningBlock)
+		if ok == false {
+			return status.Error(codes.Internal, "Tried to save state of stateless backend!")
+		}
+		state = append(state, []byte(fmt.Sprintf("%d,%s,%d\n", i, "C", block.offset))...)
+	}
+
+	for i := 0; i < len(ba.newBlocks); i++ {
+		block, ok := ba.newBlocks[i].block.b.(*partitioningBlock)
+		if ok == false {
+			return status.Error(codes.Internal, "Tried to save state of stateless backend!")
+		}
+		state = append(state, []byte(fmt.Sprintf("%d,%s,%d\n", i, "N", block.offset))...)
+	}
+
+	err := ioutil.WriteFile(ba.stateFile, state, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ba *localBlobAccess) loadState() error {
+	if ba.stateFile == "" {
+		return nil
+	}
+
+	stateString, err := ioutil.ReadFile(ba.stateFile)
+	if err != nil {
+		return err
+	}
+	state := strings.Split(string(stateString[:len(stateString)-1]), "\n")
+	if _, err := fmt.Sscanf(state[0], "%d", &ba.locationValidator.OldestBlockID); err != nil {
+		return err
+	}
+
+	now := unixTime()
+	for i := 1; i < len(state); i++ {
+		var index int
+		var blockType string
+		var offset int64
+		_, err := fmt.Sscanf(state[i], "%d,%1s,%d", &index, &blockType, &offset)
+		if err != nil {
+			return err
+		}
+
+		var block *sharedBlock
+		pba, ok := ba.blockAllocator.(*partitioningBlockAllocator)
+		if ok == false {
+			return status.Error(codes.Internal, "Tried to load state for stateless backend")
+		}
+		if offset != -1 {
+			block = newSharedBlock(&partitioningBlock{
+				blockAllocator: pba,
+				offset:         offset,
+				usecount:       1,
+			})
+		} else {
+			block = newSharedBlock(deadBlock{})
+		}
+
+		switch blockType {
+		case "O":
+			ba.oldBlocks = append(ba.oldBlocks, oldBlock{
+				block:         block,
+				insertionTime: now,
+			})
+		case "C":
+			ba.currentBlocks = append(ba.currentBlocks, block)
+		case "N":
+			ba.newBlocks = append(ba.newBlocks, newBlock{
+				block: block,
+			})
+		}
+	}
+	return nil
 }
 
 // getBlock returns the block associated with a numerical block ID.
@@ -303,6 +421,10 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Locatio
 			ba.locationValidator.NewestBlockID++
 		}
 		ba.startAllocatingFromBlock(0)
+	}
+
+	if err := ba.saveState(); err != nil {
+		return nil, Location{}, err
 	}
 
 	// Repeatedly attempt to allocate a blob within a "new" block.

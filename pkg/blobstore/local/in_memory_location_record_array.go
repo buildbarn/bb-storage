@@ -15,10 +15,11 @@ func NewInMemoryLocationRecordArray(size int) LocationRecordArray {
 	}
 }
 
-func (lra *inMemoryLocationRecordArray) Get(index int) LocationRecord {
-	return lra.records[index]
+func (lra *inMemoryLocationRecordArray) Get(index int) (LocationRecord, error) {
+	return lra.records[index], nil
 }
 
-func (lra *inMemoryLocationRecordArray) Put(index int, locationRecord LocationRecord) {
+func (lra *inMemoryLocationRecordArray) Put(index int, locationRecord LocationRecord) error {
 	lra.records[index] = locationRecord
+	return nil
 }

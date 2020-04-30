@@ -9,7 +9,9 @@ import (
 
 func serializeLocationRecord(locationRecord LocationRecord) []byte {
 	serialised := make([]byte, 60)
-	serialised = append(serialised, locationRecord.Key.Digest[0:]...)
+	for i := 0; i < 32; i++ {
+		serialised[i] = locationRecord.Key.Digest[i]
+	}
 	binary.LittleEndian.PutUint32(serialised[32:36], locationRecord.Key.Attempt)
 	binary.LittleEndian.PutUint64(serialised[36:44], uint64(locationRecord.Location.BlockID))
 	binary.LittleEndian.PutUint64(serialised[44:52], uint64(locationRecord.Location.OffsetBytes))
@@ -55,21 +57,28 @@ func NewOnDiskLocationRecordArray(recordFile filesystem.FileReadWriter) Location
 	}
 }
 
-func (lra *onDiskLocationRecordArray) Get(index int) LocationRecord {
+func (lra *onDiskLocationRecordArray) Get(index int) (LocationRecord, error) {
 	lra.lock.Lock()
 	defer lra.lock.Unlock()
 
 	offset := int64(index * 60)
 	record := make([]byte, 60)
-	lra.recordFile.ReadAt(record, offset)
-	return deserializeLocationRecord(record)
+	_, err := lra.recordFile.ReadAt(record, offset)
+	if err != nil {
+		return LocationRecord{}, err
+	}
+	return deserializeLocationRecord(record), nil
 }
 
-func (lra *onDiskLocationRecordArray) Put(index int, locationRecord LocationRecord) {
+func (lra *onDiskLocationRecordArray) Put(index int, locationRecord LocationRecord) error {
 	lra.lock.Lock()
 	defer lra.lock.Unlock()
 
 	offset := int64(index * 60)
 	record := serializeLocationRecord(locationRecord)
-	lra.recordFile.WriteAt(record, offset)
+	_, err := lra.recordFile.WriteAt(record[:60], offset)
+	if err != nil {
+		return err
+	}
+	return nil
 }
