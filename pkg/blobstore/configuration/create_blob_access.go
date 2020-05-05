@@ -511,7 +511,7 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 
 		switch options.storageType {
 		case blobstore.CASStorageType:
-			mapFile, err := stateDirectory.OpenReadWrite("CAS", filesystem.CreateReuse(0644))
+			mapFile, err := stateDirectory.OpenReadWrite("CAS_digestmap", filesystem.CreateReuse(0644))
 			if err != nil {
 				return nil, backendType, err
 			}
@@ -522,7 +522,7 @@ func createLocalBlobAccess(config *pb.LocalBlobAccessConfiguration, options *blo
 		case blobstore.ACStorageType:
 			maps := map[string]local.DigestLocationMap{}
 			for _, instance := range config.Instances {
-				mapFile, err := stateDirectory.OpenReadWrite(instance, filesystem.CreateReuse(0644))
+				mapFile, err := stateDirectory.OpenReadWrite(fmt.Sprintf("%s_digestmap", instance), filesystem.CreateReuse(0644))
 				if err != nil {
 					return nil, backendType, err
 				}

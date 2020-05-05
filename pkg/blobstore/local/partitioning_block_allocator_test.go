@@ -20,7 +20,8 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	defer ctrl.Finish()
 
 	f := mock.NewMockFileReadWriter(ctrl)
-	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10, false)
+	pa, err := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10, false, "")
+	require.NoError(t, err)
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
@@ -32,7 +33,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	}
 
 	// Creating an eleventh block should fail.
-	_, err := pa.NewBlock()
+	_, err = pa.NewBlock()
 	require.Equal(t, err, status.Error(codes.ResourceExhausted, "No unused blocks available"))
 
 	// Blocks should initially be handed out in order of the offset.

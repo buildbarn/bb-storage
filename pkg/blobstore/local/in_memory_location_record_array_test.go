@@ -12,7 +12,9 @@ func TestInMemoryLocationRecordArray(t *testing.T) {
 	array := local.NewInMemoryLocationRecordArray(1024)
 
 	// Entries should be default initialized.
-	require.Equal(t, local.LocationRecord{}, array.Get(123))
+	result, err := array.Get(123)
+	require.Equal(t, nil, err)
+	require.Equal(t, local.LocationRecord{}, result)
 
 	// Entries should be writable.
 	record1 := local.LocationRecord{
@@ -28,7 +30,9 @@ func TestInMemoryLocationRecordArray(t *testing.T) {
 		},
 	}
 	array.Put(123, record1)
-	require.Equal(t, record1, array.Get(123))
+	result, err = array.Get(123)
+	require.Equal(t, nil, err)
+	require.Equal(t, record1, result)
 
 	// Entries should be overwritable.
 	record2 := local.LocationRecord{
@@ -44,5 +48,7 @@ func TestInMemoryLocationRecordArray(t *testing.T) {
 		},
 	}
 	array.Put(123, record2)
-	require.Equal(t, record2, array.Get(123))
+	result, err = array.Get(123)
+	require.Equal(t, nil, err)
+	require.Equal(t, record2, result)
 }

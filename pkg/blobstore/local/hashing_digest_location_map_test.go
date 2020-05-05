@@ -41,7 +41,7 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 
 	t.Run("SimpleInsertion", func(t *testing.T) {
 		// An unused slot should be overwritten immediately.
-		array.EXPECT().Get(5).Return(local.LocationRecord{})
+		array.EXPECT().Get(5).Return(local.LocationRecord{}, nil)
 		array.EXPECT().Put(5, local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: newLocation,
@@ -66,7 +66,7 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		array.EXPECT().Get(5).Return(local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: oldLocation,
-		})
+		}, nil)
 		array.EXPECT().Put(5, local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: newLocation,
@@ -80,7 +80,7 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		array.EXPECT().Get(5).Return(local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: newLocation,
-		})
+		}, nil)
 		require.NoError(t, dlm.Put(digest1, &validator, oldLocation))
 	})
 
@@ -91,8 +91,8 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		array.EXPECT().Get(5).Return(local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest2),
 			Location: newLocation,
-		})
-		array.EXPECT().Get(2).Return(local.LocationRecord{})
+		}, nil)
+		array.EXPECT().Get(2).Return(local.LocationRecord{}, nil)
 		locationRecord := local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: oldLocation,
@@ -109,12 +109,12 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 			Key:      local.NewLocationRecordKey(digest2),
 			Location: oldLocation,
 		}
-		array.EXPECT().Get(5).Return(locationRecord)
+		array.EXPECT().Get(5).Return(locationRecord, nil)
 		array.EXPECT().Put(5, local.LocationRecord{
 			Key:      local.NewLocationRecordKey(digest1),
 			Location: newLocation,
 		})
-		array.EXPECT().Get(6).Return(local.LocationRecord{})
+		array.EXPECT().Get(6).Return(local.LocationRecord{}, nil)
 		locationRecord.Key.Attempt++
 		array.EXPECT().Put(6, locationRecord)
 		require.NoError(t, dlm.Put(digest1, &validator, newLocation))

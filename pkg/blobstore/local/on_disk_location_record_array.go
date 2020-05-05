@@ -24,7 +24,7 @@ func deserializeLocationRecord(record []byte) LocationRecord {
 	var keyDigest [32]byte
 	copy(keyDigest[0:32], record[0:32])
 	keyAttempt := binary.LittleEndian.Uint32(record[32:36])
-	locationBlockId := int(binary.LittleEndian.Uint64(record[36:44]))
+	locationBlockID := int(binary.LittleEndian.Uint64(record[36:44]))
 	locationOffset := int64(binary.LittleEndian.Uint64(record[44:52]))
 	locationSize := int64(binary.LittleEndian.Uint64(record[52:60]))
 
@@ -34,7 +34,7 @@ func deserializeLocationRecord(record []byte) LocationRecord {
 	}
 
 	location := Location{
-		BlockID:     locationBlockId,
+		BlockID:     locationBlockID,
 		OffsetBytes: locationOffset,
 		SizeBytes:   locationSize,
 	}
@@ -50,6 +50,10 @@ type onDiskLocationRecordArray struct {
 	lock       sync.Mutex
 }
 
+// NewOnDiskLocationRecordArray creates a persistent LocationRecordArray.
+// Works by using a file as an array-like structure, writing serialised
+// LocationRecords next to each other and calculating where to Read/Write using
+// the length of a serialised record multiplied by the index.
 func NewOnDiskLocationRecordArray(recordFile filesystem.FileReadWriter) LocationRecordArray {
 	return &onDiskLocationRecordArray{
 		recordFile: recordFile,
