@@ -73,6 +73,7 @@ load("@com_github_bazelbuild_buildtools//buildifier:deps.bzl", "buildifier_depen
 
 buildifier_dependencies()
 
+# gazelle:repository_macro go_dependencies.bzl%bb_storage_go_dependencies
 load(":go_dependencies.bzl", "bb_storage_go_dependencies")
 
 bb_storage_go_dependencies()
