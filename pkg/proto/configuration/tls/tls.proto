@@ -17,6 +17,14 @@ message ClientConfiguration {
   // PEM data for the private key used by the TLS client. No client
   // certificate/private key is used when left unset.
   string client_private_key = 3;
+
+  // List of supported cipher suites for TLS versions up to TLS 1.2. If
+  // empty, a default list of cipher suites is used. Note that TLS 1.3
+  // cipher suites are not configurable.
+  //
+  // Valid cipher suite names may be found here:
+  // https://golang.org/pkg/crypto/tls/#pkg-constants
+  repeated string cipher_suites = 4;
 }
 
 message ServerConfiguration {
@@ -25,4 +33,12 @@ message ServerConfiguration {
 
   // PEM data for the private key used by the TLS server.
   string server_private_key = 2;
+
+  // List of supported cipher suites for TLS versions up to TLS 1.2. If
+  // empty, a default list of cipher suites is used. Note that TLS 1.3
+  // cipher suites are not configurable.
+  //
+  // Valid cipher suite names may be found here:
+  // https://golang.org/pkg/crypto/tls/#pkg-constants
+  repeated string cipher_suites = 3;
 }

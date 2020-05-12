@@ -10,6 +10,35 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var (
+	cipherSuiteIDs = map[string]uint16{}
+)
+
+func init() {
+	// Initialize the map of cipher suite IDs based on the ciphers
+	// supported by the Go TLS library.
+	for _, cipherSuite := range tls.CipherSuites() {
+		cipherSuiteIDs[cipherSuite.Name] = cipherSuite.ID
+	}
+}
+
+func getBaseTLSConfig(cipherSuites []string) (*tls.Config, error) {
+	tlsConfig := tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	// Resolve all provided cipher suite names.
+	for _, cipherSuite := range cipherSuites {
+		id, ok := cipherSuiteIDs[cipherSuite]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "Unsupported cipher suite: %#v", cipherSuite)
+		}
+		tlsConfig.CipherSuites = append(tlsConfig.CipherSuites, id)
+	}
+
+	return &tlsConfig, nil
+}
+
 // NewTLSConfigFromClientConfiguration creates a TLS configuration
 // object based on parameters specified in a Protobuf message for use
 // with a TLS client. This Protobuf message is embedded in Buildbarn
@@ -19,12 +48,16 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 		return nil, nil
 	}
 
-	var tlsConfig tls.Config
+	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	if err != nil {
+		return nil, err
+	}
+
 	if configuration.ClientCertificate != "" && configuration.ClientPrivateKey != "" {
 		// Serve a client certificate when provided.
 		cert, err := tls.X509KeyPair([]byte(configuration.ClientCertificate), []byte(configuration.ClientPrivateKey))
 		if err != nil {
-			return nil, StatusWrap(err, "Failed to load X509 key pair")
+			return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Invalid client certificate or private key")
 		}
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
@@ -34,12 +67,12 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 		// provided in the configuration instead.
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM([]byte(serverCAs)) {
-			return nil, status.Error(codes.InvalidArgument, "Failed to parse server certificate authorities")
+			return nil, status.Error(codes.InvalidArgument, "Invalid server certificate authorities")
 		}
 		tlsConfig.RootCAs = pool
 	}
 
-	return &tlsConfig, nil
+	return tlsConfig, nil
 }
 
 // NewTLSConfigFromServerConfiguration creates a TLS configuration
@@ -51,16 +84,18 @@ func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConf
 		return nil, nil
 	}
 
-	tlsConfig := tls.Config{
-		ClientAuth: tls.RequestClientCert,
+	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	if err != nil {
+		return nil, err
 	}
+	tlsConfig.ClientAuth = tls.RequestClientCert
 
 	// Require the use of server-side certificates.
 	cert, err := tls.X509KeyPair([]byte(configuration.ServerCertificate), []byte(configuration.ServerPrivateKey))
 	if err != nil {
-		return nil, StatusWrap(err, "Failed to load X509 key pair")
+		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Invalid server certificate or private key")
 	}
 	tlsConfig.Certificates = []tls.Certificate{cert}
 
-	return &tlsConfig, nil
+	return tlsConfig, nil
 }

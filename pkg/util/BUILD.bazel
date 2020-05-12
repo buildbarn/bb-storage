@@ -27,7 +27,15 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["buckets_test.go"],
+    srcs = [
+        "buckets_test.go",
+        "tls_test.go",
+    ],
     embed = [":go_default_library"],
-    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+    deps = [
+        "//pkg/proto/configuration/tls:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+    ],
 )
