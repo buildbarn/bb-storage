@@ -7,6 +7,9 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
+
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
@@ -352,6 +355,24 @@ func (d *localDirectory) Symlink(oldName string, newName string) error {
 	defer runtime.KeepAlive(d)
 
 	return unix.Symlinkat(oldName, d.fd, newName)
+}
+
+func (d *localDirectory) Chtimes(name string, atime, mtime time.Time) error {
+	if err := validateFilename(name); err != nil {
+		return err
+	}
+	defer runtime.KeepAlive(d)
+
+	var ts [2]unix.Timespec
+	var err error
+	if ts[0], err = unix.TimeToTimespec(atime); err != nil {
+		return util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert access time")
+	}
+	if ts[1], err = unix.TimeToTimespec(mtime); err != nil {
+		return util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert modification time")
+	}
+
+	return unix.UtimesNanoAt(d.fd, name, ts[:], unix.AT_SYMLINK_NOFOLLOW)
 }
 
 type localDirectoryLink struct {

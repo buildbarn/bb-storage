@@ -386,4 +386,14 @@ func TestLocalDirectorySymlinkSuccess(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
+func TestLocalDirectoryChtimes(t *testing.T) {
+	d := openTmpDir(t)
+	time := filesystem.DeterministicFileModificationTimestamp
+	f, err := d.OpenAppend("file", filesystem.CreateExcl(0444))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Chtimes("file", time, time))
+	require.NoError(t, d.Close())
+}
+
 // TODO(edsch): Add testing coverage for RemoveAll().
