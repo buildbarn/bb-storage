@@ -440,6 +440,13 @@ message LocalBlobAccessConfiguration {
     //
     // Recommended value: 3
     int32 spare_blocks = 2;
+
+    // Don't check the integrity of data as it's being read back from
+    // the block device. This speeds up reads significantly, and is a
+    // requirement for being able to randomly access objects quickly.
+    // The disadvantage of enabling this option is that data corruption
+    // on the block device will not be detected.
+    bool disable_integrity_checking = 3;
   }
 
   oneof data_backend {

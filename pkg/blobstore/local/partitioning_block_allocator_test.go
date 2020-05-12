@@ -20,7 +20,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	defer ctrl.Finish()
 
 	f := mock.NewMockFileReadWriter(ctrl)
-	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10)
+	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10, false)
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.

@@ -434,7 +434,8 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 				options.storageType,
 				sectorSizeBytes,
 				blockSectorCount,
-				int(blockCount))
+				int(blockCount),
+				dataBackend.BlockDevice.DisableIntegrityChecking)
 		}
 
 		var err error

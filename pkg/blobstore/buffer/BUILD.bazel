@@ -26,6 +26,7 @@ go_library(
         "reader_backed_chunk_reader.go",
         "repair_strategy.go",
         "validated_byte_slice_buffer.go",
+        "validated_file_reader_buffer.go",
         "with_background_task.go",
         "with_error_handler.go",
     ],
@@ -33,6 +34,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/digest:go_default_library",
+        "//pkg/filesystem:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
@@ -53,6 +55,7 @@ go_test(
         "new_cas_buffer_from_chunk_reader_test.go",
         "new_cas_buffer_from_reader_test.go",
         "new_validated_buffer_from_byte_slice_test.go",
+        "new_validated_buffer_from_file_reader_test.go",
         "with_background_task_test.go",
         "with_error_handler_test.go",
     ],

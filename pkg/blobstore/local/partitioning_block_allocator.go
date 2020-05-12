@@ -57,9 +57,10 @@ type ReadWriterAt interface {
 }
 
 type partitioningBlockAllocator struct {
-	f               ReadWriterAt
-	storageType     blobstore.StorageType
-	sectorSizeBytes int
+	f                        ReadWriterAt
+	storageType              blobstore.StorageType
+	sectorSizeBytes          int
+	disableIntegrityChecking bool
 
 	lock        sync.Mutex
 	freeOffsets []int64
@@ -77,7 +78,7 @@ type partitioningBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewPartitioningBlockAllocator(f ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
+func NewPartitioningBlockAllocator(f ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int, disableIntegrityChecking bool) BlockAllocator {
 	partitioningBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(partitioningBlockAllocatorAllocations)
 		prometheus.MustRegister(partitioningBlockAllocatorReleases)
@@ -87,9 +88,10 @@ func NewPartitioningBlockAllocator(f ReadWriterAt, storageType blobstore.Storage
 	})
 
 	pa := &partitioningBlockAllocator{
-		f:               f,
-		storageType:     storageType,
-		sectorSizeBytes: sectorSizeBytes,
+		f:                        f,
+		storageType:              storageType,
+		sectorSizeBytes:          sectorSizeBytes,
+		disableIntegrityChecking: disableIntegrityChecking,
 	}
 	for i := 0; i < blockCount; i++ {
 		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
@@ -139,20 +141,26 @@ func (pb *partitioningBlock) Get(digest digest.Digest, offsetBytes int64, sizeBy
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}
 	partitioningBlockAllocatorGetsStarted.Inc()
+
+	r := &partitioningBlockReader{
+		SectionReader: *io.NewSectionReader(
+			pb.blockAllocator.f,
+			pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
+			sizeBytes),
+		block: pb,
+	}
+	if pb.blockAllocator.disableIntegrityChecking {
+		// TODO: Should we still go through the regular code
+		// path when Get() is called as part of refreshing? That
+		// way we at least ensure that corrupted blobs don't
+		// remain in storage indefinitely.
+		return buffer.NewValidatedBufferFromFileReader(r, sizeBytes)
+	}
 	// TODO: Allow these buffers to be reparable. This isn't
 	// trivial. The repair function may run in the foreground. This
 	// could cause a deadlock against the locking in LocalBlobAccess
 	// itself.
-	return pb.blockAllocator.storageType.NewBufferFromReader(
-		digest,
-		&partitioningBlockReader{
-			SectionReader: *io.NewSectionReader(
-				pb.blockAllocator.f,
-				pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
-				sizeBytes),
-			block: pb,
-		},
-		buffer.Irreparable)
+	return pb.blockAllocator.storageType.NewBufferFromReader(digest, r, buffer.Irreparable)
 }
 
 func (pb *partitioningBlock) Put(offsetBytes int64, b buffer.Buffer) error {
