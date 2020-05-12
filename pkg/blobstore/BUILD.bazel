@@ -9,6 +9,7 @@ go_library(
         "cas_storage_type.go",
         "cloud_blob_access.go",
         "content_addressable_storage_blob_access.go",
+        "empty_blob_injecting_blob_access.go",
         "error_blob_access.go",
         "existence_caching_blob_access.go",
         "metrics_blob_access.go",
@@ -42,6 +43,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "empty_blob_injecting_blob_access_test.go",
         "existence_caching_blob_access_test.go",
         "read_caching_blob_access_test.go",
         "redis_blob_access_test.go",

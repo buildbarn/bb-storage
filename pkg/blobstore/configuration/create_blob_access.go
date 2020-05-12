@@ -81,12 +81,21 @@ func CreateBlobAccessObjectsFromConfig(configuration *pb.BlobstoreConfiguration,
 // CreateCASBlobAccessObjectFromConfig creates a BlobAccess object for
 // the Content Addressable Storage based on a configuration file.
 func CreateCASBlobAccessObjectFromConfig(configuration *pb.BlobAccessConfiguration, maximumMessageSizeBytes int) (blobstore.BlobAccess, error) {
-	return createBlobAccess(configuration, &blobAccessCreationOptions{
+	blobAccess, err := createBlobAccess(configuration, &blobAccessCreationOptions{
 		storageType:             blobstore.CASStorageType,
 		storageTypeName:         "cas",
 		keyFormat:               digest.KeyWithoutInstance,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// For the Content Addressable Storage it is required that the empty
+	// blob is always present. This decorator ensures that requests
+	// for the empty blob never contact the storage backend.
+	// More details: https://github.com/bazelbuild/bazel/issues/11063
+	return blobstore.NewEmptyBlobInjectingBlobAccess(blobAccess), nil
 
 }
 
