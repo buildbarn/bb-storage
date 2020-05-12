@@ -374,9 +374,6 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		reader.EXPECT().Close()
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 
-		// The ChunkReader returned by ToChunkReader() should
-		// omit empty chunks and split up chunks that are too
-		// large.
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
@@ -393,9 +390,6 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		reader.EXPECT().Close()
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 
-		// The ChunkReader returned by ToChunkReader() should
-		// omit empty chunks and split up chunks that are too
-		// large.
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
