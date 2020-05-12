@@ -87,6 +87,11 @@ func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, dig
 		directory.Remove(name)
 		return err
 	}
+	time := filesystem.DeterministicFileModificationTimestamp
+	if err := directory.Chtimes(name, time, time); err != nil {
+		directory.Remove(name)
+		return err
+	}
 	return nil
 }
 

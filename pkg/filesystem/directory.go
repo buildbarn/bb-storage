@@ -3,6 +3,23 @@ package filesystem
 import (
 	"io"
 	"os"
+	"time"
+)
+
+var (
+	// DeterministicFileModificationTimestamp is a fixed timestamp that
+	// can be provided to Directory.Chtimes() to give files deterministic
+	// modification times. It is used by bb_worker to ensure that all
+	// files in the input root of a build action have the same
+	// modification time. This is needed to make certain kinds of build
+	// actions (most notably Autoconf scripts) succeed.
+	// 2000-01-01T00:00:00Z was chosen, because it's easy to distinguish
+	// from genuine timestamps. 1970-01-01T00:00:00Z would be impractical
+	// to use, because it tends to cause regressions in practice.
+	// Examples:
+	// https://bugs.python.org/issue34097
+	// https://gerrit.wikimedia.org/r/#/c/mediawiki/core/+/437977/
+	DeterministicFileModificationTimestamp = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
 
 // CreationMode specifies whether and how Directory.Open*() should
@@ -92,6 +109,8 @@ type Directory interface {
 	RemoveAllChildren() error
 	// Symlink is the equivalent of os.Symlink().
 	Symlink(oldName string, newName string) error
+	// Chtimes sets the atime and mtime of the named file.
+	Chtimes(name string, atime, mtime time.Time) error
 
 	// Function that base types may use to implement calls that
 	// require double dispatching, such as hardlinking and renaming.
