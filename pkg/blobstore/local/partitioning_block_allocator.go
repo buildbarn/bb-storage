@@ -8,6 +8,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -49,15 +50,8 @@ var (
 		})
 )
 
-// ReadWriterAt is an interface for reading from/writing to a byte slice
-// like data source (e.g., a file or disk).
-type ReadWriterAt interface {
-	io.ReaderAt
-	io.WriterAt
-}
-
 type partitioningBlockAllocator struct {
-	f                        ReadWriterAt
+	f                        blockdevice.ReadWriterAt
 	storageType              blobstore.StorageType
 	sectorSizeBytes          int
 	disableIntegrityChecking bool
@@ -78,7 +72,7 @@ type partitioningBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewPartitioningBlockAllocator(f ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int, disableIntegrityChecking bool) BlockAllocator {
+func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int, disableIntegrityChecking bool) BlockAllocator {
 	partitioningBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(partitioningBlockAllocatorAllocations)
 		prometheus.MustRegister(partitioningBlockAllocatorReleases)

@@ -17,6 +17,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
+	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -420,10 +421,10 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			// memory mapped. Automatically determine the
 			// block size based on the size of the block
 			// device and the number of blocks.
-			var f local.ReadWriterAt
+			var f blockdevice.ReadWriterAt
 			var sectorCount int64
 			var err error
-			f, sectorSizeBytes, sectorCount, err = memoryMapBlockDevice(dataBackend.BlockDevice.Path)
+			f, sectorSizeBytes, sectorCount, err = blockdevice.MemoryMapBlockDevice(dataBackend.BlockDevice.Path)
 			if err != nil {
 				return nil, util.StatusWrapf(err, "Failed to open block device %#v", dataBackend.BlockDevice.Path)
 			}
