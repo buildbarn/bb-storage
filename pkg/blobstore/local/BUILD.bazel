@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "block_allocator.go",
         "digest_location_map.go",
+        "file_backed_location_record_array.go",
         "hashing_digest_location_map.go",
         "in_memory_block_allocator.go",
         "in_memory_location_record_array.go",

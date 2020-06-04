@@ -3,7 +3,9 @@ package configuration
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
+	"path/filepath"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -322,6 +324,18 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		}
 		implementation = mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 	case *pb.BlobAccessConfiguration_Local:
+		var digestLocationMap local.DigestLocationMap
+		switch digestLocationMapBackend := backend.Local.DigestLocationMap.(type) {
+		case *pb.LocalBlobAccessConfiguration_InMemoryDigestLocationMap_:
+			digestLocationMap = createInMemoryDigestLocationMap(backend.Local, creator)
+		case *pb.LocalBlobAccessConfiguration_FileBackedDigestLocationMap_:
+			var err error
+			digestLocationMap, err = createFileBackedDigestLocationMap(backend.Local, digestLocationMapBackend, creator)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		var sectorSizeBytes int
 		var blockSectorCount int64
 		var blockAllocator local.BlockAllocator
@@ -362,13 +376,7 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 
 		var err error
 		implementation, err = local.NewLocalBlobAccess(
-			local.NewHashingDigestLocationMap(
-				local.NewInMemoryLocationRecordArray(int(backend.Local.DigestLocationMapSize)),
-				int(backend.Local.DigestLocationMapSize),
-				rand.Uint64(),
-				backend.Local.DigestLocationMapMaximumGetAttempts,
-				int(backend.Local.DigestLocationMapMaximumPutAttempts),
-				storageTypeName),
+			digestLocationMap,
 			blockAllocator,
 			storageType,
 			storageTypeName,
@@ -434,6 +442,56 @@ func NewCASAndACBlobAccessFromConfiguration(configuration *pb.BlobstoreConfigura
 	}
 
 	return contentAddressableStorage, actionCache, nil
+}
+
+func createInMemoryDigestLocationMap(config *pb.LocalBlobAccessConfiguration, creator BlobAccessCreator) local.DigestLocationMap {
+	return local.NewHashingDigestLocationMap(
+		local.NewInMemoryLocationRecordArray(int(config.DigestLocationMapSize)),
+		int(config.DigestLocationMapSize),
+		rand.Uint64(),
+		config.DigestLocationMapMaximumGetAttempts,
+		int(config.DigestLocationMapMaximumPutAttempts),
+		creator.GetStorageTypeName())
+}
+
+func createFileBackedDigestLocationMap(config *pb.LocalBlobAccessConfiguration, digestLocationMapConfig *pb.LocalBlobAccessConfiguration_FileBackedDigestLocationMap_, creator BlobAccessCreator) (local.DigestLocationMap, error) {
+	var digestMapFile blockdevice.ReadWriterAt
+	var err error
+	if digestLocationMapConfig.FileBackedDigestLocationMap.IsBlockDevice {
+		digestMapFile, _, _, err = blockdevice.MemoryMapBlockDevice(digestLocationMapConfig.FileBackedDigestLocationMap.Path)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		digestMapDirectory, err := filesystem.NewLocalDirectory(filepath.Dir(digestLocationMapConfig.FileBackedDigestLocationMap.Path))
+		if err != nil {
+			log.Println("Failed to open directory")
+			return nil, err
+		}
+		defer digestMapDirectory.Close()
+		digestMapFileCreate, err := digestMapDirectory.OpenReadWrite(filepath.Base(digestLocationMapConfig.FileBackedDigestLocationMap.Path), filesystem.CreateReuse(0644))
+		if err != nil {
+			log.Println("Failed to open file")
+			return nil, err
+		}
+
+		// Truncate to 0 bytes to empty the file
+		if err = digestMapFileCreate.Truncate(0); err != nil {
+			return nil, err
+		}
+		if err = digestMapFileCreate.Truncate(local.FileBackedLocationRecordSize * config.DigestLocationMapSize); err != nil {
+			return nil, err
+		}
+		digestMapFile = digestMapFileCreate
+	}
+
+	return local.NewHashingDigestLocationMap(
+		local.NewFileBackedLocationRecordArray(digestMapFile),
+		int(config.DigestLocationMapSize),
+		digestLocationMapConfig.FileBackedDigestLocationMap.HashInitialization,
+		config.DigestLocationMapMaximumGetAttempts,
+		int(config.DigestLocationMapMaximumPutAttempts),
+		creator.GetStorageTypeName()), nil
 }
 
 func createCircularBlobAccess(config *pb.CircularBlobAccessConfiguration, creator BlobAccessCreator) (blobstore.BlobAccess, error) {

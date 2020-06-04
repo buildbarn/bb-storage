@@ -474,6 +474,30 @@ message LocalBlobAccessConfiguration {
     // intended to grow capacity beyond the size of memory.
     BlockDevice block_device = 10;
   }
+
+  message InMemoryDigestLocationMap {}
+
+  message FileBackedDigestLocationMap {
+    // Path to file used for the Digest Location Map
+    string path = 1;
+
+    // Initialisation for the hash used to uniquely identify a location.
+    uint64 hash_initialization = 2;
+
+    // Whether the file used is a Block Device or not
+    bool is_block_device = 3;
+  }
+
+  oneof digest_location_map {
+    // Store the digest-location map in memory. This will be lost if
+    // bb-storage is restarted.
+    InMemoryDigestLocationMap in_memory_digest_location_map = 11;
+
+    // Store the digest-location map in a file on disk. This allows for
+    // persistency in the storage of records, and has no size limit on the
+    // number of records.
+    FileBackedDigestLocationMap file_backed_digest_location_map = 12;
+  }
 }
 
 message ExistenceCachingBlobAccessConfiguration {
