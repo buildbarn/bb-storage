@@ -132,7 +132,10 @@ func (dlm *hashingDigestLocationMap) Get(digest CompactDigest, validator *Locati
 	key := LocationRecordKey{Digest: digest}
 	for {
 		slot := dlm.getSlot(&key)
-		record := dlm.recordArray.Get(slot)
+		record, err := dlm.recordArray.Get(slot)
+		if err != nil {
+			return Location{}, err
+		}
 		if !validator.IsValid(record.Location) {
 			// Record points to a block that no longer
 			// exists. There is no need to continue
@@ -164,10 +167,15 @@ func (dlm *hashingDigestLocationMap) Put(digest CompactDigest, validator *Locati
 	}
 	for iteration := 1; iteration <= dlm.maximumPutAttempts; iteration++ {
 		slot := dlm.getSlot(&record.Key)
-		oldRecord := dlm.recordArray.Get(slot)
+		oldRecord, err := dlm.recordArray.Get(slot)
+		if err != nil {
+			return err
+		}
 		if !validator.IsValid(oldRecord.Location) {
 			// The existing record may be overwritten directly.
-			dlm.recordArray.Put(slot, record)
+			if err := dlm.recordArray.Put(slot, record); err != nil {
+				return err
+			}
 			dlm.putInserted.Observe(float64(iteration))
 			return nil
 		}
@@ -175,7 +183,9 @@ func (dlm *hashingDigestLocationMap) Put(digest CompactDigest, validator *Locati
 			// Only allow overwriting an entry if it points
 			// to a newer version of the same blob.
 			if oldRecord.Location.IsOlder(record.Location) {
-				dlm.recordArray.Put(slot, record)
+				if err := dlm.recordArray.Put(slot, record); err != nil {
+					return err
+				}
 				dlm.putUpdated.Observe(float64(iteration))
 				return nil
 			}
@@ -187,7 +197,9 @@ func (dlm *hashingDigestLocationMap) Put(digest CompactDigest, validator *Locati
 			// it does point to older data than the record
 			// we're trying to insert. Displace the old
 			// record.
-			dlm.recordArray.Put(slot, record)
+			if err := dlm.recordArray.Put(slot, record); err != nil {
+				return err
+			}
 			record = oldRecord
 		}
 		record.Key.Attempt++

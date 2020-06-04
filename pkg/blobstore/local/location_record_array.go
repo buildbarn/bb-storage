@@ -12,6 +12,6 @@ type LocationRecord struct {
 // data in a slice in memory, an implementation could store this
 // information on disk for a persistent data store.
 type LocationRecordArray interface {
-	Get(index int) LocationRecord
-	Put(index int, locationRecord LocationRecord)
+	Get(index int) (LocationRecord, error)
+	Put(index int, locationRecord LocationRecord) error
 }
