@@ -25,7 +25,7 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 		blocks = append(blocks, block)
 		blockAllocator.EXPECT().NewBlock().Return(block, nil)
 	}
-	blobAccess, err := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 1, 16, 2, 4, 4)
+	blobAccess, err := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 1, 16, 2, 4, 4, "")
 	require.NoError(t, err)
 
 	// After starting up, there should be a uniform distribution on
@@ -59,7 +59,7 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 	blockAllocator.EXPECT().NewBlock().Return(block2, nil)
 	block3 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlock().Return(block3, nil)
-	blobAccess, err := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 1, 5, 1, 1, 1)
+	blobAccess, err := local.NewLocalBlobAccess(digestLocationMap, blockAllocator, "cas", 1, 5, 1, 1, 1, "")
 	require.NoError(t, err)
 
 	// Store "Hello and "World" to fill up the existing current and

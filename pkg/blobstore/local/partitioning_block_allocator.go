@@ -3,6 +3,9 @@ package local
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -72,7 +75,7 @@ type partitioningBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int, disableIntegrityChecking bool) BlockAllocator {
+func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, storageType blobstore.StorageType, sectorSizeBytes int, blockSectorCount int64, blockCount int, disableIntegrityChecking bool, statePath string) (BlockAllocator, error) {
 	partitioningBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(partitioningBlockAllocatorAllocations)
 		prometheus.MustRegister(partitioningBlockAllocatorReleases)
@@ -87,10 +90,48 @@ func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, storageType blobs
 		sectorSizeBytes:          sectorSizeBytes,
 		disableIntegrityChecking: disableIntegrityChecking,
 	}
-	for i := 0; i < blockCount; i++ {
-		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
+
+	if _, err := os.Stat(statePath); err == nil && statePath != "" {
+		stateRaw, err := ioutil.ReadFile(statePath)
+		if err != nil {
+			return nil, err
+		}
+		state := strings.Split(string(stateRaw[:len(stateRaw)-1]), "\n")
+
+		// Load existing offsets from state file
+		var offsets []int64
+		for i := 1; i < len(state); i++ {
+			var id int
+			var blockType string
+			var offset int64
+
+			if _, err := fmt.Sscanf(state[i], "%d,%1s,%d", &id, &blockType, &offset); err != nil {
+				return nil, err
+			}
+			if offset != -1 {
+				offsets = append(offsets, offset)
+			}
+		}
+
+		// Only add unused offsets to the freeOffsets
+		for i := 0; i < blockCount; i++ {
+			unused := true
+			for j := 0; j < len(offsets); j++ {
+				if int64(i)*blockSectorCount == offsets[j] {
+					unused = false
+					break
+				}
+			}
+			if unused {
+				pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
+			}
+		}
+	} else {
+		for i := 0; i < blockCount; i++ {
+			pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
+		}
 	}
-	return pa
+	return pa, nil
 }
 
 func (pa *partitioningBlockAllocator) NewBlock() (Block, error) {

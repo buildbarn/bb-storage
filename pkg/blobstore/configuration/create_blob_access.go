@@ -404,9 +404,11 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		var sectorSizeBytes int
 		var blockSectorCount int64
 		var blockAllocator local.BlockAllocator
+		var statePath string
 		switch dataBackend := backend.Local.DataBackend.(type) {
 		case *pb.LocalBlobAccessConfiguration_InMemory_:
 			backendType = "local_in_memory"
+			statePath = ""
 			// All data must be stored in memory. Because we
 			// are not dealing with physical storage, there
 			// is no need to take sector sizes into account.
@@ -417,6 +419,11 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			blockAllocator = local.NewInMemoryBlockAllocator(int(dataBackend.InMemory.BlockSizeBytes))
 		case *pb.LocalBlobAccessConfiguration_BlockDevice_:
 			backendType = "local_block_device"
+			if dataBackend.BlockDevice.StatePath != "" {
+				statePath = dataBackend.BlockDevice.StatePath
+			} else {
+				statePath = ""
+			}
 			// Data may be stored on a block device that is
 			// memory mapped. Automatically determine the
 			// block size based on the size of the block
@@ -430,13 +437,17 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			}
 			blockCount := dataBackend.BlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			blockSectorCount = sectorCount / int64(blockCount)
-			blockAllocator = local.NewPartitioningBlockAllocator(
+			blockAllocator, err = local.NewPartitioningBlockAllocator(
 				f,
 				options.storageType,
 				sectorSizeBytes,
 				blockSectorCount,
 				int(blockCount),
-				dataBackend.BlockDevice.DisableIntegrityChecking)
+				dataBackend.BlockDevice.DisableIntegrityChecking,
+				statePath)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		var err error
@@ -448,7 +459,8 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 			blockSectorCount,
 			int(backend.Local.OldBlocks),
 			int(backend.Local.CurrentBlocks),
-			int(backend.Local.NewBlocks))
+			int(backend.Local.NewBlocks),
+			statePath)
 		if err != nil {
 			return nil, err
 		}

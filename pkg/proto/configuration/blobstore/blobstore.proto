@@ -447,6 +447,10 @@ message LocalBlobAccessConfiguration {
     // The disadvantage of enabling this option is that data corruption
     // on the block device will not be detected.
     bool disable_integrity_checking = 3;
+
+    // Path to a file in which to store the state of the blocks currently
+    // in use. Allows for persistent storage.
+    string state_path = 4;
   }
 
   oneof data_backend {
