@@ -173,6 +173,10 @@ message AuthenticationPolicy {
     // Allow incoming requests in case they present a valid TLS
     // certificate.
     TLSClientCertificateAuthenticationPolicy tls_client_certificate = 4;
+
+    // Allow incoming requests if a validly-signed JWT (JSON Web Token)
+    // is passed as a Bearer token in the request's "authorization" header.
+    JWTAuthenticationPolicy jwt = 5;
   }
 }
 
@@ -185,4 +189,11 @@ message TLSClientCertificateAuthenticationPolicy {
   // PEM data for the certificate authorities that should be used to
   // validate the remote TLS client.
   string client_certificate_authorities = 1;
+}
+
+message JWTAuthenticationPolicy {
+  // Key to use to authenticate the JWTs. The key may be provided in either JSON Web Key ("JWK")
+  // format (for asymmetric and symmetric keys) or in either X509 or PEM format (for asymmetric
+  // keys).
+  string key = 1;
 }

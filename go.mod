@@ -27,6 +27,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
 	google.golang.org/grpc v1.35.0
 	mvdan.cc/gofumpt v0.1.0 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1
 )
 
 replace github.com/golang/mock => github.com/golang/mock v1.4.4-0.20201026142858-99aa9272d551

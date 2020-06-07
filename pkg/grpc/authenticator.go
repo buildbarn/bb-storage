@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,6 +49,15 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock), nil
+	case *configuration.AuthenticationPolicy_Jwt:
+		key, err := loadJWTPublicKey([]byte(policyKind.Jwt.Key))
+		if err != nil {
+			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to parse JWT public key from string")
+		}
+		jwtKey := JWTKeyConfig{
+			Key: key,
+		}
+		return NewJWTAuthenticator(jwtKey, clock.SystemClock), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

@@ -1,0 +1,15 @@
+diff --git a/jwk.go b/jwk.go
+index 2eea74d..a3e17cf 100644
+--- jwk.go
++++ jwk.go
+@@ -455,6 +455,10 @@ func (k *JSONWebKey) Valid() bool {
+ 		if len(key) != 64 {
+ 			return false
+ 		}
++	case []byte:
++		if len(key) != 16 && len(key) != 24 && len(key) != 32 {
++			return false
++		}
+ 	default:
+ 		return false
+ 	}
