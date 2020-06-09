@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"net"
 	"os"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
@@ -56,6 +58,24 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
+	}
+
+	if creds := configuration.Credentials; creds != nil {
+		var perRPC credentials.PerRPCCredentials
+		var err error
+		if creds.GoogleDefaultCredentials {
+			perRPC, err = oauth.NewApplicationDefault(context.Background(), creds.Scopes...)
+		} else if creds.JsonKey != "" {
+			perRPC, err = oauth.NewServiceAccountFromKey([]byte(creds.JsonKey), creds.Scopes...)
+		} else if creds.JsonKeyFile != "" {
+			perRPC, err = oauth.NewServiceAccountFromFile(creds.JsonKeyFile, creds.Scopes...)
+		} else {
+			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials = true, jsonKey or jsonKeyFile should be provided")
+		}
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create gRPC credentials")
+		}
+		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
 	}
 
 	// Optional: Keepalive.
