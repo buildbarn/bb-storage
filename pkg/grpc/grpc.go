@@ -104,6 +104,24 @@ func NewGRPCClientFromConfiguration(config *configuration.ClientConfiguration) (
 			NewMetadataForwardingStreamClientInterceptor(headers))
 	}
 
+	// Optional: set metadata.
+	if md := config.AddMetadata; len(md) > 0 {
+		// convert []*configuration.ClientConfigurationHeaderValues to pairs
+		pairs := []string{}
+		for _, headerValues := range md {
+			header := headerValues.Header
+			for _, val := range headerValues.Values {
+				pairs = append(pairs, header, val)
+			}
+		}
+		unaryInterceptors = append(
+			unaryInterceptors,
+			NewAddMetadataUnaryClientInterceptor(pairs))
+		streamInterceptors = append(
+			streamInterceptors,
+			NewAddMetadataStreamClientInterceptor(pairs))
+	}
+
 	dialOptions = append(
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
