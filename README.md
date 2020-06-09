@@ -51,13 +51,15 @@ $ cat config/bb_storage.jsonnet
       },
     },
     actionCache: {
-      circular: {
-        directory: '/storage-ac',
-        offsetFileSizeBytes: 1024 * 1024,
-        offsetCacheSize: 1000,
-        dataFileSizeBytes: 100 * 1024 * 1024,
-        dataAllocationChunkSizeBytes: 1024 * 1024,
-        instances: ['foo', 'bar'],
+      completenessChecking: {
+        circular: {
+          directory: '/storage-ac',
+          offsetFileSizeBytes: 1024 * 1024,
+          offsetCacheSize: 1000,
+          dataFileSizeBytes: 100 * 1024 * 1024,
+          dataAllocationChunkSizeBytes: 1024 * 1024,
+          instances: ['foo', 'bar'],
+        },
       },
     },
   },
@@ -70,7 +72,6 @@ $ cat config/bb_storage.jsonnet
     bar: { address: 'bar-scheduler:8981' },
   },
   allowAcUpdatesForInstances: ['foo'],
-  verifyActionResultCompleteness: true,
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 
