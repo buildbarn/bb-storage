@@ -35,6 +35,10 @@ message ClientConfiguration {
   //
   // Header names must be lower case.
   repeated string forward_metadata = 4;
+
+  // Oauth authentication settings.
+  // See https://grpc.io/docs/guides/auth/.
+  ClientOAuthConfiguration oauth = 6;
 }
 
 message ClientKeepaliveConfiguration {
@@ -49,6 +53,22 @@ message ClientKeepaliveConfiguration {
   // Whether the client should send keepalive requests even if no RPC
   // activity is taking place.
   bool permit_without_stream = 3;
+}
+
+message ClientOAuthConfiguration {
+  oneof credentials {
+    // Use default Google credentials
+    // See
+    // https://developers.google.com/accounts/docs/application-default-credentials.
+    google.protobuf.Empty google_default_credentials = 1;
+
+    // Service account private key to use to obtain access token.
+    string service_account_key = 2;
+  }
+
+  // OAuth scopes.
+  // See https://developers.google.com/identity/protocols/oauth2/scopes.
+  repeated string scopes = 3;
 }
 
 message ServerConfiguration {
