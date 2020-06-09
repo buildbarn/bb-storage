@@ -37,7 +37,7 @@ message ClientConfiguration {
   repeated string forward_metadata = 4;
 
   // Oauth authentication settings.
-  // See https://grpc.io/docs/guides/auth/
+  // See https://grpc.io/docs/guides/auth/.
   ClientOAuthConfiguration oauth = 6;
 }
 
@@ -59,17 +59,16 @@ message ClientOAuthConfiguration {
   oneof credentials {
     // Use default Google credentials
     // See
-    // https://developers.google.com/accounts/docs/application-default-credentials
+    // https://developers.google.com/accounts/docs/application-default-credentials.
     google.protobuf.Empty google_default_credentials = 1;
 
-    // Service account private key to use
-    // to obtain access token.
+    // Service account private key to use to obtain access token.
     string service_account_key = 2;
   }
 
-  // OAuth scopes
-  // see https://developers.google.com/identity/protocols/oauth2/scopes
-  repeated string scopes = 4;
+  // OAuth scopes.
+  // See https://developers.google.com/identity/protocols/oauth2/scopes.
+  repeated string scopes = 3;
 }
 
 message ServerConfiguration {
