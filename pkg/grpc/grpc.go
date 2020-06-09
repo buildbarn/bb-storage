@@ -63,12 +63,11 @@ func NewGRPCClientFromConfiguration(config *configuration.ClientConfiguration) (
 	if oauthConfig := config.Oauth; oauthConfig != nil {
 		var perRPC credentials.PerRPCCredentials
 		var err error
-		switch oauthConfig.Credentials.(type) {
-		case (*configuration.ClientOAuthConfiguration_GoogleDefaultCredentials):
+		switch credentials := oauthConfig.Credentials.(type) {
+		case *configuration.ClientOAuthConfiguration_GoogleDefaultCredentials:
 			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
-		case (*configuration.ClientOAuthConfiguration_ServiceAccountKey):
-			key := oauthConfig.Credentials.(*configuration.ClientOAuthConfiguration_ServiceAccountKey).ServiceAccountKey
-			perRPC, err = oauth.NewServiceAccountFromKey([]byte(key), oauthConfig.Scopes...)
+		case *configuration.ClientOAuthConfiguration_ServiceAccountKey:
+			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauthConfig.Scopes...)
 		default:
 			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials or serviceAccountKey should be provided")
 		}

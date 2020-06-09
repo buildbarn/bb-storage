@@ -36,7 +36,7 @@ message ClientConfiguration {
   // Header names must be lower case.
   repeated string forward_metadata = 4;
 
-  // Token-based authentication with Google.
+  // Oauth authentication settings.
   // See https://grpc.io/docs/guides/auth/
   ClientOAuthConfiguration oauth = 6;
 }
@@ -57,7 +57,7 @@ message ClientKeepaliveConfiguration {
 
 message ClientOAuthConfiguration {
   oneof credentials {
-    // Use default google credentials (false by default)
+    // Use default Google credentials
     // See
     // https://developers.google.com/accounts/docs/application-default-credentials
     google.protobuf.Empty google_default_credentials = 1;
