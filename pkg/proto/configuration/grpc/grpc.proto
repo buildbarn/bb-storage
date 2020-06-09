@@ -36,13 +36,14 @@ message ClientConfiguration {
   // Header names must be lower case.
   repeated string forward_metadata = 4;
 
-  // Map of gRPC metadata headers to set in client connection
-  // Header names must be lower case.
   message header_values {
     string header = 1;
     repeated string values = 2;
   }
-  repeated header_values metadata = 5;
+
+  // Map of gRPC metadata headers to set in client connection.
+  // Header names must be lower case.
+  repeated header_values add_metadata = 5;
 
   // Oauth authentication settings.
   // See https://grpc.io/docs/guides/auth/.

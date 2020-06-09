@@ -105,7 +105,7 @@ func NewGRPCClientFromConfiguration(config *configuration.ClientConfiguration) (
 	}
 
 	// Optional: set metadata.
-	if md := configuration.Metadata; len(md) > 0 {
+	if md := config.AddMetadata; len(md) > 0 {
 		// convert []*configuration.ClientConfigurationHeaderValues to pairs
 		pairs := []string{}
 		for _, headerValues := range md {
