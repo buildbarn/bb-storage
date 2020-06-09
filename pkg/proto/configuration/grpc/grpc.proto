@@ -38,7 +38,7 @@ message ClientConfiguration {
 
   // Token-based authentication with Google.
   // See https://grpc.io/docs/guides/auth/
-  ClientOAuthConfiguration credentials = 6;
+  ClientOAuthConfiguration oauth = 6;
 }
 
 message ClientKeepaliveConfiguration {
@@ -56,23 +56,16 @@ message ClientKeepaliveConfiguration {
 }
 
 message ClientOAuthConfiguration {
-  // Use default google credentials (false by default)
-  // See https://developers.google.com/accounts/docs/application-default-credentials
-  // Either google_default_credentials should be set to True
-  // or json_key or json_key_file should be provided.
-  bool google_default_credentials = 1;
+  oneof credentials {
+    // Use default google credentials (false by default)
+    // See
+    // https://developers.google.com/accounts/docs/application-default-credentials
+    google.protobuf.Empty google_default_credentials = 1;
 
-  // Service account private key to use
-  // to obtain access token.
-  // Either google_default_credentials should be set to True
-  // or json_key or json_key_file should be provided.
-  string json_key = 2;
-
-  // File with service account private key to use
-  // to obtain access token.
-  // Either google_default_credentials should be set to True
-  // or json_key or json_key_file should be provided.
-  string json_key_file = 3;
+    // Service account private key to use
+    // to obtain access token.
+    string service_account_key = 2;
+  }
 
   // OAuth scopes
   // see https://developers.google.com/identity/protocols/oauth2/scopes

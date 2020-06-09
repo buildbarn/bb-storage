@@ -36,8 +36,8 @@ func init() {
 // NewGRPCClientFromConfiguration creates a gRPC client based on a
 // configuration stored in a Protobuf message. This Protobuf message is
 // used within all configuration files of Buildbarn applications.
-func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfiguration) (*grpc.ClientConn, error) {
-	if configuration == nil {
+func NewGRPCClientFromConfiguration(config *configuration.ClientConfiguration) (*grpc.ClientConn, error) {
+	if config == nil {
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
@@ -50,7 +50,7 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 	}
 
 	// Optional: TLS.
-	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(configuration.Tls)
+	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create TLS configuration")
 	}
@@ -60,17 +60,17 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
 
-	if creds := configuration.Credentials; creds != nil {
+	if oauthConfig := config.Oauth; oauthConfig != nil {
 		var perRPC credentials.PerRPCCredentials
 		var err error
-		if creds.GoogleDefaultCredentials {
-			perRPC, err = oauth.NewApplicationDefault(context.Background(), creds.Scopes...)
-		} else if creds.JsonKey != "" {
-			perRPC, err = oauth.NewServiceAccountFromKey([]byte(creds.JsonKey), creds.Scopes...)
-		} else if creds.JsonKeyFile != "" {
-			perRPC, err = oauth.NewServiceAccountFromFile(creds.JsonKeyFile, creds.Scopes...)
-		} else {
-			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials = true, jsonKey or jsonKeyFile should be provided")
+		switch oauthConfig.Credentials.(type) {
+		case (*configuration.ClientOAuthConfiguration_GoogleDefaultCredentials):
+			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
+		case (*configuration.ClientOAuthConfiguration_ServiceAccountKey):
+			key := oauthConfig.Credentials.(*configuration.ClientOAuthConfiguration_ServiceAccountKey).ServiceAccountKey
+			perRPC, err = oauth.NewServiceAccountFromKey([]byte(key), oauthConfig.Scopes...)
+		default:
+			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials or serviceAccountKey should be provided")
 		}
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create gRPC credentials")
@@ -79,24 +79,24 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 	}
 
 	// Optional: Keepalive.
-	if configuration.Keepalive != nil {
-		time, err := ptypes.Duration(configuration.Keepalive.Time)
+	if config.Keepalive != nil {
+		time, err := ptypes.Duration(config.Keepalive.Time)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive time")
 		}
-		timeout, err := ptypes.Duration(configuration.Keepalive.Timeout)
+		timeout, err := ptypes.Duration(config.Keepalive.Timeout)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive timeout")
 		}
 		dialOptions = append(dialOptions, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                time,
 			Timeout:             timeout,
-			PermitWithoutStream: configuration.Keepalive.PermitWithoutStream,
+			PermitWithoutStream: config.Keepalive.PermitWithoutStream,
 		}))
 	}
 
 	// Optional: metadata forwarding.
-	if headers := configuration.ForwardMetadata; len(headers) > 0 {
+	if headers := config.ForwardMetadata; len(headers) > 0 {
 		unaryInterceptors = append(
 			unaryInterceptors,
 			NewMetadataForwardingUnaryClientInterceptor(headers))
@@ -109,7 +109,7 @@ func NewGRPCClientFromConfiguration(configuration *configuration.ClientConfigura
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...))
-	return grpc.Dial(configuration.Address, dialOptions...)
+	return grpc.Dial(config.Address, dialOptions...)
 }
 
 // NewGRPCServersFromConfigurationAndServe creates a series of gRPC
