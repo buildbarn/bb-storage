@@ -34,6 +34,13 @@ message ClientConfiguration {
   //   client.
   //
   // Header names must be lower case.
+  //
+  // Note: Keep in mind that this option can only be used to forward metadata
+  // from incoming calls on gRPC servers to outgoing calls on gRPC clients.
+  // This means that this option cannot be used to let bb-scheduler forward
+  // client provided credentials to workers.
+  // That would only be possible if bb-scheduler made outgoing
+  // connections to workers, which is not the case.
   repeated string forward_metadata = 4;
 
   message HeaderValues {
