@@ -52,6 +52,19 @@ jobs:
         name: bb_storage.darwin_amd64
         path: bazel-bin/cmd/bb_storage/darwin_amd64_pure_stripped/bb_storage
 
+    - name: FreeBSD build
+      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_storage //cmd/bb_replicator
+    - name: Upload bb_replicator for FreeBSD
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: bb_replicator.freebsd_amd64
+        path: bazel-bin/cmd/bb_replicator/freebsd_amd64_pure_stripped/bb_replicator
+    - name: Upload bb_storage for FreeBSD
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: bb_storage.freebsd_amd64
+        path: bazel-bin/cmd/bb_storage/freebsd_amd64_pure_stripped/bb_storage
+
     - name: Install Docker credentials
       run: mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json
       env:
