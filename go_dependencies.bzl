@@ -80,29 +80,39 @@ def bb_storage_go_dependencies():
     go_repository(
         name = "com_github_prometheus_client_golang",
         importpath = "github.com/prometheus/client_golang",
-        sha256 = "5f6ca8740a08622ae0a19c32b1026b8233bfd943a1f4af34963d326ab5fa94e5",
-        strip_prefix = "client_golang-0.9.2",
-        urls = ["https://github.com/prometheus/client_golang/archive/v0.9.2.tar.gz"],
+        sha256 = "e255f632b7223f794e0f60d99976535c16153cc00fadf39ee87fd9f678d6a32c",
+        strip_prefix = "client_golang-1.6.0",
+        urls = ["https://github.com/prometheus/client_golang/archive/v1.6.0.tar.gz"],
+    )
+
+    go_repository(
+        name = "com_github_cespare_xxhash_v2",
+        importpath = "github.com/cespare/xxhash/v2",
+        sha256 = "0ee31178d2c5a1249be4e26294a2f428008dc4e1ecbbfbe47f74e41026df1148",
+        strip_prefix = "xxhash-2.1.1",
+        urls = ["https://github.com/cespare/xxhash/archive/v2.1.1.tar.gz"],
     )
 
     go_repository(
         name = "com_github_prometheus_client_model",
-        commit = "5c3871d89910bfb32f5fcab2aa4b9ec68e65a99f",
         importpath = "github.com/prometheus/client_model",
+        sha256 = "4ab1be9cdfa702d7f49beeb09a256bcc6a2aad55e8a0a37e7732a46934264e12",
+        strip_prefix = "client_model-0.2.0",
+        urls = ["https://github.com/prometheus/client_model/archive/v0.2.0.tar.gz"],
     )
 
     go_repository(
         name = "com_github_prometheus_common",
+        commit = "6225330c4d5d7d0ffa21a82ad7eb041f82f25c7f",
         importpath = "github.com/prometheus/common",
-        sha256 = "3a02a3c8d881ef0be78fc58d63d14979ce0226f91ab52b2d67a11bc120e054dd",
-        strip_prefix = "common-0.2.0",
-        urls = ["https://github.com/prometheus/common/archive/v0.2.0.tar.gz"],
     )
 
     go_repository(
         name = "com_github_prometheus_procfs",
-        commit = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a",
         importpath = "github.com/prometheus/procfs",
+        sha256 = "7f31adcafbbfd7cb2e5d5b5954a3f55565ad41fb039c977b1f769c7d3dfc2a60",
+        strip_prefix = "procfs-0.0.10",
+        urls = ["https://github.com/prometheus/procfs/archive/v0.0.10.tar.gz"],
     )
 
     go_repository(
