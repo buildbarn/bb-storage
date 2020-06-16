@@ -3,6 +3,7 @@ package util
 import (
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -48,4 +49,38 @@ func UnmarshalConfigurationFromFile(path string, configuration proto.Message) er
 		return StatusWrap(err, "Failed to unmarshal configuration")
 	}
 	return nil
+}
+
+// MarshalExample marshals the Protobuf message into a json string
+func MarshalExample(msg interface{}) (string, error) {
+	if msg == nil {
+		return "", status.Errorf(codes.InvalidArgument, "Unable to marshal nil type")
+	}
+
+	v := reflect.ValueOf(msg)
+
+	initializeMessage(v.Elem().Type(), v.Elem())
+
+	marshaler := &jsonpb.Marshaler{
+		EmitDefaults: true,
+		Indent:       "  ",
+	}
+	jsonString, err := marshaler.MarshalToString(msg.(proto.Message))
+	if err != nil {
+		return jsonString, StatusWrap(err, "Failed to marshal protobuf message")
+	}
+
+	return jsonString, err
+}
+
+func initializeMessage(t reflect.Type, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		ft := t.Field(i)
+		if ft.Type.Kind() == reflect.Ptr {
+			fv := reflect.New(ft.Type.Elem())
+			initializeMessage(ft.Type.Elem(), fv.Elem())
+			f.Set(fv)
+		}
+	}
 }

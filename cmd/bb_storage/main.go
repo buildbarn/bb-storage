@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,9 +25,17 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		log.Fatal("Usage: bb_storage bb_storage.jsonnet")
+		log.Fatal("Usage: bb_storage --dump_configuration_struct | bb_storage.jsonnet")
 	}
 	var configuration bb_storage.ApplicationConfiguration
+	if os.Args[1] == "--dump_configuration_struct" {
+		if confDump, err := util.MarshalExample(&configuration); err != nil {
+			log.Fatal("Failed to generate configuration example structure: %s", err)
+		} else {
+			fmt.Println(confDump)
+			return
+		}
+	}
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
