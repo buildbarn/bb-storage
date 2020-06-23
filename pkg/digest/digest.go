@@ -146,17 +146,14 @@ func NewDigestFromPartialDigest(instance string, partialDigest *remoteexecution.
 func NewDigestFromBytestreamPath(path string) (Digest, error) {
 	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
 	l := len(fields)
-	if (l != 3 && l != 4) || fields[l-3] != "blobs" {
+	if (l < 3) || fields[l-3] != "blobs" {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	size, err := strconv.ParseInt(fields[l-1], 10, 64)
 	if err != nil {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	instance := ""
-	if l == 4 {
-		instance = fields[0]
-	}
+	instance := strings.Join(fields[0:(l-3)], "/")
 	return NewDigest(instance, fields[l-2], size)
 }
 

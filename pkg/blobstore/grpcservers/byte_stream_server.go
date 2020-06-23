@@ -24,17 +24,14 @@ import (
 func parseResourceNameWrite(resourceName string) (digest.Digest, error) {
 	fields := strings.FieldsFunc(resourceName, func(r rune) bool { return r == '/' })
 	l := len(fields)
-	if (l != 5 && l != 6) || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
+	if (l < 5) || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
 		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	size, err := strconv.ParseInt(fields[l-1], 10, 64)
 	if err != nil {
 		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	instance := ""
-	if l == 6 {
-		instance = fields[0]
-	}
+	instance := strings.Join(fields[0:(l-5)], "/")
 	return digest.NewDigest(instance, fields[l-2], size)
 }
 

@@ -103,11 +103,11 @@ func TestByteStreamServer(t *testing.T) {
 		// Attempt to fetch the large blob with an instance name.
 		blobAccess.EXPECT().Get(
 			gomock.Any(),
-			digest.MustNewDigest("debian8", "3538d378083b9afa5ffad767f7269509", 22),
+			digest.MustNewDigest("debian8/default_instance", "3538d378083b9afa5ffad767f7269509", 22),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This is a long message")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
-			ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
+			ResourceName: "debian8/default_instance/blobs/3538d378083b9afa5ffad767f7269509/22",
 		})
 		require.NoError(t, err)
 		readResponse, err := req.Recv()
@@ -203,6 +203,35 @@ func TestByteStreamServer(t *testing.T) {
 		}))
 		_, err = stream.CloseAndRecv()
 		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
+	})
+
+	t.Run("WriteSuccessDoubleNameInstance", func(t *testing.T) {
+		// Attempt to write a blob with an instance name.
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("instance/default", "581c1053f832a1c719fb6528a588ccfd", 14),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			data, err := b.ToByteSlice(100)
+			require.NoError(t, err)
+			require.Equal(t, []byte("LaputanMachine"), data)
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "instance/default/uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/blobs/581c1053f832a1c719fb6528a588ccfd/14",
+			Data:         []byte("Laputan"),
+		}))
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			Data:        []byte("Machine"),
+			WriteOffset: 7,
+			FinishWrite: true,
+		}))
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(14), response.CommittedSize)
 	})
 
 	t.Run("WriteSuccessEmptyInstance", func(t *testing.T) {
