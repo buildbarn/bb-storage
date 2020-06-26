@@ -1,9 +1,10 @@
-package blobstore
+package grpcclients
 
 import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -12,23 +13,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type actionCacheBlobAccess struct {
+type acBlobAccess struct {
 	actionCacheClient       remoteexecution.ActionCacheClient
 	maximumMessageSizeBytes int
 }
 
-// NewActionCacheBlobAccess creates a BlobAccess handle that relays any
-// requests to a GRPC service that implements the
-// remoteexecution.ActionCache service. That is the service that Bazel
-// uses to access action results stored in the Action Cache.
-func NewActionCacheBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) BlobAccess {
-	return &actionCacheBlobAccess{
+// NewACBlobAccess creates a BlobAccess handle that relays any requests
+// to a GRPC service that implements the remoteexecution.ActionCache
+// service. That is the service that Bazel uses to access action results
+// stored in the Action Cache.
+func NewACBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess {
+	return &acBlobAccess{
 		actionCacheClient:       remoteexecution.NewActionCacheClient(client),
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
-func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (ba *acBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	actionResult, err := ba.actionCacheClient.GetActionResult(ctx, &remoteexecution.GetActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
@@ -39,7 +40,7 @@ func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 	return buffer.NewProtoBufferFromProto(actionResult, buffer.Irreparable)
 }
 
-func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	actionResult, err := b.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
@@ -52,6 +53,6 @@ func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest digest.Digest, 
 	return err
 }
 
-func (ba *actionCacheBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *acBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 }

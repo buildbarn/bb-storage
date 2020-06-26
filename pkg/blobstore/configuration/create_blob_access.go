@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
@@ -194,9 +195,9 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		}
 		switch options.storageType {
 		case blobstore.ACStorageType:
-			implementation = blobstore.NewActionCacheBlobAccess(client, options.maximumMessageSizeBytes)
+			implementation = grpcclients.NewACBlobAccess(client, options.maximumMessageSizeBytes)
 		case blobstore.CASStorageType:
-			implementation = blobstore.NewContentAddressableStorageBlobAccess(client, uuid.NewRandom, 65536)
+			implementation = grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536)
 		}
 	case *pb.BlobAccessConfiguration_ReadCaching:
 		backendType = "read_caching"

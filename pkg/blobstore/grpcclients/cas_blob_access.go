@@ -1,4 +1,4 @@
-package blobstore
+package grpcclients
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -15,20 +16,20 @@ import (
 	"google.golang.org/grpc"
 )
 
-type contentAddressableStorageBlobAccess struct {
+type casBlobAccess struct {
 	byteStreamClient                bytestream.ByteStreamClient
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
 	uuidGenerator                   util.UUIDGenerator
 	readChunkSize                   int
 }
 
-// NewContentAddressableStorageBlobAccess creates a BlobAccess handle
-// that relays any requests to a GRPC service that implements the
-// bytestream.ByteStream and remoteexecution.ContentAddressableStorage
-// services. Those are the services that Bazel uses to access blobs
-// stored in the Content Addressable Storage.
-func NewContentAddressableStorageBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int) BlobAccess {
-	return &contentAddressableStorageBlobAccess{
+// NewCASBlobAccess creates a BlobAccess handle that relays any requests
+// to a GRPC service that implements the bytestream.ByteStream and
+// remoteexecution.ContentAddressableStorage services. Those are the
+// services that Bazel uses to access blobs stored in the Content
+// Addressable Storage.
+func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int) blobstore.BlobAccess {
+	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
 		uuidGenerator:                   uuidGenerator,
@@ -53,7 +54,7 @@ func (r *byteStreamChunkReader) Close() {
 	r.cancel()
 }
 
-func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	var readRequest bytestream.ReadRequest
 	if instance := digest.GetInstance(); instance == "" {
 		readRequest.ResourceName = fmt.Sprintf("blobs/%s/%d", digest.GetHashString(), digest.GetSizeBytes())
@@ -72,7 +73,7 @@ func (ba *contentAddressableStorageBlobAccess) Get(ctx context.Context, digest d
 	}, buffer.Irreparable)
 }
 
-func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	r := b.ToChunkReader(0, ba.readChunkSize)
 	defer r.Close()
 
@@ -118,7 +119,7 @@ func (ba *contentAddressableStorageBlobAccess) Put(ctx context.Context, digest d
 	}
 }
 
-func (ba *contentAddressableStorageBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Partition all digests by instance name, as the
 	// FindMissingBlobs() RPC can only process digests for a single
 	// instance.
