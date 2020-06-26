@@ -17,7 +17,10 @@ gomock(
 gomock(
     name = "blobstore",
     out = "blobstore.go",
-    interfaces = ["BlobAccess"],
+    interfaces = [
+        "BlobAccess",
+        "HTTPClient",
+    ],
     library = "//pkg/blobstore:go_default_library",
     package = "mock",
 )

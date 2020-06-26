@@ -1,6 +1,8 @@
 package configuration
 
 import (
+	"net/http"
+
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -57,6 +59,22 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 			return nil, "", err
 		}
 		return grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536), "grpc", nil
+	case *pb.BlobAccessConfiguration_ReferenceExpanding:
+		// The backend used by ReferenceExpandingBlobAccess is
+		// an Indirect Content Addressable Storage (ICAS). This
+		// backend stores Reference messages that point to the
+		// location of a blob, not the blobs themselves. Create
+		// a new BlobAccessCreator to ensure data is loaded
+		// properly.
+		base, err := NewNestedBlobAccess(
+			backend.ReferenceExpanding,
+			NewICASBlobAccessCreator(
+				bac.grpcClientFactory,
+				bac.maximumMessageSizeBytes))
+		if err != nil {
+			return nil, "", err
+		}
+		return blobstore.NewReferenceExpandingBlobAccess(base, http.DefaultClient, bac.maximumMessageSizeBytes), "reference_expanding", nil
 	default:
 		return nil, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}

@@ -8,6 +8,9 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
+	// TODO: Migrate this code away from ctxhttp. Use the HTTPClient
+	// interface that's in this package instead. This allows us to
+	// add unit testing coverage.
 	"golang.org/x/net/context/ctxhttp"
 
 	"google.golang.org/grpc/codes"

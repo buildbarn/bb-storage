@@ -111,6 +111,15 @@ message BlobAccessConfiguration {
     //
     // This decorator must be placed on the Action Cache.
     BlobAccessConfiguration completeness_checking = 17;
+
+    // Load Reference messages from an Indirect Content Addressable
+    // Storage (ICAS). Expand them by fetching the object from the
+    // location stored in the Reference message. This backend is only
+    // supported for the CAS.
+    //
+    // This backend can be used to integrate external data sets into the
+    // system by combining it with read_fallback.
+    BlobAccessConfiguration reference_expanding = 19;
   }
 }
 
