@@ -103,6 +103,7 @@ type localBlobAccess struct {
 	sectorSizeBytes       int
 	blockSectorCount      int64
 	blockAllocator        BlockAllocator
+	storageType           blobstore.StorageType
 	desiredNewBlocksCount int
 
 	lock                        sync.Mutex
@@ -188,7 +189,7 @@ func unixTime() float64 {
 // being LRU-like. Setting it too high is also not recommended, as this
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
-func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
+func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, storageType blobstore.StorageType, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
 	localBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(localBlobAccessLastRemovedOldBlockInsertionTime)
 		prometheus.MustRegister(localBlobAccessOldBlobRotationToNew)
@@ -198,6 +199,7 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 		sectorSizeBytes:  sectorSizeBytes,
 		blockSectorCount: blockSectorCount,
 		blockAllocator:   blockAllocator,
+		storageType:      storageType,
 
 		digestLocationMap: digestLocationMap,
 		locationValidator: LocationValidator{
@@ -326,10 +328,15 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Locatio
 	}
 }
 
+func (ba *localBlobAccess) getCompactDigest(digest digest.Digest) CompactDigest {
+	return NewCompactDigest(ba.storageType.GetDigestKey(digest))
+}
+
 func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	// Look up the blob in the offset store.
+	compactDigest := ba.getCompactDigest(digest)
 	ba.lock.Lock()
-	readLocation, err := ba.digestLocationMap.Get(digest, &ba.locationValidator)
+	readLocation, err := ba.digestLocationMap.Get(compactDigest, &ba.locationValidator)
 	if err != nil {
 		ba.lock.Unlock()
 		return buffer.NewBufferFromError(err)
@@ -368,7 +375,7 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		ba.lock.Lock()
 		writeBlock.release()
 		if err == nil {
-			err = ba.digestLocationMap.Put(digest, &ba.locationValidator, writeLocation)
+			err = ba.digestLocationMap.Put(compactDigest, &ba.locationValidator, writeLocation)
 			ba.oldBlobRotationToNewGet.Observe(float64(1))
 		}
 		ba.lock.Unlock()
@@ -391,6 +398,7 @@ func (ba *localBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 			sizeBytes,
 			blockSizeBytes)
 	}
+	compactDigest := ba.getCompactDigest(digest)
 
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
@@ -413,21 +421,36 @@ func (ba *localBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 	}
 
 	// Upon successful completion, expose the object in storage.
-	return ba.digestLocationMap.Put(digest, &ba.locationValidator, location)
+	return ba.digestLocationMap.Put(compactDigest, &ba.locationValidator, location)
+}
+
+type oldBlob struct {
+	digest        digest.Digest
+	compactDigest CompactDigest
 }
 
 func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	// Convert all digests to their internal representation.
+	compactDigests := make([]CompactDigest, 0, digests.Length())
+	for _, blobDigest := range digests.Items() {
+		compactDigests = append(compactDigests, ba.getCompactDigest(blobDigest))
+	}
+
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
 
-	var old []digest.Digest
+	var old []oldBlob
 	missing := digest.NewSetBuilder()
-	for _, blobDigest := range digests.Items() {
-		if readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator); err == nil {
+	for i, blobDigest := range digests.Items() {
+		compactDigest := compactDigests[i]
+		if readLocation, err := ba.digestLocationMap.Get(compactDigest, &ba.locationValidator); err == nil {
 			if _, isOld := ba.getBlock(readLocation.BlockID); isOld {
 				// Blob is present, but it must be
 				// refreshed for it to remain in storage.
-				old = append(old, blobDigest)
+				old = append(old, oldBlob{
+					digest:        blobDigest,
+					compactDigest: compactDigest,
+				})
 			}
 		} else if status.Code(err) == codes.NotFound {
 			// Blob is absent.
@@ -453,12 +476,12 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	ba.lock.Lock()
 
 	blobsRefreshedSuccessfully := 0
-	for _, blobDigest := range old {
-		if readLocation, err := ba.digestLocationMap.Get(blobDigest, &ba.locationValidator); err == nil {
+	for _, oldBlob := range old {
+		if readLocation, err := ba.digestLocationMap.Get(oldBlob.compactDigest, &ba.locationValidator); err == nil {
 			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
 				// Blob is present and still old.
 				// Allocate space for a copy.
-				b := readBlock.b.Get(blobDigest, readLocation.OffsetBytes, readLocation.SizeBytes)
+				b := readBlock.b.Get(oldBlob.digest, readLocation.OffsetBytes, readLocation.SizeBytes)
 				writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
 				if err != nil {
 					b.Discard()
@@ -477,14 +500,14 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 					return digest.EmptySet, err
 				}
 
-				if err := ba.digestLocationMap.Put(blobDigest, &ba.locationValidator, writeLocation); err != nil {
+				if err := ba.digestLocationMap.Put(oldBlob.compactDigest, &ba.locationValidator, writeLocation); err != nil {
 					return digest.EmptySet, err
 				}
 				blobsRefreshedSuccessfully++
 			}
 		} else if status.Code(err) == codes.NotFound {
 			// Blob disappeared after the first iteration.
-			missing.Add(blobDigest)
+			missing.Add(oldBlob.digest)
 		} else {
 			return digest.EmptySet, err
 		}

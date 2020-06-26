@@ -3,7 +3,6 @@ package local
 import (
 	"sync"
 
-	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
@@ -129,8 +128,8 @@ func (dlm *hashingDigestLocationMap) getSlot(k *LocationRecordKey) int {
 	return int(k.Hash(dlm.hashInitialization) % uint64(dlm.recordsCount))
 }
 
-func (dlm *hashingDigestLocationMap) Get(digest digest.Digest, validator *LocationValidator) (Location, error) {
-	key := NewLocationRecordKey(digest)
+func (dlm *hashingDigestLocationMap) Get(digest CompactDigest, validator *LocationValidator) (Location, error) {
+	key := LocationRecordKey{Digest: digest}
 	for {
 		slot := dlm.getSlot(&key)
 		record := dlm.recordArray.Get(slot)
@@ -154,13 +153,13 @@ func (dlm *hashingDigestLocationMap) Get(digest digest.Digest, validator *Locati
 	}
 }
 
-func (dlm *hashingDigestLocationMap) Put(digest digest.Digest, validator *LocationValidator, location Location) error {
+func (dlm *hashingDigestLocationMap) Put(digest CompactDigest, validator *LocationValidator, location Location) error {
 	if !validator.IsValid(location) {
 		dlm.putIgnoredInvalid.Inc()
 		return nil
 	}
 	record := LocationRecord{
-		Key:      NewLocationRecordKey(digest),
+		Key:      LocationRecordKey{Digest: digest},
 		Location: location,
 	}
 	for iteration := 1; iteration <= dlm.maximumPutAttempts; iteration++ {

@@ -383,24 +383,6 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		}
 		implementation = mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 	case *pb.BlobAccessConfiguration_Local:
-		var digestLocationMap local.DigestLocationMap
-		switch options.storageType {
-		case blobstore.CASStorageType:
-			// Let the CAS use a single store for all
-			// objects, regardless of the instance name that
-			// was used to store them. There is no need to
-			// distinguish, due to objects being content
-			// addressed.
-			digestLocationMap = createDigestLocationMap(backend.Local, options)
-		case blobstore.ACStorageType:
-			// Let the AC use a single store per instance name.
-			maps := map[string]local.DigestLocationMap{}
-			for _, instance := range backend.Local.Instances {
-				maps[instance] = createDigestLocationMap(backend.Local, options)
-			}
-			digestLocationMap = local.NewPerInstanceDigestLocationMap(maps)
-		}
-
 		var sectorSizeBytes int
 		var blockSectorCount int64
 		var blockAllocator local.BlockAllocator
@@ -441,8 +423,15 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 
 		var err error
 		implementation, err = local.NewLocalBlobAccess(
-			digestLocationMap,
+			local.NewHashingDigestLocationMap(
+				local.NewInMemoryLocationRecordArray(int(backend.Local.DigestLocationMapSize)),
+				int(backend.Local.DigestLocationMapSize),
+				rand.Uint64(),
+				backend.Local.DigestLocationMapMaximumGetAttempts,
+				int(backend.Local.DigestLocationMapMaximumPutAttempts),
+				options.storageTypeName),
 			blockAllocator,
+			options.storageType,
 			options.storageTypeName,
 			sectorSizeBytes,
 			blockSectorCount,
@@ -484,16 +473,6 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		return nil, errors.New("Configuration did not contain a backend")
 	}
 	return blobstore.NewMetricsBlobAccess(implementation, clock.SystemClock, fmt.Sprintf("%s_%s", options.storageTypeName, backendType)), nil
-}
-
-func createDigestLocationMap(config *pb.LocalBlobAccessConfiguration, options *blobAccessCreationOptions) local.DigestLocationMap {
-	return local.NewHashingDigestLocationMap(
-		local.NewInMemoryLocationRecordArray(int(config.DigestLocationMapSize)),
-		int(config.DigestLocationMapSize),
-		rand.Uint64(),
-		config.DigestLocationMapMaximumGetAttempts,
-		int(config.DigestLocationMapMaximumPutAttempts),
-		options.storageTypeName)
 }
 
 func createCircularBlobAccess(config *pb.CircularBlobAccessConfiguration, options *blobAccessCreationOptions) (blobstore.BlobAccess, error) {

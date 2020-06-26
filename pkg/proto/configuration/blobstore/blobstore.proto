@@ -406,11 +406,10 @@ message LocalBlobAccessConfiguration {
   // Recommended value: 3
   int32 new_blocks = 7;
 
-  // Instances for which to store objects. For the Content Addressable
-  // Storage, this field may be omitted, as data for all instances is
-  // stored together. For the Action Cache, this field is required, as
-  // every instance needs its own digest-location map.
-  repeated string instances = 8;
+  // Was 'instances'. This field no longer needs to be provided, as this
+  // storage backend is now capable of storing entries for arbitrary
+  // instance names transparently.
+  reserved 8;
 
   message InMemory {
     // Data is stored in a list of blocks. The total number of blocks

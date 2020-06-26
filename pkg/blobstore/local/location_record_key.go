@@ -1,11 +1,5 @@
 package local
 
-import (
-	"crypto/sha256"
-
-	"github.com/buildbarn/bb-storage/pkg/digest"
-)
-
 // LocationRecordKey contains a compact, partial binary representation
 // of digest.Digest that is used to identify blobs in
 // HashingDigestLocationMap.
@@ -15,17 +9,8 @@ import (
 // The Attempt field contains the probing distance at which the record
 // is stored.
 type LocationRecordKey struct {
-	Digest  [sha256.Size]byte
+	Digest  CompactDigest
 	Attempt uint32
-}
-
-// NewLocationRecordKey creates a LocationRecordKey that corresponds to
-// a given blob digest. It is assumed this key is used to access this
-// record at its preferred index, hence Attempt is zero.
-func NewLocationRecordKey(digest digest.Digest) LocationRecordKey {
-	k := LocationRecordKey{}
-	copy(k.Digest[:], digest.GetHashBytes())
-	return k
 }
 
 // Hash a LocationRecordKey using FNV-1a. Instead of using the

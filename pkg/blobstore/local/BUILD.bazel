@@ -13,7 +13,6 @@ go_library(
         "location_record_array.go",
         "location_record_key.go",
         "partitioning_block_allocator.go",
-        "per_instance_digest_location_map.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/local",
     visibility = ["//visibility:public"],
@@ -37,7 +36,6 @@ go_test(
         "local_blob_access_test.go",
         "location_record_key_test.go",
         "partitioning_block_allocator_test.go",
-        "per_instance_digest_location_map_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
