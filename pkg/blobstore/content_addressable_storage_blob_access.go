@@ -27,7 +27,7 @@ type contentAddressableStorageBlobAccess struct {
 // bytestream.ByteStream and remoteexecution.ContentAddressableStorage
 // services. Those are the services that Bazel uses to access blobs
 // stored in the Content Addressable Storage.
-func NewContentAddressableStorageBlobAccess(client *grpc.ClientConn, uuidGenerator util.UUIDGenerator, readChunkSize int) BlobAccess {
+func NewContentAddressableStorageBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int) BlobAccess {
 	return &contentAddressableStorageBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),

@@ -21,7 +21,7 @@ type actionCacheBlobAccess struct {
 // requests to a GRPC service that implements the
 // remoteexecution.ActionCache service. That is the service that Bazel
 // uses to access action results stored in the Action Cache.
-func NewActionCacheBlobAccess(client *grpc.ClientConn, maximumMessageSizeBytes int) BlobAccess {
+func NewActionCacheBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) BlobAccess {
 	return &actionCacheBlobAccess{
 		actionCacheClient:       remoteexecution.NewActionCacheClient(client),
 		maximumMessageSizeBytes: maximumMessageSizeBytes,

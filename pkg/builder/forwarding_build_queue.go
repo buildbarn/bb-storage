@@ -20,7 +20,7 @@ type forwardingBuildQueue struct {
 // scheduler processes in unmodified form.
 //
 // Details: https://github.com/grpc/grpc-go/issues/2297
-func NewForwardingBuildQueue(client *grpc.ClientConn) BuildQueue {
+func NewForwardingBuildQueue(client grpc.ClientConnInterface) BuildQueue {
 	return &forwardingBuildQueue{
 		capabilitiesClient: remoteexecution.NewCapabilitiesClient(client),
 		executionClient:    remoteexecution.NewExecutionClient(client),
