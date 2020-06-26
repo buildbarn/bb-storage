@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "buckets.go",
+        "error_logger.go",
         "http_handlers.go",
         "jsonnet.go",
         "status.go",
