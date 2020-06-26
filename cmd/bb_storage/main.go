@@ -6,12 +6,14 @@ import (
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
+	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
 
@@ -41,6 +43,20 @@ func main() {
 		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// Buildbarn extension: Indirect Content Addressable Storage
+	// (ICAS) access.
+	var indirectContentAddressableStorage blobstore.BlobAccess
+	if configuration.IndirectContentAddressableStorage != nil {
+		indirectContentAddressableStorage, err = blobstore_configuration.NewBlobAccessFromConfiguration(
+			configuration.IndirectContentAddressableStorage,
+			blobstore_configuration.NewICASBlobAccessCreator(
+				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes)))
+		if err != nil {
+			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
+		}
 	}
 
 	// Ensure that instance names for which we don't have a
@@ -99,6 +115,14 @@ func main() {
 						grpcservers.NewByteStreamServer(
 							contentAddressableStorage,
 							1<<16))
+					if indirectContentAddressableStorage != nil {
+						icas.RegisterIndirectContentAddressableStorageServer(
+							s,
+							grpcservers.NewIndirectContentAddressableStorageServer(
+								indirectContentAddressableStorage,
+								int(configuration.MaximumMessageSizeBytes)))
+
+					}
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
 					remoteexecution.RegisterExecutionServer(s, buildQueue)
 				}))

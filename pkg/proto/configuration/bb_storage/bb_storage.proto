@@ -9,7 +9,8 @@ import "pkg/proto/configuration/grpc/grpc.proto";
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
 
 message ApplicationConfiguration {
-  // Blobstore configuration for the bb-storage instance.
+  // Blobstore configuration for the Content Addressable Storage (CAS)
+  // and Action Cache (AC).
   buildbarn.configuration.blobstore.BlobstoreConfiguration blobstore = 1;
 
   // Jaeger configuration has moved into 'global'.
@@ -37,4 +38,9 @@ message ApplicationConfiguration {
 
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 9;
+
+  // Blobstore cnofiguration for the Indirect Content Addressable
+  // Storage (ICAS).
+  buildbarn.configuration.blobstore.BlobAccessConfiguration
+      indirect_content_addressable_storage = 10;
 }
