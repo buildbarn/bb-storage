@@ -4,8 +4,8 @@ import (
 	"io"
 	"sync"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -94,8 +94,8 @@ func (b *casClonedBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return readAtViaChunkReader(b.toChunkReader(true, defaultChunkSizeBytes), p, off)
 }
 
-func (b *casClonedBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	return toActionResultViaByteSlice(b, maximumSizeBytes)
+func (b *casClonedBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	return toProtoViaByteSlice(b, m, maximumSizeBytes)
 }
 
 func (b *casClonedBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {

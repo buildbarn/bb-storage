@@ -30,44 +30,40 @@ func NewBlobAccessContentAddressableStorage(blobAccess blobstore.BlobAccess, max
 	}
 }
 
-func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest digest.Digest, message proto.Message) error {
-	data, err := cas.blobAccess.Get(ctx, digest).ToByteSlice(cas.maximumMessageSizeBytes)
-	if err != nil {
-		return err
-	}
-	return proto.Unmarshal(data, message)
+func (cas *blobAccessContentAddressableStorage) getMessage(ctx context.Context, digest digest.Digest, m proto.Message) (proto.Message, error) {
+	return cas.blobAccess.Get(ctx, digest).ToProto(m, cas.maximumMessageSizeBytes)
 }
 
 func (cas *blobAccessContentAddressableStorage) GetAction(ctx context.Context, digest digest.Digest) (*remoteexecution.Action, error) {
-	var action remoteexecution.Action
-	if err := cas.getMessage(ctx, digest, &action); err != nil {
+	m, err := cas.getMessage(ctx, digest, &remoteexecution.Action{})
+	if err != nil {
 		return nil, err
 	}
-	return &action, nil
+	return m.(*remoteexecution.Action), nil
 }
 
 func (cas *blobAccessContentAddressableStorage) GetUncachedActionResult(ctx context.Context, digest digest.Digest) (*cas_proto.UncachedActionResult, error) {
-	var uncachedActionResult cas_proto.UncachedActionResult
-	if err := cas.getMessage(ctx, digest, &uncachedActionResult); err != nil {
+	m, err := cas.getMessage(ctx, digest, &cas_proto.UncachedActionResult{})
+	if err != nil {
 		return nil, err
 	}
-	return &uncachedActionResult, nil
+	return m.(*cas_proto.UncachedActionResult), nil
 }
 
 func (cas *blobAccessContentAddressableStorage) GetCommand(ctx context.Context, digest digest.Digest) (*remoteexecution.Command, error) {
-	var command remoteexecution.Command
-	if err := cas.getMessage(ctx, digest, &command); err != nil {
+	m, err := cas.getMessage(ctx, digest, &remoteexecution.Command{})
+	if err != nil {
 		return nil, err
 	}
-	return &command, nil
+	return m.(*remoteexecution.Command), nil
 }
 
 func (cas *blobAccessContentAddressableStorage) GetDirectory(ctx context.Context, digest digest.Digest) (*remoteexecution.Directory, error) {
-	var directory remoteexecution.Directory
-	if err := cas.getMessage(ctx, digest, &directory); err != nil {
+	m, err := cas.getMessage(ctx, digest, &remoteexecution.Directory{})
+	if err != nil {
 		return nil, err
 	}
-	return &directory, nil
+	return m.(*remoteexecution.Directory), nil
 }
 
 func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, digest digest.Digest, directory filesystem.Directory, name string, isExecutable bool) error {
@@ -96,11 +92,11 @@ func (cas *blobAccessContentAddressableStorage) GetFile(ctx context.Context, dig
 }
 
 func (cas *blobAccessContentAddressableStorage) GetTree(ctx context.Context, digest digest.Digest) (*remoteexecution.Tree, error) {
-	var tree remoteexecution.Tree
-	if err := cas.getMessage(ctx, digest, &tree); err != nil {
+	m, err := cas.getMessage(ctx, digest, &remoteexecution.Tree{})
+	if err != nil {
 		return nil, err
 	}
-	return &tree, nil
+	return m.(*remoteexecution.Tree), nil
 }
 
 func (cas *blobAccessContentAddressableStorage) putBlob(ctx context.Context, data []byte, parentDigest digest.Digest) (digest.Digest, error) {

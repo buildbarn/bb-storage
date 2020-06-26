@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -37,7 +38,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		// on directly.
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Action not found")))
 
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.NotFound, "Action not found"))
 	})
 
@@ -48,7 +49,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		// client to rebuild the action.
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewACBufferFromActionResult(
+			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
 					StdoutDigest: &remoteexecution.Digest{
 						Hash:      "this is a malformed hash",
@@ -57,14 +58,14 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
 
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"))
 	})
 
 	t.Run("MissingInput", func(t *testing.T) {
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewACBufferFromActionResult(
+			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
 					OutputFiles: []*remoteexecution.OutputFile{
 						{
@@ -93,7 +94,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Build(),
 			nil)
 
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"))
 	})
 
@@ -101,7 +102,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		// FindMissing() errors should get propagated.
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewACBufferFromActionResult(
+			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
 					StderrDigest: &remoteexecution.Digest{
 						Hash:      "6fc422233a40a75a1f028e11c3cd1140",
@@ -116,7 +117,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Build(),
 		).Return(digest.EmptySet, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.Internal, "Failed to determine existence of child objects: Hard disk has a case of the Mondays"))
 	})
 
@@ -124,7 +125,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		// GetTree() errors should get propagated.
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewACBufferFromActionResult(
+			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
 					OutputDirectories: []*remoteexecution.OutputDirectory{
 						{
@@ -142,7 +143,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
 		).Return(nil, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.Internal, "Failed to fetch output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"))
 	})
 
@@ -190,7 +191,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		}
 		repairFunc := mock.NewMockRepairFunc(ctrl)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewACBufferFromActionResult(
+			buffer.NewProtoBufferFromProto(
 				&actionResult,
 				buffer.Reparable(actionDigest, repairFunc.Call)))
 		contentAddressableStorage.EXPECT().GetTree(
@@ -250,8 +251,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Build(),
 		).Return(digest.EmptySet, nil)
 
-		actualResult, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToActionResult(1000)
+		actualResult, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.NoError(t, err)
-		require.Equal(t, *actualResult, actionResult)
+		require.True(t, proto.Equal(actualResult, &actionResult))
 	})
 }

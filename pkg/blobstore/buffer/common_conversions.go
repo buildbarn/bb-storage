@@ -3,7 +3,6 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
@@ -88,15 +87,14 @@ func cloneCopyViaByteSlice(b Buffer, maximumSizeBytes int) (Buffer, Buffer) {
 	return NewValidatedBufferFromByteSlice(data).CloneCopy(maximumSizeBytes)
 }
 
-func toActionResultViaByteSlice(b Buffer, maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
+func toProtoViaByteSlice(b Buffer, m proto.Message, maximumSizeBytes int) (proto.Message, error) {
 	data, err := b.ToByteSlice(maximumSizeBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	var actionResult remoteexecution.ActionResult
-	if err := proto.Unmarshal(data, &actionResult); err != nil {
+	if err := proto.Unmarshal(data, m); err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal message")
 	}
-	return &actionResult, nil
+	return m, nil
 }

@@ -36,18 +36,18 @@ func (ba *actionCacheBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return buffer.NewACBufferFromActionResult(actionResult, buffer.Irreparable)
+	return buffer.NewProtoBufferFromProto(actionResult, buffer.Irreparable)
 }
 
 func (ba *actionCacheBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	actionResult, err := b.ToActionResult(ba.maximumMessageSizeBytes)
+	actionResult, err := b.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
 	}
 	_, err = ba.actionCacheClient.UpdateActionResult(ctx, &remoteexecution.UpdateActionResultRequest{
 		InstanceName: digest.GetInstance(),
 		ActionDigest: digest.GetPartialDigest(),
-		ActionResult: actionResult,
+		ActionResult: actionResult.(*remoteexecution.ActionResult),
 	})
 	return err
 }

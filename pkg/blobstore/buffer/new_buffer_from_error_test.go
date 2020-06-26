@@ -3,6 +3,7 @@ package buffer_test
 import (
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/golang/mock/gomock"
@@ -28,8 +29,8 @@ func TestNewBufferFromErrorReadAt(t *testing.T) {
 	require.Equal(t, status.Error(codes.Internal, "I/O error"), err)
 }
 
-func TestNewBufferFromErrorToActionResult(t *testing.T) {
-	_, err := buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")).ToActionResult(100)
+func TestNewBufferFromErrorToProto(t *testing.T) {
+	_, err := buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")).ToProto(&remoteexecution.ActionResult{}, 100)
 	require.Equal(t, status.Error(codes.Internal, "I/O error"), err)
 }
 

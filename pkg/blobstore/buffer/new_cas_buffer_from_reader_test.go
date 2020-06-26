@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -200,7 +201,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 }
 
-func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
+func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -211,7 +212,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		actionResult, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes) + 1)
+			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
@@ -223,7 +225,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		actionResult, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes))
+			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
@@ -236,7 +239,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes) - 1)
+			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 
@@ -248,7 +252,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes))
+			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
 	})
 
@@ -260,7 +265,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes))
+			buffer.Reparable(helloDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
 
@@ -273,7 +279,8 @@ func TestNewCASBufferFromReaderToActionResult(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).ToActionResult(len(exampleActionResultBytes))
+			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
@@ -283,7 +290,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Only test the successful case, as other aspects are already
-	// covered by TestNewCASBufferFromReaderToActionResult.
+	// covered by TestNewCASBufferFromReaderToProto.
 	t.Run("Success", func(t *testing.T) {
 		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
 		repairFunc := mock.NewMockRepairFunc(ctrl)

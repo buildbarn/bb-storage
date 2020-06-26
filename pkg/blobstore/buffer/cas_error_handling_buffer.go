@@ -3,8 +3,8 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 )
 
 type casErrorHandlingBuffer struct {
@@ -76,10 +76,10 @@ func (b *casErrorHandlingBuffer) ReadAt(p []byte, off int64) (n int, translatedE
 	return
 }
 
-func (b *casErrorHandlingBuffer) ToActionResult(maximumSizeBytes int) (actionResult *remoteexecution.ActionResult, translatedErr error) {
+func (b *casErrorHandlingBuffer) ToProto(m proto.Message, maximumSizeBytes int) (mResult proto.Message, translatedErr error) {
 	translatedErr = b.tryRepeatedly(func(base Buffer) error {
 		var originalErr error
-		actionResult, originalErr = base.ToActionResult(maximumSizeBytes)
+		mResult, originalErr = base.ToProto(m, maximumSizeBytes)
 		return originalErr
 	})
 	return

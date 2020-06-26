@@ -172,12 +172,12 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 
 func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	b1, b2 := ba.BlobAccess.Get(ctx, digest).CloneCopy(ba.maximumMessageSizeBytes)
-	actionResult, err := b1.ToActionResult(ba.maximumMessageSizeBytes)
+	actionResult, err := b1.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
 	if err != nil {
 		b2.Discard()
 		return buffer.NewBufferFromError(err)
 	}
-	if err := ba.checkCompleteness(ctx, digest, actionResult); err != nil {
+	if err := ba.checkCompleteness(ctx, digest, actionResult.(*remoteexecution.ActionResult)); err != nil {
 		b2.Discard()
 		return buffer.NewBufferFromError(err)
 	}

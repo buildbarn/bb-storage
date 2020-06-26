@@ -3,8 +3,8 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 )
 
 type casChunkReaderBuffer struct {
@@ -39,8 +39,8 @@ func (b *casChunkReaderBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return readAtViaChunkReader(b.toValidatedChunkReader(), p, off)
 }
 
-func (b *casChunkReaderBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	return toActionResultViaByteSlice(b, maximumSizeBytes)
+func (b *casChunkReaderBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	return toProtoViaByteSlice(b, m, maximumSizeBytes)
 }
 
 func (b *casChunkReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {

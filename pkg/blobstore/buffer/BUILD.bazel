@@ -3,7 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "ac_buffer.go",
         "buffer.go",
         "cas_chunk_reader_buffer.go",
         "cas_cloned_buffer.go",
@@ -23,6 +22,7 @@ go_library(
         "multiplexed_chunk_reader.go",
         "normalizing_chunk_reader.go",
         "offset_chunk_reader.go",
+        "proto_buffer.go",
         "reader_backed_chunk_reader.go",
         "repair_strategy.go",
         "validated_byte_slice_buffer.go",
@@ -36,7 +36,6 @@ go_library(
         "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
         "//pkg/util:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
@@ -48,12 +47,12 @@ go_test(
     srcs = [
         "error_handler_test.go",
         "example_test.go",
-        "new_ac_buffer_from_action_result_test.go",
-        "new_ac_buffer_from_byte_slice_test.go",
         "new_buffer_from_error_test.go",
         "new_cas_buffer_from_byte_slice_test.go",
         "new_cas_buffer_from_chunk_reader_test.go",
         "new_cas_buffer_from_reader_test.go",
+        "new_proto_buffer_from_byte_slice_test.go",
+        "new_proto_buffer_from_proto_test.go",
         "new_validated_buffer_from_byte_slice_test.go",
         "new_validated_buffer_from_file_reader_test.go",
         "with_background_task_test.go",

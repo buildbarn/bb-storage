@@ -1,14 +1,12 @@
 package buffer_test
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"testing"
 
-	"github.com/buildbarn/bb-storage/internal/mock"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
@@ -48,45 +46,30 @@ func TestNewValidatedBufferFromByteSliceReadAt(t *testing.T) {
 	})
 }
 
-func TestNewACBufferFromActionResultIntoWriter(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	t.Run("Success", func(t *testing.T) {
-		out := bytes.NewBuffer(nil)
-		err := buffer.NewACBufferFromActionResult(&exampleActionResultMessage, buffer.UserProvided).IntoWriter(out)
-		require.NoError(t, err)
-		require.Equal(t, exampleActionResultBytes, out.Bytes())
-	})
-
-	t.Run("IOFailure", func(t *testing.T) {
-		out := mock.NewMockWriter(ctrl)
-		out.EXPECT().Write(gomock.Any()).Return(0, status.Error(codes.Internal, "Storage backend unavailable"))
-		err := buffer.NewACBufferFromActionResult(&exampleActionResultMessage, buffer.UserProvided).IntoWriter(out)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend unavailable"), err)
-	})
-}
-
-func TestNewValidatedBufferFromByteSliceToActionResult(t *testing.T) {
+func TestNewValidatedBufferFromByteSliceToProto(t *testing.T) {
 	t.Run("SmallerThanMaximum", func(t *testing.T) {
-		actionResult, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).ToActionResult(len(exampleActionResultBytes) + 1)
+		actionResult, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
 
 	t.Run("Exact", func(t *testing.T) {
-		actionResult, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).ToActionResult(len(exampleActionResultBytes))
+		actionResult, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
 
 	t.Run("TooBig", func(t *testing.T) {
-		_, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).ToActionResult(len(exampleActionResultBytes) - 1)
+		_, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 
 	t.Run("Failure", func(t *testing.T) {
-		_, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world")).ToActionResult(100)
+		_, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world")).
+			ToProto(&remoteexecution.ActionResult{}, 100)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
 }

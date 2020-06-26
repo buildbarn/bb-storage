@@ -33,7 +33,13 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 	if err != nil {
 		return nil, err
 	}
-	return s.blobAccess.Get(ctx, digest).ToActionResult(s.maximumMessageSizeBytes)
+	actionResult, err := s.blobAccess.Get(ctx, digest).ToProto(
+		&remoteexecution.ActionResult{},
+		s.maximumMessageSizeBytes)
+	if err != nil {
+		return nil, err
+	}
+	return actionResult.(*remoteexecution.ActionResult), nil
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {
@@ -47,5 +53,5 @@ func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteex
 	return in.ActionResult, s.blobAccess.Put(
 		ctx,
 		digest,
-		buffer.NewACBufferFromActionResult(in.ActionResult, buffer.UserProvided))
+		buffer.NewProtoBufferFromProto(in.ActionResult, buffer.UserProvided))
 }

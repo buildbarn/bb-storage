@@ -3,7 +3,7 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/golang/protobuf/proto"
 )
 
 type errorBuffer struct {
@@ -30,7 +30,7 @@ func (b errorBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return 0, b.err
 }
 
-func (b errorBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
+func (b errorBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
 	return nil, b.err
 }
 

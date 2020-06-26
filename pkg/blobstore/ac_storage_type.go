@@ -3,6 +3,7 @@ package blobstore
 import (
 	"io"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
@@ -14,11 +15,11 @@ func (f acStorageType) GetDigestKey(blobDigest digest.Digest) string {
 }
 
 func (f acStorageType) NewBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy buffer.RepairStrategy) buffer.Buffer {
-	return buffer.NewACBufferFromByteSlice(data, repairStrategy)
+	return buffer.NewProtoBufferFromByteSlice(&remoteexecution.ActionResult{}, data, repairStrategy)
 }
 
 func (f acStorageType) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy buffer.RepairStrategy) buffer.Buffer {
-	return buffer.NewACBufferFromReader(r, repairStrategy)
+	return buffer.NewProtoBufferFromReader(&remoteexecution.ActionResult{}, r, repairStrategy)
 }
 
 // ACStorageType is capable of creating identifiers and buffers for

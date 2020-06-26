@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/golang/mock/gomock"
@@ -93,7 +94,7 @@ func TestNewValidatedBufferFromFileReaderReadAt(t *testing.T) {
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderToActionResult(t *testing.T) {
+func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -107,7 +108,7 @@ func TestNewValidatedBufferFromFileReaderToActionResult(t *testing.T) {
 		)
 
 		actionResult, err := buffer.NewValidatedBufferFromFileReader(reader, int64(len(exampleActionResultBytes))).
-			ToActionResult(len(exampleActionResultBytes))
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
@@ -121,7 +122,8 @@ func TestNewValidatedBufferFromFileReaderToActionResult(t *testing.T) {
 			reader.EXPECT().Close(),
 		)
 
-		_, err := buffer.NewValidatedBufferFromFileReader(reader, 5).ToActionResult(len(exampleActionResultBytes))
+		_, err := buffer.NewValidatedBufferFromFileReader(reader, 5).
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
 
@@ -133,7 +135,7 @@ func TestNewValidatedBufferFromFileReaderToActionResult(t *testing.T) {
 		)
 
 		_, err := buffer.NewValidatedBufferFromFileReader(reader, int64(len(exampleActionResultBytes))).
-			ToActionResult(len(exampleActionResultBytes))
+			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
@@ -143,7 +145,7 @@ func TestNewValidatedBufferFromFileReaderToByteSlice(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Only test the successful case, as other aspects are already
-	// covered by TestNewValidatedBufferFromFileReaderToActionResult.
+	// covered by TestNewValidatedBufferFromFileReaderToProto.
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
 		gomock.InOrder(

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -17,22 +18,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestWithErrorHandlerOnACBuffers(t *testing.T) {
+func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// For AC buffers, there is no need to make a distinction
-	// between operations in terms of error handling. As none of the
-	// AC buffer types are lazy loading, WithErrorHandler() is
-	// always capable of evaluating the ErrorHandler immediately.
-	// It is therefore sufficient to only test ToByteSlice().
+	// For Protobuf backed buffers, there is no need to make a
+	// distinction between operations in terms of error handling. As
+	// none of the Protobuf backed buffer types are lazy loading,
+	// WithErrorHandler() is always capable of evaluating the
+	// ErrorHandler immediately. It is therefore sufficient to only
+	// test ToByteSlice().
 
 	t.Run("ImmediateSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
-			buffer.NewACBufferFromByteSlice(exampleActionResultBytes, buffer.Irreparable),
+			buffer.NewProtoBufferFromByteSlice(
+				&remoteexecution.ActionResult{},
+				exampleActionResultBytes,
+				buffer.Irreparable),
 			errorHandler).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes, data)
@@ -41,7 +46,10 @@ func TestWithErrorHandlerOnACBuffers(t *testing.T) {
 	t.Run("RetriesFailed", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
-			Return(buffer.NewACBufferFromByteSlice([]byte("Hello"), buffer.Irreparable), nil)
+			Return(buffer.NewProtoBufferFromByteSlice(
+				&remoteexecution.ActionResult{},
+				[]byte("Hello"),
+				buffer.Irreparable), nil)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
 			Return(nil, status.Error(codes.Internal, "Maximum number of retries reached"))
 		errorHandler.EXPECT().Done()
@@ -55,9 +63,12 @@ func TestWithErrorHandlerOnACBuffers(t *testing.T) {
 	t.Run("RetriesSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
-			Return(buffer.NewACBufferFromByteSlice([]byte("Hello"), buffer.Irreparable), nil)
+			Return(buffer.NewProtoBufferFromByteSlice(
+				&remoteexecution.ActionResult{},
+				[]byte("Hello"),
+				buffer.Irreparable), nil)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
-			Return(buffer.NewACBufferFromActionResult(&exampleActionResultMessage, buffer.Irreparable), nil)
+			Return(buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.Irreparable), nil)
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
@@ -72,10 +83,10 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// Similar to the AC buffer, buffers created through
-	// NewCASBufferFrom{ByteSlice,Error}() also allow for immediate
-	// ErrorHandler evaluation. It is sufficient to only test
-	// ToByteSlice().
+	// Similar to the Protobuf backed buffer, buffers created
+	// through NewCASBufferFrom{ByteSlice,Error}() also allow for
+	// immediate ErrorHandler evaluation. It is sufficient to only
+	// test ToByteSlice().
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -197,7 +208,7 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 }
 
 // Only provide simple testing coverage for ReadAt(). It is built on top
-// of exactly the same retry logic as ToActionResult().
+// of exactly the same retry logic as ToProto().
 func TestWithErrorHandlerOnCASBuffersReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -218,7 +229,7 @@ func TestWithErrorHandlerOnCASBuffersReadAt(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestWithErrorHandlerOnCASBuffersToActionResult(t *testing.T) {
+func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -233,7 +244,7 @@ func TestWithErrorHandlerOnCASBuffersToActionResult(t *testing.T) {
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(nil, status.Error(codes.Internal, "No backends available"))
 		errorHandler.EXPECT().Done()
 
-		_, err := buffer.WithErrorHandler(b1, errorHandler).ToActionResult(10000)
+		_, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
 		require.Equal(t, status.Error(codes.Internal, "No backends available"), err)
 	})
 
@@ -253,7 +264,7 @@ func TestWithErrorHandlerOnCASBuffersToActionResult(t *testing.T) {
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
 		errorHandler.EXPECT().Done()
 
-		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToActionResult(10000)
+		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
@@ -275,18 +286,18 @@ func TestWithErrorHandlerOnCASBuffersToActionResult(t *testing.T) {
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Buffer is 5 bytes in size, while 134 bytes were expected")).Return(b2, nil)
 		errorHandler.EXPECT().Done()
 
-		// Operations like ToActionResult() may be safely
-		// retried, even in the case of data inconsistency
-		// errors. The call should succeed, even if it obtained
-		// invalid data initially.
-		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToActionResult(10000)
+		// Operations like ToProto() may be safely retried, even
+		// in the case of data inconsistency errors. The call
+		// should succeed, even if it obtained invalid data
+		// initially.
+		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
 }
 
 // Only provide simple testing coverage for ToByteSlice(). It is built on top
-// of exactly the same retry logic as ToActionResult().
+// of exactly the same retry logic as ToProto().
 func TestWithErrorHandlerOnCASBuffersToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

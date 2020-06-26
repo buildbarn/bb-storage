@@ -11,6 +11,10 @@ import (
 
 // ContentAddressableStorage provides typed access to a Bazel Content
 // Addressable Storage (CAS).
+//
+// TODO: Now that we have Buffer.ToProto(), this interface has become a
+// lot less useful. Should we remove this, just like how we removed
+// ActionCache when we added Buffer.ToActionResult()?
 type ContentAddressableStorage interface {
 	GetAction(ctx context.Context, digest digest.Digest) (*remoteexecution.Action, error)
 	GetCommand(ctx context.Context, digest digest.Digest) (*remoteexecution.Command, error)

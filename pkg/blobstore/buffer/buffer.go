@@ -3,7 +3,7 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/golang/protobuf/proto"
 )
 
 // Buffer of data to be read from/written to the Action Cache (AC) or
@@ -22,10 +22,11 @@ import (
 // return the original slice.
 //
 // Buffers also attempt to ensure the data is consistent. In the case of
-// buffers created using NewACBufferFrom*(), data may only be extracted
-// in case the provided data corresponds to a valid Protobuf message. In
-// the case of buffers created using NewCASBufferFrom*(), data may only
-// be extracted in case the size and checksum match the digest.
+// buffers created using NewProtoBufferFrom*(), data may only be
+// extracted in case the provided data corresponds to a valid Protobuf
+// message. In the case of buffers created using NewCASBufferFrom*(),
+// data may only be extracted in case the size and checksum match the
+// digest.
 type Buffer interface {
 	// Return the size of the data stored in the buffer. This
 	// function may fail if the buffer is in a known error state in
@@ -41,8 +42,14 @@ type Buffer interface {
 	// Read a part of the buffer into a byte slice.
 	ReadAt(p []byte, off int64) (int, error)
 	// Return the contents in the form of an unmarshaled
-	// ActionResult message. Normally used by the Action Cache.
-	ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error)
+	// Protobuf message.
+	//
+	// If and only if the buffer isn't already backed by a Protobuf
+	// message, the provided message is used to store the
+	// unmarshaled message. The caller must use a type assertion to
+	// convert this function's return value back to the appropriate
+	// message type.
+	ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error)
 	// Return the full contents of the buffer as a byte slice.
 	ToByteSlice(maximumSizeBytes int) ([]byte, error)
 	// Read the contents of the buffer, starting at a given offset,

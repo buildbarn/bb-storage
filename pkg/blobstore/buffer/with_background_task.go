@@ -3,7 +3,7 @@ package buffer
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/golang/protobuf/proto"
 )
 
 // BackgroundTask is a handle returned by WithBackgroundTask(). The
@@ -88,13 +88,13 @@ func (b *bufferWithBackgroundTask) ReadAt(p []byte, off int64) (int, error) {
 	return n, b.task.err
 }
 
-func (b *bufferWithBackgroundTask) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	actionResult, err := b.base.ToActionResult(maximumSizeBytes)
+func (b *bufferWithBackgroundTask) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	mResult, err := b.base.ToProto(m, maximumSizeBytes)
 	<-b.task.completion
 	if err != nil {
 		return nil, err
 	}
-	return actionResult, b.task.err
+	return mResult, b.task.err
 }
 
 func (b *bufferWithBackgroundTask) ToByteSlice(maximumSizeBytes int) ([]byte, error) {

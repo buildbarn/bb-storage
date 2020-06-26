@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestErrorHandlerACErrorRewriting(t *testing.T) {
+func TestErrorHandlerProtoErrorRewriting(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -29,7 +29,7 @@ func TestErrorHandlerACErrorRewriting(t *testing.T) {
 	require.Equal(t, status.Error(codes.FailedPrecondition, "Blob not found"), err)
 }
 
-func TestErrorHandlerACRetryingSuccess(t *testing.T) {
+func TestErrorHandlerProtoRetryingSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -40,17 +40,17 @@ func TestErrorHandlerACRetryingSuccess(t *testing.T) {
 		Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")), nil).
 		Times(4)
 	errorHandler.EXPECT().OnError(status.Error(codes.NotFound, "Blob not found")).
-		Return(buffer.NewACBufferFromActionResult(&remoteexecution.ActionResult{}, buffer.UserProvided), nil)
+		Return(buffer.NewProtoBufferFromProto(&remoteexecution.ActionResult{}, buffer.UserProvided), nil)
 	errorHandler.EXPECT().Done()
 
 	actionResult, err := buffer.WithErrorHandler(
 		buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")),
-		errorHandler).ToActionResult(100)
+		errorHandler).ToProto(&remoteexecution.ActionResult{}, 100)
 	require.NoError(t, err)
 	require.Equal(t, &remoteexecution.ActionResult{}, actionResult)
 }
 
-func TestErrorHandlerACRetryingFailure(t *testing.T) {
+func TestErrorHandlerProtoRetryingFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

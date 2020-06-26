@@ -5,8 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -70,8 +70,8 @@ func (b validatedByteSliceBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return n, nil
 }
 
-func (b validatedByteSliceBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	return toActionResultViaByteSlice(b, maximumSizeBytes)
+func (b validatedByteSliceBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	return toProtoViaByteSlice(b, m, maximumSizeBytes)
 }
 
 func (b validatedByteSliceBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {

@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
+	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,8 +52,8 @@ func (b *validatedReaderBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return b.r.ReadAt(p, off)
 }
 
-func (b *validatedReaderBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	return toActionResultViaByteSlice(b, maximumSizeBytes)
+func (b *validatedReaderBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	return toProtoViaByteSlice(b, m, maximumSizeBytes)
 }
 
 func (b *validatedReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {

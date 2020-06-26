@@ -13,10 +13,10 @@ import (
 
 // RepairFunc is a callback that may be invoked by buffer objects to
 // report that the contents of the buffer are observed to be invalid.
-// More concretely, it is invoked when an Action Cache buffer object
-// could not be unmarshaled into a Protobuf ActionResult message, or
-// when the contents of a Content Addressable Storage buffer don't match
-// up with the digest of the object.
+// More concretely, it is invoked when an Protobuf buffer object could
+// not be unmarshaled into a Protobuf message, or when the contents of a
+// Content Addressable Storage buffer don't match up with the digest of
+// the object.
 //
 // This callback allows storage backends to repair the object, for
 // example by replicating it from other storage backends or by simply
@@ -41,16 +41,16 @@ func (rs RepairStrategy) repair() {
 	}
 }
 
-// repairACMarshalFailure triggers a repair due to an Action Cache
-// message failing to be marshaled properly.
-func (rs RepairStrategy) repairACMarshalFailure(marshalErr error) error {
+// repairProtoMarshalFailure triggers a repair due to a Protobuf message
+// failing to be marshaled properly.
+func (rs RepairStrategy) repairProtoMarshalFailure(marshalErr error) error {
 	rs.repair()
 	return util.StatusWrapWithCode(marshalErr, rs.errorCode, "Failed to marshal message")
 }
 
-// repairACUnmarshalFailure triggers a repair due to an Action Cache
+// repairProtoUnmarshalFailure triggers a repair due to a Protobuf
 // message failing to be unmarshaled properly.
-func (rs RepairStrategy) repairACUnmarshalFailure(unmarshalErr error) error {
+func (rs RepairStrategy) repairProtoUnmarshalFailure(unmarshalErr error) error {
 	rs.repair()
 	return util.StatusWrapWithCode(unmarshalErr, rs.errorCode, "Failed to unmarshal message")
 }

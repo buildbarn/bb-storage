@@ -4,8 +4,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -69,8 +69,8 @@ func (b *casReaderBuffer) ReadAt(p []byte, off int64) (int, error) {
 	return n, nil
 }
 
-func (b *casReaderBuffer) ToActionResult(maximumSizeBytes int) (*remoteexecution.ActionResult, error) {
-	return toActionResultViaByteSlice(b, maximumSizeBytes)
+func (b *casReaderBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {
+	return toProtoViaByteSlice(b, m, maximumSizeBytes)
 }
 
 func (b *casReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {
