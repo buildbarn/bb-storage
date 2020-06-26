@@ -54,7 +54,7 @@ func main() {
 	go func() {
 		log.Fatal(
 			"gRPC server failure: ",
-			bb_grpc.NewGRPCServersFromConfigurationAndServe(
+			bb_grpc.NewServersFromConfigurationAndServe(
 				configuration.GrpcServers,
 				func(s *grpc.Server) {
 					replicator_pb.RegisterReplicatorServer(s, mirrored.NewReplicatorServer(replicator))

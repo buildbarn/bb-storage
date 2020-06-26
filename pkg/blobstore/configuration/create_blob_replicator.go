@@ -21,7 +21,7 @@ func CreateBlobReplicatorFromConfig(configuration *pb.BlobReplicatorConfiguratio
 	case *pb.BlobReplicatorConfiguration_Local:
 		return mirrored.NewLocalBlobReplicator(source, sink), nil
 	case *pb.BlobReplicatorConfiguration_Remote:
-		client, err := bb_grpc.NewGRPCClientFromConfiguration(mode.Remote)
+		client, err := bb_grpc.BaseClientFactory.NewClientFromConfiguration(mode.Remote)
 		if err != nil {
 			return nil, err
 		}

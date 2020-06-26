@@ -20,7 +20,7 @@ type remoteBlobReplicator struct {
 // NewRemoteBlobReplicator creates a BlobReplicator that forwards
 // requests to a remote gRPC service. This service may be used to
 // deduplicate and queue replication actions globally.
-func NewRemoteBlobReplicator(source blobstore.BlobAccess, client *grpc.ClientConn) BlobReplicator {
+func NewRemoteBlobReplicator(source blobstore.BlobAccess, client grpc.ClientConnInterface) BlobReplicator {
 	return &remoteBlobReplicator{
 		source:           source,
 		replicatorClient: replicator.NewReplicatorClient(client),

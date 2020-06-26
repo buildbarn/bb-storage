@@ -35,6 +35,7 @@ func main() {
 	}
 
 	// Storage access.
+	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(bb_grpc.BaseClientFactory)
 	contentAddressableStorage, actionCache, err := blobstore_configuration.CreateBlobAccessObjectsFromConfig(
 		configuration.Blobstore,
 		int(configuration.MaximumMessageSizeBytes))
@@ -54,7 +55,7 @@ func main() {
 
 	// Register schedulers for instances capable of compiling.
 	for name, endpoint := range configuration.Schedulers {
-		scheduler, err := bb_grpc.NewGRPCClientFromConfiguration(endpoint)
+		scheduler, err := grpcClientFactory.NewClientFromConfiguration(endpoint)
 		if err != nil {
 			log.Fatal("Failed to create scheduler RPC client: ", err)
 		}
@@ -79,7 +80,7 @@ func main() {
 	go func() {
 		log.Fatal(
 			"gRPC server failure: ",
-			bb_grpc.NewGRPCServersFromConfigurationAndServe(
+			bb_grpc.NewServersFromConfigurationAndServe(
 				configuration.GrpcServers,
 				func(s *grpc.Server) {
 					remoteexecution.RegisterActionCacheServer(s, ac.NewActionCacheServer(actionCache, allowActionCacheUpdatesForInstances, int(configuration.MaximumMessageSizeBytes)))

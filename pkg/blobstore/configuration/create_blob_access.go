@@ -188,7 +188,7 @@ func createBlobAccess(configuration *pb.BlobAccessConfiguration, options *blobAc
 		implementation = blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error))
 	case *pb.BlobAccessConfiguration_Grpc:
 		backendType = "grpc"
-		client, err := bb_grpc.NewGRPCClientFromConfiguration(backend.Grpc)
+		client, err := bb_grpc.BaseClientFactory.NewClientFromConfiguration(backend.Grpc)
 		if err != nil {
 			return nil, err
 		}
