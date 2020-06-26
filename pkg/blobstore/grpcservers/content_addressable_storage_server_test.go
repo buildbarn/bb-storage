@@ -1,4 +1,4 @@
-package cas_test
+package grpcservers_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 	buf3 := buffer.NewBufferFromError(status.Error(codes.NotFound, "The object you requested could not be found"))
 	contentAddressableStorage.EXPECT().Get(ctx, digest3).Return(buf3)
 
-	contentAddressableStorageServer := cas.NewContentAddressableStorageServer(contentAddressableStorage, 1<<16)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(contentAddressableStorage, 1<<16)
 
 	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 
 	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
 
-	contentAddressableStorageServer := cas.NewContentAddressableStorageServer(contentAddressableStorage, 200)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(contentAddressableStorage, 200)
 
 	_, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.Equal(t, status.Error(codes.InvalidArgument,

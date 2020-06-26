@@ -1,4 +1,4 @@
-package cas_test
+package grpcservers_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func TestByteStreamServer(t *testing.T) {
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	bytestream.RegisterByteStreamServer(server, cas.NewByteStreamServer(blobAccess, 10))
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10))
 	go func() {
 		require.NoError(t, server.Serve(l))
 	}()

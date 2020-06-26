@@ -8,10 +8,9 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/cmd/bb_storage",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/ac:go_default_library",
         "//pkg/blobstore/configuration:go_default_library",
+        "//pkg/blobstore/grpcservers:go_default_library",
         "//pkg/builder:go_default_library",
-        "//pkg/cas:go_default_library",
         "//pkg/global:go_default_library",
         "//pkg/grpc:go_default_library",
         "//pkg/proto/configuration/bb_storage:go_default_library",

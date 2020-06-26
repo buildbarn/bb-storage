@@ -4,9 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "blob_access_content_addressable_storage.go",
-        "byte_stream_server.go",
         "content_addressable_storage.go",
-        "content_addressable_storage_server.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/cas",
     visibility = ["//visibility:public"],
@@ -18,32 +16,18 @@ go_library(
         "//pkg/proto/cas:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
-        "@go_googleapis//google/bytestream:bytestream_go_proto",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "blob_access_content_addressable_storage_test.go",
-        "byte_stream_server_test.go",
-        "content_addressable_storage_server_test.go",
-    ],
+    srcs = ["blob_access_content_addressable_storage_test.go"],
     embed = [":go_default_library"],
     deps = [
         "//internal/mock:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/digest:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
-        "@go_googleapis//google/bytestream:bytestream_go_proto",
-        "@go_googleapis//google/rpc:status_go_proto",
-        "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
-        "@org_golang_google_grpc//test/bufconn:go_default_library",
     ],
 )
