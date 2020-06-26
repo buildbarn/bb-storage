@@ -35,12 +35,12 @@ message ClientConfiguration {
   //
   // Header names must be lower case.
   //
-  // Note: Keep in mind that this option can only be used to forward metadata
-  // from incoming calls on gRPC servers to outgoing calls on gRPC clients.
-  // This means that this option cannot be used to let bb-scheduler forward
-  // client provided credentials to workers.
-  // That would only be possible if bb-scheduler made outgoing
-  // connections to workers, which is not the case.
+  // Note: Keep in mind that this option can only be used to forward
+  // metadata from incoming calls on gRPC servers to outgoing calls on
+  // gRPC clients. This means that this option cannot be used to let
+  // bb-scheduler forward client provided credentials to workers. That
+  // would only be possible if bb-scheduler made outgoing connections to
+  // workers, which is not the case.
   repeated string forward_metadata = 4;
 
   message HeaderValues {
@@ -52,8 +52,8 @@ message ClientConfiguration {
   // Header names must be lower case.
   repeated HeaderValues add_metadata = 5;
 
-  // Oauth authentication settings.
-  // See https://grpc.io/docs/guides/auth/.
+  // Oauth authentication settings. More information:
+  // https://grpc.io/docs/guides/auth/
   ClientOAuthConfiguration oauth = 6;
 }
 
@@ -73,17 +73,16 @@ message ClientKeepaliveConfiguration {
 
 message ClientOAuthConfiguration {
   oneof credentials {
-    // Use default Google credentials
-    // See
-    // https://developers.google.com/accounts/docs/application-default-credentials.
+    // Use default Google credentials. More information:
+    // https://developers.google.com/accounts/docs/application-default-credentials
     google.protobuf.Empty google_default_credentials = 1;
 
     // Service account private key to use to obtain access token.
     string service_account_key = 2;
   }
 
-  // OAuth scopes.
-  // See https://developers.google.com/identity/protocols/oauth2/scopes.
+  // OAuth scopes. More information:
+  // https://developers.google.com/identity/protocols/oauth2/scopes
   repeated string scopes = 3;
 }
 

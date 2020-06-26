@@ -13,9 +13,11 @@ var (
 	// files in the input root of a build action have the same
 	// modification time. This is needed to make certain kinds of build
 	// actions (most notably Autoconf scripts) succeed.
+	//
 	// 2000-01-01T00:00:00Z was chosen, because it's easy to distinguish
 	// from genuine timestamps. 1970-01-01T00:00:00Z would be impractical
 	// to use, because it tends to cause regressions in practice.
+	//
 	// Examples:
 	// https://bugs.python.org/issue34097
 	// https://gerrit.wikimedia.org/r/#/c/mediawiki/core/+/437977/

@@ -13,5 +13,5 @@ import (
 type deviceNumber = int32
 
 func (d *localDirectory) Mknod(name string, perm os.FileMode, dev int) error {
-	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on darwin")
+	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Darwin")
 }
