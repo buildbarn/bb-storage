@@ -10,7 +10,6 @@ go_library(
     deps = [
         "//pkg/blobstore/configuration:go_default_library",
         "//pkg/blobstore/mirrored:go_default_library",
-        "//pkg/digest:go_default_library",
         "//pkg/global:go_default_library",
         "//pkg/grpc:go_default_library",
         "//pkg/proto/configuration/bb_replicator:go_default_library",

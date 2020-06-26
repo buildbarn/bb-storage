@@ -7,7 +7,6 @@ import (
 
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
-	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator"
@@ -30,23 +29,27 @@ func main() {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
 
-	source, err := blobstore_configuration.CreateCASBlobAccessObjectFromConfig(
-		configuration.Source,
+	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(bb_grpc.BaseClientFactory)
+	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
+		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
+	source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		configuration.Source,
+		blobAccessCreator)
 	if err != nil {
 		log.Fatal("Failed to create source: ", err)
 	}
-	sink, err := blobstore_configuration.CreateCASBlobAccessObjectFromConfig(
+	sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 		configuration.Sink,
-		int(configuration.MaximumMessageSizeBytes))
+		blobAccessCreator)
 	if err != nil {
 		log.Fatal("Failed to create sink: ", err)
 	}
-	replicator, err := blobstore_configuration.CreateBlobReplicatorFromConfig(
+	replicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
 		configuration.Replicator,
 		source,
 		sink,
-		digest.KeyWithoutInstance)
+		blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory))
 	if err != nil {
 		log.Fatal("Failed to create replicator: ", err)
 	}

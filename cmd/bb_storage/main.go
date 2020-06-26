@@ -35,11 +35,12 @@ func main() {
 
 	// Storage access.
 	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(bb_grpc.BaseClientFactory)
-	contentAddressableStorage, actionCache, err := blobstore_configuration.CreateBlobAccessObjectsFromConfig(
+	contentAddressableStorage, actionCache, err := blobstore_configuration.NewCASAndACBlobAccessFromConfiguration(
 		configuration.Blobstore,
+		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
-		log.Fatal("Failed to create blob access: ", err)
+		log.Fatal(err)
 	}
 
 	// Ensure that instance names for which we don't have a
