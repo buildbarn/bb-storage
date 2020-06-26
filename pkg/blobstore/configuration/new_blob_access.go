@@ -380,6 +380,17 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		if err != nil {
 			return nil, err
 		}
+	case *pb.BlobAccessConfiguration_ReadFallback:
+		backendType = "read_fallback"
+		primary, err := NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
+		if err != nil {
+			return nil, err
+		}
+		secondary, err := NewNestedBlobAccess(backend.ReadFallback.Secondary, creator)
+		if err != nil {
+			return nil, err
+		}
+		implementation = blobstore.NewReadFallbackBlobAccess(primary, secondary)
 	default:
 		var err error
 		implementation, backendType, err = creator.NewCustomBlobAccess(configuration)

@@ -112,6 +112,13 @@ message BlobAccessConfiguration {
     // This decorator must be placed on the Action Cache.
     BlobAccessConfiguration completeness_checking = 17;
 
+    // Fall back to reading data from a secondary backend when not found
+    // in the primary backend. Data is never written to the latter.
+    //
+    // This backend can be used to integrate external data sets into the
+    // system, e.g. by combining it with reference_expanding.
+    ReadFallbackBlobAccessConfiguration read_fallback = 18;
+
     // Load Reference messages from an Indirect Content Addressable
     // Storage (ICAS). Expand them by fetching the object from the
     // location stored in the Reference message. This backend is only
@@ -479,6 +486,15 @@ message ExistenceCachingBlobAccessConfiguration {
   // decorator.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message ReadFallbackBlobAccessConfiguration {
+  // Backend from which data is attempted to be read first, and to which
+  // data is written.
+  BlobAccessConfiguration primary = 1;
+
+  // Backend from which data is attempted to be read last.
+  BlobAccessConfiguration secondary = 2;
 }
 
 message BlobReplicatorConfiguration {
