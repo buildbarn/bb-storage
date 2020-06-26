@@ -1,11 +1,13 @@
-diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
-index 8102788..2773e1f 100644
 --- build/bazel/remote/execution/v2/BUILD
 +++ build/bazel/remote/execution/v2/BUILD
-@@ -10,10 +10,9 @@ proto_library(
+@@ -10,13 +10,13 @@
+     srcs = ["remote_execution.proto"],
+     deps = [
          "//build/bazel/semver:semver_proto",
++        "@com_google_protobuf//:any_proto",
          "@com_google_protobuf//:duration_proto",
          "@com_google_protobuf//:timestamp_proto",
+         "@com_google_protobuf//:wrappers_proto",
 -        "@googleapis//:google_api_annotations_proto",
 -        "@googleapis//:google_api_http_proto",
 -        "@googleapis//:google_longrunning_operations_proto",

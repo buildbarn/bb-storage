@@ -1,15 +1,5 @@
---- build/bazel/remote/execution/v2/BUILD
-+++ build/bazel/remote/execution/v2/BUILD
-@@ -29,6 +29,7 @@
-     srcs = ["remote_execution.proto"],
-     deps = [
-         "//build/bazel/semver:semver_proto",
-+        "@com_google_protobuf//:any_proto",
-         "@com_google_protobuf//:duration_proto",
-         "@com_google_protobuf//:timestamp_proto",
-         "@go_googleapis//google/api:annotations_proto",
 diff --git build/bazel/remote/execution/v2/remote_execution.proto build/bazel/remote/execution/v2/remote_execution.proto
-index 8c83e52..245c5bb 100644
+index b69105d..cab8e85 100644
 --- build/bazel/remote/execution/v2/remote_execution.proto
 +++ build/bazel/remote/execution/v2/remote_execution.proto
 @@ -19,6 +19,7 @@ package build.bazel.remote.execution.v2;
@@ -19,8 +9,8 @@ index 8c83e52..245c5bb 100644
 +import "google/protobuf/any.proto";
  import "google/protobuf/duration.proto";
  import "google/protobuf/timestamp.proto";
- import "google/rpc/status.proto";
-@@ -739,6 +740,11 @@ message ExecutedActionMetadata {
+ import "google/protobuf/wrappers.proto";
+@@ -849,6 +850,11 @@ message ExecutedActionMetadata {
  
    // When the worker finished uploading action outputs.
    google.protobuf.Timestamp output_upload_completed_timestamp = 10;
