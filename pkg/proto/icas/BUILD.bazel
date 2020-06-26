@@ -1,0 +1,26 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "icas_proto",
+    srcs = ["icas.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto"],
+)
+
+go_proto_library(
+    name = "icas_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/icas",
+    proto = ":icas_proto",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":icas_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/icas",
+    visibility = ["//visibility:public"],
+)

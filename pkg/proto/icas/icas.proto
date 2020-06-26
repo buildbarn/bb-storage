@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package buildbarn.icas;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/icas";
+
+// The Indirect Content Addressable Storage (ICAS) is a Buildbarn
+// specific protocol. The ICAS is similar to the CAS, except that it
+// does not store actual contents of objects. Instead, it stores
+// references (URLs) to locations where the actual object may be found.
+// These references can be expanded by using
+// ReferenceExpandingBlobAccess, thereby making it behave like a CAS.
+//
+// The ICAS can be used to integrate external corpora into the CAS
+// without fully ingesting them. This may be desirable if the external
+// corpus is large, while only a fraction of it is used by build
+// actions.
+service IndirectContentAddressableStorage {
+  // Determine if references are present in the ICAS. This method is
+  // similar to the FindMissingBlobs() method that exists for the CAS.
+  rpc FindMissingReferences(
+      build.bazel.remote.execution.v2.FindMissingBlobsRequest)
+      returns (build.bazel.remote.execution.v2.FindMissingBlobsResponse);
+
+  // Upload many references at once. This method is similar to the
+  // BatchUpdateBlobs() method that exists for the CAS.
+  rpc BatchUpdateReferences(BatchUpdateReferencesRequest)
+      returns (build.bazel.remote.execution.v2.BatchUpdateBlobsResponse);
+
+  // Retrieve a reference. This method is similar to the
+  // GetActionResult() method that exists for the AC.
+  rpc GetReference(GetReferenceRequest) returns (Reference);
+}
+
+// Reference to an externally stored CAS object.
+message Reference {
+  oneof medium {
+    // A HTTP location where the object may be retrieved.
+    string http_url = 1;
+  }
+}
+
+// Request message of BatchUpdateReferences(). This message is similar
+// to REv2's BatchUpdateBlobsRequest.
+message BatchUpdateReferencesRequest {
+  // A request corresponding to a single reference that the client wants
+  // to upload.
+  message Request {
+    // Hash and size of the object when fetched.
+    build.bazel.remote.execution.v2.Digest digest = 1;
+
+    // Location where the object can be found.
+    Reference reference = 2;
+  }
+
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The individual upload requests.
+  repeated Request requests = 2;
+}
+
+// Request message of GetReference(). This message is similar to REv2's
+// GetActionResultRequest.
+message GetReferenceRequest {
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The digest of the Reference that is requested.
+  build.bazel.remote.execution.v2.Digest digest = 2;
+}

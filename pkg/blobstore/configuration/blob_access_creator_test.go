@@ -26,6 +26,7 @@ func TestBlobAccessCreatorGetDigestKeyFormat(t *testing.T) {
 	for _, bac := range []configuration.BlobAccessCreator{
 		configuration.NewACBlobAccessCreator(mockBlobAccess, grpcClientFactory, 123),
 		configuration.NewCASBlobAccessCreator(grpcClientFactory, 123),
+		configuration.NewICASBlobAccessCreator(grpcClientFactory, 123),
 	} {
 		require.Equal(t,
 			helloDigest.GetKey(bac.GetDigestKeyFormat()),
