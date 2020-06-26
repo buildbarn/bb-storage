@@ -36,9 +36,10 @@ def bb_storage_go_dependencies():
     go_repository(
         name = "com_github_golang_mock",
         importpath = "github.com/golang/mock",
-        sha256 = "0dc7dbcf6d83b4318e26d9481dfa9405042288d666835f810e0b70ada2f54e11",
-        strip_prefix = "mock-aedf487a10d1285646a046e4c9537d7854e820e1",
-        urls = ["https://github.com/EdSchouten/mock/archive/aedf487a10d1285646a046e4c9537d7854e820e1.tar.gz"],
+        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
+        sha256 = "d6a80e2ba2d23b5cbcce09eaff6d8a961262f12b95ae18011ee9ad4ddd339f76",
+        strip_prefix = "mock-6d816de489c18a7e9a8fbd2aa5bb2dd75f2bbc86",
+        urls = ["https://github.com/golang/mock/archive/6d816de489c18a7e9a8fbd2aa5bb2dd75f2bbc86.tar.gz"],
     )
 
     go_repository(
