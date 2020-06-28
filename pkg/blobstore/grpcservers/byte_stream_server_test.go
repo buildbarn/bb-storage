@@ -186,7 +186,7 @@ func TestByteStreamServer(t *testing.T) {
 		).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
-			ResourceName: "///fedora28//blobs/09f34d28e9c8bb445ec996388968a9e8/////7/",
+			ResourceName: "fedora28/blobs/09f34d28e9c8bb445ec996388968a9e8/7",
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
@@ -205,11 +205,11 @@ func TestByteStreamServer(t *testing.T) {
 		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
-	t.Run("WriteSuccessDoubleNameInstance", func(t *testing.T) {
+	t.Run("WriteSuccessTrickyInstance", func(t *testing.T) {
 		// Attempt to write a blob with an instance name.
 		blobAccess.EXPECT().Put(
 			gomock.Any(),
-			digest.MustNewDigest("instance/default", "581c1053f832a1c719fb6528a588ccfd", 14),
+			digest.MustNewDigest("/instance///default//", "581c1053f832a1c719fb6528a588ccfd", 14),
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			data, err := b.ToByteSlice(100)
@@ -221,7 +221,7 @@ func TestByteStreamServer(t *testing.T) {
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
 		require.NoError(t, stream.Send(&bytestream.WriteRequest{
-			ResourceName: "instance/default/uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/blobs/581c1053f832a1c719fb6528a588ccfd/14",
+			ResourceName: "/instance///default///uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/blobs/581c1053f832a1c719fb6528a588ccfd/14",
 			Data:         []byte("Laputan"),
 		}))
 		require.NoError(t, stream.Send(&bytestream.WriteRequest{

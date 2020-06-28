@@ -143,17 +143,27 @@ func NewDigestFromPartialDigest(instance string, partialDigest *remoteexecution.
 //
 // This notation is used by Bazel to refer to files accessible through a
 // gRPC Bytestream service.
+//
+// ${instance} could contain multiply segments.
 func NewDigestFromBytestreamPath(path string) (Digest, error) {
 	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
 	l := len(fields)
-	if (l < 3) || fields[l-3] != "blobs" {
+	if l < 3 || fields[l-3] != "blobs" {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	size, err := strconv.ParseInt(fields[l-1], 10, 64)
 	if err != nil {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	instance := strings.Join(fields[0:(l-3)], "/")
+	suffixLen := 0
+	for _, i := range []int{1, 2, 3} {
+		// 1 is for '/'
+		suffixLen = suffixLen + 1 + len(fields[l-i])
+	}
+	instance := ""
+	if suffixLen <= len(path) {
+		instance = path[0 : len(path)-suffixLen]
+	}
 	return NewDigest(instance, fields[l-2], size)
 }
 

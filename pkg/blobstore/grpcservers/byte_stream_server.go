@@ -21,17 +21,26 @@ import (
 // - ${instance}/uploads/${uuid}/blobs/${hash}/${size}
 //
 // In the process, the hash, size and instance are extracted.
+// ${instance} could contain multiply segments.
 func parseResourceNameWrite(resourceName string) (digest.Digest, error) {
 	fields := strings.FieldsFunc(resourceName, func(r rune) bool { return r == '/' })
 	l := len(fields)
-	if (l < 5) || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
+	if l < 5 || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
 		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	size, err := strconv.ParseInt(fields[l-1], 10, 64)
 	if err != nil {
 		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	instance := strings.Join(fields[0:(l-5)], "/")
+	suffixLen := 0
+	for _, i := range []int{1, 2, 3, 4, 5} {
+		// 1 is for '/'
+		suffixLen = suffixLen + 1 + len(fields[l-i])
+	}
+	instance := ""
+	if suffixLen < len(resourceName) {
+		instance = resourceName[0 : len(resourceName)-suffixLen]
+	}
 	return digest.NewDigest(instance, fields[l-2], size)
 }
 
