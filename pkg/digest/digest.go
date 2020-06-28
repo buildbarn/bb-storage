@@ -156,7 +156,7 @@ func NewDigestFromBytestreamPath(path string) (Digest, error) {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	suffixLen := 0
-	for _, i := range []int{1, 2, 3} {
+	for i := 1; i <= 3; i++ {
 		// 1 is for '/'
 		suffixLen = suffixLen + 1 + len(fields[l-i])
 	}

@@ -33,7 +33,7 @@ func parseResourceNameWrite(resourceName string) (digest.Digest, error) {
 		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	suffixLen := 0
-	for _, i := range []int{1, 2, 3, 4, 5} {
+	for i := 1; i <= 5; i++ {
 		// 1 is for '/'
 		suffixLen = suffixLen + 1 + len(fields[l-i])
 	}
