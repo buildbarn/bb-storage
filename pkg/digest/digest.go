@@ -6,12 +6,14 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
-	"fmt"
 	"hash"
+	"path"
 	"strconv"
 	"strings"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/google/uuid"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,7 +37,7 @@ import (
 // caching data structures or to construct sets without duplicate
 // values), this implementation immediately constructs a key
 // representation upon creation. All functions that extract individual
-// components (e.g., GetInstance(), GetHash*() and GetSizeBytes())
+// components (e.g., GetInstanceName(), GetHash*() and GetSizeBytes())
 // operate directly on the key format.
 type Digest struct {
 	value string
@@ -80,99 +82,102 @@ func (d Digest) unpack() (int, int64, int) {
 	return hashEnd, sizeBytes, sizeBytesEnd
 }
 
-// NewDigest constructs a Digest object from an instance name, hash and
-// object size. The instance returned by this function is guaranteed to
-// be non-degenerate.
-func NewDigest(instance string, hash string, sizeBytes int64) (Digest, error) {
-	// TODO(edsch): Validate the instance name. Maybe have a
-	// restrictive character set? What about length?
-
-	// Validate the hash.
-	if l := len(hash); l != md5.Size*2 && l != sha1.Size*2 &&
-		l != sha256.Size*2 && l != sha512.Size384*2 && l != sha512.Size*2 {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Unknown digest hash length: %d characters", l)
-	}
-	for _, c := range hash {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-			return BadDigest, status.Errorf(codes.InvalidArgument, "Non-hexadecimal character in digest hash: %#U", c)
-		}
-	}
-
-	// Validate the size.
-	if sizeBytes < 0 {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid digest size: %d bytes", sizeBytes)
-	}
-
-	return newDigestUnchecked(instance, hash, sizeBytes), nil
-}
-
-// newDigestUnchecked constructs a Digest object from an instance name,
-// hash and object size without validating its contents.
-func newDigestUnchecked(instance string, hash string, sizeBytes int64) Digest {
-	return Digest{
-		value: fmt.Sprintf("%s-%d-%s", hash, sizeBytes, instance),
-	}
-}
-
 // MustNewDigest constructs a Digest similar to NewDigest, but never
 // returns an error. Instead, execution will abort if the resulting
 // instance would be degenerate. Useful for unit testing.
-func MustNewDigest(instance string, hash string, sizeBytes int64) Digest {
-	d, err := NewDigest(instance, hash, sizeBytes)
+func MustNewDigest(instanceName string, hash string, sizeBytes int64) Digest {
+	in, err := NewInstanceName(instanceName)
+	if err != nil {
+		panic(err)
+	}
+	d, err := in.NewDigest(hash, sizeBytes)
 	if err != nil {
 		panic(err)
 	}
 	return d
 }
 
-// NewDigestFromPartialDigest constructs a Digest object from an
-// instance name and a protocol-level digest object. The instance
-// returned by this function is guaranteed to be non-degenerate.
-func NewDigestFromPartialDigest(instance string, partialDigest *remoteexecution.Digest) (Digest, error) {
-	if partialDigest == nil {
-		return BadDigest, status.Error(codes.InvalidArgument, "No digest provided")
-	}
-	return NewDigest(instance, partialDigest.Hash, partialDigest.SizeBytes)
-}
-
-// NewDigestFromBytestreamPath creates a Digest from a string having one
-// of the following two formats:
-//
-// - blobs/${hash}/${size}
-// - ${instance}/blobs/${hash}/${size}
-//
-// This notation is used by Bazel to refer to files accessible through a
-// gRPC Bytestream service.
-func NewDigestFromBytestreamPath(path string) (Digest, error) {
+// NewDigestFromByteStreamReadPath creates a Digest from a string having
+// the following format: ${instanceName}/blobs/${hash}/${size}. This
+// notation is used to read files through the ByteStream service.
+func NewDigestFromByteStreamReadPath(path string) (Digest, error) {
 	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
-	l := len(fields)
-	if (l != 3 && l != 4) || fields[l-3] != "blobs" {
+	if len(fields) < 3 {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	size, err := strconv.ParseInt(fields[l-1], 10, 64)
+	split := len(fields) - 3
+	return newDigestFromByteStreamPathCommon(fields[:split], fields[split:])
+}
+
+// NewDigestFromByteStreamWritePath creates a Digest from a string
+// having the following format:
+// ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}. This
+// notation is used to write files through the ByteStream service.
+func NewDigestFromByteStreamWritePath(path string) (Digest, error) {
+	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
+	if len(fields) < 5 {
+		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+	}
+	// Determine the end of the instance name. Because both the
+	// leading instance name and the trailing path have a variable
+	// length, this may be ambiguous. This is why instance names are
+	// not permitted to contain "uploads" pathname components.
+	split := 0
+	for fields[split] != "uploads" {
+		split++
+		if split > len(fields)-5 {
+			return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+		}
+	}
+	return newDigestFromByteStreamPathCommon(fields[:split], fields[split+2:])
+}
+
+func newDigestFromByteStreamPathCommon(header []string, trailer []string) (Digest, error) {
+	if trailer[0] != "blobs" {
+		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+	}
+	sizeBytes, err := strconv.ParseInt(trailer[2], 10, 64)
 	if err != nil {
-		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid blob size %#v", trailer[2])
 	}
-	instance := ""
-	if l == 4 {
-		instance = fields[0]
+	instanceName, err := newInstanceNameFromComponents(header)
+	if err != nil {
+		return BadDigest, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
 	}
-	return NewDigest(instance, fields[l-2], size)
+	return instanceName.NewDigest(trailer[1], sizeBytes)
 }
 
-// NewDerivedDigest creates a Digest object that uses the same instance
-// name as the one from which it is derived. This can be used to refer
-// to inputs (command, directories, files) of an action.
-func (d Digest) NewDerivedDigest(partialDigest *remoteexecution.Digest) (Digest, error) {
-	// TODO(edsch): Check whether the resulting digest uses the same
-	// hashing algorithm?
-	return NewDigestFromPartialDigest(d.GetInstance(), partialDigest)
+// GetByteStreamReadPath converts the Digest to a string having
+// the following format: ${instanceName}/blobs/${hash}/${size}. This
+// notation is used to read files through the ByteStream service.
+func (d Digest) GetByteStreamReadPath() string {
+	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	return path.Join(
+		d.value[sizeBytesEnd+1:],
+		"blobs",
+		d.value[:hashEnd],
+		strconv.FormatInt(sizeBytes, 10))
 }
 
-// GetPartialDigest encodes the digest into the format used by the remote
+// GetByteStreamWritePath converts the Digest to a string having the
+// following format:
+// ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}. This
+// notation is used to write files through the ByteStream service.
+func (d Digest) GetByteStreamWritePath(uuid uuid.UUID) string {
+	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	return path.Join(
+		d.value[sizeBytesEnd+1:],
+		"uploads",
+		uuid.String(),
+		"blobs",
+		d.value[:hashEnd],
+		strconv.FormatInt(sizeBytes, 10))
+}
+
+// GetProto encodes the digest into the format used by the remote
 // execution protocol, so that it may be stored in messages returned to
 // the client.
-func (d Digest) GetPartialDigest() *remoteexecution.Digest {
+func (d Digest) GetProto() *remoteexecution.Digest {
 	hashEnd, sizeBytes, _ := d.unpack()
 	return &remoteexecution.Digest{
 		Hash:      d.value[:hashEnd],
@@ -180,10 +185,12 @@ func (d Digest) GetPartialDigest() *remoteexecution.Digest {
 	}
 }
 
-// GetInstance returns the instance name of the object.
-func (d Digest) GetInstance() string {
+// GetInstanceName returns the instance name of the object.
+func (d Digest) GetInstanceName() InstanceName {
 	_, _, sizeBytesEnd := d.unpack()
-	return d.value[sizeBytesEnd+1:]
+	return InstanceName{
+		value: d.value[sizeBytesEnd+1:],
+	}
 }
 
 // GetHashBytes returns the hash of the object as a slice of bytes.
@@ -265,17 +272,17 @@ func (d Digest) NewHasher() hash.Hash {
 // newly created files.
 func (d Digest) NewGenerator() *Generator {
 	return &Generator{
-		instance:    d.GetInstance(),
-		partialHash: d.NewHasher(),
+		instanceName: d.GetInstanceName(),
+		partialHash:  d.NewHasher(),
 	}
 }
 
 // Generator is a writer that may be used to compute digests of newly
 // created files.
 type Generator struct {
-	instance    string
-	partialHash hash.Hash
-	sizeBytes   int64
+	instanceName InstanceName
+	partialHash  hash.Hash
+	sizeBytes    int64
 }
 
 // Write a chunk of data from a newly created file into the state of the
@@ -289,8 +296,7 @@ func (dg *Generator) Write(p []byte) (int, error) {
 // Sum creates a new digest based on the data written into the
 // Generator.
 func (dg *Generator) Sum() Digest {
-	return newDigestUnchecked(
-		dg.instance,
+	return dg.instanceName.newDigestUnchecked(
 		hex.EncodeToString(dg.partialHash.Sum(nil)),
 		dg.sizeBytes)
 }

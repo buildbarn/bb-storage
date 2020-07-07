@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,13 +15,13 @@ import (
 
 type actionCacheServer struct {
 	blobAccess               blobstore.BlobAccess
-	allowUpdatesForInstances map[string]bool
+	allowUpdatesForInstances map[digest.InstanceName]bool
 	maximumMessageSizeBytes  int
 }
 
 // NewActionCacheServer creates a GRPC service for serving the contents
 // of a Bazel Action Cache (AC) to Bazel.
-func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstances map[string]bool, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
+func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstances map[digest.InstanceName]bool, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
 	return &actionCacheServer{
 		blobAccess:               blobAccess,
 		allowUpdatesForInstances: allowUpdatesForInstances,
@@ -29,7 +30,11 @@ func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstan
 }
 
 func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecution.GetActionResultRequest) (*remoteexecution.ActionResult, error) {
-	digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, in.ActionDigest)
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digest, err := instanceName.NewDigestFromProto(in.ActionDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +48,15 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {
-	digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, in.ActionDigest)
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digest, err := instanceName.NewDigestFromProto(in.ActionDigest)
 	if err != nil {
 		return nil, err
 	}
-	if instance := digest.GetInstance(); !s.allowUpdatesForInstances[instance] {
+	if instance := digest.GetInstanceName(); !s.allowUpdatesForInstances[instance] {
 		return nil, status.Errorf(codes.PermissionDenied, "This service does not accept action results for instance %#v", instance)
 	}
 	return in.ActionResult, s.blobAccess.Put(

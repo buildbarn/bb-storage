@@ -34,9 +34,9 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 		// Let the remote replication service perform the
 		// replication while we stream data back to the client.
 		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
-			InstanceName: digest.GetInstance(),
+			InstanceName: digest.GetInstanceName().String(),
 			BlobDigests: []*remoteexecution.Digest{
-				digest.GetPartialDigest(),
+				digest.GetProto(),
 			},
 		})
 		t.Finish(err)
@@ -49,15 +49,15 @@ func (br *remoteBlobReplicator) ReplicateMultiple(ctx context.Context, digests d
 	// ReplicateBlobs() RPC can only process digests for a single
 	// instance. This is not a serious limitation, as digest sets
 	// are unlikely to contain digests for multiple instance names.
-	perInstanceDigests := map[string][]*remoteexecution.Digest{}
+	perInstanceDigests := map[digest.InstanceName][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
-		instanceName := digest.GetInstance()
-		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetPartialDigest())
+		instanceName := digest.GetInstanceName()
+		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetProto())
 	}
 	for instanceName, blobDigests := range perInstanceDigests {
 		// Call ReplicateBlobs() for each instance.
 		request := replicator.ReplicateBlobsRequest{
-			InstanceName: instanceName,
+			InstanceName: instanceName.String(),
 			BlobDigests:  blobDigests,
 		}
 		if _, err := br.replicatorClient.ReplicateBlobs(ctx, &request); err != nil {

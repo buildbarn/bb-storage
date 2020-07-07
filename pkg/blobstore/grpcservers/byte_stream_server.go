@@ -3,8 +3,6 @@ package grpcservers
 import (
 	"context"
 	"io"
-	"strconv"
-	"strings"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -14,29 +12,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// parseResourceNameWrite parses resource name strings in one of the following two forms:
-//
-// - uploads/${uuid}/blobs/${hash}/${size}
-// - ${instance}/uploads/${uuid}/blobs/${hash}/${size}
-//
-// In the process, the hash, size and instance are extracted.
-func parseResourceNameWrite(resourceName string) (digest.Digest, error) {
-	fields := strings.FieldsFunc(resourceName, func(r rune) bool { return r == '/' })
-	l := len(fields)
-	if (l != 5 && l != 6) || fields[l-5] != "uploads" || fields[l-3] != "blobs" {
-		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
-	}
-	size, err := strconv.ParseInt(fields[l-1], 10, 64)
-	if err != nil {
-		return digest.BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
-	}
-	instance := ""
-	if l == 6 {
-		instance = fields[0]
-	}
-	return digest.NewDigest(instance, fields[l-2], size)
-}
 
 type byteStreamServer struct {
 	blobAccess    blobstore.BlobAccess
@@ -57,7 +32,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
-	digest, err := digest.NewDigestFromBytestreamPath(in.ResourceName)
+	digest, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
 	if err != nil {
 		return err
 	}
@@ -127,7 +102,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return err
 	}
-	digest, err := parseResourceNameWrite(request.ResourceName)
+	digest, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
 	if err != nil {
 		return err
 	}

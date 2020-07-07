@@ -22,9 +22,14 @@ func NewReplicatorServer(replicator BlobReplicator) replicator_pb.ReplicatorServ
 }
 
 func (rs replicatorServer) ReplicateBlobs(ctx context.Context, request *replicator_pb.ReplicateBlobsRequest) (*empty.Empty, error) {
+	instanceName, err := digest.NewInstanceName(request.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", request.InstanceName)
+	}
+
 	digests := digest.NewSetBuilder()
 	for i, blobDigest := range request.BlobDigests {
-		d, err := digest.NewDigestFromPartialDigest(request.InstanceName, blobDigest)
+		d, err := instanceName.NewDigestFromProto(blobDigest)
 		if err != nil {
 			return nil, util.StatusWrapf(err, "Digest at index %d", i)
 		}

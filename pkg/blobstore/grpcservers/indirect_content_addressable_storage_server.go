@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/status"
 )
@@ -29,9 +30,14 @@ func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess,
 }
 
 func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
 	inDigests := digest.NewSetBuilder()
 	for _, partialDigest := range in.BlobDigests {
-		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, partialDigest)
+		digest, err := instanceName.NewDigestFromProto(partialDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +49,7 @@ func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx cont
 	}
 	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
 	for _, outDigest := range outDigests.Items() {
-		partialDigests = append(partialDigests, outDigest.GetPartialDigest())
+		partialDigests = append(partialDigests, outDigest.GetProto())
 	}
 	return &remoteexecution.FindMissingBlobsResponse{
 		MissingBlobDigests: partialDigests,
@@ -51,9 +57,14 @@ func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx cont
 }
 
 func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx context.Context, in *icas.BatchUpdateReferencesRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
 	responses := make([]*remoteexecution.BatchUpdateBlobsResponse_Response, 0, len(in.Requests))
 	for _, request := range in.Requests {
-		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
+		digest, err := instanceName.NewDigestFromProto(request.Digest)
 		if err == nil {
 			err = s.blobAccess.Put(
 				ctx,
@@ -72,7 +83,12 @@ func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx cont
 }
 
 func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Context, in *icas.GetReferenceRequest) (*icas.Reference, error) {
-	digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, in.Digest)
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
+	digest, err := instanceName.NewDigestFromProto(in.Digest)
 	if err != nil {
 		return nil, err
 	}

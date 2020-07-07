@@ -10,6 +10,7 @@ import (
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
@@ -87,10 +88,14 @@ func main() {
 
 	// Wrap all schedulers for which the Action Cache is writable to
 	// announce this through GetCapabilities().
-	allowActionCacheUpdatesForInstances := map[string]bool{}
+	allowActionCacheUpdatesForInstances := map[digest.InstanceName]bool{}
 	for _, instance := range configuration.AllowAcUpdatesForInstances {
+		instanceName, err := digest.NewInstanceName(instance)
+		if err != nil {
+			log.Fatalf("Invalid instance name %#v: %s", instance, err)
+		}
 		schedulers[instance] = builder.NewUpdatableActionCacheBuildQueue(schedulers[instance])
-		allowActionCacheUpdatesForInstances[instance] = true
+		allowActionCacheUpdatesForInstances[instanceName] = true
 	}
 
 	go func() {

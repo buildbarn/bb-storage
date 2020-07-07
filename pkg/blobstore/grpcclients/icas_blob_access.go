@@ -30,8 +30,8 @@ func NewICASBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes 
 
 func (ba *icasBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	reference, err := ba.icasClient.GetReference(ctx, &icas.GetReferenceRequest{
-		InstanceName: digest.GetInstance(),
-		Digest:       digest.GetPartialDigest(),
+		InstanceName: digest.GetInstanceName().String(),
+		Digest:       digest.GetProto(),
 	})
 	if err != nil {
 		return buffer.NewBufferFromError(err)
@@ -48,10 +48,10 @@ func (ba *icasBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffe
 	// BlobAccess has no mechanics for that. We should extend
 	// BlobAccess to support that.
 	_, err = ba.icasClient.BatchUpdateReferences(ctx, &icas.BatchUpdateReferencesRequest{
-		InstanceName: digest.GetInstance(),
+		InstanceName: digest.GetInstanceName().String(),
 		Requests: []*icas.BatchUpdateReferencesRequest_Request{
 			{
-				Digest:    digest.GetPartialDigest(),
+				Digest:    digest.GetProto(),
 				Reference: reference.(*icas.Reference),
 			},
 		},
@@ -63,17 +63,17 @@ func (ba *icasBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	// Partition all digests by instance name, as the
 	// FindMissingReferences() RPC can only process digests for a
 	// single instance.
-	perInstanceDigests := map[string][]*remoteexecution.Digest{}
+	perInstanceDigests := map[digest.InstanceName][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
-		instanceName := digest.GetInstance()
-		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetPartialDigest())
+		instanceName := digest.GetInstanceName()
+		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetProto())
 	}
 
 	missingDigests := digest.NewSetBuilder()
 	for instanceName, blobDigests := range perInstanceDigests {
 		// Call FindMissingReferences() for each instance.
 		request := remoteexecution.FindMissingBlobsRequest{
-			InstanceName: instanceName,
+			InstanceName: instanceName.String(),
 			BlobDigests:  blobDigests,
 		}
 		response, err := ba.icasClient.FindMissingReferences(ctx, &request)
@@ -82,8 +82,8 @@ func (ba *icasBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 		}
 
 		// Convert results back.
-		for _, partialDigest := range response.MissingBlobDigests {
-			blobDigest, err := digest.NewDigestFromPartialDigest(instanceName, partialDigest)
+		for _, proto := range response.MissingBlobDigests {
+			blobDigest, err := instanceName.NewDigestFromProto(proto)
 			if err != nil {
 				return digest.EmptySet, err
 			}

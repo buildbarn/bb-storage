@@ -2,7 +2,6 @@ package grpcclients
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -55,14 +54,10 @@ func (r *byteStreamChunkReader) Close() {
 }
 
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	var readRequest bytestream.ReadRequest
-	if instance := digest.GetInstance(); instance == "" {
-		readRequest.ResourceName = fmt.Sprintf("blobs/%s/%d", digest.GetHashString(), digest.GetSizeBytes())
-	} else {
-		readRequest.ResourceName = fmt.Sprintf("%s/blobs/%s/%d", instance, digest.GetHashString(), digest.GetSizeBytes())
-	}
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	client, err := ba.byteStreamClient.Read(ctxWithCancel, &readRequest)
+	client, err := ba.byteStreamClient.Read(ctxWithCancel, &bytestream.ReadRequest{
+		ResourceName: digest.GetByteStreamReadPath(),
+	})
 	if err != nil {
 		cancel()
 		return buffer.NewBufferFromError(err)
@@ -82,13 +77,7 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 		return err
 	}
 
-	var resourceName string
-	if instance := digest.GetInstance(); instance == "" {
-		resourceName = fmt.Sprintf("uploads/%s/blobs/%s/%d", uuid.Must(ba.uuidGenerator()), digest.GetHashString(), digest.GetSizeBytes())
-	} else {
-		resourceName = fmt.Sprintf("%s/uploads/%s/blobs/%s/%d", instance, uuid.Must(ba.uuidGenerator()), digest.GetHashString(), digest.GetSizeBytes())
-	}
-
+	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()))
 	writeOffset := int64(0)
 	for {
 		if data, err := r.Read(); err == nil {
@@ -123,17 +112,17 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 	// Partition all digests by instance name, as the
 	// FindMissingBlobs() RPC can only process digests for a single
 	// instance.
-	perInstanceDigests := map[string][]*remoteexecution.Digest{}
+	perInstanceDigests := map[digest.InstanceName][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
-		instanceName := digest.GetInstance()
-		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetPartialDigest())
+		instanceName := digest.GetInstanceName()
+		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetProto())
 	}
 
 	missingDigests := digest.NewSetBuilder()
 	for instanceName, blobDigests := range perInstanceDigests {
 		// Call FindMissingBlobs() for each instance.
 		request := remoteexecution.FindMissingBlobsRequest{
-			InstanceName: instanceName,
+			InstanceName: instanceName.String(),
 			BlobDigests:  blobDigests,
 		}
 		response, err := ba.contentAddressableStorageClient.FindMissingBlobs(ctx, &request)
@@ -142,8 +131,8 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 		}
 
 		// Convert results back.
-		for _, partialDigest := range response.MissingBlobDigests {
-			blobDigest, err := digest.NewDigestFromPartialDigest(instanceName, partialDigest)
+		for _, proto := range response.MissingBlobDigests {
+			blobDigest, err := instanceName.NewDigestFromProto(proto)
 			if err != nil {
 				return digest.EmptySet, err
 			}

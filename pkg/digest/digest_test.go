@@ -5,24 +5,181 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func TestNewDigest(t *testing.T) {
-	_, err := digest.NewDigest("hello", "0123456789abcd", 123)
-	require.Equal(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 14 characters"), err)
+func TestNewDigestFromByteStreamReadPath(t *testing.T) {
+	t.Run("Empty", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamReadPath("")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+	})
 
-	_, err = digest.NewDigest("hello", "555555555555555X5555555555555555", 123)
-	require.Equal(t, status.Error(codes.InvalidArgument, "Non-hexadecimal character in digest hash: U+0058 'X'"), err)
+	t.Run("BlabsInsteadOfBlobs", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamReadPath("blabs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+	})
 
-	_, err = digest.NewDigest("hello", "00000000000000000000000000000000", -1)
-	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid digest size: -1 bytes"), err)
+	t.Run("NonIntegerSize", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/five")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""))
+	})
+
+	t.Run("InvalidInstanceName", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamReadPath("x/operations/y/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""))
+	})
+
+	t.Run("NoInstanceName", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("InstanceNameOneComponent", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamReadPath("hello/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamReadPath("hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("RedundantSlashes", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamReadPath("//hello//world//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
 }
 
-func TestDigestGetPartialDigest(t *testing.T) {
+func TestNewDigestFromByteStreamWritePath(t *testing.T) {
+	t.Run("Empty", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamWritePath("")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+	})
+
+	t.Run("DownloadsInsteadOfUploads", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamWritePath("downloads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+	})
+
+	t.Run("NonIntegerSize", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/five")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""))
+	})
+
+	t.Run("InvalidInstanceName", func(t *testing.T) {
+		_, err := digest.NewDigestFromByteStreamWritePath("x/operations/y/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""))
+	})
+
+	t.Run("NoInstanceName", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("InstanceNameOneComponent", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamWritePath("hello/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("RedundantSlashes", func(t *testing.T) {
+		d, err := digest.NewDigestFromByteStreamWritePath("//hello//world//uploads//da2f1135-326b-4956-b920-1646cdd6cb53//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+
+	t.Run("TrailingPath", func(t *testing.T) {
+		// Upload paths may contain a trailing filename that the
+		// implementation can use to attach a name to the
+		// object. This implementation ignores that information.
+		d, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123/this/file/is/called/foo.txt")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+	})
+}
+
+func TestDigestGetByteStreamReadPath(t *testing.T) {
+	t.Run("NoInstanceName", func(t *testing.T) {
+		require.Equal(
+			t,
+			"blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamReadPath())
+	})
+
+	t.Run("InstanceNameOneComponent", func(t *testing.T) {
+		require.Equal(
+			t,
+			"hello/blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"hello",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamReadPath())
+	})
+
+	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		require.Equal(
+			t,
+			"hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"hello/world",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamReadPath())
+	})
+}
+
+func TestDigestGetByteStreamWritePath(t *testing.T) {
+	uuid := uuid.Must(uuid.Parse("36ebab65-3c4f-4faf-818b-2eabb4cd1b02"))
+
+	t.Run("NoInstanceName", func(t *testing.T) {
+		require.Equal(
+			t,
+			"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamWritePath(uuid))
+	})
+
+	t.Run("InstanceNameOneComponent", func(t *testing.T) {
+		require.Equal(
+			t,
+			"hello/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"hello",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamWritePath(uuid))
+	})
+
+	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		require.Equal(
+			t,
+			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
+			digest.MustNewDigest(
+				"hello/world",
+				"8b1a9953c4611296a827abf8c47804d7",
+				123).GetByteStreamWritePath(uuid))
+	})
+}
+
+func TestDigestGetProto(t *testing.T) {
 	require.Equal(
 		t,
 		&remoteexecution.Digest{
@@ -32,17 +189,17 @@ func TestDigestGetPartialDigest(t *testing.T) {
 		digest.MustNewDigest(
 			"hello",
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			123).GetPartialDigest())
+			123).GetProto())
 }
 
-func TestDigestGetInstance(t *testing.T) {
+func TestDigestGetInstanceName(t *testing.T) {
 	require.Equal(
 		t,
-		"hello",
+		digest.MustNewInstanceName("hello"),
 		digest.MustNewDigest(
 			"hello",
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			123).GetInstance())
+			123).GetInstanceName())
 }
 
 func TestDigestGetHashBytes(t *testing.T) {

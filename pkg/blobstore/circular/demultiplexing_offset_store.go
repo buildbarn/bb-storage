@@ -25,7 +25,7 @@ func NewDemultiplexingOffsetStore(offsetStoreGetter OffsetStoreGetter) OffsetSto
 }
 
 func (os *demultiplexingOffsetStore) Get(digest digest.Digest, cursors Cursors) (uint64, int64, bool, error) {
-	instance := digest.GetInstance()
+	instance := digest.GetInstanceName().String()
 	backend, err := os.offsetStoreGetter(instance)
 	if err != nil {
 		return 0, 0, false, util.StatusWrapf(err, "Failed to obtain offset store for instance %#v", instance)
@@ -34,7 +34,7 @@ func (os *demultiplexingOffsetStore) Get(digest digest.Digest, cursors Cursors) 
 }
 
 func (os *demultiplexingOffsetStore) Put(digest digest.Digest, offset uint64, length int64, cursors Cursors) error {
-	instance := digest.GetInstance()
+	instance := digest.GetInstanceName().String()
 	backend, err := os.offsetStoreGetter(instance)
 	if err != nil {
 		return util.StatusWrapf(err, "Failed to obtain offset store for instance %#v", instance)

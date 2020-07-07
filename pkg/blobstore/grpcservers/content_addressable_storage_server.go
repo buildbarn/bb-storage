@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,9 +28,14 @@ func NewContentAddressableStorageServer(contentAddressableStorage blobstore.Blob
 }
 
 func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
 	inDigests := digest.NewSetBuilder()
 	for _, partialDigest := range in.BlobDigests {
-		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, partialDigest)
+		digest, err := instanceName.NewDigestFromProto(partialDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +47,7 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	}
 	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
 	for _, outDigest := range outDigests.Items() {
-		partialDigests = append(partialDigests, outDigest.GetPartialDigest())
+		partialDigests = append(partialDigests, outDigest.GetProto())
 	}
 	return &remoteexecution.FindMissingBlobsResponse{
 		MissingBlobDigests: partialDigests,
@@ -49,10 +55,15 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in *remoteexecution.BatchReadBlobsRequest) (*remoteexecution.BatchReadBlobsResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
 	bytesRemaining := s.maximumMessageSizeBytes
 	digests := make([]digest.Digest, 0, len(in.Digests))
 	for _, reqDigest := range in.Digests {
-		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, reqDigest)
+		digest, err := instanceName.NewDigestFromProto(reqDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -84,9 +95,14 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 }
 
 func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, in *remoteexecution.BatchUpdateBlobsRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+
 	var response remoteexecution.BatchUpdateBlobsResponse
 	for _, request := range in.Requests {
-		digest, err := digest.NewDigestFromPartialDigest(in.InstanceName, request.Digest)
+		digest, err := instanceName.NewDigestFromProto(request.Digest)
 		if err == nil {
 			err = s.contentAddressableStorage.Put(
 				ctx,
