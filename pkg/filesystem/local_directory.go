@@ -56,6 +56,9 @@ func (d *localDirectory) enter(name string) (*localDirectory, error) {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
 			return nil, syscall.ENOTDIR
+		} else if runtime.GOOS == "linux" && err == syscall.ELOOP {
+			// Linux 3.10 returns ELOOP, while Linux 4.15 returns ENOTDIR. Prefer the latter.
+			return nil, syscall.ENOTDIR
 		}
 		return nil, err
 	}
