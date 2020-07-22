@@ -22,12 +22,10 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	actionCache := mock.NewMockBlobAccess(ctrl)
-	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
-	contentAddressableStorageBlobAccess := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(
 		actionCache,
 		contentAddressableStorage,
-		contentAddressableStorageBlobAccess,
 		5,
 		1000)
 
@@ -82,7 +80,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					},
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
@@ -110,7 +108,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					},
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
@@ -138,10 +136,10 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					},
 				},
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorage.EXPECT().GetTree(
+		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
-		).Return(nil, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
+		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hard disk has a case of the Mondays")))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.Internal, "Failed to fetch output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"))
@@ -194,10 +192,10 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			buffer.NewProtoBufferFromProto(
 				&actionResult,
 				buffer.Reparable(actionDigest, repairFunc.Call)))
-		contentAddressableStorage.EXPECT().GetTree(
+		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
-		).Return(&remoteexecution.Tree{
+		).Return(buffer.NewProtoBufferFromProto(&remoteexecution.Tree{
 			Root: &remoteexecution.Directory{
 				// Directory digests should not be part of
 				// FindMissing(), as references to directories
@@ -232,8 +230,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				},
 				{},
 			},
-		}, nil)
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+		}, buffer.Reparable(actionDigest, repairFunc.Call)))
+		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", "38837949e2518a6e8a912ffb29942788", 10)).
@@ -243,7 +241,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("hello", "41d7247285b686496aa91b56b4c48395", 11)).
 				Build(),
 		).Return(digest.EmptySet, nil)
-		contentAddressableStorageBlobAccess.EXPECT().FindMissing(
+		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", "eda14e187a768b38eda999457c9cca1e", 6)).

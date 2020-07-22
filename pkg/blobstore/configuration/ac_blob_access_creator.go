@@ -4,7 +4,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
-	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -48,9 +47,6 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 		}
 		return completenesschecking.NewCompletenessCheckingBlobAccess(
 			base,
-			cas.NewBlobAccessContentAddressableStorage(
-				bac.contentAddressableStorage,
-				bac.maximumMessageSizeBytes),
 			bac.contentAddressableStorage,
 			100,
 			bac.maximumMessageSizeBytes), "completeness_checking", nil

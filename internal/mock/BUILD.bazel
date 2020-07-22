@@ -70,14 +70,6 @@ gomock(
 )
 
 gomock(
-    name = "cas",
-    out = "cas.go",
-    interfaces = ["ContentAddressableStorage"],
-    library = "//pkg/cas:go_default_library",
-    package = "mock",
-)
-
-gomock(
     name = "clock",
     out = "clock.go",
     interfaces = [
@@ -160,7 +152,6 @@ go_library(
         ":blobstore_replication.go",
         ":buffer.go",
         ":builder.go",
-        ":cas.go",
         ":clock.go",
         ":cloud_aws.go",
         ":filesystem.go",
@@ -178,7 +169,6 @@ go_library(
         "//pkg/clock:go_default_library",
         "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
-        "//pkg/proto/cas:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
         "@com_github_aws_aws_sdk_go//aws/request:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",

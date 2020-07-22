@@ -1,10 +1,12 @@
 package blobstore
 
 import (
+	"context"
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/protobuf/proto"
 )
 
 type casStorageType struct{}
@@ -24,3 +26,26 @@ func (f casStorageType) NewBufferFromReader(digest digest.Digest, r io.ReadClose
 // CASStorageType is capable of creating identifiers and buffers for
 // objects stored in the Content Addressable Storage (CAS).
 var CASStorageType StorageType = casStorageType{}
+
+// CASPutProto is a helper function for storing Protobuf messages in the
+// Content Addressable Storage (CAS). It computes the digest of the
+// message and stores it under that key. The digest is then returned, so
+// that the object may be referenced.
+func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Message, parentDigest digest.Digest) (digest.Digest, error) {
+	data, err := proto.Marshal(message)
+	if err != nil {
+		return digest.BadDigest, err
+	}
+
+	// Compute new digest of data.
+	digestGenerator := parentDigest.NewGenerator()
+	if _, err := digestGenerator.Write(data); err != nil {
+		panic(err)
+	}
+	blobDigest := digestGenerator.Sum()
+
+	if err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice(data)); err != nil {
+		return digest.BadDigest, err
+	}
+	return blobDigest, nil
+}

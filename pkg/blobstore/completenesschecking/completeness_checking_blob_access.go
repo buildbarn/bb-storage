@@ -6,7 +6,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -85,10 +84,9 @@ func (q *findMissingQueue) finalize() error {
 
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess
-	contentAddressableStorage           cas.ContentAddressableStorage
-	contentAddressableStorageBlobAccess blobstore.BlobAccess
-	batchSize                           int
-	maximumMessageSizeBytes             int
+	contentAddressableStorage blobstore.BlobAccess
+	batchSize                 int
+	maximumMessageSizeBytes   int
 }
 
 // NewCompletenessCheckingBlobAccess creates a wrapper around
@@ -105,13 +103,12 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage cas.ContentAddressableStorage, contentAddressableStorageBlobAccess blobstore.BlobAccess, batchSize int, maximumMessageSizeBytes int) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage blobstore.BlobAccess, batchSize int, maximumMessageSizeBytes int) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
-		BlobAccess:                          actionCache,
-		contentAddressableStorage:           contentAddressableStorage,
-		contentAddressableStorageBlobAccess: contentAddressableStorageBlobAccess,
-		batchSize:                           batchSize,
-		maximumMessageSizeBytes:             maximumMessageSizeBytes,
+		BlobAccess:                actionCache,
+		contentAddressableStorage: contentAddressableStorage,
+		batchSize:                 batchSize,
+		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
 }
 
@@ -119,7 +116,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	findMissingQueue := findMissingQueue{
 		context:                   ctx,
 		instanceName:              instanceName,
-		contentAddressableStorage: ba.contentAddressableStorageBlobAccess,
+		contentAddressableStorage: ba.contentAddressableStorage,
 		batchSize:                 ba.batchSize,
 		pending:                   digest.NewSetBuilder(),
 	}
@@ -154,10 +151,11 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		if err != nil {
 			return err
 		}
-		tree, err := ba.contentAddressableStorage.GetTree(ctx, treeDigest)
+		treeMessage, err := ba.contentAddressableStorage.Get(ctx, treeDigest).ToProto(&remoteexecution.Tree{}, ba.maximumMessageSizeBytes)
 		if err != nil {
 			return util.StatusWrapf(err, "Failed to fetch output directory %#v", outputDirectory.Path)
 		}
+		tree := treeMessage.(*remoteexecution.Tree)
 		if err := findMissingQueue.addDirectory(tree.Root); err != nil {
 			return err
 		}

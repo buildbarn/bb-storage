@@ -27,7 +27,6 @@ go_library(
         "//pkg/blobstore/replication:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
         "//pkg/blockdevice:go_default_library",
-        "//pkg/cas:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/cloud/aws:go_default_library",
         "//pkg/digest:go_default_library",
