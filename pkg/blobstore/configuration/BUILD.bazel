@@ -23,6 +23,8 @@ go_library(
         "//pkg/blobstore/grpcclients:go_default_library",
         "//pkg/blobstore/local:go_default_library",
         "//pkg/blobstore/mirrored:go_default_library",
+        "//pkg/blobstore/readcaching:go_default_library",
+        "//pkg/blobstore/replication:go_default_library",
         "//pkg/blobstore/sharding:go_default_library",
         "//pkg/blockdevice:go_default_library",
         "//pkg/cas:go_default_library",

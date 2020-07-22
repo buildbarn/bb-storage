@@ -1,4 +1,4 @@
-package mirrored_test
+package replication_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/golang/mock/gomock"
@@ -24,7 +24,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 	source := mock.NewMockBlobAccess(ctrl)
 	baseReplicator := mock.NewMockBlobReplicator(ctrl)
 	clock := mock.NewMockClock(ctrl)
-	replicator := mirrored.NewQueuedBlobReplicator(
+	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
@@ -124,7 +124,7 @@ func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 	source := mock.NewMockBlobAccess(ctrl)
 	baseReplicator := mock.NewMockBlobReplicator(ctrl)
 	clock := mock.NewMockClock(ctrl)
-	replicator := mirrored.NewQueuedBlobReplicator(
+	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))

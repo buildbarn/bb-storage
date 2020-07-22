@@ -2,7 +2,7 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
@@ -22,5 +22,5 @@ type BlobReplicatorCreator interface {
 	// BlobReplicator instances that only apply to this storage
 	// type. For example, sending replication requests over gRPC is
 	// only supported for the Content Addressable Storage.
-	NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink blobstore.BlobAccess) (mirrored.BlobReplicator, error)
+	NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink blobstore.BlobAccess) (replication.BlobReplicator, error)
 }

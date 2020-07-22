@@ -39,6 +39,14 @@ gomock(
 )
 
 gomock(
+    name = "blobstore_replication",
+    out = "blobstore_replication.go",
+    interfaces = ["BlobReplicator"],
+    library = "//pkg/blobstore/replication:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "buffer",
     out = "buffer.go",
     interfaces = [
@@ -117,14 +125,6 @@ gomock(
 )
 
 gomock(
-    name = "mirrored",
-    out = "mirrored.go",
-    interfaces = ["BlobReplicator"],
-    library = "//pkg/blobstore/mirrored:go_default_library",
-    package = "mock",
-)
-
-gomock(
     name = "redis",
     out = "redis.go",
     interfaces = ["RedisClient"],
@@ -149,6 +149,7 @@ go_library(
         ":aliases.go",
         ":blobstore.go",
         ":blobstore_local.go",
+        ":blobstore_replication.go",
         ":buffer.go",
         ":builder.go",
         ":cas.go",
@@ -156,7 +157,6 @@ go_library(
         ":filesystem.go",
         ":grpc.go",
         ":grpc_go.go",
-        ":mirrored.go",
         ":redis.go",
         ":remoteexecution.go",
     ],

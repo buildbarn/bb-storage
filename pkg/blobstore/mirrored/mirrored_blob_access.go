@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,8 +35,8 @@ var (
 type mirroredBlobAccess struct {
 	backendA       blobstore.BlobAccess
 	backendB       blobstore.BlobAccess
-	replicatorAToB BlobReplicator
-	replicatorBToA BlobReplicator
+	replicatorAToB replication.BlobReplicator
+	replicatorBToA replication.BlobReplicator
 	round          uint32
 }
 
@@ -44,7 +45,7 @@ type mirroredBlobAccess struct {
 // inconsistencies between the two storage backends are detected (i.e.,
 // a blob is only present in one of the backends), the blob is
 // replicated.
-func NewMirroredBlobAccess(backendA blobstore.BlobAccess, backendB blobstore.BlobAccess, replicatorAToB BlobReplicator, replicatorBToA BlobReplicator) blobstore.BlobAccess {
+func NewMirroredBlobAccess(backendA blobstore.BlobAccess, backendB blobstore.BlobAccess, replicatorAToB replication.BlobReplicator, replicatorBToA replication.BlobReplicator) blobstore.BlobAccess {
 	mirroredBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(mirroredBlobAccessFindMissingSynchronizations)
 	})
@@ -61,7 +62,7 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 	// Alternate requests between storage backends.
 	var firstBackend blobstore.BlobAccess
 	var firstBackendName, secondBackendName string
-	var replicator BlobReplicator
+	var replicator replication.BlobReplicator
 	if atomic.AddUint32(&ba.round, 1)%2 == 1 {
 		firstBackend = ba.backendA
 		firstBackendName, secondBackendName = "Backend A", "Backend B"
@@ -149,7 +150,7 @@ func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 type mirroredErrorHandler struct {
 	firstBackendName  string
 	secondBackendName string
-	replicator        BlobReplicator
+	replicator        replication.BlobReplicator
 	context           context.Context
 	digest            digest.Digest
 }

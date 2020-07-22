@@ -1,4 +1,4 @@
-package mirrored
+package replication
 
 import (
 	"context"

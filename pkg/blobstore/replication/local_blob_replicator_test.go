@@ -1,4 +1,4 @@
-package mirrored_test
+package replication_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)
-	replicator := mirrored.NewLocalBlobReplicator(source, sink)
+	replicator := replication.NewLocalBlobReplicator(source, sink)
 	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)
-	replicator := mirrored.NewLocalBlobReplicator(source, sink)
+	replicator := replication.NewLocalBlobReplicator(source, sink)
 	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
 	worldDigest := digest.MustNewDigest("world", "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 

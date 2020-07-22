@@ -190,6 +190,10 @@ message ReadCachingBlobAccessConfiguration {
   // storage backend is treated as a cache. Objects will only be
   // written into it when requested for reading.
   BlobAccessConfiguration fast = 2;
+
+  // The replication strategy that should be used to copy objects from
+  // the slow backend to the fast backend.
+  BlobReplicatorConfiguration replicator = 3;
 }
 
 message ClusteredRedisBlobAccessConfiguration {

@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
@@ -147,7 +148,11 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		if err != nil {
 			return nil, err
 		}
-		implementation = blobstore.NewReadCachingBlobAccess(slow, fast)
+		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadCaching.Replicator, slow, fast, creator)
+		if err != nil {
+			return nil, err
+		}
+		implementation = readcaching.NewReadCachingBlobAccess(slow, fast, replicator)
 	case *pb.BlobAccessConfiguration_Redis:
 		backendType = "redis"
 

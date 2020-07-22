@@ -6,7 +6,7 @@ import (
 	"os"
 
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator"
@@ -60,7 +60,7 @@ func main() {
 			bb_grpc.NewServersFromConfigurationAndServe(
 				configuration.GrpcServers,
 				func(s *grpc.Server) {
-					replicator_pb.RegisterReplicatorServer(s, mirrored.NewReplicatorServer(replicator))
+					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
 				}))
 	}()
 

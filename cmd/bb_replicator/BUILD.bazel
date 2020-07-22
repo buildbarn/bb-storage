@@ -9,7 +9,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//pkg/blobstore/configuration:go_default_library",
-        "//pkg/blobstore/mirrored:go_default_library",
+        "//pkg/blobstore/replication:go_default_library",
         "//pkg/global:go_default_library",
         "//pkg/grpc:go_default_library",
         "//pkg/proto/configuration/bb_replicator:go_default_library",

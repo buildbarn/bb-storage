@@ -2,29 +2,39 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["mirrored_blob_access.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/mirrored",
+    srcs = [
+        "blob_replicator.go",
+        "local_blob_replicator.go",
+        "queued_blob_replicator.go",
+        "remote_blob_replicator.go",
+        "replicator_server.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/replication",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
-        "//pkg/blobstore/replication:go_default_library",
         "//pkg/digest:go_default_library",
+        "//pkg/proto/replicator:go_default_library",
         "//pkg/util:go_default_library",
-        "@com_github_prometheus_client_golang//prometheus:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "@io_bazel_rules_go//proto/wkt:empty_go_proto",
+        "@org_golang_google_grpc//:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
-    srcs = ["mirrored_blob_access_test.go"],
+    srcs = [
+        "local_blob_replicator_test.go",
+        "queued_blob_replicator_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//internal/mock:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/digest:go_default_library",
+        "//pkg/eviction:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",

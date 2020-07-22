@@ -1,9 +1,11 @@
-package blobstore
+package readcaching
 
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
@@ -11,19 +13,21 @@ import (
 )
 
 type readCachingBlobAccess struct {
-	slow BlobAccess
-	fast BlobAccess
+	slow       blobstore.BlobAccess
+	fast       blobstore.BlobAccess
+	replicator replication.BlobReplicator
 }
 
 // NewReadCachingBlobAccess turns a fast data store into a read cache
 // for a slow data store. All writes are performed against the slow data
 // store directly. The slow data store is only accessed for reading in
 // case the fast data store does not contain the blob. The blob is then
-// streamed into the fast data store.
-func NewReadCachingBlobAccess(slow BlobAccess, fast BlobAccess) BlobAccess {
+// streamed into the fast data store using a replicator.
+func NewReadCachingBlobAccess(slow blobstore.BlobAccess, fast blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readCachingBlobAccess{
-		slow: slow,
-		fast: fast,
+		slow:       slow,
+		fast:       fast,
+		replicator: replicator,
 	}
 }
 
@@ -31,7 +35,7 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 	return buffer.WithErrorHandler(
 		ba.fast.Get(ctx, digest),
 		&readCachingErrorHandler{
-			blobAccess: ba,
+			replicator: ba.replicator,
 			context:    ctx,
 			digest:     digest,
 		})
@@ -46,21 +50,18 @@ func (ba *readCachingBlobAccess) FindMissing(ctx context.Context, digests digest
 }
 
 type readCachingErrorHandler struct {
-	blobAccess *readCachingBlobAccess
+	replicator replication.BlobReplicator
 	context    context.Context
 	digest     digest.Digest
 }
 
 func (eh *readCachingErrorHandler) OnError(observedErr error) (buffer.Buffer, error) {
-	if eh.blobAccess == nil || status.Code(observedErr) != codes.NotFound {
+	if eh.replicator == nil || status.Code(observedErr) != codes.NotFound {
 		return nil, observedErr
 	}
-	ba := eh.blobAccess
-	eh.blobAccess = nil
-	b1, b2 := ba.slow.Get(eh.context, eh.digest).CloneStream()
-	b1, t := buffer.WithBackgroundTask(b1)
-	go func() { t.Finish(ba.fast.Put(eh.context, eh.digest, b2)) }()
-	return b1, nil
+	replicator := eh.replicator
+	eh.replicator = nil
+	return replicator.ReplicateSingle(eh.context, eh.digest), nil
 }
 
 func (eh *readCachingErrorHandler) Done() {}
