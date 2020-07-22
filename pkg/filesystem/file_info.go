@@ -45,3 +45,22 @@ func (fi *FileInfo) Name() string {
 func (fi *FileInfo) Type() FileType {
 	return fi.fileType
 }
+
+// FileInfoList is a list of FileInfo objects returned by
+// Directory.ReadDir(). This type may be used to sort
+// elements in the list by name.
+type FileInfoList []FileInfo
+
+func (l FileInfoList) Len() int {
+	return len(l)
+}
+
+func (l FileInfoList) Less(i int, j int) bool {
+	return l[i].Name() < l[j].Name()
+}
+
+func (l FileInfoList) Swap(i int, j int) {
+	t := l[i]
+	l[i] = l[j]
+	l[j] = t
+}
