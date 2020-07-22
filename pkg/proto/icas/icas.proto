@@ -36,10 +36,45 @@ service IndirectContentAddressableStorage {
 
 // Reference to an externally stored CAS object.
 message Reference {
-  oneof medium {
-    // A HTTP location where the object may be retrieved.
-    string http_url = 1;
+  message S3 {
+    // The S3 bucket that contains the object.
+    string bucket = 1;
+
+    // The key under which the object is stored in the S3 bucket.
+    string key = 2;
   }
+
+  oneof medium {
+    // A HTTP location where the object may be retrieved. The server
+    // corresponding with this URL must support HTTP range requests.
+    string http_url = 1;
+
+    // A location in S3 where the object may be retrieved.
+    S3 s3 = 2;
+  }
+
+  // The leading amount of data that should be skipped when reading from
+  // the source location. This field can be used to extract files from
+  // composite objects (e.g., ZIP files).
+  int64 offset_bytes = 3;
+
+  // The maximum amount of data that should be read from the source
+  // location. When decompressor == NONE, this value must be identical
+  // to the size stored in the Digest that identifies this reference.
+  int64 size_bytes = 4;
+
+  enum Decompressor {
+    // The object has not been compressed.
+    NONE = 0;
+
+    // The object has been compressed using the RFC 1951 DEFLATE
+    // algorithm (used by ZIP, zlib, etc.).
+    DEFLATE = 1;
+  }
+
+  // When set, assume the object is stored in compressed form. Perform
+  // decompression to restore the object to its original form.
+  Decompressor decompressor = 5;
 }
 
 // Request message of BatchUpdateReferences(). This message is similar

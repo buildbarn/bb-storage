@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package buildbarn.configuration.cloud.aws;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws";
+
+message StaticCredentials {
+  // AWS Access Key ID.
+  string access_key_id = 1;
+
+  // AWS Secret Access Key.
+  string secret_access_key = 2;
+}
+
+message SessionConfiguration {
+  // URL of the API endpoint (e.g., "http://localhost:9000" when using Minio).
+  string endpoint = 1;
+
+  // AWS region (e.g., "eu-west-1").
+  string region = 2;
+
+  // Whether SSL should be disabled.
+  bool disable_ssl = 3;
+
+  // Whether S3 should be accessed using old path-style URLs. More details:
+  // https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/
+  bool s3_force_path_style = 4;
+
+  // Static credentials to use for all requests. If unspecified, AWS
+  // will search the default credential provider chain (e.g.,
+  // environment variables, EC2 instance IAM roles).
+  StaticCredentials static_credentials = 5;
+}

@@ -7,6 +7,7 @@ proto_library(
     srcs = ["blobstore.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/cloud/aws:aws_proto",
         "//pkg/proto/configuration/digest:digest_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/tls:tls_proto",
@@ -22,6 +23,7 @@ go_proto_library(
     proto = ":blobstore_proto",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/cloud/aws:go_default_library",
         "//pkg/proto/configuration/digest:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
         "//pkg/proto/configuration/tls:go_default_library",

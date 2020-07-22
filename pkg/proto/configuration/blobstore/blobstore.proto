@@ -5,6 +5,7 @@ package buildbarn.configuration.blobstore;
 import "google/rpc/status.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/cloud/aws/aws.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/tls/tls.proto";
@@ -126,7 +127,7 @@ message BlobAccessConfiguration {
     //
     // This backend can be used to integrate external data sets into the
     // system by combining it with read_fallback.
-    BlobAccessConfiguration reference_expanding = 19;
+    ReferenceExpandingBlobAccessConfiguration reference_expanding = 19;
   }
 }
 
@@ -274,24 +275,15 @@ message RemoteBlobAccessConfiguration {
 }
 
 message S3BlobAccessConfiguration {
-  // URL of the S3 bucket (e.g., "http://localhost:9000" when using Minio).
-  string endpoint = 1;
-
-  // AWS Access Key ID. If unspecified, AWS will search the default credential
-  // provider chain.
-  string access_key_id = 2;
-
-  // AWS Secret Access Key.
-  string secret_access_key = 3;
-
-  // AWS region (e.g., "eu-west-1").
-  string region = 4;
-
-  // Whether SSL should be disabled.
-  bool disable_ssl = 5;
+  // Fields 'endpoint', 'access_key_id', 'secret_access_key', 'region'
+  // and 'disable_ssl' have moved into 'aws_session'.
+  reserved 1 to 5;
 
   // Name of the S3 bucket.
   string bucket = 6;
+
+  // AWS access options and credentials.
+  buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 7;
 }
 
 message ShardingBlobAccessConfiguration {
@@ -499,6 +491,16 @@ message ReadFallbackBlobAccessConfiguration {
 
   // Backend from which data is attempted to be read last.
   BlobAccessConfiguration secondary = 2;
+}
+
+message ReferenceExpandingBlobAccessConfiguration {
+  // The Indirect Content Addressable Storage (ICAS) backend from which
+  // Reference objects are loaded.
+  BlobAccessConfiguration indirect_content_addressable_storage = 1;
+
+  // Optional: AWS access options and credentials for objects loaded
+  // from S3.
+  buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 2;
 }
 
 message BlobReplicatorConfiguration {

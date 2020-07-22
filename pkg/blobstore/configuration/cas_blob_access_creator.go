@@ -3,11 +3,14 @@ package configuration
 import (
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
 
 	"google.golang.org/grpc/codes"
@@ -67,14 +70,22 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		// a new BlobAccessCreator to ensure data is loaded
 		// properly.
 		base, err := NewNestedBlobAccess(
-			backend.ReferenceExpanding,
+			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,
 				bac.maximumMessageSizeBytes))
 		if err != nil {
 			return nil, "", err
 		}
-		return blobstore.NewReferenceExpandingBlobAccess(base, http.DefaultClient, bac.maximumMessageSizeBytes), "reference_expanding", nil
+		sess, err := aws.NewSessionFromConfiguration(backend.ReferenceExpanding.AwsSession)
+		if err != nil {
+			return nil, "", util.StatusWrap(err, "Failed to create AWS session")
+		}
+		return blobstore.NewReferenceExpandingBlobAccess(
+			base,
+			http.DefaultClient,
+			s3.New(sess),
+			bac.maximumMessageSizeBytes), "reference_expanding", nil
 	default:
 		return nil, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}

@@ -7,9 +7,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -18,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -114,20 +112,12 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 			implementation = blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, storageType)
 		case *pb.CloudBlobAccessConfiguration_S3:
 			backendType = "s3"
-			cfg := aws.Config{
-				Endpoint:         &backendConfig.S3.Endpoint,
-				Region:           &backendConfig.S3.Region,
-				DisableSSL:       &backendConfig.S3.DisableSsl,
-				S3ForcePathStyle: aws.Bool(true),
+			sess, err := aws.NewSessionFromConfiguration(backendConfig.S3.AwsSession)
+			if err != nil {
+				return nil, util.StatusWrap(err, "Failed to create AWS session")
 			}
-			// If AccessKeyId isn't specified, allow AWS to search for credentials.
-			// In AWS EC2, this search will include the instance IAM Role.
-			if backendConfig.S3.AccessKeyId != "" {
-				cfg.Credentials = credentials.NewStaticCredentials(backendConfig.S3.AccessKeyId, backendConfig.S3.SecretAccessKey, "")
-			}
-			session := session.New(&cfg)
 			ctx := context.Background()
-			bucket, err := s3blob.OpenBucket(ctx, session, backendConfig.S3.Bucket, nil)
+			bucket, err := s3blob.OpenBucket(ctx, sess, backendConfig.S3.Bucket, nil)
 			if err != nil {
 				return nil, err
 			}

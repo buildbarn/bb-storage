@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -26,7 +29,8 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, 100)
+	s3Client := mock.NewMockS3(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("BackendError", func(t *testing.T) {
@@ -59,6 +63,8 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "\x00",
 					},
+					OffsetBytes: 100,
+					SizeBytes:   5,
 				},
 				buffer.Irreparable))
 
@@ -74,6 +80,8 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file.txt",
 					},
+					OffsetBytes: 100,
+					SizeBytes:   5,
 				},
 				buffer.Irreparable))
 		httpClient.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
@@ -87,13 +95,16 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	})
 
 	t.Run("HTTPBadStatusCode", func(t *testing.T) {
-		// The HTTP server returns a response other than 200 OK.
+		// The HTTP server returns a response other than
+		// 206 Partial Content.
 		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file.txt",
 					},
+					OffsetBytes: 100,
+					SizeBytes:   5,
 				},
 				buffer.Irreparable))
 		body := mock.NewMockReadCloser(ctrl)
@@ -117,12 +128,14 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file.txt",
 					},
+					OffsetBytes: 100,
+					SizeBytes:   5,
 				},
 				buffer.Irreparable))
 		body := mock.NewMockReadCloser(ctrl)
 		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
-			Status:     "200 OK",
-			StatusCode: 200,
+			Status:     "206 Partial Content",
+			StatusCode: 206,
 			Body:       body,
 		}, nil)
 		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
@@ -135,7 +148,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d1bf93299de1b68e6d382c893bf1215f, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
 
-	t.Run("HTTPSuccess", func(t *testing.T) {
+	t.Run("HTTPSuccessPlain", func(t *testing.T) {
 		// The HTTP server returns valid data.
 		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
@@ -143,17 +156,121 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file.txt",
 					},
+					OffsetBytes: 100,
+					SizeBytes:   5,
 				},
 				buffer.Irreparable))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
-			Status:     "200 OK",
-			StatusCode: 200,
-			Body:       body,
-		}, nil)
+		httpClient.EXPECT().Do(gomock.Any()).DoAndReturn(
+			func(req *http.Request) (*http.Response, error) {
+				require.Equal(t, "GET", req.Method)
+				require.Equal(t, "http://example.com/file.txt", req.URL.String())
+				require.Equal(t, "100-104", req.Header.Get("Range"))
+				return &http.Response{
+					Status:     "206 Partial Content",
+					StatusCode: 206,
+					Body:       body,
+				}, nil
+			})
 		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
 			copy(p, "Hello")
 			return 5, io.EOF
+		})
+		body.EXPECT().Close()
+
+		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+
+	t.Run("S3RequestFailed", func(t *testing.T) {
+		// The S3 service returns an error.
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  100,
+					SizeBytes:    11,
+					Decompressor: icas.Reference_DEFLATE,
+				},
+				buffer.Irreparable))
+		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("100-110"),
+		}).Return(nil, awserr.New("NoSuchKey", "The specified key does not exist. status code: 404, request id: ..., host id: ...", nil))
+
+		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		require.Equal(t, status.Error(codes.Internal, "S3 request failed: NoSuchKey: The specified key does not exist. status code: 404, request id: ..., host id: ..."), err)
+	})
+
+	t.Run("S3DeflateError", func(t *testing.T) {
+		// The data returned by S3 cannot be decompressed.
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  100,
+					SizeBytes:    11,
+					Decompressor: icas.Reference_DEFLATE,
+				},
+				buffer.Irreparable))
+		body := mock.NewMockReadCloser(ctrl)
+		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("100-110"),
+		}).Return(&s3.GetObjectOutput{
+			Body: body,
+		}, nil)
+		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
+			copy(p, []byte{0xf2, 0x48, 0xcd, 0xc9, 0xc9, 0x07})
+			return 6, io.EOF
+		})
+		body.EXPECT().Close()
+
+		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		require.Equal(t, io.ErrUnexpectedEOF, err)
+	})
+
+	t.Run("S3SuccessDeflate", func(t *testing.T) {
+		// The S3 service returns valid compressed data.
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  100,
+					SizeBytes:    11,
+					Decompressor: icas.Reference_DEFLATE,
+				},
+				buffer.Irreparable))
+		body := mock.NewMockReadCloser(ctrl)
+		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("100-110"),
+		}).Return(&s3.GetObjectOutput{
+			Body: body,
+		}, nil)
+		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
+			// The word "Hello" compressed with DEFLATE.
+			copy(p, []byte{0xf2, 0x48, 0xcd, 0xc9, 0xc9, 0x07, 0x04, 0x00, 0x00, 0xff, 0xff})
+			return 11, io.EOF
 		})
 		body.EXPECT().Close()
 
@@ -169,7 +286,8 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, 100)
+	s3Client := mock.NewMockS3(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
 
 	t.Run("Failure", func(t *testing.T) {
 		// It is not possible to write objects using
@@ -194,7 +312,8 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, 100)
+	s3Client := mock.NewMockS3(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
 
 	digests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)).
