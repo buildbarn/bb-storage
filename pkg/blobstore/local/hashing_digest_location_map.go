@@ -146,7 +146,7 @@ func (dlm *hashingDigestLocationMap) Get(digest CompactDigest, validator *Locati
 			return record.Location, nil
 		}
 		key.Attempt++
-		if record.Key.Attempt >= dlm.maximumGetAttempts {
+		if key.Attempt >= dlm.maximumGetAttempts {
 			dlm.getTooManyAttempts.Inc()
 			return Location{}, status.Error(codes.NotFound, "Object not found")
 		}
