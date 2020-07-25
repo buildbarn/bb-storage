@@ -20,7 +20,6 @@ import (
 
 func TestNewCASBufferFromReaderGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 	reader := mock.NewMockReadCloser(ctrl)
@@ -35,7 +34,6 @@ func TestNewCASBufferFromReaderGetSizeBytes(t *testing.T) {
 
 func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -84,7 +82,6 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 
 func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -203,7 +200,6 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 
 func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("SmallerThanMaximum", func(t *testing.T) {
 		reader := ioutil.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
@@ -287,7 +283,6 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 
 func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Only test the successful case, as other aspects are already
 	// covered by TestNewCASBufferFromReaderToProto.
@@ -320,7 +315,6 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 
 func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest(
 		"foo",
@@ -434,7 +428,6 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 
 func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -493,7 +486,6 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 
 func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest(
 		"foo",
@@ -575,7 +567,6 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 
 func TestNewCASBufferFromReaderDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader := mock.NewMockReadCloser(ctrl)
 	reader.EXPECT().Close()

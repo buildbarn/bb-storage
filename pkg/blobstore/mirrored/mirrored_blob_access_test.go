@@ -17,7 +17,6 @@ import (
 
 func TestMirroredBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	backendA := mock.NewMockBlobAccess(ctrl)
 	backendB := mock.NewMockBlobAccess(ctrl)
@@ -88,7 +87,6 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 
 func TestMirroredBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	backendA := mock.NewMockBlobAccess(ctrl)
 	backendB := mock.NewMockBlobAccess(ctrl)
@@ -155,7 +153,6 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 
 func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	backendA := mock.NewMockBlobAccess(ctrl)
 	backendB := mock.NewMockBlobAccess(ctrl)

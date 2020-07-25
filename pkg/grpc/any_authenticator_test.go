@@ -15,7 +15,6 @@ import (
 
 func TestAnyAuthenticatorExample(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	m0 := mock.NewMockAuthenticator(ctrl)
 	m1 := mock.NewMockAuthenticator(ctrl)

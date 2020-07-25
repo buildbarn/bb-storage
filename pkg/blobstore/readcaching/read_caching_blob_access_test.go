@@ -17,7 +17,6 @@ import (
 
 func TestReadCachingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	slowBlobAccess := mock.NewMockBlobAccess(ctrl)
 	fastBlobAccess := mock.NewMockBlobAccess(ctrl)
@@ -66,7 +65,6 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 
 func TestReadCachingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	slowBlobAccess := mock.NewMockBlobAccess(ctrl)
 	fastBlobAccess := mock.NewMockBlobAccess(ctrl)
@@ -87,7 +85,6 @@ func TestReadCachingBlobAccessPut(t *testing.T) {
 
 func TestReadCachingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	slowBlobAccess := mock.NewMockBlobAccess(ctrl)
 	fastBlobAccess := mock.NewMockBlobAccess(ctrl)

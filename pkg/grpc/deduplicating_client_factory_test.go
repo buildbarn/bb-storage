@@ -15,7 +15,6 @@ import (
 
 func TestDeduplicatingClientFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	baseClientFactory := mock.NewMockClientFactory(ctrl)
 	clientFactory := bb_grpc.NewDeduplicatingClientFactory(baseClientFactory)

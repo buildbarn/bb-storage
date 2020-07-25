@@ -12,7 +12,6 @@ import (
 
 func TestBlobAccessCreatorGetDigestKeyFormat(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockBlobAccess := mock.NewMockBlobAccess(ctrl)
 	grpcClientFactory := mock.NewMockClientFactory(ctrl)

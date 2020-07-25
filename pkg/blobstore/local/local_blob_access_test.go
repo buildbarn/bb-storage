@@ -15,7 +15,6 @@ import (
 
 func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	digestLocationMap := mock.NewMockDigestLocationMap(ctrl)
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
@@ -61,7 +60,6 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 
 func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	digestLocationMap := mock.NewMockDigestLocationMap(ctrl)
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)

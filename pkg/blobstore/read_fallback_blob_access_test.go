@@ -17,7 +17,6 @@ import (
 
 func TestReadFallbackBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
@@ -87,7 +86,6 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 func TestReadFallbackBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
@@ -129,7 +127,6 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 
 func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)

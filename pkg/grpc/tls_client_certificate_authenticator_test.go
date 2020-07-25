@@ -88,7 +88,6 @@ func parseCertificate(v string) *x509.Certificate {
 
 func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)

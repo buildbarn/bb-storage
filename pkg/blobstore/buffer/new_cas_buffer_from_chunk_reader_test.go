@@ -19,7 +19,6 @@ import (
 
 func TestNewCASBufferFromChunkReaderGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkReader := mock.NewMockChunkReader(ctrl)
@@ -34,7 +33,6 @@ func TestNewCASBufferFromChunkReaderGetSizeBytes(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -86,7 +84,6 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -225,7 +222,6 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("SmallerThanMaximum", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
@@ -321,7 +317,6 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Only test the successful case, as other aspects are already
 	// covered by TestNewCASBufferFromChunkReaderToProto.
@@ -363,7 +358,6 @@ func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -492,7 +486,6 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -564,7 +557,6 @@ func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -646,7 +638,6 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -741,7 +732,6 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 
 func TestNewCASBufferFromChunkReaderDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()

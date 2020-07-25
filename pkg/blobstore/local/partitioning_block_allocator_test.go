@@ -17,7 +17,6 @@ import (
 
 func TestPartitioningBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	f := mock.NewMockFileReadWriter(ctrl)
 	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10, false)

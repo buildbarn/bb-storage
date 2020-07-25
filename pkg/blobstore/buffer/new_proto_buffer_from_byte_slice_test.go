@@ -17,9 +17,6 @@ import (
 )
 
 func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
@@ -44,7 +41,6 @@ func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		repairFunc := mock.NewMockRepairFunc(ctrl)
@@ -137,7 +133,6 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	actionResult, err := buffer.NewProtoBufferFromByteSlice(
@@ -150,7 +145,6 @@ func TestNewProtoBufferFromByteSliceToProto(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	data, err := buffer.NewProtoBufferFromByteSlice(
@@ -163,7 +157,6 @@ func TestNewProtoBufferFromByteSliceToByteSlice(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	r := buffer.NewProtoBufferFromByteSlice(
@@ -185,7 +178,6 @@ func TestNewProtoBufferFromByteSliceToChunkReader(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	r := buffer.NewProtoBufferFromByteSlice(
@@ -202,7 +194,6 @@ func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
@@ -221,7 +212,6 @@ func TestNewProtoBufferFromByteSliceCloneCopy(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
@@ -250,7 +240,6 @@ func TestNewProtoBufferFromByteSliceCloneStream(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	repairFunc := mock.NewMockRepairFunc(ctrl)
 
 	buffer.NewProtoBufferFromByteSlice(

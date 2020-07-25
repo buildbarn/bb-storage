@@ -16,7 +16,6 @@ import (
 
 func TestAddMetadataUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	interceptor := bb_grpc.NewAddMetadataUnaryClientInterceptor([]string{"header", "value"})
 	invoker := mock.NewMockUnaryInvoker(ctrl)
@@ -46,7 +45,6 @@ func TestAddMetadataUnaryClientInterceptor(t *testing.T) {
 
 func TestAddMetadataStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	interceptor := bb_grpc.NewAddMetadataStreamClientInterceptor([]string{"header", "value"})
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}

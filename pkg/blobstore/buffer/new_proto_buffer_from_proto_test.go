@@ -58,7 +58,6 @@ func TestNewProtoBufferFromProtoReadAt(t *testing.T) {
 
 func TestNewProtoBufferFromProtoIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		out := bytes.NewBuffer(nil)

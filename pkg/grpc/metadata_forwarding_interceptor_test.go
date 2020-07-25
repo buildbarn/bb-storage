@@ -16,7 +16,6 @@ import (
 
 func TestMetadataForwardingUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	interceptor := bb_grpc.NewMetadataForwardingUnaryClientInterceptor([]string{"authorization"})
 	invoker := mock.NewMockUnaryInvoker(ctrl)
@@ -81,7 +80,6 @@ func TestMetadataForwardingUnaryClientInterceptor(t *testing.T) {
 
 func TestMetadataForwardingStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	interceptor := bb_grpc.NewMetadataForwardingStreamClientInterceptor([]string{"authorization"})
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}

@@ -23,7 +23,6 @@ import (
 
 func TestByteStreamServer(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	// Create an RPC server/client pair.
 	l := bufconn.Listen(1 << 20)

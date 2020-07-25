@@ -15,7 +15,6 @@ import (
 
 func TestErrorHandlerProtoErrorRewriting(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Simple case of using an ErrorHandler to rewrite the error code.
 	errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -31,7 +30,6 @@ func TestErrorHandlerProtoErrorRewriting(t *testing.T) {
 
 func TestErrorHandlerProtoRetryingSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Retrying to load the same blob from storage multiple times.
 	// In the end, it should succeed.
@@ -52,7 +50,6 @@ func TestErrorHandlerProtoRetryingSuccess(t *testing.T) {
 
 func TestErrorHandlerProtoRetryingFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Retrying to load the same blob from storage multiple times.
 	// In the end, it still fails.
@@ -74,7 +71,6 @@ func TestErrorHandlerProtoRetryingFailure(t *testing.T) {
 
 func TestErrorHandlerValidatedByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// No errors can occur on byte slices that are already present
 	// in memory.

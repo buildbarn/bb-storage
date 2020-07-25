@@ -25,7 +25,6 @@ import (
 
 func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
@@ -282,7 +281,6 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
@@ -308,7 +306,6 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 
 func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)

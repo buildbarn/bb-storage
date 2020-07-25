@@ -18,7 +18,6 @@ import (
 
 func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 	buildQueueGetter := mock.NewMockBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
@@ -76,7 +75,6 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 
 func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	buildQueueGetter := mock.NewMockBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
@@ -169,7 +167,6 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 
 func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	buildQueueGetter := mock.NewMockBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 

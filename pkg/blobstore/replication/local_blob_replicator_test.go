@@ -17,7 +17,6 @@ import (
 
 func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)
@@ -81,7 +80,6 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 
 func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)

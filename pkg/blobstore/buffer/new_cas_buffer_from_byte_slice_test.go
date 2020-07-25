@@ -20,7 +20,6 @@ import (
 
 func TestNewCASBufferFromByteSliceSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	for hash, body := range map[string][]byte{
 		// MD5:
@@ -48,7 +47,6 @@ func TestNewCASBufferFromByteSliceSuccess(t *testing.T) {
 
 func TestNewCASBufferFromByteSliceSizeMismatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("ubuntu1804", "8b1a9953c4611296a827abf8c47804d7", 6)
 	repairFunc := mock.NewMockRepairFunc(ctrl)
@@ -63,7 +61,6 @@ func TestNewCASBufferFromByteSliceSizeMismatch(t *testing.T) {
 
 func TestNewCASBufferFromByteSliceHashMismatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("ubuntu1804", "d41d8cd98f00b204e9800998ecf8427e", 5)
 	repairFunc := mock.NewMockRepairFunc(ctrl)

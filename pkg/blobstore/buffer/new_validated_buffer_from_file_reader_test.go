@@ -18,7 +18,6 @@ import (
 
 func TestNewValidatedBufferFromFileReaderGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader := mock.NewMockFileReader(ctrl)
 	reader.EXPECT().Close()
@@ -32,7 +31,6 @@ func TestNewValidatedBufferFromFileReaderGetSizeBytes(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
@@ -64,7 +62,6 @@ func TestNewValidatedBufferFromFileReaderIntoWriter(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
@@ -96,7 +93,6 @@ func TestNewValidatedBufferFromFileReaderReadAt(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
@@ -142,7 +138,6 @@ func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Only test the successful case, as other aspects are already
 	// covered by TestNewValidatedBufferFromFileReaderToProto.
@@ -172,7 +167,6 @@ func TestNewValidatedBufferFromFileReaderToByteSlice(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
@@ -273,7 +267,6 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Success", func(t *testing.T) {
 		reader := mock.NewMockFileReader(ctrl)
@@ -335,7 +328,6 @@ func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Because NewValidatedBufferFromFileReader() returns a buffer
 	// that supports random access, cloned versions of the buffer
@@ -362,7 +354,6 @@ func TestNewValidatedBufferFromFileReaderCloneCopy(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader := mock.NewMockFileReader(ctrl)
 	gomock.InOrder(
@@ -395,7 +386,6 @@ func TestNewValidatedBufferFromFileReaderCloneStream(t *testing.T) {
 
 func TestNewValidatedBufferFromFileReaderDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader := mock.NewMockFileReader(ctrl)
 	reader.EXPECT().Close()

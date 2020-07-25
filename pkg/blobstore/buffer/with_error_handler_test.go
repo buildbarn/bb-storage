@@ -20,7 +20,6 @@ import (
 
 func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// For Protobuf backed buffers, there is no need to make a
 	// distinction between operations in terms of error handling. As
@@ -81,7 +80,6 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 
 func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	// Similar to the Protobuf backed buffer, buffers created
 	// through NewCASBufferFrom{ByteSlice,Error}() also allow for
@@ -133,7 +131,6 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -211,7 +208,6 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 // of exactly the same retry logic as ToProto().
 func TestWithErrorHandlerOnCASBuffersReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
@@ -231,7 +227,6 @@ func TestWithErrorHandlerOnCASBuffersReadAt(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -300,7 +295,6 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 // of exactly the same retry logic as ToProto().
 func TestWithErrorHandlerOnCASBuffersToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
@@ -319,7 +313,6 @@ func TestWithErrorHandlerOnCASBuffersToByteSlice(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -416,7 +409,6 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
@@ -496,7 +488,6 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 // top of ToByteSlice().
 func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
@@ -522,7 +513,6 @@ func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
@@ -558,7 +548,6 @@ func TestWithErrorHandlerOnCASBuffersCloneStream(t *testing.T) {
 
 func TestWithErrorHandlerOnCASBuffersDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()
@@ -573,7 +562,6 @@ func TestWithErrorHandlerOnCASBuffersDiscard(t *testing.T) {
 
 func TestWithErrorHandlerOnClonedErrorBuffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
 	errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Error message A")).Return(nil, status.Error(codes.Internal, "Error message B"))

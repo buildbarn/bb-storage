@@ -20,7 +20,6 @@ import (
 
 func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
 	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
@@ -103,7 +102,6 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 
 func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
 	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
@@ -204,7 +202,6 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 
 func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
 	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)

@@ -15,7 +15,6 @@ import (
 
 func TestExistenceCachingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	clock := mock.NewMockClock(ctrl)

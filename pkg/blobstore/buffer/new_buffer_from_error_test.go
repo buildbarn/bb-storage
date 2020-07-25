@@ -15,7 +15,6 @@ import (
 
 func TestNewBufferFromErrorIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	out := mock.NewMockWriter(ctrl)
 	err := buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")).IntoWriter(out)

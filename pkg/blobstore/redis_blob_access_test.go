@@ -17,7 +17,6 @@ import (
 
 func TestRedisBlobAccessContextCanceled(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	redisClient := mock.NewMockRedisClient(ctrl)
 	blobAccess := blobstore.NewRedisBlobAccess(redisClient, blobstore.CASStorageType, 0, 0, 0)

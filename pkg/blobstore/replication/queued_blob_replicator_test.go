@@ -19,7 +19,6 @@ import (
 
 func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	source := mock.NewMockBlobAccess(ctrl)
 	baseReplicator := mock.NewMockBlobReplicator(ctrl)
@@ -119,7 +118,6 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	source := mock.NewMockBlobAccess(ctrl)
 	baseReplicator := mock.NewMockBlobReplicator(ctrl)

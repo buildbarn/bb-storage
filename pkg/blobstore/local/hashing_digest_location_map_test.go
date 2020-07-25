@@ -14,7 +14,6 @@ import (
 
 func TestHashingDigestLocationMapGet(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	array := mock.NewMockLocationRecordArray(ctrl)
 	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
@@ -57,7 +56,6 @@ func TestHashingDigestLocationMapGet(t *testing.T) {
 
 func TestHashingDigestLocationMapPut(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	array := mock.NewMockLocationRecordArray(ctrl)
 	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")

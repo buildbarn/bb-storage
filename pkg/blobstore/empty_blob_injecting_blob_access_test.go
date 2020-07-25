@@ -17,7 +17,6 @@ import (
 
 func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
@@ -60,7 +59,6 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 
 func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
@@ -128,7 +126,6 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 
 func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)

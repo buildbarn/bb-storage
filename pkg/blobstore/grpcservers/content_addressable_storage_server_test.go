@@ -19,7 +19,6 @@ import (
 
 func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	digest1 := digest.MustNewDigest("ubuntu1804", "409a7f83ac6b31dc8c77e3ec18038f209bd2f545e0f4177c2e2381aa4e067b49", 123)
 	digest2 := digest.MustNewDigest("ubuntu1804", "0479688f99e8cbc70291ce272876ff8e0db71a0889daf2752884b0996056b4a0", 234)
@@ -90,7 +89,6 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 
 func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	request := &remoteexecution.BatchReadBlobsRequest{
 		Digests: []*remoteexecution.Digest{

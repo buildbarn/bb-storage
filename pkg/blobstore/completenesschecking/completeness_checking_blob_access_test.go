@@ -19,7 +19,6 @@ import (
 
 func TestCompletenessCheckingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	defer ctrl.Finish()
 
 	actionCache := mock.NewMockBlobAccess(ctrl)
 	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)

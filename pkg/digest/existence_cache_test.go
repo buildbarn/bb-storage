@@ -13,7 +13,6 @@ import (
 
 func TestExistenceCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	clock := mock.NewMockClock(ctrl)
 	existenceCache := digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 2, time.Minute, eviction.NewLRUSet())
