@@ -7,7 +7,53 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+func TestHashingDigestLocationMapGet(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	array := mock.NewMockLocationRecordArray(ctrl)
+	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
+
+	digest1 := local.CompactDigest{
+		0xca, 0x2b, 0xd6, 0xc9, 0xc9, 0x9e, 0x7b, 0xc0,
+		0x0a, 0x44, 0x09, 0x73, 0xd6, 0xe1, 0xa3, 0x69,
+	}
+	digest2 := local.CompactDigest{
+		0x49, 0x42, 0x69, 0x1f, 0x59, 0x07, 0xd5, 0xed,
+		0xdb, 0x71, 0x81, 0x8f, 0x65, 0x8f, 0x20, 0x71,
+	}
+	validator := local.LocationValidator{
+		OldestBlockID: 13,
+		NewestBlockID: 20,
+	}
+	validLocation := local.Location{
+		BlockID:     17,
+		OffsetBytes: 864,
+		SizeBytes:   12,
+	}
+
+	t.Run("TooManyAttempts", func(t *testing.T) {
+		// Searching should stop after a finite number of
+		// iterations to prevent deadlocks in case the hash
+		// table is full. Put() will also only consider a finite
+		// number of places to store the record.
+		array.EXPECT().Get(5).Return(local.LocationRecord{
+			Key:      local.LocationRecordKey{Digest: digest2},
+			Location: validLocation,
+		})
+		array.EXPECT().Get(2).Return(local.LocationRecord{
+			Key:      local.LocationRecordKey{Digest: digest2},
+			Location: validLocation,
+		})
+		_, err := dlm.Get(digest1, &validator)
+		require.Equal(t, status.Error(codes.NotFound, "Object not found"), err)
+	})
+}
 
 func TestHashingDigestLocationMapPut(t *testing.T) {
 	ctrl := gomock.NewController(t)
