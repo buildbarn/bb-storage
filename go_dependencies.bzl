@@ -243,8 +243,9 @@ def go_dependencies():
     )
     go_repository(
         name = "com_github_gordonklaus_ineffassign",
-        commit = "7953dde2c7bf4ce700d9f14c2e41c0966763760c",
         importpath = "github.com/gordonklaus/ineffassign",
+        sum = "h1:vc7Dmrk4JwS0ZPS6WZvWlwDflgDTA26jItmbSj83nug=",
+        version = "v0.0.0-20200309095847-7953dde2c7bf",
     )
     go_repository(
         name = "org_golang_x_lint",
