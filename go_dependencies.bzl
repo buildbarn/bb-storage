@@ -24,11 +24,6 @@ def go_dependencies():
         version = "v1.0.1",
     )
     go_repository(
-        name = "com_github_buildbarn_bb_storage",
-        commit = "dfb8c06f0dda1d945284616c75ed4b3706906b8b",
-        importpath = "github.com/buildbarn/bb-storage",
-    )
-    go_repository(
         name = "com_github_golang_mock",
         importpath = "github.com/golang/mock",
         patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
@@ -210,11 +205,6 @@ def go_dependencies():
         importpath = "github.com/fatih/color",
         sum = "h1:8xPHl4/q1VyqGIPif1F+1V3Y3lSmrq01EabUW3CoW5s=",
         version = "v1.9.0",
-    )
-    go_repository(
-        name = "com_github_grpc_ecosystem_go_grpc_middleware",
-        importpath = "github.com/grpc-ecosystem/go-grpc-middleware",
-        commit = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d",
     )
     go_repository(
         name = "com_github_gorilla_mux",
