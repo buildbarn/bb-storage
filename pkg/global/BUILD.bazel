@@ -14,7 +14,6 @@ go_library(
         "@io_opencensus_go//plugin/ocgrpc:go_default_library",
         "@io_opencensus_go//stats/view:go_default_library",
         "@io_opencensus_go//trace:go_default_library",
-        "@io_opencensus_go//zpages:go_default_library",
         "@io_opencensus_go_contrib_exporter_jaeger//:go_default_library",
         "@io_opencensus_go_contrib_exporter_prometheus//:go_default_library",
         "@io_opencensus_go_contrib_exporter_stackdriver//:go_default_library",

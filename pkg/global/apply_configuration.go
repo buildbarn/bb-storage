@@ -17,7 +17,6 @@ import (
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
-	"go.opencensus.io/zpages"
 )
 
 // ApplyConfiguration applies configuration options to the running
@@ -55,7 +54,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 			trace.RegisterExporter(se)
 		}
 
-		if tracingConfiguration.ExportPrometheus {
+		if tracingConfiguration.EnablePrometheus {
 			pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
 				Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
 				Namespace: "bb_storage",
