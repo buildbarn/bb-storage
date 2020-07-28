@@ -63,11 +63,8 @@ message TracingConfiguration {
   // Export stats on traces to Prometheus.
   bool enable_prometheus = 3;
 
-  // Enable zpage live data web handler on /zpages.
-  bool enable_zpages = 4
-
   // Whether or not all traces should be sampled.
-  bool always_sample = 5;
+  bool always_sample = 4;
 }
 
 message Configuration {

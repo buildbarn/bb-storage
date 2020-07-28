@@ -66,10 +66,6 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 			view.RegisterExporter(pe)
 		}
 
-		if tracingConfiguration.EnableZpages {
-			zpages.Handle(nil, "/debug")
-		}
-
 		if tracingConfiguration.AlwaysSample {
 			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 		}
