@@ -15,9 +15,16 @@ message JaegerConfiguration {
 
   // OpenTracing service name.
   string service_name = 3;
+}
 
-  // Whether or not all traces should be sampled.
-  bool always_sample = 4;
+message StackdriverConfiguration {
+  // GCP project to which trace data is sent.
+  // Can be left blank if in GCP, automatically determined from metadata server.
+  string project_id = 1;
+
+  // Location is the identifier of the GCP or AWS cloud region/zone in which
+  // the data for a resource is stored. (defaults to info from metadata server)
+  string location = 2;
 }
 
 message BasicAuthenticationConfiguration {
@@ -46,9 +53,23 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
-message Configuration {
+message TracingConfiguration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
+
+  // Stackdriver Trace configuration for tracing.
+  StackdriverConfiguration stackdriver = 2;
+
+  // Export stats on traces to Prometheus.
+  bool enable_prometheus = 3;
+
+  // Whether or not all traces should be sampled.
+  bool always_sample = 4;
+}
+
+message Configuration {
+  // Configuration for sending tracing data to various services.
+  TracingConfiguration tracing = 1;
 
   // Sets the runtime.SetMutexProfileFraction(), so that the HTTP debug
   // endpoints used by pprof expose mutex profiling information.
