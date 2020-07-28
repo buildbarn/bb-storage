@@ -20,6 +20,19 @@ message JaegerConfiguration {
   bool always_sample = 4;
 }
 
+message StackdriverConfiguration {
+  // GCP project to send trace data to
+  // Can be left blank if in GCP, automatically determined from metadata server
+  string project_id = 1;
+
+  // Location is the identifier of the GCP or AWS cloud region/zone in which
+  // the data for a resource is stored. (defaults to info from metadata server)
+  string location = 2;
+
+  // Whether or not all traces should be sampled.
+  bool always_sample = 3;
+}
+
 message BasicAuthenticationConfiguration {
   // Username to store in the "Authorization: Basic" header.
   string username = 1;
@@ -49,6 +62,9 @@ message PrometheusPushgatewayConfiguration {
 message Configuration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
+
+  // Stackdriver Trace configuration for tracing.
+  StackdriverConfiguration stackdriver = 4;
 
   // Sets the runtime.SetMutexProfileFraction(), so that the HTTP debug
   // endpoints used by pprof expose mutex profiling information.

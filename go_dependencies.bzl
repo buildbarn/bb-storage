@@ -359,6 +359,7 @@ def go_dependencies():
     )
     go_repository(
         name = "com_github_census_instrumentation_opencensus_proto",
+        build_extra_args = ["-exclude=src"],
         importpath = "github.com/census-instrumentation/opencensus-proto",
         sum = "h1:glEXhBS5PSLLv4IXzLA5yPRVX4bilULVyxxbrfOtDAk=",
         version = "v0.2.1",

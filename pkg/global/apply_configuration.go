@@ -13,6 +13,7 @@ import (
 
 	"contrib.go.opencensus.io/exporter/jaeger"
 	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
@@ -49,6 +50,20 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		}
 		trace.RegisterExporter(je)
 		if jaegerConfiguration.AlwaysSample {
+			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+		}
+	}
+
+	if stackdriverConfiguration := configuration.GetStackdriver(); stackdriverConfiguration != nil {
+		se, err := stackdriver.NewExporter(stackdriver.Options{
+			ProjectID: stackdriverConfiguration.ProjectId,
+			Location:  stackdriverConfiguration.Location,
+		})
+		if err != nil {
+			return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
+		}
+		trace.RegisterExporter(se)
+		if stackdriverConfiguration.AlwaysSample {
 			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 		}
 	}
