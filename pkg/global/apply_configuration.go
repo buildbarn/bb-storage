@@ -25,47 +25,48 @@ import (
 // to all Buildbarn binaries, regardless of their purpose.
 func ApplyConfiguration(configuration *pb.Configuration) error {
 	// Push traces to Jaeger.
-	if jaegerConfiguration := configuration.GetJaeger(); jaegerConfiguration != nil {
-		pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
-			Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
-			Namespace: "bb_storage",
-		})
-		if err != nil {
-			return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
+	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
+		if jaegerConfiguration := tracingConfiguration.GetJaeger(); jaegerConfiguration != nil {
+			pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
+				Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
+				Namespace: "bb_storage",
+			})
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
+			}
+			view.RegisterExporter(pe)
+			if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+				return util.StatusWrap(err, "Failed to register ocgrpc server views")
+			}
+			zpages.Handle(nil, "/debug")
+			je, err := jaeger.NewExporter(jaeger.Options{
+				AgentEndpoint:     jaegerConfiguration.AgentEndpoint,
+				CollectorEndpoint: jaegerConfiguration.CollectorEndpoint,
+				Process: jaeger.Process{
+					ServiceName: jaegerConfiguration.ServiceName,
+				},
+			})
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create the Jaeger exporter")
+			}
+			trace.RegisterExporter(je)
 		}
-		view.RegisterExporter(pe)
-		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-			return util.StatusWrap(err, "Failed to register ocgrpc server views")
-		}
-		zpages.Handle(nil, "/debug")
-		je, err := jaeger.NewExporter(jaeger.Options{
-			AgentEndpoint:     jaegerConfiguration.AgentEndpoint,
-			CollectorEndpoint: jaegerConfiguration.CollectorEndpoint,
-			Process: jaeger.Process{
-				ServiceName: jaegerConfiguration.ServiceName,
-			},
-		})
-		if err != nil {
-			return util.StatusWrap(err, "Failed to create the Jaeger exporter")
-		}
-		trace.RegisterExporter(je)
-		if jaegerConfiguration.AlwaysSample {
-			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-		}
-	}
 
-	if stackdriverConfiguration := configuration.GetStackdriver(); stackdriverConfiguration != nil {
-		se, err := stackdriver.NewExporter(stackdriver.Options{
-			ProjectID: stackdriverConfiguration.ProjectId,
-			Location:  stackdriverConfiguration.Location,
-		})
-		if err != nil {
-			return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
+		if stackdriverConfiguration := tracingConfiguration.GetStackdriver(); stackdriverConfiguration != nil {
+			se, err := stackdriver.NewExporter(stackdriver.Options{
+				ProjectID: stackdriverConfiguration.ProjectId,
+				Location:  stackdriverConfiguration.Location,
+			})
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
+			}
+			trace.RegisterExporter(se)
 		}
-		trace.RegisterExporter(se)
-		if stackdriverConfiguration.AlwaysSample {
+
+		if tracingConfiguration.AlwaysSample {
 			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 		}
+
 	}
 
 	// Enable mutex profiling.
