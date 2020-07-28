@@ -18,8 +18,8 @@ message JaegerConfiguration {
 }
 
 message StackdriverConfiguration {
-  // GCP project to send trace data to
-  // Can be left blank if in GCP, automatically determined from metadata server
+  // GCP project to which trace data is sent.
+  // Can be left blank if in GCP, automatically determined from metadata server.
   string project_id = 1;
 
   // Location is the identifier of the GCP or AWS cloud region/zone in which
@@ -60,11 +60,18 @@ message TracingConfiguration {
   // Stackdriver Trace configuration for tracing.
   StackdriverConfiguration stackdriver = 2;
 
+  // Export stats on traces to Prometheus.
+  bool enable_prometheus = 3;
+
+  // Enable zpage live data web handler on /zpages.
+  bool enable_zpages = 4
+
   // Whether or not all traces should be sampled.
-  bool always_sample = 3;
+  bool always_sample = 5;
 }
 
 message Configuration {
+  // Configuration for sending tracing data to various services.
   TracingConfiguration tracing = 1;
 
   // Sets the runtime.SetMutexProfileFraction(), so that the HTTP debug

@@ -26,19 +26,11 @@ import (
 func ApplyConfiguration(configuration *pb.Configuration) error {
 	// Push traces to Jaeger.
 	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
-		if jaegerConfiguration := tracingConfiguration.GetJaeger(); jaegerConfiguration != nil {
-			pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
-				Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
-				Namespace: "bb_storage",
-			})
-			if err != nil {
-				return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
-			}
-			view.RegisterExporter(pe)
-			if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-				return util.StatusWrap(err, "Failed to register ocgrpc server views")
-			}
-			zpages.Handle(nil, "/debug")
+		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+			return util.StatusWrap(err, "Failed to register ocgrpc server views")
+		}
+
+		if jaegerConfiguration := tracingConfiguration.Jaeger; jaegerConfiguration != nil {
 			je, err := jaeger.NewExporter(jaeger.Options{
 				AgentEndpoint:     jaegerConfiguration.AgentEndpoint,
 				CollectorEndpoint: jaegerConfiguration.CollectorEndpoint,
@@ -52,7 +44,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 			trace.RegisterExporter(je)
 		}
 
-		if stackdriverConfiguration := tracingConfiguration.GetStackdriver(); stackdriverConfiguration != nil {
+		if stackdriverConfiguration := tracingConfiguration.Stackdriver; stackdriverConfiguration != nil {
 			se, err := stackdriver.NewExporter(stackdriver.Options{
 				ProjectID: stackdriverConfiguration.ProjectId,
 				Location:  stackdriverConfiguration.Location,
@@ -61,6 +53,21 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 				return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
 			}
 			trace.RegisterExporter(se)
+		}
+
+		if tracingConfiguration.ExportPrometheus {
+			pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
+				Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
+				Namespace: "bb_storage",
+			})
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
+			}
+			view.RegisterExporter(pe)
+		}
+
+		if tracingConfiguration.EnableZpages {
+			zpages.Handle(nil, "/debug")
 		}
 
 		if tracingConfiguration.AlwaysSample {
