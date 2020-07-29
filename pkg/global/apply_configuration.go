@@ -2,6 +2,7 @@ package global
 
 import (
 	"log"
+	"os"
 	"runtime"
 	"time"
 
@@ -44,9 +45,14 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		}
 
 		if stackdriverConfiguration := tracingConfiguration.Stackdriver; stackdriverConfiguration != nil {
+			hostname, err := os.Hostname()
+			if err != nil {
+				return err
+			}
 			se, err := stackdriver.NewExporter(stackdriver.Options{
-				ProjectID: stackdriverConfiguration.ProjectId,
-				Location:  stackdriverConfiguration.Location,
+				ProjectID:              stackdriverConfiguration.ProjectId,
+				Location:               stackdriverConfiguration.Location,
+				DefaultTraceAttributes: map[string]interface{}{"hostname": hostname},
 			})
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
