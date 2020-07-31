@@ -3,6 +3,7 @@ load("@io_bazel_rules_jsonnet//jsonnet:jsonnet.bzl", "jsonnet_library", "jsonnet
 jsonnet_library(
     name = "workflows_template",
     srcs = ["workflows_template.libsonnet"],
+    visibility = ["//visibility:public"],
 )
 
 jsonnet_to_json(
