@@ -6,19 +6,51 @@ go_library(
         "directory.go",
         "file.go",
         "file_info.go",
-        "local_directory.go",
         "local_directory_darwin.go",
+        "local_directory_disabled.go",
         "local_directory_freebsd.go",
         "local_directory_linux.go",
+        "local_directory_unix.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem",
     visibility = ["//visibility:public"],
-    deps = [
-        "//pkg/util:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
-        "@org_golang_x_sys//unix:go_default_library",
-    ],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "//pkg/util:go_default_library",
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "//pkg/util:go_default_library",
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "//pkg/util:go_default_library",
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "//pkg/util:go_default_library",
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//pkg/util:go_default_library",
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@org_golang_google_grpc//codes:go_default_library",
+            "@org_golang_google_grpc//status:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 go_test(

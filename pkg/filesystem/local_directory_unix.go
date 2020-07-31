@@ -1,3 +1,5 @@
+// +build darwin freebsd linux
+
 package filesystem
 
 import (
