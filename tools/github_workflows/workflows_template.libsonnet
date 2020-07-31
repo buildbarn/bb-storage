@@ -115,7 +115,7 @@
             },
           ] + [
             {
-              name: 'Push container bb-autoscaler',
+              name: 'Push container %s' % container,
               run: 'bazel run //cmd/%s_container_push' % container,
             }
             for container in containers

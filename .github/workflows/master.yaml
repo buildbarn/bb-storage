@@ -160,11 +160,11 @@
                "run": "mkdir ~/.docker && echo \"${DOCKER_CONFIG_JSON}\" > ~/.docker/config.json"
             },
             {
-               "name": "Push container bb-autoscaler",
+               "name": "Push container bb_replicator:bb_replicator",
                "run": "bazel run //cmd/bb_replicator:bb_replicator_container_push"
             },
             {
-               "name": "Push container bb-autoscaler",
+               "name": "Push container bb_storage:bb_storage",
                "run": "bazel run //cmd/bb_storage:bb_storage_container_push"
             }
          ]
