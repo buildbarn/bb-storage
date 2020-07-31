@@ -1,33 +1,70 @@
-name: pull-requests
-on:
-  pull_request:
-    branches:
-    - master
-jobs:
-  build_and_test:
-    runs-on: ubuntu-latest
-    container: docker://l.gcr.io/google/bazel:2.1.0
-    steps:
-    - uses: actions/checkout@v1
-
-    - name: Buildifier
-      run: bazel run @com_github_bazelbuild_buildtools//:buildifier
-    - name: Gazelle
-      run: bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle
-    - name: Gofmt
-      run: bazel run @go_sdk//:bin/gofmt -- -s -w .
-    - name: Clang format
-      run: find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +
-    - name: Test style conformance
-      run: git diff --exit-code HEAD --
-    - name: Golint
-      run: bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/...
-    - name: Check for ineffective assignments
-      run: bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)
-
-    - name: Linux build and test
-      run: bazel test --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...
-    - name: macOS build
-      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //...
-    - name: FreeBSD build
-      run: bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_storage //cmd/bb_replicator
+{
+   "jobs": {
+      "build_and_test": {
+         "container": "docker://l.gcr.io/google/bazel:3.3.1",
+         "runs-on": "ubuntu-latest",
+         "steps": [
+            {
+               "name": "Check out source code",
+               "uses": "actions/checkout@v1"
+            },
+            {
+               "name": "Buildifier",
+               "run": "bazel run @com_github_bazelbuild_buildtools//:buildifier"
+            },
+            {
+               "name": "Gazelle",
+               "run": "bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle"
+            },
+            {
+               "name": "Gofmt",
+               "run": "bazel run @go_sdk//:bin/gofmt -- -s -w ."
+            },
+            {
+               "name": "Clang format",
+               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +"
+            },
+            {
+               "name": "GitHub workflows",
+               "run": "bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/* .github/workflows"
+            },
+            {
+               "name": "Test style conformance",
+               "run": "git diff --exit-code HEAD --"
+            },
+            {
+               "name": "Golint",
+               "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
+            },
+            {
+               "name": "Check for ineffective assignments",
+               "run": "bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)"
+            },
+            {
+               "name": "linux_amd64: build and test",
+               "run": "bazel test --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
+            },
+            {
+               "name": "darwin_amd64: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
+            },
+            {
+               "name": "freebsd_amd64: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator //cmd/bb_storage"
+            },
+            {
+               "name": "windows_amd64: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //..."
+            }
+         ]
+      }
+   },
+   "name": "pull-requests",
+   "on": {
+      "pull_request": {
+         "branches": [
+            "master"
+         ]
+      }
+   }
+}
