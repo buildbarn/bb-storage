@@ -10,7 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -34,10 +34,13 @@ func init() {
 			util.DecimalExponentialBuckets(-3, 6, 2)))
 }
 
+// ServerRMDHandler is meant to wrap ocgrpc.ServerHandler, and exports additional information
+// about the RPC from REAPI request metadata
 type ServerRMDHandler struct {
 	stats.Handler
 }
 
+// TagRPC adds REAPI request metadata to an existing OpenCensus span.
 func (ssh *ServerRMDHandler) TagRPC(ctx context.Context, rti *stats.RPCTagInfo) context.Context {
 	ctx = ssh.Handler.TagRPC(ctx, rti)
 
