@@ -13,6 +13,7 @@ go_library(
         "deny_authenticator.go",
         "metadata_forwarding_interceptor.go",
         "server.go",
+        "server_request_metadata_handler.go",
         "tls_client_certificate_authenticator.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/grpc",

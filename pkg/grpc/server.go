@@ -1,14 +1,11 @@
 package grpc
 
 import (
-	"context"
 	"net"
 	"os"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
@@ -18,13 +15,10 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 
 	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/trace"
 )
 
 func init() {
@@ -32,42 +26,6 @@ func init() {
 	grpc_prometheus.EnableHandlingTimeHistogram(
 		grpc_prometheus.WithHistogramBuckets(
 			util.DecimalExponentialBuckets(-3, 6, 2)))
-}
-
-// ServerRMDHandler is meant to wrap ocgrpc.ServerHandler, and exports additional information
-// about the RPC from REAPI request metadata
-type ServerRMDHandler struct {
-	stats.Handler
-}
-
-// TagRPC adds REAPI request metadata to an existing OpenCensus span.
-func (ssh *ServerRMDHandler) TagRPC(ctx context.Context, rti *stats.RPCTagInfo) context.Context {
-	ctx = ssh.Handler.TagRPC(ctx, rti)
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return ctx
-	}
-
-	rmds := md.Get("build.bazel.remote.execution.v2.requestmetadata-bin")
-	if len(rmds) == 0 {
-		return ctx
-	}
-
-	rmd := &remoteexecution.RequestMetadata{}
-	err := proto.Unmarshal([]byte(rmds[0]), rmd)
-	if err != nil {
-		return ctx
-	}
-
-	span := trace.FromContext(ctx)
-	if span == nil {
-		return ctx
-	}
-	span.AddAttributes(
-		trace.StringAttribute("invocation_id", rmd.ToolInvocationId),
-	)
-	return ctx
 }
 
 // NewServersFromConfigurationAndServe creates a series of gRPC servers
@@ -96,7 +54,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			grpc.ChainStreamInterceptor(
 				grpc_prometheus.StreamServerInterceptor,
 				NewAuthenticatingStreamInterceptor(authenticator)),
-			grpc.StatsHandler(&ServerRMDHandler{&ocgrpc.ServerHandler{}}),
+			grpc.StatsHandler(NewRequestMetadataFetchingStatsHandler(&ocgrpc.ServerHandler{})),
 		}
 
 		// Enable TLS if provided.
