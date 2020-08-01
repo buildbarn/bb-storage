@@ -37,7 +37,7 @@ type referenceExpandingBlobAccess struct {
 // getHTTPRangeHeader creates a HTTP Range header based on the offset
 // and size stored in an ICAS Reference.
 func getHTTPRangeHeader(reference *icas.Reference) string {
-	return fmt.Sprintf("%d-%d", reference.OffsetBytes, reference.OffsetBytes+reference.SizeBytes-1)
+	return fmt.Sprintf("bytes=%d-%d", reference.OffsetBytes, reference.OffsetBytes+reference.SizeBytes-1)
 }
 
 // NewReferenceExpandingBlobAccess takes an Indirect Content Addressable

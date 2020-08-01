@@ -164,7 +164,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 			func(req *http.Request) (*http.Response, error) {
 				require.Equal(t, "GET", req.Method)
 				require.Equal(t, "http://example.com/file.txt", req.URL.String())
-				require.Equal(t, "100-104", req.Header.Get("Range"))
+				require.Equal(t, "bytes=100-104", req.Header.Get("Range"))
 				return &http.Response{
 					Status:     "206 Partial Content",
 					StatusCode: 206,
@@ -201,7 +201,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
-			Range:  aws.String("100-110"),
+			Range:  aws.String("bytes=100-110"),
 		}).Return(nil, awserr.New("NoSuchKey", "The specified key does not exist. status code: 404, request id: ..., host id: ...", nil))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -228,7 +228,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
-			Range:  aws.String("100-110"),
+			Range:  aws.String("bytes=100-110"),
 		}).Return(&s3.GetObjectOutput{
 			Body: body,
 		}, nil)
@@ -262,7 +262,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
-			Range:  aws.String("100-110"),
+			Range:  aws.String("bytes=100-110"),
 		}).Return(&s3.GetObjectOutput{
 			Body: body,
 		}, nil)
