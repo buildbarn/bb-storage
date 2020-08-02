@@ -25,6 +25,9 @@ message StackdriverConfiguration {
   // Location is the identifier of the GCP or AWS cloud region/zone in which
   // the data for a resource is stored. (defaults to info from metadata server)
   string location = 2;
+
+  // Additional attributes to add to all spans by default.
+  map<string, string> default_trace_attributes = 3;
 }
 
 message BasicAuthenticationConfiguration {

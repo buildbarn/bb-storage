@@ -44,9 +44,14 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		}
 
 		if stackdriverConfiguration := tracingConfiguration.Stackdriver; stackdriverConfiguration != nil {
+			defaultTraceAttributes := map[string]interface{}{}
+			for k, v := range stackdriverConfiguration.DefaultTraceAttributes {
+				defaultTraceAttributes[k] = v
+			}
 			se, err := stackdriver.NewExporter(stackdriver.Options{
-				ProjectID: stackdriverConfiguration.ProjectId,
-				Location:  stackdriverConfiguration.Location,
+				ProjectID:              stackdriverConfiguration.ProjectId,
+				Location:               stackdriverConfiguration.Location,
+				DefaultTraceAttributes: defaultTraceAttributes,
 			})
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create the Stackdriver exporter")

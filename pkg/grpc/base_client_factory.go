@@ -14,6 +14,8 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
+
+	"go.opencensus.io/plugin/ocgrpc"
 )
 
 func init() {
@@ -30,7 +32,9 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
-	var dialOptions []grpc.DialOption
+	dialOptions := []grpc.DialOption{
+		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}),
+	}
 	unaryInterceptors := []grpc.UnaryClientInterceptor{
 		grpc_prometheus.UnaryClientInterceptor,
 	}

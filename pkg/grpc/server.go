@@ -54,7 +54,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			grpc.ChainStreamInterceptor(
 				grpc_prometheus.StreamServerInterceptor,
 				NewAuthenticatingStreamInterceptor(authenticator)),
-			grpc.StatsHandler(&ocgrpc.ServerHandler{}),
+			grpc.StatsHandler(NewRequestMetadataFetchingStatsHandler(&ocgrpc.ServerHandler{})),
 		}
 
 		// Enable TLS if provided.
