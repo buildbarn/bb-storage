@@ -46,7 +46,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		if stackdriverConfiguration := tracingConfiguration.Stackdriver; stackdriverConfiguration != nil {
 			defaultTraceAttributes := map[string]interface{}{}
 			for k, v := range stackdriverConfiguration.DefaultTraceAttributes {
-				attributes[k] = v
+				defaultTraceAttributes[k] = v
 			}
 			se, err := stackdriver.NewExporter(stackdriver.Options{
 				ProjectID:              stackdriverConfiguration.ProjectId,
