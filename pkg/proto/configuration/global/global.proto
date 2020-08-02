@@ -27,7 +27,7 @@ message StackdriverConfiguration {
   string location = 2;
 
   // Additional attributes to add to all spans by default.
-  map<string, string> attributes = 3;
+  map<string, string> default_trace_attributes = 3;
 }
 
 message BasicAuthenticationConfiguration {
