@@ -37,6 +37,11 @@ type InstanceName struct {
 	value string
 }
 
+// EmptyInstanceName corresponds to the instance name "". It is mainly
+// declared to be used in places where the instance name doesn't matter
+// (e.g., return values of functions in error cases).
+var EmptyInstanceName InstanceName
+
 func validateInstanceNameComponents(components []string) error {
 	for _, component := range components {
 		if component == "" {

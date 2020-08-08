@@ -7,6 +7,8 @@ go_library(
         "digest.go",
         "existence_cache.go",
         "instance_name.go",
+        "instance_name_patcher.go",
+        "instance_name_trie.go",
         "set.go",
         "set_builder.go",
     ],
@@ -30,7 +32,9 @@ go_test(
     srcs = [
         "digest_test.go",
         "existence_cache_test.go",
+        "instance_name_patcher_test.go",
         "instance_name_test.go",
+        "instance_name_trie_test.go",
         "set_builder_test.go",
         "set_test.go",
     ],

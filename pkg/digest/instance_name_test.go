@@ -33,7 +33,7 @@ func TestNewInstanceName(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		instanceName, err := digest.NewInstanceName("")
 		require.NoError(t, err)
-		require.Equal(t, digest.MustNewInstanceName(""), instanceName)
+		require.Equal(t, digest.EmptyInstanceName, instanceName)
 	})
 }
 
