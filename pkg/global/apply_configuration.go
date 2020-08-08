@@ -73,7 +73,6 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		if tracingConfiguration.AlwaysSample {
 			trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 		}
-
 	}
 
 	// Enable mutex profiling.
