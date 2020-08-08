@@ -1,0 +1,291 @@
+package blobstore_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func TestDemultiplexingBlobAccessGet(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+
+	t.Run("UnknownInstanceName", func(t *testing.T) {
+		// This request cannot be forwarded to any backend.
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("unknown")).Return(
+			nil,
+			"",
+			digest.NoopInstanceNamePatcher,
+			status.Error(codes.InvalidArgument, "Unknown instance name"))
+
+		_, err := blobAccess.Get(
+			ctx,
+			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
+		).ToByteSlice(100)
+		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		// Error messages should have the backend name prepended.
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
+
+		_, err := blobAccess.Get(
+			ctx,
+			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+		).ToByteSlice(100)
+		require.Equal(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.Get(
+			ctx,
+			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+		).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+}
+
+func TestDemultiplexingBlobAccessPut(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+
+	t.Run("UnknownInstanceName", func(t *testing.T) {
+		// This request cannot be forwarded to any backend.
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("unknown")).Return(
+			nil,
+			"",
+			digest.NoopInstanceNamePatcher,
+			status.Error(codes.InvalidArgument, "Unknown instance name"))
+
+		require.Equal(
+			t,
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+			blobAccess.Put(
+				ctx,
+				digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		// Error messages should have the backend name prepended.
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+				b.Discard()
+				return status.Error(codes.Internal, "I/O error")
+			})
+
+		require.Equal(
+			t,
+			status.Error(codes.Internal, "Backend \"Primary\": I/O error"),
+			blobAccess.Put(
+				ctx,
+				digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+				data, err := b.ToByteSlice(100)
+				require.NoError(t, err)
+				require.Equal(t, []byte("Hello"), data)
+				return nil
+			})
+
+		require.NoError(
+			t,
+			blobAccess.Put(
+				ctx,
+				digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	})
+}
+
+func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+
+	t.Run("UnknownInstanceName", func(t *testing.T) {
+		// This request cannot be forwarded to any backend.
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("unknown")).Return(
+			nil,
+			"",
+			digest.NoopInstanceNamePatcher,
+			status.Error(codes.InvalidArgument, "Unknown instance name"))
+
+		_, err := blobAccess.FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Build())
+		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		// Error messages should have the backend name prepended.
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("goodbye/world", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build()).
+			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
+
+		_, err := blobAccess.FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello/world", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build())
+		require.Equal(t, status.Error(codes.Internal, "Backend \"Primary\": I/O error"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// Call FindMissing() with 2x2x2 blobs, intended for
+		// four different instance names spread across two
+		// backends. We should see two FindMissing() calls
+		// against the backends. Report half of the digests as
+		// missing.
+		baseBlobAccessA := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("a")).Return(
+			baseBlobAccessA,
+			"a",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("a"),
+				digest.MustNewInstanceName("A")),
+			nil)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("a/x")).Return(
+			baseBlobAccessA,
+			"a",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("a"),
+				digest.MustNewInstanceName("A")),
+			nil)
+		baseBlobAccessB := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("b")).Return(
+			baseBlobAccessB,
+			"b",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("b"),
+				digest.MustNewInstanceName("B")),
+			nil)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("b/x")).Return(
+			baseBlobAccessB,
+			"b",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("b"),
+				digest.MustNewInstanceName("B")),
+			nil)
+		baseBlobAccessA.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("A", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("A", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("A/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("A/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build()).
+			Return(
+				digest.NewSetBuilder().
+					Add(digest.MustNewDigest("A", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("A/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Build(),
+				nil)
+		baseBlobAccessB.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("B", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("B", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("B/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("B/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build()).
+			Return(
+				digest.NewSetBuilder().
+					Add(digest.MustNewDigest("B", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("B/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Build(),
+				nil)
+
+		missing, err := blobAccess.FindMissing(
+			ctx,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("a/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("b", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("b/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Build())
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Build(),
+			missing)
+	})
+}

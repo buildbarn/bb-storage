@@ -12,6 +12,15 @@ import (
 type casStorageType struct{}
 
 func (f casStorageType) GetDigestKey(blobDigest digest.Digest) string {
+	// TODO: Now that we have DemultiplexingBlobAccess, this
+	// assumption is no longer correct. When multiple backends are
+	// used, the instance name must be retained to ensure requests
+	// are routed properly.
+	//
+	// We should phase out GetDigestKey() and automatically
+	// determine whether KeyWithInstance or KeyWithoutInstance needs
+	// to be used based on the hierarchy created through
+	// NewBlobAccessFromConfiguration().
 	return blobDigest.GetKey(digest.KeyWithoutInstance)
 }
 

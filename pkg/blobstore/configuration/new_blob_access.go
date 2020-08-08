@@ -386,6 +386,47 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 			return nil, err
 		}
 		implementation = blobstore.NewReadFallbackBlobAccess(primary, secondary)
+	case *pb.BlobAccessConfiguration_Demultiplexing:
+		backendType = "demultiplexing"
+
+		// Construct a trie for each of the backends specified
+		// in the configuration indexed by instance name prefix.
+		backendsTrie := digest.NewInstanceNameTrie()
+		type demultiplexedBackendInfo struct {
+			backend             blobstore.BlobAccess
+			backendName         string
+			instanceNamePatcher digest.InstanceNamePatcher
+		}
+		backends := make([]demultiplexedBackendInfo, 0, len(backend.Demultiplexing.InstanceNamePrefixes))
+		for k, demultiplexed := range backend.Demultiplexing.InstanceNamePrefixes {
+			matchInstanceNamePrefix, err := digest.NewInstanceName(k)
+			if err != nil {
+				return nil, util.StatusWrapf(err, "Invalid instance name %#v", k)
+			}
+			addInstanceNamePrefix, err := digest.NewInstanceName(demultiplexed.AddInstanceNamePrefix)
+			if err != nil {
+				return nil, util.StatusWrapf(err, "Invalid instance name %#v", demultiplexed.AddInstanceNamePrefix)
+			}
+			blobAccess, err := NewNestedBlobAccess(demultiplexed.Backend, creator)
+			if err != nil {
+				return nil, err
+			}
+			backendsTrie.Set(matchInstanceNamePrefix, len(backends))
+			backends = append(backends, demultiplexedBackendInfo{
+				backend:             blobAccess,
+				backendName:         matchInstanceNamePrefix.String(),
+				instanceNamePatcher: digest.NewInstanceNamePatcher(matchInstanceNamePrefix, addInstanceNamePrefix),
+			})
+		}
+
+		implementation = blobstore.NewDemultiplexingBlobAccess(
+			func(i digest.InstanceName) (blobstore.BlobAccess, string, digest.InstanceNamePatcher, error) {
+				idx := backendsTrie.Get(i)
+				if idx < 0 {
+					return nil, "", digest.NoopInstanceNamePatcher, status.Errorf(codes.InvalidArgument, "Unknown instance name: %#v", i.String())
+				}
+				return backends[idx].backend, backends[idx].backendName, backends[idx].instanceNamePatcher, nil
+			})
 	default:
 		var err error
 		implementation, backendType, err = creator.NewCustomBlobAccess(configuration)

@@ -7,7 +7,7 @@ go_library(
         "demultiplexing_build_queue.go",
         "forwarding_build_queue.go",
         "non_executable_build_queue.go",
-        "updatable_action_cache_build_queue.go",
+        "update_enabled_toggling_build_queue.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/builder",
     visibility = ["//visibility:public"],
@@ -16,7 +16,6 @@ go_library(
         "//pkg/util:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/semver:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
         "@go_googleapis//google/longrunning:longrunning_go_proto",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
@@ -26,7 +25,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["demultiplexing_build_queue_test.go"],
+    srcs = [
+        "demultiplexing_build_queue_test.go",
+        "update_enabled_toggling_build_queue_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//internal/mock:go_default_library",

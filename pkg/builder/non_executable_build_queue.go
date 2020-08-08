@@ -14,15 +14,13 @@ import (
 type nonExecutableBuildQueue struct {
 }
 
-// NewNonExecutableBuildQueue creates a build queue that is incapable of
+// NonExecutableBuildQueue is a build queue that is incapable of
 // executing anything. It is merely needed to provide a functional
 // implementation of GetCapabilities() for instances that provide remote
 // caching without the execution.
-func NewNonExecutableBuildQueue() BuildQueue {
-	return &nonExecutableBuildQueue{}
-}
+var NonExecutableBuildQueue BuildQueue = nonExecutableBuildQueue{}
 
-func (bq *nonExecutableBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
+func (bq nonExecutableBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
 	return &remoteexecution.ServerCapabilities{
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
 			DigestFunction: digest.SupportedDigestFunctions,
@@ -39,10 +37,10 @@ func (bq *nonExecutableBuildQueue) GetCapabilities(ctx context.Context, in *remo
 	}, nil
 }
 
-func (bq *nonExecutableBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
+func (bq nonExecutableBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
 	return status.Errorf(codes.InvalidArgument, "This instance name cannot be used for remote execution; only remote caching")
 }
 
-func (bq *nonExecutableBuildQueue) WaitExecution(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
+func (bq nonExecutableBuildQueue) WaitExecution(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
 	return status.Errorf(codes.InvalidArgument, "This instance name cannot be used for remote execution; only remote caching")
 }

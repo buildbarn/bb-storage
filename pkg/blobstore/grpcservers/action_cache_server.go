@@ -8,24 +8,19 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type actionCacheServer struct {
-	blobAccess               blobstore.BlobAccess
-	allowUpdatesForInstances map[digest.InstanceName]bool
-	maximumMessageSizeBytes  int
+	blobAccess              blobstore.BlobAccess
+	maximumMessageSizeBytes int
 }
 
 // NewActionCacheServer creates a GRPC service for serving the contents
 // of a Bazel Action Cache (AC) to Bazel.
-func NewActionCacheServer(blobAccess blobstore.BlobAccess, allowUpdatesForInstances map[digest.InstanceName]bool, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
+func NewActionCacheServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
 	return &actionCacheServer{
-		blobAccess:               blobAccess,
-		allowUpdatesForInstances: allowUpdatesForInstances,
-		maximumMessageSizeBytes:  maximumMessageSizeBytes,
+		blobAccess:              blobAccess,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
@@ -55,9 +50,6 @@ func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteex
 	digest, err := instanceName.NewDigestFromProto(in.ActionDigest)
 	if err != nil {
 		return nil, err
-	}
-	if instance := digest.GetInstanceName(); !s.allowUpdatesForInstances[instance] {
-		return nil, status.Errorf(codes.PermissionDenied, "This service does not accept action results for instance %#v", instance)
 	}
 	return in.ActionResult, s.blobAccess.Put(
 		ctx,

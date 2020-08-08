@@ -7,10 +7,12 @@ go_library(
         "blob_access.go",
         "cas_storage_type.go",
         "cloud_blob_access.go",
+        "demultiplexing_blob_access.go",
         "empty_blob_injecting_blob_access.go",
         "error_blob_access.go",
         "existence_caching_blob_access.go",
         "icas_storage_type.go",
+        "instance_name_access_checking_blob_access.go",
         "metrics_blob_access.go",
         "read_fallback_blob_access.go",
         "redis_blob_access.go",
@@ -45,8 +47,10 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "demultiplexing_blob_access_test.go",
         "empty_blob_injecting_blob_access_test.go",
         "existence_caching_blob_access_test.go",
+        "instance_name_access_checking_blob_access_test.go",
         "read_fallback_blob_access_test.go",
         "redis_blob_access_test.go",
         "reference_expanding_blob_access_test.go",

@@ -19,6 +19,7 @@ gomock(
     out = "blobstore.go",
     interfaces = [
         "BlobAccess",
+        "DemultiplexedBlobAccessGetter",
         "HTTPClient",
     ],
     library = "//pkg/blobstore:go_default_library",
@@ -63,7 +64,7 @@ gomock(
     out = "builder.go",
     interfaces = [
         "BuildQueue",
-        "BuildQueueGetter",
+        "DemultiplexedBuildQueueGetter",
     ],
     library = "//pkg/builder:go_default_library",
     package = "mock",
@@ -85,6 +86,14 @@ gomock(
     out = "cloud_aws.go",
     interfaces = ["S3"],
     library = "//pkg/cloud/aws:go_default_library",
+    package = "mock",
+)
+
+gomock(
+    name = "digest",
+    out = "digest.go",
+    interfaces = ["InstanceNameMatcher"],
+    library = "//pkg/digest:go_default_library",
     package = "mock",
 )
 
@@ -143,6 +152,14 @@ gomock(
     package = "mock",
 )
 
+gomock(
+    name = "util",
+    out = "util.go",
+    interfaces = ["ErrorLogger"],
+    library = "//pkg/util:go_default_library",
+    package = "mock",
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -154,15 +171,18 @@ go_library(
         ":builder.go",
         ":clock.go",
         ":cloud_aws.go",
+        ":digest.go",
         ":filesystem.go",
         ":grpc.go",
         ":grpc_go.go",
         ":redis.go",
         ":remoteexecution.go",
+        ":util.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/blobstore/local:go_default_library",
         "//pkg/builder:go_default_library",
@@ -170,6 +190,7 @@ go_library(
         "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
+        "//pkg/util:go_default_library",
         "@com_github_aws_aws_sdk_go//aws/request:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
@@ -178,6 +199,5 @@ go_library(
         "@go_googleapis//google/longrunning:longrunning_go_proto",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",
-        "@org_golang_x_sys//unix:go_default_library",
     ],
 )

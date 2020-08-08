@@ -22,12 +22,25 @@ message ApplicationConfiguration {
   // gRPC servers to spawn to listen for requests from clients.
   repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 4;
 
-  // List of schedulers available capable of building, mapping name to
-  // endpoints.
-  map<string, buildbarn.configuration.grpc.ClientConfiguration> schedulers = 5;
+  // Map of schedulers available capable of running build actions, where
+  // the key corresponds to the instance name prefix. In case of
+  // multiple matches, the scheduler with the longest matching prefix is
+  // used. The matching prefix is removed from the resulting instance
+  // name.
+  //
+  // For example, if schedulers for instance name prefixes "acmecorp"
+  // and "acmecorp/rockets" are declared, requests for instance name
+  // "acmecorp/rockets/mars" will be forwarded to the latter. This
+  // scheduler will receive requests with instance name "mars".
+  //
+  // The empty string can be used to match all instance names, thereby
+  // causing all requests to be forwarded to a single scheduler.
+  map<string, SchedulerConfiguration> schedulers = 5;
 
-  // List of instances which can upload to the Action Cache.
-  repeated string allow_ac_updates_for_instances = 6;
+  // List of instance name prefixes for which uploads to the Action
+  // Cache are permitted. The empty string can be used to match all
+  // instance names, thereby permitting uploads for all instance names.
+  repeated string allow_ac_updates_for_instance_name_prefixes = 6;
 
   // Was 'verify_action_result_completeness'. This can now be enabled by
   // using BlobAccessConfiguration.completeness_checking.
@@ -39,8 +52,20 @@ message ApplicationConfiguration {
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 9;
 
-  // Blobstore cnofiguration for the Indirect Content Addressable
+  // Blobstore configuration for the Indirect Content Addressable
   // Storage (ICAS).
   buildbarn.configuration.blobstore.BlobAccessConfiguration
       indirect_content_addressable_storage = 10;
+}
+
+message SchedulerConfiguration {
+  // The gRPC endpoint at which the scheduler can be reached.
+  buildbarn.configuration.grpc.ClientConfiguration endpoint = 1;
+
+  // Add a prefix to the instance name of all requests forwarded to this
+  // scheduler. By default, the prefix that was used to match the
+  // request against a scheduler is stripped from the instance name.
+  // This option can be used to re-add that prefix in case perfect
+  // forwarding is necessary.
+  string add_instance_name_prefix = 2;
 }

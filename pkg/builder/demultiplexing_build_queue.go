@@ -2,10 +2,10 @@ package builder
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/genproto/googleapis/longrunning"
@@ -13,65 +13,84 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// BuildQueueGetter is the callback invoked by the demultiplexing build
-// queue to obtain a backend that matches the instance name that is
-// provided.
-type BuildQueueGetter func(instanceName string) (BuildQueue, error)
+// DemultiplexedBuildQueueGetter is the callback invoked by the
+// demultiplexing build queue to obtain a backend that matches the
+// instance name that is provided.
+type DemultiplexedBuildQueueGetter func(instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error)
 
 type demultiplexingBuildQueue struct {
-	buildQueueGetter BuildQueueGetter
+	getBackend DemultiplexedBuildQueueGetter
 }
 
+const demultiplexingSeparator = "/operations/"
+
 // NewDemultiplexingBuildQueue creates an adapter for the Execution
-// service to forward requests to different backends backed on the
-// instance given in requests. Job identifiers returned by backends are
-// prefixed with the instance name, so that successive requests may
-// demultiplex the requests later on.
-func NewDemultiplexingBuildQueue(buildQueueGetter BuildQueueGetter) BuildQueue {
+// service to forward requests to different backends based on the
+// instance name given in requests.
+//
+// Job identifiers returned by backends are prefixed with the instance
+// name, so that successive requests may demultiplex the requests later
+// on. The string "/operations/" is used as a separator between the
+// instance name and the original operation name, as instance names are
+// guaranteed to not contain that string.
+func NewDemultiplexingBuildQueue(getBackend DemultiplexedBuildQueueGetter) BuildQueue {
 	return &demultiplexingBuildQueue{
-		buildQueueGetter: buildQueueGetter,
+		getBackend: getBackend,
 	}
 }
 
 func (bq *demultiplexingBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
-	if strings.ContainsRune(in.InstanceName, '|') {
-		return nil, status.Errorf(codes.InvalidArgument, "Instance name cannot contain a pipe character")
-	}
-	backend, err := bq.buildQueueGetter(in.InstanceName)
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
-		return nil, util.StatusWrapf(err, "Failed to obtain backend for instance %#v", in.InstanceName)
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	return backend.GetCapabilities(ctx, in)
+	backend, _, newInstanceName, err := bq.getBackend(instanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
+	}
+
+	requestCopy := *in
+	requestCopy.InstanceName = newInstanceName.String()
+	return backend.GetCapabilities(ctx, &requestCopy)
 }
 
 func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
-	if strings.ContainsRune(in.InstanceName, '|') {
-		return status.Errorf(codes.InvalidArgument, "Instance name cannot contain a pipe character")
-	}
-	backend, err := bq.buildQueueGetter(in.InstanceName)
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
-		return util.StatusWrapf(err, "Failed to obtain backend for instance %#v", in.InstanceName)
+		return util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	return backend.Execute(in, &operationNamePrepender{
+	backend, backendName, newInstanceName, err := bq.getBackend(instanceName)
+	if err != nil {
+		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
+	}
+
+	requestCopy := *in
+	requestCopy.InstanceName = newInstanceName.String()
+	return backend.Execute(&requestCopy, &operationNamePrepender{
 		Execution_ExecuteServer: out,
-		prefix:                  in.InstanceName,
+		prefix:                  backendName.String() + demultiplexingSeparator,
 	})
 }
 
 func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
-	target := strings.SplitN(in.Name, "|", 2)
+	target := strings.SplitN(in.Name, demultiplexingSeparator, 2)
 	if len(target) != 2 {
-		return status.Errorf(codes.InvalidArgument, "Unable to extract instance from operation name")
+		return status.Errorf(codes.InvalidArgument, "Unable to extract instance name from operation name")
 	}
-	backend, err := bq.buildQueueGetter(target[0])
+	instanceName, err := digest.NewInstanceName(target[0])
 	if err != nil {
-		return util.StatusWrapf(err, "Failed to obtain backend for instance %#v", target[0])
+		return util.StatusWrapf(err, "Invalid instance name %#v", target[0])
 	}
+	backend, _, _, err := bq.getBackend(instanceName)
+	if err != nil {
+		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
+	}
+
 	requestCopy := *in
 	requestCopy.Name = target[1]
 	return backend.WaitExecution(&requestCopy, &operationNamePrepender{
 		Execution_ExecuteServer: out,
-		prefix:                  target[0],
+		prefix:                  target[0] + demultiplexingSeparator,
 	})
 }
 
@@ -82,6 +101,6 @@ type operationNamePrepender struct {
 
 func (np *operationNamePrepender) Send(operation *longrunning.Operation) error {
 	operationCopy := *operation
-	operationCopy.Name = fmt.Sprintf("%s|%s", np.prefix, operation.Name)
+	operationCopy.Name = np.prefix + operation.Name
 	return np.Execution_ExecuteServer.Send(&operationCopy)
 }

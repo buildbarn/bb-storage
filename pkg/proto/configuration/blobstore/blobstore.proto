@@ -128,6 +128,15 @@ message BlobAccessConfiguration {
     // This backend can be used to integrate external data sets into the
     // system by combining it with read_fallback.
     ReferenceExpandingBlobAccessConfiguration reference_expanding = 19;
+
+    // Demultiplex requests across multiple storage backends, based on
+    // the instance name prefix.
+    //
+    // The logic for matching incoming requests and mutating the
+    // instance name in outgoing requests is identical to bb_storage's
+    // 'schedulers' configuration option. Please refer to that
+    // configuration option for more details.
+    DemultiplexingBlobAccessConfiguration demultiplexing = 20;
   }
 }
 
@@ -555,4 +564,18 @@ message QueuedBlobReplicatorConfiguration {
   // deduplicate replication operations.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message DemultiplexingBlobAccessConfiguration {
+  // The instance name prefixes for which requests are forwarded.
+  map<string, DemultiplexedBlobAccessConfiguration> instance_name_prefixes = 1;
+}
+
+message DemultiplexedBlobAccessConfiguration {
+  // The backend to which requests are forwarded.
+  BlobAccessConfiguration backend = 1;
+
+  // Add a prefix to the instance name of all requests forwarded to this
+  // backend.
+  string add_instance_name_prefix = 2;
 }

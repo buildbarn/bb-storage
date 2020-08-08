@@ -69,9 +69,9 @@ $ cat config/bb_storage.jsonnet
     authenticationPolicy: { allow: {} },
   }],
   schedulers: {
-    bar: { address: 'bar-scheduler:8981' },
+    bar: { endpoint: { address: 'bar-scheduler:8981' } },
   },
-  allowAcUpdatesForInstances: ['foo'],
+  allowAcUpdatesForInstanceNamePrefixes: ['foo'],
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 
