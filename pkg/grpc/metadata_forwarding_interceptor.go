@@ -15,18 +15,15 @@ func forwardMetadataHeaders(ctx context.Context, headers []string) context.Conte
 
 	// Turn all matching headers into a flat sequence of key-value
 	// pairs, as required by metadata.AppendToOutgoingContext().
-	var pairs []string
+	var headerValues MetadataHeaderValues
 	for _, key := range headers {
-		values := md.Get(key)
-		for _, value := range values {
-			pairs = append(pairs, key, value)
-		}
+		headerValues.Add(key, md.Get(key))
 	}
 
-	if len(pairs) == 0 {
+	if len(headerValues) == 0 {
 		return ctx
 	}
-	return metadata.AppendToOutgoingContext(ctx, pairs...)
+	return metadata.AppendToOutgoingContext(ctx, headerValues...)
 }
 
 // NewMetadataForwardingUnaryClientInterceptor creates a gRPC request

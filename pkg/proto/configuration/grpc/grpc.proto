@@ -55,6 +55,19 @@ message ClientConfiguration {
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
   ClientOAuthConfiguration oauth = 6;
+
+  // List of gRPC metadata headers to forward from the calling context,
+  // and to reuse in successive requests.
+  //
+  // This option is useful when bb_storage is used as a personal proxy.
+  // It allows clients (e.g., Bazel) to inject credentials into
+  // bb_storage, thereby allowing other clients to access backends
+  // without any further authentication.
+  //
+  // NOTE: Using this option in networked and multi-user environments is
+  // strongly discouraged, as it allows users to hijack each other's
+  // credentials.
+  repeated string forward_and_reuse_metadata = 7;
 }
 
 message ClientKeepaliveConfiguration {

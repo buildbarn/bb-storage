@@ -14,10 +14,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestAddMetadataUnaryClientInterceptor(t *testing.T) {
+func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	interceptor := bb_grpc.NewAddMetadataUnaryClientInterceptor([]string{"header", "value"})
+	var headerValues bb_grpc.MetadataHeaderValues
+	headerValues.Add("header", []string{"value"})
+	interceptor := bb_grpc.NewMetadataAddingUnaryClientInterceptor(headerValues)
 	invoker := mock.NewMockUnaryInvoker(ctrl)
 	req := &empty.Empty{}
 	resp := &empty.Empty{}
@@ -43,10 +45,12 @@ func TestAddMetadataUnaryClientInterceptor(t *testing.T) {
 
 }
 
-func TestAddMetadataStreamClientInterceptor(t *testing.T) {
+func TestMetadataAddingStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	interceptor := bb_grpc.NewAddMetadataStreamClientInterceptor([]string{"header", "value"})
+	var headerValues bb_grpc.MetadataHeaderValues
+	headerValues.Add("header", []string{"value"})
+	interceptor := bb_grpc.NewMetadataAddingStreamClientInterceptor(headerValues)
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}
 	streamer := mock.NewMockStreamer(ctrl)
 	clientStream := mock.NewMockClientStream(ctrl)

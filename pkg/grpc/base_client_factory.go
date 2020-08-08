@@ -98,22 +98,25 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 			NewMetadataForwardingStreamClientInterceptor(headers))
 	}
 
-	// Optional: set metadata.
-	if md := config.AddMetadata; len(md) > 0 {
-		// convert []*configuration.ClientConfigurationHeaderValues to pairs
-		pairs := []string{}
-		for _, headerValues := range md {
-			header := headerValues.Header
-			for _, val := range headerValues.Values {
-				pairs = append(pairs, header, val)
-			}
+	// Optional: add metadata.
+	if headers := config.AddMetadata; len(headers) > 0 {
+		var headerValues MetadataHeaderValues
+		for _, entry := range headers {
+			headerValues.Add(entry.Header, entry.Values)
 		}
 		unaryInterceptors = append(
 			unaryInterceptors,
-			NewAddMetadataUnaryClientInterceptor(pairs))
+			NewMetadataAddingUnaryClientInterceptor(headerValues))
 		streamInterceptors = append(
 			streamInterceptors,
-			NewAddMetadataStreamClientInterceptor(pairs))
+			NewMetadataAddingStreamClientInterceptor(headerValues))
+	}
+
+	// Optional: metadata forwarding with reuse.
+	if headers := config.ForwardAndReuseMetadata; len(headers) > 0 {
+		interceptor := NewMetadataForwardingAndReusingInterceptor(headers)
+		unaryInterceptors = append(unaryInterceptors, interceptor.InterceptUnaryClient)
+		streamInterceptors = append(streamInterceptors, interceptor.InterceptStreamClient)
 	}
 
 	dialOptions = append(
