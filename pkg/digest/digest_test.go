@@ -249,6 +249,20 @@ func TestDigestGetKey(t *testing.T) {
 		d.GetKey(digest.KeyWithInstance))
 }
 
+func TestDigestGetHashXAttrName(t *testing.T) {
+	for _, e := range []struct{ hash, xattrName string }{
+		{"8b1a9953c4611296a827abf8c47804d7", "user.buildbarn.hash.md5"},
+		{"f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0", "user.buildbarn.hash.sha1"},
+		{"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", "user.buildbarn.hash.sha256"},
+		{"3519fe5ad2c596efe3e276a6f351b8fc0b03db861782490d45f7598ebd0ab5fd5520ed102f38c4a5ec834e98668035fc", "user.buildbarn.hash.sha384"},
+		{"3615f80c9d293ed7402687f94b22d58e529b8cc7916f8fac7fddf7fbd5af4cf777d3d795a7a00a16bf7e7f3fb9561ee9baae480da9fe7a18769e71886b03f315", "user.buildbarn.hash.sha512"},
+	} {
+		require.Equal(t,
+			e.xattrName,
+			digest.MustNewDigest("hello", e.hash, 123).GetHashXAttrName())
+	}
+}
+
 func TestDigestString(t *testing.T) {
 	require.Equal(
 		t,

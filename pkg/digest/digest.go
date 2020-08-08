@@ -242,6 +242,27 @@ func (d Digest) GetKey(format KeyFormat) string {
 	}
 }
 
+// GetHashXAttrName returns the extended file attribute retrievable
+// through getxattr() that can be used to store a cached copy of the
+// object's hash.
+func (d Digest) GetHashXAttrName() string {
+	hashEnd, _, _ := d.unpack()
+	switch hashEnd {
+	case md5.Size * 2:
+		return "user.buildbarn.hash.md5"
+	case sha1.Size * 2:
+		return "user.buildbarn.hash.sha1"
+	case sha256.Size * 2:
+		return "user.buildbarn.hash.sha256"
+	case sha512.Size384 * 2:
+		return "user.buildbarn.hash.sha384"
+	case sha512.Size * 2:
+		return "user.buildbarn.hash.sha512"
+	default:
+		panic("Digest hash is of unknown type")
+	}
+}
+
 func (d Digest) String() string {
 	return d.GetKey(KeyWithInstance)
 }
