@@ -500,6 +500,11 @@ message ReadFallbackBlobAccessConfiguration {
 
   // Backend from which data is attempted to be read last.
   BlobAccessConfiguration secondary = 2;
+
+  // The replication strategy that should be used to copy objects from
+  // the secondary backend to the primary backend. If unset, objects
+  // will not be copied.
+  BlobReplicatorConfiguration replicator = 3;
 }
 
 message ReferenceExpandingBlobAccessConfiguration {
