@@ -84,20 +84,20 @@ func (eh *readFallbackErrorHandler) OnError(observedErr error) (buffer.Buffer, e
 	}
 	if eh.secondary == nil {
 		// We already tried the secondary below and got another
-		// codes.NotFound, so just return that error
+		// codes.NotFound, so just return that error.
 		return nil, observedErr
 	}
 
 	if eh.replicator != nil {
-		// Run the replicator, if we have one
+		// Run the replicator, if we have one.
 		r := eh.replicator
 		eh.replicator = nil
-		// Don't use the secondary if we use a replicator
+		// Don't use the secondary if we use a replicator.
 		eh.secondary = nil
 		return r.ReplicateSingle(eh.context, eh.digest), nil
 	}
 
-	// No replicator, so just read from secondary
+	// No replicator, so just read from secondary.
 	b := eh.secondary
 	eh.secondary = nil
 	return b.Get(eh.context, eh.digest), nil
