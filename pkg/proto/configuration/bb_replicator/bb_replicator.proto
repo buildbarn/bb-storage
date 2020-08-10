@@ -21,7 +21,7 @@ message ApplicationConfiguration {
   // Content Addressable Storage where data needs to be written.
   buildbarn.configuration.blobstore.BlobAccessConfiguration sink = 4;
 
-  // Content Addressable Storage where data needs to be written.
+  // Configuration for replication.
   buildbarn.configuration.blobstore.BlobReplicatorConfiguration replicator = 5;
 
   // Maximum Protobuf message size to unmarshal.
