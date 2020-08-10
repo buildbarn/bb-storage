@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,8 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
-	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
+	replicator := replication.NewNoopBlobReplicator(secondary)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("PrimarySuccess", func(t *testing.T) {

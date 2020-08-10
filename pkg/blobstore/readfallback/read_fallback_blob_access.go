@@ -37,7 +37,6 @@ func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest)
 	return buffer.WithErrorHandler(
 		ba.primary.Get(ctx, digest),
 		&readFallbackErrorHandler{
-			secondary:  ba.secondary,
 			replicator: ba.replicator,
 			context:    ctx,
 			digest:     digest,
@@ -66,7 +65,6 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 }
 
 type readFallbackErrorHandler struct {
-	secondary  blobstore.BlobAccess
 	replicator replication.BlobReplicator
 	context    context.Context
 	digest     digest.Digest
@@ -77,30 +75,21 @@ func (eh *readFallbackErrorHandler) OnError(observedErr error) (buffer.Buffer, e
 		// One of the backends returned an error other than
 		// NOT_FOUND. Prepend the name of the backend to make
 		// debugging easier.
-		if eh.secondary != nil {
+		if eh.replicator != nil {
 			return nil, util.StatusWrap(observedErr, "Primary")
 		}
 		return nil, util.StatusWrap(observedErr, "Secondary")
 	}
-	if eh.secondary == nil {
+	if eh.replicator == nil {
 		// We already tried the secondary below and got another
 		// codes.NotFound, so just return that error.
 		return nil, observedErr
 	}
 
-	if eh.replicator != nil {
-		// Run the replicator, if we have one.
-		r := eh.replicator
-		eh.replicator = nil
-		// Don't use the secondary if we use a replicator.
-		eh.secondary = nil
-		return r.ReplicateSingle(eh.context, eh.digest), nil
-	}
-
-	// No replicator, so just read from secondary.
-	b := eh.secondary
-	eh.secondary = nil
-	return b.Get(eh.context, eh.digest), nil
+	// Run the replicator.
+	r := eh.replicator
+	eh.replicator = nil
+	return r.ReplicateSingle(eh.context, eh.digest), nil
 }
 
 func (eh *readFallbackErrorHandler) Done() {}

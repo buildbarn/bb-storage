@@ -388,7 +388,9 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 			return nil, err
 		}
 		var replicator replication.BlobReplicator
-		if backend.ReadFallback.Replicator != nil {
+		if backend.ReadFallback.Replicator == nil {
+			replicator = replication.NewNoopBlobReplicator(secondary)
+		} else {
 			var err error
 			replicator, err = NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary, primary, creator)
 			if err != nil {

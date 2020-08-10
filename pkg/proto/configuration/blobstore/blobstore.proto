@@ -558,6 +558,10 @@ message BlobReplicatorConfiguration {
     // dedicated bb_replicator instance use this strategy, replication
     // throughput is bounded globally.
     QueuedBlobReplicatorConfiguration queued = 3;
+
+    // No replication will be performed. This can be useful when one
+    // or more of the backends have their contents managed externally.
+    google.protobuf.Empty noop = 4;
   }
 }
 

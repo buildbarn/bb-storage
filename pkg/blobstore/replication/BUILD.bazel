@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "blob_replicator.go",
         "local_blob_replicator.go",
+        "noop_blob_replicator.go",
         "queued_blob_replicator.go",
         "remote_blob_replicator.go",
         "replicator_server.go",

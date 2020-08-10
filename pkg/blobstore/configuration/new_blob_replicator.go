@@ -19,6 +19,8 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Local:
 		return replication.NewLocalBlobReplicator(source, sink), nil
+	case *pb.BlobReplicatorConfiguration_Noop:
+		return replication.NewNoopBlobReplicator(source), nil
 	case *pb.BlobReplicatorConfiguration_Queued:
 		base, err := NewBlobReplicatorFromConfiguration(mode.Queued.Base, source, sink, creator)
 		if err != nil {
