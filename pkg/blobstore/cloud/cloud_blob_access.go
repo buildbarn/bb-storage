@@ -1,9 +1,10 @@
-package blobstore
+package cloud
 
 import (
 	"context"
 	"log"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -17,18 +18,20 @@ import (
 type cloudBlobAccess struct {
 	bucket            *blob.Bucket
 	keyPrefix         string
-	readBufferFactory ReadBufferFactory
+	readBufferFactory blobstore.ReadBufferFactory
 	digestKeyFormat   digest.KeyFormat
+	beforeCopy        BeforeCopyFunc
 }
 
 // NewCloudBlobAccess creates a BlobAccess that uses a cloud-based blob storage
 // as a backend.
-func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat) BlobAccess {
+func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory blobstore.ReadBufferFactory, digestKeyFormat digest.KeyFormat, beforeCopy BeforeCopyFunc) blobstore.BlobAccess {
 	return &cloudBlobAccess{
 		bucket:            bucket,
 		keyPrefix:         keyPrefix,
 		readBufferFactory: readBufferFactory,
 		digestKeyFormat:   digestKeyFormat,
+		beforeCopy:        beforeCopy,
 	}
 }
 
@@ -77,13 +80,24 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 
 func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	missing := digest.NewSetBuilder()
+
 	for _, blobDigest := range digests.Items() {
-		if exists, err := ba.bucket.Exists(ctx, ba.getKey(blobDigest)); err != nil {
-			return digest.EmptySet, err
-		} else if !exists {
+		key := ba.getKey(blobDigest)
+		// Touch the object to update its modification time, so that cloud expiry will be LRU
+		err := ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
+			BeforeCopy: ba.beforeCopy,
+		})
+		switch gcerrors.Code(err) {
+		case gcerrors.OK:
+			// Not missing
+		case gcerrors.NotFound:
+			// Missing
 			missing.Add(blobDigest)
+		default:
+			return digest.EmptySet, err
 		}
 	}
+
 	return missing.Build(), nil
 }
 

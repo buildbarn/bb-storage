@@ -293,6 +293,30 @@ message S3BlobAccessConfiguration {
 
   // AWS access options and credentials.
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 7;
+
+  // When the object becomes older than this age, the next FindMissing
+  // call will refresh it by updating the "Used" metadata field.
+  //
+  // This can be combined with an externally configured expiration
+  // policy to give LRU-like cache behaviour. For example, if you
+  // configure an expiration policy which deletes objects that are
+  // more than 7 days old, and set this field to 1d, then objects
+  // will expire sometime between 6 and 7 days since the last time
+  // they were used.
+  //
+  // AWS S3 only runs expiry once per day, so it is not possible to
+  // get more accuracy than 1d. Other S3 implementations may
+  // vary. Note that the AWS documentation persistently uses the term
+  // "creation date" to mean "last modified date", which is mentioned
+  // on
+  // https://docs.aws.amazon.com/AmazonS3/latest/dev/intro-lifecycle-rules.html
+  // but not on most other documentation pages. AWS S3 expiration is
+  // based on last modified date.
+  //
+  // Updating the object is billed as a COPY operation, so setting
+  // this too low may increase costs - however, there is no data
+  // transfer involved, so the cost is expected to be small.
+  google.protobuf.Duration minimum_refresh_age = 8;
 }
 
 message ShardingBlobAccessConfiguration {

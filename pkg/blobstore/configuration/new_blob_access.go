@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cloud"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -76,7 +77,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
 				DigestKeyFormat: digestKeyFormat,
 			}, "cloud", nil
 		case *pb.CloudBlobAccessConfiguration_Azure:
@@ -91,7 +92,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
 				DigestKeyFormat: digestKeyFormat,
 			}, "azure", nil
 		case *pb.CloudBlobAccessConfiguration_Gcs:
@@ -115,7 +116,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
 				DigestKeyFormat: digestKeyFormat,
 			}, "gcs", nil
 		case *pb.CloudBlobAccessConfiguration_S3:
@@ -128,8 +129,12 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			if err != nil {
 				return BlobAccessInfo{}, "", err
 			}
+			minRefreshAge, err := ptypes.Duration(backendConfig.S3.MinimumRefreshAge)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain S3 refresh age")
+			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, cloud.NewS3CopyMutator(minRefreshAge, clock.SystemClock)),
 				DigestKeyFormat: digestKeyFormat,
 			}, "s3", nil
 		default:

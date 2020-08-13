@@ -19,6 +19,7 @@ go_library(
     deps = [
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/circular:go_default_library",
+        "//pkg/blobstore/cloud:go_default_library",
         "//pkg/blobstore/completenesschecking:go_default_library",
         "//pkg/blobstore/grpcclients:go_default_library",
         "//pkg/blobstore/local:go_default_library",
