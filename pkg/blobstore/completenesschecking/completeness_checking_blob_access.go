@@ -8,79 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
-
-// findMissingQueue is a helper for calling BlobAccess.FindMissing() in
-// batches, as opposed to calling it for individual digests.
-type findMissingQueue struct {
-	context                   context.Context
-	instanceName              digest.InstanceName
-	contentAddressableStorage blobstore.BlobAccess
-	batchSize                 int
-
-	pending digest.SetBuilder
-}
-
-// deriveDigest converts a digest embedded into an action result from
-// the wire format to an in-memory representation. If that fails, we
-// assume that some data corruption has occurred. In that case, we
-// should destroy the action result.
-func (q *findMissingQueue) deriveDigest(blobDigest *remoteexecution.Digest) (digest.Digest, error) {
-	derivedDigest, err := q.instanceName.NewDigestFromProto(blobDigest)
-	if err != nil {
-		return digest.BadDigest, util.StatusWrapWithCode(err, codes.NotFound, "Action result contained malformed digest")
-	}
-	return derivedDigest, err
-}
-
-// Add a digest to the list of digests that are pending to be checked
-// for existence in the Content Addressable Storage.
-func (q *findMissingQueue) add(blobDigest *remoteexecution.Digest) error {
-	if blobDigest != nil {
-		derivedDigest, err := q.deriveDigest(blobDigest)
-		if err != nil {
-			return err
-		}
-
-		if q.pending.Length() >= q.batchSize {
-			if err := q.finalize(); err != nil {
-				return err
-			}
-			q.pending = digest.NewSetBuilder()
-		}
-		q.pending.Add(derivedDigest)
-	}
-	return nil
-}
-
-// AddDirectory adds all digests contained with a directory to the list
-// of digests pending to be checked for existence.
-func (q *findMissingQueue) addDirectory(directory *remoteexecution.Directory) error {
-	if directory == nil {
-		return nil
-	}
-	for _, child := range directory.Files {
-		if err := q.add(child.Digest); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Finalize by checking the last batch of digests for existence.
-func (q *findMissingQueue) finalize() error {
-	missing, err := q.contentAddressableStorage.FindMissing(q.context, q.pending.Build())
-	if err != nil {
-		return util.StatusWrap(err, "Failed to determine existence of child objects")
-	}
-	if digest, ok := missing.First(); ok {
-		return status.Errorf(codes.NotFound, "Object %s referenced by the action result is not present in the Content Addressable Storage", digest)
-	}
-	return nil
-}
 
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess
@@ -113,13 +41,12 @@ func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, content
 }
 
 func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, instanceName digest.InstanceName, actionResult *remoteexecution.ActionResult) error {
-	findMissingQueue := findMissingQueue{
-		context:                   ctx,
-		instanceName:              instanceName,
-		contentAddressableStorage: ba.contentAddressableStorage,
-		batchSize:                 ba.batchSize,
-		pending:                   digest.NewSetBuilder(),
-	}
+	findMissingQueue := NewFindMissingQueue(
+		ctx,
+		instanceName,
+		ba.contentAddressableStorage,
+		ba.batchSize,
+	)
 
 	// Iterate over all remoteexecution.Digest fields contained
 	// within the ActionResult. Check the existence of output
@@ -127,19 +54,19 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	// later on. GetTree() may not necessarily cause those objects
 	// to be touched.
 	for _, outputFile := range actionResult.OutputFiles {
-		if err := findMissingQueue.add(outputFile.Digest); err != nil {
+		if err := findMissingQueue.Add(outputFile.Digest); err != nil {
 			return err
 		}
 	}
 	for _, outputDirectory := range actionResult.OutputDirectories {
-		if err := findMissingQueue.add(outputDirectory.TreeDigest); err != nil {
+		if err := findMissingQueue.Add(outputDirectory.TreeDigest); err != nil {
 			return err
 		}
 	}
-	if err := findMissingQueue.add(actionResult.StdoutDigest); err != nil {
+	if err := findMissingQueue.Add(actionResult.StdoutDigest); err != nil {
 		return err
 	}
-	if err := findMissingQueue.add(actionResult.StderrDigest); err != nil {
+	if err := findMissingQueue.Add(actionResult.StderrDigest); err != nil {
 		return err
 	}
 
@@ -147,7 +74,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	// within output directories (remoteexecution.Tree objects)
 	// referenced by the ActionResult.
 	for _, outputDirectory := range actionResult.OutputDirectories {
-		treeDigest, err := findMissingQueue.deriveDigest(outputDirectory.TreeDigest)
+		treeDigest, err := findMissingQueue.DeriveDigest(outputDirectory.TreeDigest)
 		if err != nil {
 			return err
 		}
@@ -156,16 +83,16 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			return util.StatusWrapf(err, "Failed to fetch output directory %#v", outputDirectory.Path)
 		}
 		tree := treeMessage.(*remoteexecution.Tree)
-		if err := findMissingQueue.addDirectory(tree.Root); err != nil {
+		if err := findMissingQueue.AddDirectory(tree.Root); err != nil {
 			return err
 		}
 		for _, child := range tree.Children {
-			if err := findMissingQueue.addDirectory(child); err != nil {
+			if err := findMissingQueue.AddDirectory(child); err != nil {
 				return err
 			}
 		}
 	}
-	return findMissingQueue.finalize()
+	return findMissingQueue.Finalize()
 }
 
 func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {

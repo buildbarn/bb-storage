@@ -56,7 +56,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.Reparable(actionDigest, repairFunc.Call)))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"))
+		require.Equal(t, err, status.Error(codes.NotFound, "Malformed digest found while checking for result completeness: Unknown digest hash length: 24 characters"))
 	})
 
 	t.Run("MissingInput", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"))
+		require.Equal(t, err, status.Error(codes.NotFound, "Referenced object 8b1a9953c4611296a827abf8c47804d7-5-hello is not present in the Content Addressable Storage"))
 	})
 
 	t.Run("FindMissingError", func(t *testing.T) {

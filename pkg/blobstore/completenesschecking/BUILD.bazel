@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["completeness_checking_blob_access.go"],
+    srcs = [
+        "completeness_checking_blob_access.go",
+        "find_missing_queue.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking",
     visibility = ["//visibility:public"],
     deps = [
