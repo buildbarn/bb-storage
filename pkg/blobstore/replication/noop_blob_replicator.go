@@ -17,15 +17,15 @@ type noopBlobReplicator struct {
 //
 // It is useful for the BlobAccess variants where replication is optional.
 func NewNoopBlobReplicator(source blobstore.BlobAccess) BlobReplicator {
-	return &noopBlobReplicator{
+	return noopBlobReplicator{
 		source: source,
 	}
 }
 
-func (br *noopBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (br noopBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return br.source.Get(ctx, digest)
 }
 
-func (br *noopBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (br noopBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	return nil
 }

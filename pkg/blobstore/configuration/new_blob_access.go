@@ -13,7 +13,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
@@ -387,15 +386,9 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		if err != nil {
 			return nil, err
 		}
-		var replicator replication.BlobReplicator
-		if backend.ReadFallback.Replicator == nil {
-			replicator = replication.NewNoopBlobReplicator(secondary)
-		} else {
-			var err error
-			replicator, err = NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary, primary, creator)
-			if err != nil {
-				return nil, err
-			}
+		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary, primary, creator)
+		if err != nil {
+			return nil, err
 		}
 		implementation = readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 	case *pb.BlobAccessConfiguration_Demultiplexing:
