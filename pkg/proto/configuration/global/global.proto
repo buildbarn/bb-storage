@@ -68,6 +68,10 @@ message TracingConfiguration {
 
   // Whether or not all traces should be sampled.
   bool always_sample = 4;
+
+  // Write traces to stderr logging. This is verbose and only intended
+  // for debugging.
+  bool log_to_stderr = 5;
 }
 
 message Configuration {

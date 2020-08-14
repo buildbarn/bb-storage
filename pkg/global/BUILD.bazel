@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["apply_configuration.go"],
+    srcs = [
+        "apply_configuration.go",
+        "stderr_exporter.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/global",
     visibility = ["//visibility:public"],
     deps = [
@@ -17,5 +20,6 @@ go_library(
         "@io_opencensus_go_contrib_exporter_jaeger//:go_default_library",
         "@io_opencensus_go_contrib_exporter_prometheus//:go_default_library",
         "@io_opencensus_go_contrib_exporter_stackdriver//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
     ],
 )
