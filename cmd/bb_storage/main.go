@@ -132,6 +132,7 @@ func main() {
 	buildQueue = builder.NewUpdateEnabledTogglingBuildQueue(
 		buildQueue,
 		allowActionCacheUpdatesTrie.Contains)
+	buildQueue = builder.NewTracingBuildQueue(buildQueue)
 
 	go func() {
 		log.Fatal(
