@@ -7,13 +7,12 @@ This protocol is used by tools such as [Bazel](https://bazel.build/),
 [recc](https://gitlab.com/bloomberg/recc) to cache and optionally
 execute build actions remotely.
 
-This repository provides a copy of Buildbarn's storage daemon. This
-daemon can be used to build a scalable build cache. On its own, it
-cannot be used to execute build actions remotely. When using only this
-storage daemon, build actions will still be executed on the local
-system. This daemon does, however, facilitate remote execution by
-allowing execution requests to be forwarded to a separate remote
-execution service.
+This repository provides Buildbarn's storage daemon. This daemon can be
+used to build a scalable build cache. On its own, it cannot be used to
+execute build actions remotely. When using only this storage daemon,
+build actions will still be executed on the local system. This daemon
+does, however, facilitate remote execution by allowing execution
+requests to be forwarded to a separate remote execution service.
 
 This storage daemon can be configured to use a whole series of backends.
 Examples include Redis and S3. It also provides a local on-disk storage
