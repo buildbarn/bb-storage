@@ -1,9 +1,11 @@
-package blobstore
+package readfallback
 
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -12,8 +14,9 @@ import (
 )
 
 type readFallbackBlobAccess struct {
-	primary   BlobAccess
-	secondary BlobAccess
+	primary    blobstore.BlobAccess
+	secondary  blobstore.BlobAccess
+	replicator replication.BlobReplicator
 }
 
 // NewReadFallbackBlobAccess creates a decorator for BlobAccess that
@@ -22,10 +25,11 @@ type readFallbackBlobAccess struct {
 //
 // This decorator can be used to integrate external data sets into the
 // system, e.g. by combining it with ReferenceExpandingBlobAccess.
-func NewReadFallbackBlobAccess(primary BlobAccess, secondary BlobAccess) BlobAccess {
+func NewReadFallbackBlobAccess(primary blobstore.BlobAccess, secondary blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readFallbackBlobAccess{
-		primary:   primary,
-		secondary: secondary,
+		primary:    primary,
+		secondary:  secondary,
+		replicator: replicator,
 	}
 }
 
@@ -33,9 +37,9 @@ func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest)
 	return buffer.WithErrorHandler(
 		ba.primary.Get(ctx, digest),
 		&readFallbackErrorHandler{
-			secondary: ba.secondary,
-			context:   ctx,
-			digest:    digest,
+			replicator: ba.replicator,
+			context:    ctx,
+			digest:     digest,
 		})
 }
 
@@ -61,9 +65,9 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 }
 
 type readFallbackErrorHandler struct {
-	secondary BlobAccess
-	context   context.Context
-	digest    digest.Digest
+	replicator replication.BlobReplicator
+	context    context.Context
+	digest     digest.Digest
 }
 
 func (eh *readFallbackErrorHandler) OnError(observedErr error) (buffer.Buffer, error) {
@@ -71,19 +75,21 @@ func (eh *readFallbackErrorHandler) OnError(observedErr error) (buffer.Buffer, e
 		// One of the backends returned an error other than
 		// NOT_FOUND. Prepend the name of the backend to make
 		// debugging easier.
-		if eh.secondary != nil {
+		if eh.replicator != nil {
 			return nil, util.StatusWrap(observedErr, "Primary")
 		}
 		return nil, util.StatusWrap(observedErr, "Secondary")
 	}
-	if eh.secondary == nil {
-		// Both backends returned NOT_FOUND. Don't bother
-		// prepending the name of the backend.
+	if eh.replicator == nil {
+		// We already tried the secondary below and got another
+		// codes.NotFound, so just return that error.
 		return nil, observedErr
 	}
-	ba := eh.secondary
-	eh.secondary = nil
-	return ba.Get(eh.context, eh.digest), nil
+
+	// Run the replicator.
+	r := eh.replicator
+	eh.replicator = nil
+	return r.ReplicateSingle(eh.context, eh.digest), nil
 }
 
 func (eh *readFallbackErrorHandler) Done() {}

@@ -1,12 +1,12 @@
-package blobstore_test
+package readfallback_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,8 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
-	blobAccess := blobstore.NewReadFallbackBlobAccess(primary, secondary)
+	replicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("PrimarySuccess", func(t *testing.T) {
@@ -49,7 +50,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// causes it to read it from the secondary backend.
 		primary.EXPECT().Get(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		secondary.EXPECT().Get(ctx, helloDigest).
+		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -63,7 +64,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// subsequently fails.
 		primary.EXPECT().Get(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		secondary.EXPECT().Get(ctx, helloDigest).
+		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -76,7 +77,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// 'Secondary' to disambiguate.
 		primary.EXPECT().Get(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		secondary.EXPECT().Get(ctx, helloDigest).
+		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -89,7 +90,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
-	blobAccess := blobstore.NewReadFallbackBlobAccess(primary, secondary)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
@@ -130,7 +131,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
-	blobAccess := blobstore.NewReadFallbackBlobAccess(primary, secondary)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
 
 	allDigests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", "00000000000000000000000000000000", 100)).
