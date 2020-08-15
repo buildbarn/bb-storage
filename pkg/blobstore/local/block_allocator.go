@@ -8,7 +8,7 @@ import (
 // Block of storage that contains a sequence of blobs. Buffers returned
 // by Get() must remain valid, even if Release() is called.
 type Block interface {
-	Get(digest digest.Digest, offsetBytes int64, sizeBytes int64) buffer.Buffer
+	Get(digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
 	Put(offsetBytes int64, b buffer.Buffer) error
 	Release()
 }

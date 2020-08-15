@@ -133,10 +133,6 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "8b1a9953c4611296a827abf8c47804d7-5-hello: Failed to read input: Server on fire"),
-			replicator.ReplicateMultiple(
-				ctx,
-				digest.NewSetBuilder().
-					Add(helloDigest).
-					Build()))
+			replicator.ReplicateMultiple(ctx, helloDigest.ToSingletonSet()))
 	})
 }

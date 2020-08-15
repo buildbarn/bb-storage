@@ -28,7 +28,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
 	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigests := digest.NewSetBuilder().Add(helloDigest).Build()
+	helloDigests := helloDigest.ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// The first time the object is requested, it should be
@@ -126,9 +126,7 @@ func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 		source,
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
-	helloDigests := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-		Build()
+	helloDigests := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// The object should be replicated when requested initially.

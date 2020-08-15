@@ -12,13 +12,13 @@ import (
 
 // NewBlobReplicatorFromConfiguration creates a BlobReplicator object
 // based on a configuration file.
-func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink blobstore.BlobAccess, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
+func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Local:
-		return replication.NewLocalBlobReplicator(source, sink), nil
+		return replication.NewLocalBlobReplicator(source, sink.BlobAccess), nil
 	case *pb.BlobReplicatorConfiguration_Noop:
 		return replication.NewNoopBlobReplicator(source), nil
 	case *pb.BlobReplicatorConfiguration_Queued:
@@ -26,7 +26,7 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 		if err != nil {
 			return nil, err
 		}
-		existenceCache, err := digest.NewExistenceCacheFromConfiguration(mode.Queued.ExistenceCache, creator.GetDigestKeyFormat(), "QueuedBlobReplicator")
+		existenceCache, err := digest.NewExistenceCacheFromConfiguration(mode.Queued.ExistenceCache, sink.DigestKeyFormat, "QueuedBlobReplicator")
 		if err != nil {
 			return nil, err
 		}

@@ -5,12 +5,14 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestLocalBlobAccessAllocationPattern(t *testing.T) {
@@ -18,6 +20,7 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 
 	digestLocationMap := mock.NewMockDigestLocationMap(ctrl)
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
 
 	var blocks []*mock.MockBlock
 	for i := 0; i < 8; i++ {
@@ -28,7 +31,8 @@ func TestLocalBlobAccessAllocationPattern(t *testing.T) {
 	blobAccess, err := local.NewLocalBlobAccess(
 		digestLocationMap,
 		blockAllocator,
-		blobstore.CASStorageType,
+		errorLogger,
+		digest.KeyWithoutInstance,
 		"cas",
 		/* sectorSizeBytes = */ 1,
 		/* blockSectorCount = */ 16,
@@ -63,6 +67,7 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 
 	digestLocationMap := mock.NewMockDigestLocationMap(ctrl)
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
 
 	block2 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlock().Return(block2, nil)
@@ -71,7 +76,8 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 	blobAccess, err := local.NewLocalBlobAccess(
 		digestLocationMap,
 		blockAllocator,
-		blobstore.CASStorageType,
+		errorLogger,
+		digest.KeyWithoutInstance,
 		"cas",
 		/* sectorSizeBytes = */ 1,
 		/* blockSectorCount = */ 5,
@@ -142,7 +148,7 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 		SizeBytes:   5,
 	}, nil).Times(2)
 	gomock.InOrder(
-		block2.EXPECT().Get(digest1, int64(0), int64(5)).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		block2.EXPECT().Get(digest1, int64(0), int64(5), gomock.Any()).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
 		block2.EXPECT().Release())
 	block5 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlock().Return(block5, nil)
@@ -157,7 +163,7 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 		OffsetBytes: 0,
 		SizeBytes:   5,
 	})
-	missing, err := blobAccess.FindMissing(ctx, digest.NewSetBuilder().Add(digest1).Build())
+	missing, err := blobAccess.FindMissing(ctx, digest1.ToSingletonSet())
 	require.NoError(t, err)
 	require.Equal(t, digest.EmptySet, missing)
 
@@ -170,7 +176,7 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 		SizeBytes:   5,
 	}, nil)
 	gomock.InOrder(
-		block3.EXPECT().Get(digest2, int64(0), int64(5)).Return(buffer.NewValidatedBufferFromByteSlice([]byte("World"))),
+		block3.EXPECT().Get(digest2, int64(0), int64(5), gomock.Any()).Return(buffer.NewValidatedBufferFromByteSlice([]byte("World"))),
 		block3.EXPECT().Release())
 	block6 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlock().Return(block6, nil)
@@ -188,6 +194,100 @@ func TestLocalBlobAccessBlockRotationDuringRefreshInOldestBlock(t *testing.T) {
 	data, err := blobAccess.Get(ctx, digest2).ToByteSlice(10)
 	require.NoError(t, err)
 	require.Equal(t, []byte("World"), data)
+}
+
+func TestLocalBlobAccessDataIntegrityError(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	digestLocationMap := mock.NewMockDigestLocationMap(ctrl)
+	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
+
+	block2 := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block2, nil)
+	block3 := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block3, nil)
+	block4 := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block4, nil)
+	blobAccess, err := local.NewLocalBlobAccess(
+		digestLocationMap,
+		blockAllocator,
+		errorLogger,
+		digest.KeyWithoutInstance,
+		"cas",
+		/* sectorSizeBytes = */ 1,
+		/* blockSectorCount = */ 5,
+		/* oldBlocksCount = */ 1,
+		/* currentBlocksCount = */ 1,
+		/* newBlocksCount = */ 2)
+	require.NoError(t, err)
+
+	// Read a blob that corresponds with "Hello" from block 3. Let
+	// block 3 return the contents "xyzzy" instead. This should
+	// cause LocalBlobAccess to report that blocks 2 to 3 are
+	// discarded due to a data integrity error.
+	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloCompactDigest := local.NewCompactDigest("8b1a9953c4611296a827abf8c47804d7-5")
+	digestLocationMap.EXPECT().Get(helloCompactDigest, &local.LocationValidator{
+		OldestValidBlockID: 2,
+		NewestValidBlockID: 4,
+	}).Return(local.Location{
+		BlockID:     3,
+		OffsetBytes: 0,
+		SizeBytes:   5,
+	}, nil)
+	block3.EXPECT().Get(
+		helloDigest,
+		int64(0),
+		int64(5),
+		gomock.Any(),
+	).DoAndReturn(func(digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+		return buffer.NewCASBufferFromByteSlice(helloDigest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
+	})
+	invalidationWait := make(chan struct{})
+	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Discarded blocks 2 to 3 due to a data integrity error")).DoAndReturn(func(err error) {
+		close(invalidationWait)
+	})
+
+	_, err = blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
+	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+	<-invalidationWait
+
+	// Subsequent reads should no longer send requests to the
+	// digest-location map for blocks 2 and 3.
+	digestLocationMap.EXPECT().Get(helloCompactDigest, &local.LocationValidator{
+		OldestValidBlockID: 4,
+		NewestValidBlockID: 4,
+	}).Return(local.Location{}, status.Error(codes.NotFound, "Blob not found"))
+
+	_, err = blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
+	require.Equal(t, status.Error(codes.NotFound, "Blob not found"), err)
+
+	// Subsequent writes should also no longer consider block 3 to
+	// contain any useful space. It should immediately get rotated
+	// to make space for block 5. The blob should be placed in the
+	// first valid "new" block; block 4.
+	block5 := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block5, nil)
+	block4.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		data, err := b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+		return nil
+	})
+	digestLocationMap.EXPECT().Put(
+		helloCompactDigest,
+		&local.LocationValidator{
+			OldestValidBlockID: 4,
+			NewestValidBlockID: 5,
+		},
+		local.Location{
+			BlockID:     4,
+			OffsetBytes: 0,
+			SizeBytes:   5,
+		})
+
+	require.NoError(t, blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 }
 
 // TODO: Make unit testing coverage more complete.

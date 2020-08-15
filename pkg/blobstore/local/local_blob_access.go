@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
@@ -79,12 +80,12 @@ func (sb *sharedBlock) release() {
 // to nil pointer dereferences.
 type deadBlock struct{}
 
-func (db deadBlock) Get(digest digest.Digest, offset int64, sizeBytes int64) buffer.Buffer {
-	return buffer.NewBufferFromError(status.Error(codes.Internal, "Attempted to read blob from dead block"))
+func (db deadBlock) Get(digest digest.Digest, offset int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	panic("Attempted to read blob from dead block")
 }
 
 func (db deadBlock) Put(offset int64, b buffer.Buffer) error {
-	return status.Error(codes.Internal, "Attempted to write blob into dead block")
+	panic("Attempted to write blob into dead block")
 }
 
 func (db deadBlock) Release() {}
@@ -103,7 +104,8 @@ type localBlobAccess struct {
 	sectorSizeBytes       int
 	blockSectorCount      int64
 	blockAllocator        BlockAllocator
-	storageType           blobstore.StorageType
+	errorLogger           util.ErrorLogger
+	digestKeyFormat       digest.KeyFormat
 	desiredNewBlocksCount int
 
 	lock                        sync.Mutex
@@ -112,6 +114,7 @@ type localBlobAccess struct {
 	oldBlocks                   []oldBlock
 	currentBlocks               []*sharedBlock
 	newBlocks                   []newBlock
+	oldestBlockID               int
 	locationValidator           LocationValidator
 	allocationBlockIndex        int
 	allocationAttemptsRemaining int
@@ -189,7 +192,7 @@ func unixTime() float64 {
 // being LRU-like. Setting it too high is also not recommended, as this
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
-func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, storageType blobstore.StorageType, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
+func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator BlockAllocator, errorLogger util.ErrorLogger, digestKeyFormat digest.KeyFormat, name string, sectorSizeBytes int, blockSectorCount int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int) (blobstore.BlobAccess, error) {
 	localBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(localBlobAccessLastRemovedOldBlockInsertionTime)
 		prometheus.MustRegister(localBlobAccessOldBlobRotationToNew)
@@ -199,12 +202,14 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 		sectorSizeBytes:  sectorSizeBytes,
 		blockSectorCount: blockSectorCount,
 		blockAllocator:   blockAllocator,
-		storageType:      storageType,
+		errorLogger:      errorLogger,
+		digestKeyFormat:  digestKeyFormat,
 
 		digestLocationMap: digestLocationMap,
+		oldestBlockID:     1,
 		locationValidator: LocationValidator{
-			OldestBlockID: 1,
-			NewestBlockID: oldBlocksCount + currentBlocksCount + newBlocksCount,
+			OldestValidBlockID: oldBlocksCount + 1,
+			NewestValidBlockID: oldBlocksCount + currentBlocksCount + newBlocksCount,
 		},
 		desiredNewBlocksCount: newBlocksCount,
 
@@ -242,7 +247,7 @@ func NewLocalBlobAccess(digestLocationMap DigestLocationMap, blockAllocator Bloc
 
 // getBlock returns the block associated with a numerical block ID.
 func (ba *localBlobAccess) getBlock(blockID int) (block *sharedBlock, isOld bool) {
-	blockID -= ba.locationValidator.OldestBlockID
+	blockID -= ba.oldestBlockID
 	if blockID < len(ba.oldBlocks) {
 		return ba.oldBlocks[blockID].block, true
 	}
@@ -301,8 +306,11 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Locatio
 			ba.newBlocks = append(append([]newBlock{}, ba.newBlocks[1:]...), newBlock{
 				block: newSharedBlock(block),
 			})
-			ba.locationValidator.OldestBlockID++
-			ba.locationValidator.NewestBlockID++
+			ba.oldestBlockID++
+			if ba.locationValidator.OldestValidBlockID < ba.oldestBlockID {
+				ba.locationValidator.OldestValidBlockID = ba.oldestBlockID
+			}
+			ba.locationValidator.NewestValidBlockID++
 		}
 		ba.startAllocatingFromBlock(0)
 	}
@@ -315,7 +323,7 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Locatio
 				ba.allocationAttemptsRemaining--
 				newBlock.offset += sectors
 				return newBlock.block, Location{
-					BlockID: ba.locationValidator.OldestBlockID +
+					BlockID: ba.oldestBlockID +
 						len(ba.oldBlocks) +
 						len(ba.currentBlocks) +
 						ba.allocationBlockIndex,
@@ -328,8 +336,56 @@ func (ba *localBlobAccess) allocateSpace(sizeBytes int64) (*sharedBlock, Locatio
 	}
 }
 
+func (ba *localBlobAccess) discardCorruptedBlocks(blockID int) {
+	ba.lock.Lock()
+	oldestValidBlockID := ba.locationValidator.OldestValidBlockID
+	if oldestValidBlockID <= blockID {
+		// Prevent DigestLocationMap lookups resulting into
+		// access to blocks with data corruption.
+		ba.locationValidator.OldestValidBlockID = blockID + 1
+
+		// If any "new" blocks are affected, mark them fully
+		// used, so that no new blobs end up being placed in
+		// them.
+		oldestNewBlockID := ba.oldestBlockID + len(ba.oldBlocks) + len(ba.currentBlocks)
+		for i := range ba.newBlocks {
+			if oldestNewBlockID+i > blockID {
+				break
+			}
+			ba.newBlocks[i].offset = ba.blockSectorCount
+		}
+	}
+	ba.lock.Unlock()
+
+	if oldestValidBlockID <= blockID {
+		ba.errorLogger.Log(status.Errorf(codes.Internal, "Discarded blocks %d to %d due to a data integrity error", oldestValidBlockID, blockID))
+	}
+}
+
+func (ba *localBlobAccess) getDataIntegrityCallback(blockID int) buffer.DataIntegrityCallback {
+	return func(dataIsValid bool) {
+		if !dataIsValid {
+			// Data corruption was detected in one of the
+			// blobs. Though we could discard individual
+			// blobs selectively, this may lead to many
+			// failing requests if data corruption is
+			// widespread.
+			//
+			// Go ahead and effectively discard all of the
+			// blocks up to and including the one containing
+			// the data corruption. This keeps the number of
+			// request failures reduced to a minimum.
+			//
+			// This needs to happen in its own goroutine, as
+			// the DataIntegrityCallback can be called in
+			// places where ba.lock is held.
+			go ba.discardCorruptedBlocks(blockID)
+		}
+	}
+}
+
 func (ba *localBlobAccess) getCompactDigest(digest digest.Digest) CompactDigest {
-	return NewCompactDigest(ba.storageType.GetDigestKey(digest))
+	return NewCompactDigest(digest.GetKey(ba.digestKeyFormat))
 }
 
 func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
@@ -343,7 +399,7 @@ func (ba *localBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 	}
 
 	readBlock, isOld := ba.getBlock(readLocation.BlockID)
-	b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes)
+	b := readBlock.b.Get(digest, readLocation.OffsetBytes, readLocation.SizeBytes, ba.getDataIntegrityCallback(readLocation.BlockID))
 	if !isOld {
 		// Blob was found in a "new" or "current" block.
 		ba.lock.Unlock()
@@ -481,7 +537,7 @@ func (ba *localBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 			if readBlock, isOld := ba.getBlock(readLocation.BlockID); isOld {
 				// Blob is present and still old.
 				// Allocate space for a copy.
-				b := readBlock.b.Get(oldBlob.digest, readLocation.OffsetBytes, readLocation.SizeBytes)
+				b := readBlock.b.Get(oldBlob.digest, readLocation.OffsetBytes, readLocation.SizeBytes, ba.getDataIntegrityCallback(readLocation.BlockID))
 				writeBlock, writeLocation, err := ba.allocateSpace(readLocation.SizeBytes)
 				if err != nil {
 					b.Discard()

@@ -36,7 +36,7 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				exampleActionResultBytes,
-				buffer.Irreparable),
+				buffer.UserProvided),
 			errorHandler).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes, data)
@@ -48,8 +48,8 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
-				buffer.Irreparable), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
+				buffer.UserProvided), nil)
+		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
 			Return(nil, status.Error(codes.Internal, "Maximum number of retries reached"))
 		errorHandler.EXPECT().Done()
 
@@ -65,9 +65,9 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
-				buffer.Irreparable), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
-			Return(buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.Irreparable), nil)
+				buffer.UserProvided), nil)
+		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
+			Return(buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided), nil)
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
@@ -93,7 +93,7 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
-			buffer.NewCASBufferFromByteSlice(digest, []byte("Hello world"), buffer.Irreparable),
+			buffer.NewCASBufferFromByteSlice(digest, []byte("Hello world"), buffer.UserProvided),
 			errorHandler).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello world"), data)
@@ -102,8 +102,8 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	t.Run("RetriesFailed", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
-			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello"), buffer.Irreparable), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Buffer is 5 bytes in size, while 11 bytes were expected")).
+			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello"), buffer.UserProvided), nil)
+		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while 11 bytes were expected")).
 			Return(nil, status.Error(codes.Internal, "Maximum number of retries reached"))
 		errorHandler.EXPECT().Done()
 
@@ -116,9 +116,9 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	t.Run("RetriesSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
-			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello"), buffer.Irreparable), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Buffer is 5 bytes in size, while 11 bytes were expected")).
-			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello world"), buffer.Irreparable), nil)
+			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello"), buffer.UserProvided), nil)
+		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while 11 bytes were expected")).
+			Return(buffer.NewCASBufferFromByteSlice(digest, []byte("Hello world"), buffer.UserProvided), nil)
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
@@ -139,7 +139,7 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(nil, status.Error(codes.Internal, "No backends available"))
@@ -156,10 +156,10 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("XXXXXXworld"))
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Irreparable)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -180,13 +180,13 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Xyzzy "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		repairFunc1 := mock.NewMockRepairFunc(ctrl)
-		repairFunc1.EXPECT().Call().Return(nil)
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Reparable(digest, repairFunc1.Call))
+		dataIntegrityCallback1 := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback1.EXPECT().Call(false)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.BackendProvided(dataIntegrityCallback1.Call))
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
-		repairFunc2 := mock.NewMockRepairFunc(ctrl)
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Reparable(digest, repairFunc2.Call))
+		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.BackendProvided(dataIntegrityCallback2.Call))
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -212,7 +212,7 @@ func TestWithErrorHandlerOnCASBuffersReadAt(t *testing.T) {
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
-	b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.Irreparable)
+	b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.UserProvided)
 	b2 := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -233,7 +233,7 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 		reader1.EXPECT().Read().Return(exampleActionResultBytes[:10], nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader1, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(nil, status.Error(codes.Internal, "No backends available"))
@@ -247,13 +247,13 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 		reader1 := mock.NewMockReadCloser(ctrl)
 		reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close().Return(nil)
-		b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.UserProvided)
 
 		reader2 := mock.NewMockChunkReader(ctrl)
 		reader2.EXPECT().Read().Return(exampleActionResultBytes, nil)
 		reader2.EXPECT().Read().Return(nil, io.EOF)
 		reader2.EXPECT().Close()
-		b2 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader2, buffer.Irreparable)
+		b2 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader2, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -269,16 +269,16 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello"), nil)
 		reader1.EXPECT().Read().Return(nil, io.EOF)
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader1, buffer.UserProvided)
 
 		reader2 := mock.NewMockChunkReader(ctrl)
 		reader2.EXPECT().Read().Return(exampleActionResultBytes, nil)
 		reader2.EXPECT().Read().Return(nil, io.EOF)
 		reader2.EXPECT().Close()
-		b2 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader2, buffer.Irreparable)
+		b2 := buffer.NewCASBufferFromChunkReader(exampleActionResultDigest, reader2, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Buffer is 5 bytes in size, while 134 bytes were expected")).Return(b2, nil)
+		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while 134 bytes were expected")).Return(b2, nil)
 		errorHandler.EXPECT().Done()
 
 		// Operations like ToProto() may be safely retried, even
@@ -299,7 +299,7 @@ func TestWithErrorHandlerOnCASBuffersToByteSlice(t *testing.T) {
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
-	b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.Irreparable)
+	b1 := buffer.NewCASBufferFromReader(exampleActionResultDigest, reader1, buffer.UserProvided)
 	b2 := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -321,7 +321,7 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(nil, status.Error(codes.Internal, "No backends available"))
@@ -343,10 +343,10 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("XXXXXXworld"))
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Irreparable)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -378,13 +378,13 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Xyzzy "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		repairFunc1 := mock.NewMockRepairFunc(ctrl)
-		repairFunc1.EXPECT().Call().Return(nil)
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Reparable(digest, repairFunc1.Call))
+		dataIntegrityCallback1 := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback1.EXPECT().Call(false)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.BackendProvided(dataIntegrityCallback1.Call))
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
-		repairFunc2 := mock.NewMockRepairFunc(ctrl)
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Reparable(digest, repairFunc2.Call))
+		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.BackendProvided(dataIntegrityCallback2.Call))
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -417,7 +417,7 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(nil, status.Error(codes.Internal, "No backends available"))
@@ -434,10 +434,10 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Irreparable)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.UserProvided)
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("XXXXXXworld"))
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Irreparable)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.UserProvided)
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -459,13 +459,13 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 		reader1.EXPECT().Read().Return([]byte("Xyzzy "), nil)
 		reader1.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Connection closed"))
 		reader1.EXPECT().Close()
-		repairFunc1 := mock.NewMockRepairFunc(ctrl)
-		repairFunc1.EXPECT().Call().Return(nil)
-		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.Reparable(digest, repairFunc1.Call))
+		dataIntegrityCallback1 := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback1.EXPECT().Call(false)
+		b1 := buffer.NewCASBufferFromChunkReader(digest, reader1, buffer.BackendProvided(dataIntegrityCallback1.Call))
 
 		reader2 := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
-		repairFunc2 := mock.NewMockRepairFunc(ctrl)
-		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.Reparable(digest, repairFunc2.Call))
+		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
+		b2 := buffer.NewCASBufferFromReader(digest, reader2, buffer.BackendProvided(dataIntegrityCallback2.Call))
 
 		errorHandler := mock.NewMockErrorHandler(ctrl)
 		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Connection closed")).Return(b2, nil)
@@ -493,7 +493,7 @@ func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
-	b1 := buffer.NewCASBufferFromReader(digest, reader1, buffer.Irreparable)
+	b1 := buffer.NewCASBufferFromReader(digest, reader1, buffer.UserProvided)
 	b2 := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -518,7 +518,7 @@ func TestWithErrorHandlerOnCASBuffersCloneStream(t *testing.T) {
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
-	b1 := buffer.NewCASBufferFromReader(digest, reader1, buffer.Irreparable)
+	b1 := buffer.NewCASBufferFromReader(digest, reader1, buffer.UserProvided)
 	b2 := buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -551,8 +551,8 @@ func TestWithErrorHandlerOnCASBuffersDiscard(t *testing.T) {
 
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()
-	repairFunc := mock.NewMockRepairFunc(ctrl)
-	b1 := buffer.NewCASBufferFromChunkReader(exampleDigest, chunkReader, buffer.Reparable(exampleDigest, repairFunc.Call))
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	b1 := buffer.NewCASBufferFromChunkReader(exampleDigest, chunkReader, buffer.BackendProvided(dataIntegrityCallback.Call))
 
 	errorHandler := mock.NewMockErrorHandler(ctrl)
 	errorHandler.EXPECT().Done()

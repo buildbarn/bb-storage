@@ -19,7 +19,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	f := mock.NewMockFileReadWriter(ctrl)
-	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASStorageType, 1, 100, 10, false)
+	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASReadBufferFactory, 1, 100, 10)
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
@@ -43,10 +43,13 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	// release the block associated with the blob. It should not be
 	// possible to reallocate the block as long as the blob hasn't
 	// been consumed.
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 	b := blocks[7].Get(
 		digest.MustNewDigest("some-instance", "8b1a9953c4611296a827abf8c47804d7", 5),
 		25,
-		5)
+		5,
+		dataIntegrityCallback.Call)
 	blocks[7].Release()
 	_, err = pa.NewBlock()
 	require.Equal(t, err, status.Error(codes.ResourceExhausted, "No unused blocks available"))

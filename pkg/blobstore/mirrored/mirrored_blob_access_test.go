@@ -163,8 +163,8 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	digestB := digest.MustNewDigest("default", "522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2", 9)
 	digestBoth := digest.MustNewDigest("default", "9c6079651d4062b6811f93061cb6a768a60e51d714bddffee99b1173c6580580", 5)
 	allDigests := digest.NewSetBuilder().Add(digestNone).Add(digestA).Add(digestB).Add(digestBoth).Build()
-	onlyOnA := digest.NewSetBuilder().Add(digestA).Build()
-	onlyOnB := digest.NewSetBuilder().Add(digestB).Build()
+	onlyOnA := digestA.ToSingletonSet()
+	onlyOnB := digestB.ToSingletonSet()
 	missingFromA := digest.NewSetBuilder().Add(digestNone).Add(digestB).Build()
 	missingFromB := digest.NewSetBuilder().Add(digestNone).Add(digestA).Build()
 	blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
@@ -183,7 +183,7 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 		// should be returned.
 		missing, err := blobAccess.FindMissing(ctx, allDigests)
 		require.NoError(t, err)
-		require.Equal(t, digest.NewSetBuilder().Add(digestNone).Build(), missing)
+		require.Equal(t, digestNone.ToSingletonSet(), missing)
 	})
 
 	t.Run("FindMissingErrorBackendA", func(t *testing.T) {

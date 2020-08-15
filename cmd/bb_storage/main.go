@@ -50,7 +50,7 @@ func main() {
 	// (ICAS) access.
 	var indirectContentAddressableStorage blobstore.BlobAccess
 	if configuration.IndirectContentAddressableStorage != nil {
-		indirectContentAddressableStorage, err = blobstore_configuration.NewBlobAccessFromConfiguration(
+		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
 				grpcClientFactory,
@@ -58,6 +58,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
 		}
+		indirectContentAddressableStorage = info.BlobAccess
 	}
 
 	// Create a trie that maps instance names to schedulers capable

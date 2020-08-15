@@ -26,9 +26,7 @@ func TestExistenceCachingBlobAccessFindMissing(t *testing.T) {
 		Add(digest.MustNewDigest("instance", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).
 		Add(digest.MustNewDigest("instance", "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5)).
 		Build()
-	nonExistingDigests := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5)).
-		Build()
+	nonExistingDigests := digest.MustNewDigest("instance", "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5).ToSingletonSet()
 
 	// As the cache is empty upon initialization, the first request
 	// should cause both digests to be queried on the backend.

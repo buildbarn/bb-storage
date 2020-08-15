@@ -10,8 +10,8 @@ import (
 
 type casValidatingChunkReader struct {
 	ChunkReader
-	digest         digest.Digest
-	repairStrategy RepairStrategy
+	digest digest.Digest
+	source Source
 
 	err            error
 	hasher         hash.Hash
@@ -23,11 +23,11 @@ type casValidatingChunkReader struct {
 // by the Content Addressable Storage. It has been implemented in such a
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
-func newCASValidatingChunkReader(r ChunkReader, digest digest.Digest, repairStrategy RepairStrategy) ChunkReader {
+func newCASValidatingChunkReader(r ChunkReader, digest digest.Digest, source Source) ChunkReader {
 	return &casValidatingChunkReader{
-		ChunkReader:    r,
-		digest:         digest,
-		repairStrategy: repairStrategy,
+		ChunkReader: r,
+		digest:      digest,
+		source:      source,
 
 		hasher:         digest.NewHasher(),
 		bytesRemaining: digest.GetSizeBytes(),
@@ -37,7 +37,7 @@ func newCASValidatingChunkReader(r ChunkReader, digest digest.Digest, repairStra
 func (r *casValidatingChunkReader) checkSize(chunkLength int) error {
 	if int64(chunkLength) > r.bytesRemaining {
 		sizeBytes := r.digest.GetSizeBytes()
-		return r.repairStrategy.repairCASTooBig(sizeBytes, sizeBytes+int64(chunkLength)-r.bytesRemaining)
+		return r.source.notifyCASTooBig(sizeBytes, sizeBytes+int64(chunkLength)-r.bytesRemaining)
 	}
 	return nil
 }
@@ -64,8 +64,9 @@ func (r *casValidatingChunkReader) maybeFinalize() error {
 	expectedChecksum := r.digest.GetHashBytes()
 	actualChecksum := r.hasher.Sum(nil)
 	if bytes.Compare(expectedChecksum, actualChecksum) != 0 {
-		return r.repairStrategy.repairCASHashMismatch(expectedChecksum, actualChecksum)
+		return r.source.notifyCASHashMismatch(expectedChecksum, actualChecksum)
 	}
+	r.source.notifyDataValid()
 	return io.EOF
 }
 
@@ -78,7 +79,7 @@ func (r *casValidatingChunkReader) doRead() ([]byte, error) {
 	if err == io.EOF {
 		// Premature end-of-file.
 		sizeBytes := r.digest.GetSizeBytes()
-		return nil, r.repairStrategy.repairCASSizeMismatch(sizeBytes, sizeBytes-r.bytesRemaining)
+		return nil, r.source.notifyCASSizeMismatch(sizeBytes, sizeBytes-r.bytesRemaining)
 	} else if err != nil {
 		return nil, err
 	}

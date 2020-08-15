@@ -45,7 +45,7 @@ func (br *queuedBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest 
 	b := br.source.Get(ctx, blobDigest)
 	b, t := buffer.WithBackgroundTask(b)
 	go func() {
-		err := br.ReplicateMultiple(ctx, digest.NewSetBuilder().Add(blobDigest).Build())
+		err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet())
 		if err != nil {
 			err = util.StatusWrap(err, "Replication failed")
 		}

@@ -71,9 +71,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 				Add(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("example", "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
-			Return(digest.NewSetBuilder().
-				Add(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Build(), nil)
+			Return(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(), nil)
 
 		resp, err := s.FindMissingReferences(ctx, &remoteexecution.FindMissingBlobsRequest{
 			InstanceName: "example",
@@ -236,6 +234,8 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 		blobAccess.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
@@ -245,7 +245,7 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 						HttpUrl: "http://example.com/file3.txt",
 					},
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
 
 		resp, err := s.GetReference(ctx, &icas.GetReferenceRequest{
 			InstanceName: "example",

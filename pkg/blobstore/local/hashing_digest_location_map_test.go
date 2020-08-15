@@ -27,8 +27,8 @@ func TestHashingDigestLocationMapGet(t *testing.T) {
 		0xdb, 0x71, 0x81, 0x8f, 0x65, 0x8f, 0x20, 0x71,
 	}
 	validator := local.LocationValidator{
-		OldestBlockID: 13,
-		NewestBlockID: 20,
+		OldestValidBlockID: 13,
+		NewestValidBlockID: 20,
 	}
 	validLocation := local.Location{
 		BlockID:     17,
@@ -69,8 +69,8 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		0xdb, 0x71, 0x81, 0x8f, 0x65, 0x8f, 0x20, 0x71,
 	}
 	validator := local.LocationValidator{
-		OldestBlockID: 13,
-		NewestBlockID: 20,
+		OldestValidBlockID: 13,
+		NewestValidBlockID: 20,
 	}
 	outdatedLocation := local.Location{
 		BlockID:     12,

@@ -112,14 +112,14 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 		return buffer.NewBufferFromError(status.Error(codes.Unimplemented, "Reference uses an unsupported decompressor"))
 	}
 
-	// TODO: Should we install a RepairStrategy that deletes the
-	// ICAS entry? That should likely only be done conditionally, as
-	// it may not always be desirable to let clients mutate the ICAS.
+	// TODO: Should we install a RepairFunc that deletes the ICAS
+	// entry? That should likely only be done conditionally, as it
+	// may not always be desirable to let clients mutate the ICAS.
 	//
 	// If we wanted to support this, should we add a separate
 	// BlobAccess.Delete(), or maybe a mechanism to forward the
-	// RepairStrategy from the ICAS buffer?
-	return buffer.NewCASBufferFromReader(digest, r, buffer.Irreparable)
+	// RepairFunc from the ICAS buffer?
+	return buffer.NewCASBufferFromReader(digest, r, buffer.BackendProvided(buffer.Irreparable(digest)))
 }
 
 func (ba *referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

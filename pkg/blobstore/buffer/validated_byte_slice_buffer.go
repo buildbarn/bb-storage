@@ -27,12 +27,12 @@ func NewValidatedBufferFromByteSlice(data []byte) Buffer {
 
 // NewCASBufferFromByteSlice creates a buffer for an object stored in
 // the Content Addressable Storage, backed by a byte slice.
-func NewCASBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy RepairStrategy) Buffer {
+func NewCASBufferFromByteSlice(digest digest.Digest, data []byte, source Source) Buffer {
 	// Compare the blob's size.
 	expectedSizeBytes := digest.GetSizeBytes()
 	actualSizeBytes := int64(len(data))
 	if expectedSizeBytes != actualSizeBytes {
-		return NewBufferFromError(repairStrategy.repairCASSizeMismatch(expectedSizeBytes, actualSizeBytes))
+		return NewBufferFromError(source.notifyCASSizeMismatch(expectedSizeBytes, actualSizeBytes))
 	}
 
 	// Compare the blob's checksum.
@@ -41,9 +41,10 @@ func NewCASBufferFromByteSlice(digest digest.Digest, data []byte, repairStrategy
 	hasher.Write(data)
 	actualChecksum := hasher.Sum(nil)
 	if bytes.Compare(expectedChecksum, actualChecksum) != 0 {
-		return NewBufferFromError(repairStrategy.repairCASHashMismatch(expectedChecksum, actualChecksum))
+		return NewBufferFromError(source.notifyCASHashMismatch(expectedChecksum, actualChecksum))
 	}
 
+	source.notifyDataValid()
 	return NewValidatedBufferFromByteSlice(data)
 }
 

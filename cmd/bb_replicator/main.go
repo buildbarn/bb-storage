@@ -47,7 +47,7 @@ func main() {
 	}
 	replicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
 		configuration.Replicator,
-		source,
+		source.BlobAccess,
 		sink,
 		blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory))
 	if err != nil {

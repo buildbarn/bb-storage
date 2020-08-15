@@ -37,7 +37,7 @@ func (ba *acBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Bu
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return buffer.NewProtoBufferFromProto(actionResult, buffer.Irreparable)
+	return buffer.NewProtoBufferFromProto(actionResult, buffer.BackendProvided(buffer.Irreparable(digest)))
 }
 
 func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

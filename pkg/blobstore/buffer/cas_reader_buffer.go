@@ -12,19 +12,19 @@ import (
 )
 
 type casReaderBuffer struct {
-	digest         digest.Digest
-	r              io.ReadCloser
-	repairStrategy RepairStrategy
+	digest digest.Digest
+	r      io.ReadCloser
+	source Source
 }
 
 // NewCASBufferFromReader creates a buffer for an object stored in the
 // Content Addressable Storage, whose contents may be obtained through a
 // ReadCloser.
-func NewCASBufferFromReader(digest digest.Digest, r io.ReadCloser, repairStrategy RepairStrategy) Buffer {
+func NewCASBufferFromReader(digest digest.Digest, r io.ReadCloser, source Source) Buffer {
 	return &casReaderBuffer{
-		digest:         digest,
-		r:              r,
-		repairStrategy: repairStrategy,
+		digest: digest,
+		r:      r,
+		source: source,
 	}
 }
 
@@ -33,7 +33,7 @@ func (b *casReaderBuffer) GetSizeBytes() (int64, error) {
 }
 
 func (b *casReaderBuffer) toValidatedReader() io.ReadCloser {
-	return newCASValidatingReader(b.r, b.digest, b.repairStrategy)
+	return newCASValidatingReader(b.r, b.digest, b.source)
 }
 
 func (b *casReaderBuffer) IntoWriter(w io.Writer) error {
@@ -107,7 +107,7 @@ func (b *casReaderBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer) {
 }
 
 func (b *casReaderBuffer) CloneStream() (Buffer, Buffer) {
-	return newCASClonedBuffer(b, b.digest, b.repairStrategy).CloneStream()
+	return newCASClonedBuffer(b, b.digest, b.source).CloneStream()
 }
 
 func (b *casReaderBuffer) Discard() {
@@ -118,7 +118,7 @@ func (b *casReaderBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, 
 	// For stream-backed buffers, it is not yet known whether they
 	// may be read successfully. Wrap the buffer into one that
 	// handles I/O errors upon access.
-	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.repairStrategy), false
+	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.source), false
 }
 
 func (b *casReaderBuffer) toUnvalidatedChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

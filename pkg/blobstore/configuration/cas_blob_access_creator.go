@@ -36,32 +36,44 @@ func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessag
 	}
 }
 
-func (bac *casBlobAccessCreator) GetStorageType() blobstore.StorageType {
-	return blobstore.CASStorageType
+func (bac *casBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
+	return digest.KeyWithoutInstance
+}
+
+func (bac *casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+	return blobstore.CASReadBufferFactory
 }
 
 func (bac *casBlobAccessCreator) GetStorageTypeName() string {
 	return "cas"
 }
 
-func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (blobstore.BlobAccess, string, error) {
+func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
 		base, err := NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
 		if err != nil {
-			return nil, "", err
+			return BlobAccessInfo{}, "", err
 		}
-		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, bac.GetDigestKeyFormat(), "ExistenceCachingBlobAccess")
+		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, base.DigestKeyFormat, "ExistenceCachingBlobAccess")
 		if err != nil {
-			return nil, "", err
+			return BlobAccessInfo{}, "", err
 		}
-		return blobstore.NewExistenceCachingBlobAccess(base, existenceCache), "existence_caching", nil
+		return BlobAccessInfo{
+			BlobAccess:      blobstore.NewExistenceCachingBlobAccess(base.BlobAccess, existenceCache),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
 		if err != nil {
-			return nil, "", err
+			return BlobAccessInfo{}, "", err
 		}
-		return grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536), "grpc", nil
+		// TODO: Should we provide a configuration option, so
+		// that digest.KeyWithoutInstance can be used?
+		return BlobAccessInfo{
+			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536),
+			DigestKeyFormat: digest.KeyWithInstance,
+		}, "grpc", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:
 		// The backend used by ReferenceExpandingBlobAccess is
 		// an Indirect Content Addressable Storage (ICAS). This
@@ -75,19 +87,22 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 				bac.grpcClientFactory,
 				bac.maximumMessageSizeBytes))
 		if err != nil {
-			return nil, "", err
+			return BlobAccessInfo{}, "", err
 		}
 		sess, err := aws.NewSessionFromConfiguration(backend.ReferenceExpanding.AwsSession)
 		if err != nil {
-			return nil, "", util.StatusWrap(err, "Failed to create AWS session")
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS session")
 		}
-		return blobstore.NewReferenceExpandingBlobAccess(
-			base,
-			http.DefaultClient,
-			s3.New(sess),
-			bac.maximumMessageSizeBytes), "reference_expanding", nil
+		return BlobAccessInfo{
+			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
+				base.BlobAccess,
+				http.DefaultClient,
+				s3.New(sess),
+				bac.maximumMessageSizeBytes),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "reference_expanding", nil
 	default:
-		return nil, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}
 }
 

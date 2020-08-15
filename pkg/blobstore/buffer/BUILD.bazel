@@ -24,7 +24,7 @@ go_library(
         "offset_chunk_reader.go",
         "proto_buffer.go",
         "reader_backed_chunk_reader.go",
-        "repair_strategy.go",
+        "source.go",
         "validated_byte_slice_buffer.go",
         "validated_file_reader_buffer.go",
         "with_background_task.go",

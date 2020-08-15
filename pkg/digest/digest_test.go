@@ -272,3 +272,21 @@ func TestDigestString(t *testing.T) {
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			123).String())
 }
+
+func TestDigestToSingletonSet(t *testing.T) {
+	d := digest.MustNewDigest("hello", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
+	require.Equal(
+		t,
+		digest.NewSetBuilder().Add(d).Build(),
+		d.ToSingletonSet())
+}
+
+func TestKeyFormatCombine(t *testing.T) {
+	// If one of the two backends requires that digests are keyed
+	// with instance names in place, that format should be used
+	// externally as well.
+	require.Equal(t, digest.KeyWithoutInstance, digest.KeyWithoutInstance.Combine(digest.KeyWithoutInstance))
+	require.Equal(t, digest.KeyWithInstance, digest.KeyWithoutInstance.Combine(digest.KeyWithInstance))
+	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithoutInstance))
+	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithInstance))
+}

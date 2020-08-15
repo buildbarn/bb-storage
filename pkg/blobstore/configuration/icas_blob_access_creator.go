@@ -3,6 +3,7 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -28,24 +29,33 @@ func NewICASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessa
 	}
 }
 
-func (bac *icasBlobAccessCreator) GetStorageType() blobstore.StorageType {
-	return blobstore.ICASStorageType
+func (bac *icasBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
+	return digest.KeyWithoutInstance
+}
+
+func (bac *icasBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+	return blobstore.ICASReadBufferFactory
 }
 
 func (bac *icasBlobAccessCreator) GetStorageTypeName() string {
 	return "icas"
 }
 
-func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (blobstore.BlobAccess, string, error) {
+func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
 		if err != nil {
-			return nil, "", err
+			return BlobAccessInfo{}, "", err
 		}
-		return grpcclients.NewICASBlobAccess(client, bac.maximumMessageSizeBytes), "grpc", nil
+		// TODO: Should we provide a configuration option, so
+		// that digest.KeyWithoutInstance can be used?
+		return BlobAccessInfo{
+			BlobAccess:      grpcclients.NewICASBlobAccess(client, bac.maximumMessageSizeBytes),
+			DigestKeyFormat: digest.KeyWithInstance,
+		}, "grpc", nil
 	default:
-		return nil, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}
 }
 

@@ -2,6 +2,7 @@ package blobstore
 
 import (
 	"context"
+	"log"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -14,18 +15,20 @@ import (
 )
 
 type cloudBlobAccess struct {
-	bucket      *blob.Bucket
-	keyPrefix   string
-	storageType StorageType
+	bucket            *blob.Bucket
+	keyPrefix         string
+	readBufferFactory ReadBufferFactory
+	digestKeyFormat   digest.KeyFormat
 }
 
 // NewCloudBlobAccess creates a BlobAccess that uses a cloud-based blob storage
 // as a backend.
-func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, storageType StorageType) BlobAccess {
+func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat) BlobAccess {
 	return &cloudBlobAccess{
-		bucket:      bucket,
-		keyPrefix:   keyPrefix,
-		storageType: storageType,
+		bucket:            bucket,
+		keyPrefix:         keyPrefix,
+		readBufferFactory: readBufferFactory,
+		digestKeyFormat:   digestKeyFormat,
 	}
 }
 
@@ -38,12 +41,18 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		}
 		return buffer.NewBufferFromError(err)
 	}
-	return ba.storageType.NewBufferFromReader(
+	return ba.readBufferFactory.NewBufferFromReader(
 		digest,
 		result,
-		buffer.Reparable(digest, func() error {
-			return ba.bucket.Delete(ctx, key)
-		}))
+		func(dataIsValid bool) {
+			if !dataIsValid {
+				if err := ba.bucket.Delete(ctx, key); err == nil {
+					log.Printf("Blob %#v was malformed and has been deleted from its bucket successfully", digest.String())
+				} else {
+					log.Printf("Blob %#v was malformed and could not be deleted from its bucket: %s", digest.String(), err)
+				}
+			}
+		})
 }
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -79,5 +88,5 @@ func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 }
 
 func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
-	return ba.keyPrefix + ba.storageType.GetDigestKey(digest)
+	return ba.keyPrefix + digest.GetKey(ba.digestKeyFormat)
 }

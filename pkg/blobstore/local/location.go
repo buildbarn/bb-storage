@@ -20,12 +20,12 @@ func (a Location) IsOlder(b Location) bool {
 // stored is still valid. It does this by bounds checking the ID number
 // of the block.
 type LocationValidator struct {
-	OldestBlockID int
-	NewestBlockID int
+	OldestValidBlockID int
+	NewestValidBlockID int
 }
 
 // IsValid returns whether the provided Location still refers to a place
 // where the data corresponding to this blob may be retrieved.
 func (v *LocationValidator) IsValid(l Location) bool {
-	return l.BlockID >= v.OldestBlockID && l.BlockID <= v.NewestBlockID
+	return l.BlockID >= v.OldestValidBlockID && l.BlockID <= v.NewestValidBlockID
 }

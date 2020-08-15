@@ -3,7 +3,6 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
-	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -25,11 +24,7 @@ func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobRepli
 	}
 }
 
-func (brc *casBlobReplicatorCreator) GetDigestKeyFormat() digest.KeyFormat {
-	return digest.KeyWithoutInstance
-}
-
-func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink blobstore.BlobAccess) (replication.BlobReplicator, error) {
+func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Remote:
 		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Remote)

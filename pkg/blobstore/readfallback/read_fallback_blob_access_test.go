@@ -142,9 +142,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 		Add(digest.MustNewDigest("instance", "00000000000000000000000000000000", 100)).
 		Add(digest.MustNewDigest("instance", "00000000000000000000000000000001", 101)).
 		Build()
-	missingFromBoth := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000000", 100)).
-		Build()
+	missingFromBoth := digest.MustNewDigest("instance", "00000000000000000000000000000000", 100).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// Both backends should be queried. Only the missing

@@ -21,6 +21,7 @@ gomock(
         "BlobAccess",
         "DemultiplexedBlobAccessGetter",
         "HTTPClient",
+        "ReadBufferFactory",
     ],
     library = "//pkg/blobstore:go_default_library",
     package = "mock",
@@ -52,8 +53,8 @@ gomock(
     out = "buffer.go",
     interfaces = [
         "ChunkReader",
+        "DataIntegrityCallback",
         "ErrorHandler",
-        "RepairFunc",
     ],
     library = "//pkg/blobstore/buffer:go_default_library",
     package = "mock",

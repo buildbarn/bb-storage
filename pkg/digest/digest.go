@@ -218,6 +218,19 @@ func (d Digest) GetSizeBytes() int64 {
 // keys returned by Digest.GetKey().
 type KeyFormat int
 
+// Combine two KeyFormats into one, picking the format that contains the
+// most information.
+//
+// This function is used extensively by NewBlobAccessFromConfiguration()
+// to ensure that the right KeyFormat is picked based on the behavior of
+// two or more backing BlobAccess instances.
+func (kf KeyFormat) Combine(other KeyFormat) KeyFormat {
+	if kf == KeyWithInstance {
+		return KeyWithInstance
+	}
+	return other
+}
+
 const (
 	// KeyWithoutInstance lets Digest.GetKey() return a key that
 	// does not include the name of the instance; only the hash and
@@ -265,6 +278,14 @@ func (d Digest) GetHashXAttrName() string {
 
 func (d Digest) String() string {
 	return d.GetKey(KeyWithInstance)
+}
+
+// ToSingletonSet creates a Set that contains a single element that
+// corresponds to the Digest.
+func (d Digest) ToSingletonSet() Set {
+	return Set{
+		digests: []Digest{d},
+	}
 }
 
 // NewHasher creates a standard hash.Hash object that may be used to

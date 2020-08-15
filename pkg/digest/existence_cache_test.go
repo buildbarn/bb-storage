@@ -54,9 +54,7 @@ func TestExistenceCache(t *testing.T) {
 	clock.EXPECT().Now().Return(time.Unix(1004, 0))
 	require.Equal(
 		t,
-		digest.NewSetBuilder().
-			Add(digests[2]).
-			Build(),
+		digests[2].ToSingletonSet(),
 		existenceCache.RemoveExisting(allDigests))
 
 	// If we touch digests[1] and insert digests[2], digests[0]
@@ -75,9 +73,7 @@ func TestExistenceCache(t *testing.T) {
 	clock.EXPECT().Now().Return(time.Unix(1007, 0))
 	require.Equal(
 		t,
-		digest.NewSetBuilder().
-			Add(digests[0]).
-			Build(),
+		digests[0].ToSingletonSet(),
 		existenceCache.RemoveExisting(allDigests))
 
 	// digests[1] was inserted at t = 1003, so it should disappear

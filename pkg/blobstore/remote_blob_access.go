@@ -18,9 +18,9 @@ import (
 )
 
 type remoteBlobAccess struct {
-	address     string
-	prefix      string
-	storageType StorageType
+	address           string
+	prefix            string
+	readBufferFactory ReadBufferFactory
 }
 
 func convertHTTPUnexpectedStatus(resp *http.Response) error {
@@ -30,11 +30,11 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewRemoteBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewRemoteBlobAccess(address string, prefix string, storageType StorageType) BlobAccess {
+func NewRemoteBlobAccess(address string, prefix string, readBufferFactory ReadBufferFactory) BlobAccess {
 	return &remoteBlobAccess{
-		address:     address,
-		prefix:      prefix,
-		storageType: storageType,
+		address:           address,
+		prefix:            prefix,
+		readBufferFactory: readBufferFactory,
 	}
 }
 
@@ -50,7 +50,7 @@ func (ba *remoteBlobAccess) Get(ctx context.Context, digest digest.Digest) buffe
 		resp.Body.Close()
 		return buffer.NewBufferFromError(status.Error(codes.NotFound, url))
 	case http.StatusOK:
-		return ba.storageType.NewBufferFromReader(digest, resp.Body, buffer.Irreparable)
+		return ba.readBufferFactory.NewBufferFromReader(digest, resp.Body, buffer.Irreparable(digest))
 	default:
 		resp.Body.Close()
 		return buffer.NewBufferFromError(convertHTTPUnexpectedStatus(resp))

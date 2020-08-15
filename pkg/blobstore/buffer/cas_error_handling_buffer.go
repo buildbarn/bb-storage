@@ -8,10 +8,10 @@ import (
 )
 
 type casErrorHandlingBuffer struct {
-	base           Buffer
-	errorHandler   ErrorHandler
-	digest         digest.Digest
-	repairStrategy RepairStrategy
+	base         Buffer
+	errorHandler ErrorHandler
+	digest       digest.Digest
+	source       Source
 }
 
 // newCASErrorHandlingBuffer is a decorator for Buffer that handles I/O
@@ -19,12 +19,12 @@ type casErrorHandlingBuffer struct {
 // capable of returning an alternative buffer that should be used to
 // continue the transfer. This decorator will retry/resume the same call
 // against the new buffer.
-func newCASErrorHandlingBuffer(base Buffer, errorHandler ErrorHandler, digest digest.Digest, repairStrategy RepairStrategy) Buffer {
+func newCASErrorHandlingBuffer(base Buffer, errorHandler ErrorHandler, digest digest.Digest, source Source) Buffer {
 	return &casErrorHandlingBuffer{
-		base:           base,
-		errorHandler:   errorHandler,
-		digest:         digest,
-		repairStrategy: repairStrategy,
+		base:         base,
+		errorHandler: errorHandler,
+		digest:       digest,
+		source:       source,
 	}
 }
 
@@ -57,7 +57,7 @@ func (b *casErrorHandlingBuffer) tryRepeatedly(f func(Buffer) error) error {
 }
 
 func (b *casErrorHandlingBuffer) toValidatedChunkReader(maximumChunkSizeBytes int) ChunkReader {
-	return newCASValidatingChunkReader(b.toUnvalidatedChunkReader(0, maximumChunkSizeBytes), b.digest, b.repairStrategy)
+	return newCASValidatingChunkReader(b.toUnvalidatedChunkReader(0, maximumChunkSizeBytes), b.digest, b.source)
 }
 
 func (b *casErrorHandlingBuffer) IntoWriter(w io.Writer) error {
@@ -103,7 +103,7 @@ func (b *casErrorHandlingBuffer) ToChunkReader(off int64, maximumChunkSizeBytes 
 }
 
 func (b *casErrorHandlingBuffer) ToReader() io.ReadCloser {
-	return newCASValidatingReader(b.toUnvalidatedReader(0), b.digest, b.repairStrategy)
+	return newCASValidatingReader(b.toUnvalidatedReader(0), b.digest, b.source)
 }
 
 func (b *casErrorHandlingBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer) {
@@ -111,7 +111,7 @@ func (b *casErrorHandlingBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer
 }
 
 func (b *casErrorHandlingBuffer) CloneStream() (Buffer, Buffer) {
-	return newCASClonedBuffer(b, b.digest, b.repairStrategy).CloneStream()
+	return newCASClonedBuffer(b, b.digest, b.source).CloneStream()
 }
 
 func (b *casErrorHandlingBuffer) Discard() {
@@ -123,7 +123,7 @@ func (b *casErrorHandlingBuffer) applyErrorHandler(errorHandler ErrorHandler) (B
 	// For stream-backed buffers, it is not yet known whether they
 	// may be read successfully. Wrap the buffer into one that
 	// handles I/O errors upon access.
-	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.repairStrategy), false
+	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.source), false
 }
 
 func (b *casErrorHandlingBuffer) toUnvalidatedChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

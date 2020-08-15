@@ -2,7 +2,7 @@ package blobstore
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -23,7 +23,8 @@ type RedisClient interface {
 
 type redisBlobAccess struct {
 	redisClient        RedisClient
-	storageType        StorageType
+	readBufferFactory  ReadBufferFactory
+	digestKeyFormat    digest.KeyFormat
 	keyTTL             time.Duration
 	replicationCount   int64
 	replicationTimeout int
@@ -31,14 +32,11 @@ type redisBlobAccess struct {
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient RedisClient,
-	storageType StorageType,
-	keyTTL time.Duration,
-	replicationCount int64,
-	replicationTimeout time.Duration) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, keyTTL time.Duration, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
 	return &redisBlobAccess{
 		redisClient:        redisClient,
-		storageType:        storageType,
+		readBufferFactory:  readBufferFactory,
+		digestKeyFormat:    digestKeyFormat,
 		keyTTL:             keyTTL,
 		replicationCount:   int64(replicationCount),
 		replicationTimeout: int(replicationTimeout.Milliseconds()),
@@ -49,19 +47,25 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 	if err := util.StatusFromContext(ctx); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	key := ba.storageType.GetDigestKey(digest)
+	key := digest.GetKey(ba.digestKeyFormat)
 	value, err := ba.redisClient.Get(key).Bytes()
 	if err == redis.Nil {
 		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.NotFound, "Blob not found"))
 	} else if err != nil {
 		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Unavailable, "Failed to get blob"))
 	}
-	return ba.storageType.NewBufferFromByteSlice(
+	return ba.readBufferFactory.NewBufferFromByteSlice(
 		digest,
 		value,
-		buffer.Reparable(digest, func() error {
-			return ba.redisClient.Del(key).Err()
-		}))
+		func(dataIsValid bool) {
+			if !dataIsValid {
+				if err := ba.redisClient.Del(key).Err(); err == nil {
+					log.Printf("Blob %#v was malformed and has been deleted from Redis successfully", digest.String())
+				} else {
+					log.Printf("Blob %#v was malformed and could not be deleted from Redis: %s", digest.String(), err)
+				}
+			}
+		})
 }
 
 func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -74,7 +78,7 @@ func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
-	if err := ba.redisClient.Set(ba.storageType.GetDigestKey(digest), value, ba.keyTTL).Err(); err != nil {
+	if err := ba.redisClient.Set(digest.GetKey(ba.digestKeyFormat), value, ba.keyTTL).Err(); err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
 	return ba.waitIfReplicationEnabled()
@@ -96,7 +100,7 @@ func (ba *redisBlobAccess) waitIfReplicationEnabled() error {
 		return util.StatusWrapWithCode(err, codes.Internal, "Error replicating blob")
 	}
 	if replicatedCount < ba.replicationCount {
-		return util.StatusWrapWithCode(err, codes.Internal, fmt.Sprintf("Replication not completed. Requested %d, actual %d", ba.replicationCount, replicatedCount))
+		return util.StatusWrapfWithCode(err, codes.Internal, "Replication not completed. Requested %d, actual %d", ba.replicationCount, replicatedCount)
 	}
 	return nil
 }
@@ -113,7 +117,7 @@ func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	pipeline := ba.redisClient.Pipeline()
 	cmds := make([]*redis.IntCmd, 0, digests.Length())
 	for _, digest := range digests.Items() {
-		cmds = append(cmds, pipeline.Exists(ba.storageType.GetDigestKey(digest)))
+		cmds = append(cmds, pipeline.Exists(digest.GetKey(ba.digestKeyFormat)))
 	}
 	if _, err := pipeline.Exec(); err != nil {
 		return digest.EmptySet, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")

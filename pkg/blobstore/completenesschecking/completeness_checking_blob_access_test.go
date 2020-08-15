@@ -44,7 +44,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		// Tree objects contains a malformed digest, act as if
 		// the ActionResult did not exist. This should cause the
 		// client to rebuild the action.
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
@@ -53,14 +54,15 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 12,
 					},
 				},
-				buffer.Reparable(actionDigest, repairFunc.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.Equal(t, err, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"))
 	})
 
 	t.Run("MissingInput", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
@@ -78,7 +80,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 7,
 					},
 				},
-				buffer.Reparable(actionDigest, repairFunc.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
@@ -86,9 +88,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build(),
 		).Return(
-			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Build(),
+			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
 			nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
@@ -97,7 +97,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 	t.Run("FindMissingError", func(t *testing.T) {
 		// FindMissing() errors should get propagated.
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
@@ -106,12 +107,10 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 7,
 					},
 				},
-				buffer.Reparable(actionDigest, repairFunc.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build(),
+			digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet(),
 		).Return(digest.EmptySet, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
@@ -120,7 +119,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 	t.Run("GetTreeError", func(t *testing.T) {
 		// GetTree() errors should get propagated.
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&remoteexecution.ActionResult{
@@ -134,7 +134,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						},
 					},
 				},
-				buffer.Reparable(actionDigest, repairFunc.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
@@ -186,11 +186,14 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				SizeBytes: 11,
 			},
 		}
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback1 := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback1.EXPECT().Call(true)
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&actionResult,
-				buffer.Reparable(actionDigest, repairFunc.Call)))
+				buffer.BackendProvided(dataIntegrityCallback1.Call)))
+		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback2.EXPECT().Call(true)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
@@ -229,7 +232,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				},
 				{},
 			},
-		}, buffer.Reparable(actionDigest, repairFunc.Call)))
+		}, buffer.BackendProvided(dataIntegrityCallback2.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().

@@ -167,9 +167,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Build())
+			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet())
 		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
 	})
 

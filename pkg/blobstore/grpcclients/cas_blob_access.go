@@ -65,7 +65,7 @@ func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.B
 	return buffer.NewCASBufferFromChunkReader(digest, &byteStreamChunkReader{
 		client: client,
 		cancel: cancel,
-	}, buffer.Irreparable)
+	}, buffer.BackendProvided(buffer.Irreparable(digest)))
 }
 
 func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -43,8 +44,8 @@ type StateStore interface {
 
 type circularBlobAccess struct {
 	// Fields that are constant or lockless.
-	dataStore   DataStore
-	storageType blobstore.StorageType
+	dataStore         DataStore
+	readBufferFactory blobstore.ReadBufferFactory
 
 	// Fields protected by the lock.
 	lock        sync.Mutex
@@ -55,12 +56,12 @@ type circularBlobAccess struct {
 // NewCircularBlobAccess creates a new circular storage backend. Instead
 // of writing data to storage directly, all three storage files are
 // injected through separate interfaces.
-func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateStore StateStore, storageType blobstore.StorageType) blobstore.BlobAccess {
+func NewCircularBlobAccess(offsetStore OffsetStore, dataStore DataStore, stateStore StateStore, readBufferFactory blobstore.ReadBufferFactory) blobstore.BlobAccess {
 	return &circularBlobAccess{
-		offsetStore: offsetStore,
-		dataStore:   dataStore,
-		stateStore:  stateStore,
-		storageType: storageType,
+		offsetStore:       offsetStore,
+		dataStore:         dataStore,
+		stateStore:        stateStore,
+		readBufferFactory: readBufferFactory,
 	}
 }
 
@@ -81,14 +82,21 @@ func (ba *circularBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	} else if ok {
-		return ba.storageType.NewBufferFromReader(
+		return ba.readBufferFactory.NewBufferFromReader(
 			digest,
 			ioutil.NopCloser(ba.dataStore.Get(offset, length)),
-			buffer.Reparable(digest, func() error {
-				ba.lock.Lock()
-				defer ba.lock.Unlock()
-				return ba.stateStore.Invalidate(offset, length)
-			}))
+			func(dataIsValid bool) {
+				if !dataIsValid {
+					ba.lock.Lock()
+					err := ba.stateStore.Invalidate(offset, length)
+					defer ba.lock.Unlock()
+					if err == nil {
+						log.Printf("Blob %#v was malformed and has been deleted successfully", digest.String())
+					} else {
+						log.Printf("Blob %#v was malformed and could not be deleted: %s", digest.String(), err)
+					}
+				}
+			})
 	}
 	return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "Blob not found"))
 }

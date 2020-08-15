@@ -24,7 +24,7 @@ func TestNewCASBufferFromChunkReaderGetSizeBytes(t *testing.T) {
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()
 
-	b := buffer.NewCASBufferFromChunkReader(helloDigest, chunkReader, buffer.Irreparable)
+	b := buffer.NewCASBufferFromChunkReader(helloDigest, chunkReader, buffer.BackendProvided(buffer.Irreparable(helloDigest)))
 	n, err := b.GetSizeBytes()
 	require.NoError(t, err)
 	require.Equal(t, int64(5), n)
@@ -42,12 +42,13 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
 		writer := bytes.NewBuffer(nil)
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), writer.Bytes())
 	})
@@ -57,12 +58,12 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 		chunkReader.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Storage backend on fire"))
 		chunkReader.EXPECT().Close()
 		writer := mock.NewMockWriter(ctrl)
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
@@ -71,13 +72,13 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
 		writer := mock.NewMockWriter(ctrl)
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
 		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 }
@@ -92,13 +93,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Hello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [3]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 3, n)
 		require.NoError(t, err)
 		require.Equal(t, []byte("ell"), p[:])
@@ -107,13 +109,13 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 	t.Run("NegativeOffset", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		var p [5]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], -123)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
@@ -125,13 +127,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("o"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 6)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 6)
 		require.Equal(t, 0, n)
 		require.Equal(t, io.EOF, err)
 	})
@@ -141,13 +144,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Hello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 2)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 2)
 		require.Equal(t, 3, n)
 		require.Equal(t, io.EOF, err)
 		require.Equal(t, []byte("llo"), p[:3])
@@ -158,14 +162,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Foo"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		var p [2]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
 	})
@@ -175,14 +179,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Foo"), nil)
 		chunkReader.EXPECT().Read().Return([]byte("Bar"), nil)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		var p [2]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
 	})
@@ -192,14 +196,14 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Xyzzy"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		var p [2]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
@@ -208,13 +212,13 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Storage backend on fire"))
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		var p [2]byte
 		n, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
@@ -228,12 +232,13 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 		chunkReader.EXPECT().Read().Return(exampleActionResultBytes, nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		actionResult, err := buffer.NewCASBufferFromChunkReader(
 			exampleActionResultDigest,
 			chunkReader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
@@ -244,12 +249,13 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 		chunkReader.EXPECT().Read().Return(exampleActionResultBytes, nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		actionResult, err := buffer.NewCASBufferFromChunkReader(
 			exampleActionResultDigest,
 			chunkReader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
@@ -258,12 +264,12 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 	t.Run("TooBig", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		_, err := buffer.NewCASBufferFromChunkReader(
 			exampleActionResultDigest,
 			chunkReader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
@@ -273,29 +279,34 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Foo"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		_, err := buffer.NewCASBufferFromChunkReader(
 			exampleActionResultDigest,
 			chunkReader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
 	})
 
 	t.Run("InvalidProtobuf", func(t *testing.T) {
+		// Failing to unmarshal Protobufs stored in the CAS
+		// should not be treated as a data integrity error if
+		// the hash of the object matches. That's an error on
+		// the consumption side.
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return([]byte("Hello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 		_, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
@@ -304,12 +315,12 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Storage backend on fire"))
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		_, err := buffer.NewCASBufferFromChunkReader(
 			exampleActionResultDigest,
 			chunkReader,
-			buffer.Reparable(exampleActionResultDigest, repairFunc.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
@@ -326,13 +337,14 @@ func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("ello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 		data, err := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToByteSlice(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 		// Require that byte slices obtained from chunk readers
@@ -344,13 +356,14 @@ func TestNewCASBufferFromChunkReaderToByteSlice(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		emptyDigest := digest.MustNewDigest("empty", "d41d8cd98f00b204e9800998ecf8427e", 0)
 		data, err := buffer.NewCASBufferFromChunkReader(
 			emptyDigest,
 			chunkReader,
-			buffer.Reparable(emptyDigest, repairFunc.Call)).ToByteSlice(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Empty(t, data)
 	})
@@ -371,7 +384,8 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("world"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		// The ChunkReader returned by ToChunkReader() should
 		// omit empty chunks and split up chunks that are too
@@ -379,7 +393,7 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 			/* offset = */ 3,
 			/* chunk size = */ 2)
 		chunk, err := r.Read()
@@ -409,14 +423,15 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Hello world"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		// Reading at the very end is permitted, but should
 		// return an end-of-file immediately.
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 			/* offset = */ 11,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -427,12 +442,12 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 	t.Run("NegativeOffset", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 			/* offset = */ -1,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -443,12 +458,12 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 	t.Run("TooFar", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 			/* offset = */ 12,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -462,15 +477,15 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("worlf"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		// In case of checksum failures, it should not be
 		// possible to extract the final piece of data.
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 			/* offset = */ 0,
 			/* chunk size = */ 10)
 		chunk, err := r.Read()
@@ -499,12 +514,13 @@ func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("world"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToReader()
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
 		var p [3]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 3, n)
@@ -534,15 +550,15 @@ func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("worlf"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		// In case of checksum failures, it should not be
 		// possible to extract the final piece of data.
 		r := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).ToReader()
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
 		var p [20]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 6, n)
@@ -565,12 +581,13 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Hello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		data1, err := b1.ToByteSlice(10)
 		require.NoError(t, err)
@@ -585,12 +602,12 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Storage backend on fire"))
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
@@ -603,13 +620,13 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
 		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
@@ -621,12 +638,12 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 	t.Run("TooBig", func(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneCopy(4)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(4)
 
 		_, err := b1.ToByteSlice(10)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
@@ -646,12 +663,13 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 		chunkReader.EXPECT().Read().Return([]byte("Hello"), nil)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneStream()
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneStream()
 		done := make(chan struct{}, 2)
 
 		go func() {
@@ -676,12 +694,12 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, status.Error(codes.Internal, "Storage backend on fire"))
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneStream()
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneStream()
 		done := make(chan struct{}, 2)
 
 		go func() {
@@ -704,13 +722,13 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 		chunkReader := mock.NewMockChunkReader(ctrl)
 		chunkReader.EXPECT().Read().Return(nil, io.EOF)
 		chunkReader.EXPECT().Close()
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call().Return(nil)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		b1, b2 := buffer.NewCASBufferFromChunkReader(
 			helloDigest,
 			chunkReader,
-			buffer.Reparable(helloDigest, repairFunc.Call)).CloneStream()
+			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneStream()
 		done := make(chan struct{}, 2)
 
 		go func() {
@@ -735,7 +753,7 @@ func TestNewCASBufferFromChunkReaderDiscard(t *testing.T) {
 
 	chunkReader := mock.NewMockChunkReader(ctrl)
 	chunkReader.EXPECT().Close()
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 
-	buffer.NewCASBufferFromChunkReader(exampleDigest, chunkReader, buffer.Reparable(exampleDigest, repairFunc.Call)).Discard()
+	buffer.NewCASBufferFromChunkReader(exampleDigest, chunkReader, buffer.BackendProvided(dataIntegrityCallback.Call)).Discard()
 }

@@ -10,8 +10,8 @@ import (
 
 type casValidatingReader struct {
 	io.ReadCloser
-	digest         digest.Digest
-	repairStrategy RepairStrategy
+	digest digest.Digest
+	source Source
 
 	err            error
 	hasher         hash.Hash
@@ -23,11 +23,11 @@ type casValidatingReader struct {
 // by the Content Addressable Storage. It has been implemented in such a
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
-func newCASValidatingReader(r io.ReadCloser, digest digest.Digest, repairStrategy RepairStrategy) io.ReadCloser {
+func newCASValidatingReader(r io.ReadCloser, digest digest.Digest, source Source) io.ReadCloser {
 	return &casValidatingReader{
-		ReadCloser:     r,
-		digest:         digest,
-		repairStrategy: repairStrategy,
+		ReadCloser: r,
+		digest:     digest,
+		source:     source,
 
 		hasher:         digest.NewHasher(),
 		bytesRemaining: digest.GetSizeBytes(),
@@ -38,7 +38,7 @@ func (r *casValidatingReader) compareChecksum() error {
 	expectedChecksum := r.digest.GetHashBytes()
 	actualChecksum := r.hasher.Sum(nil)
 	if bytes.Compare(expectedChecksum, actualChecksum) != 0 {
-		return r.repairStrategy.repairCASHashMismatch(expectedChecksum, actualChecksum)
+		return r.source.notifyCASHashMismatch(expectedChecksum, actualChecksum)
 	}
 	return nil
 }
@@ -46,7 +46,7 @@ func (r *casValidatingReader) compareChecksum() error {
 func (r *casValidatingReader) checkSize(n int) error {
 	if int64(n) > r.bytesRemaining {
 		sizeBytes := r.digest.GetSizeBytes()
-		return r.repairStrategy.repairCASTooBig(sizeBytes, sizeBytes+int64(n)-r.bytesRemaining)
+		return r.source.notifyCASTooBig(sizeBytes, sizeBytes+int64(n)-r.bytesRemaining)
 	}
 	return nil
 }
@@ -63,11 +63,12 @@ func (r *casValidatingReader) doRead(p []byte) (int, error) {
 		// Compare the blob's size and checksum.
 		if r.bytesRemaining != 0 {
 			sizeBytes := r.digest.GetSizeBytes()
-			return 0, r.repairStrategy.repairCASSizeMismatch(sizeBytes, sizeBytes-r.bytesRemaining)
+			return 0, r.source.notifyCASSizeMismatch(sizeBytes, sizeBytes-r.bytesRemaining)
 		}
 		if err := r.compareChecksum(); err != nil {
 			return 0, err
 		}
+		r.source.notifyDataValid()
 		return n, io.EOF
 	} else if readErr != nil {
 		return 0, readErr
@@ -86,6 +87,7 @@ func (r *casValidatingReader) doRead(p []byte) (int, error) {
 		if err := r.compareChecksum(); err != nil {
 			return 0, err
 		}
+		r.source.notifyDataValid()
 		return n, io.EOF
 	}
 	return n, nil

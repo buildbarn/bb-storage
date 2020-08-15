@@ -34,12 +34,13 @@ func TestNewCASBufferFromByteSliceSuccess(t *testing.T) {
 		"b1d33bb21db304209f584b55e1a86db38c7c44c466c680c38805db07a92d43260d0e82ffd0a48c337d40372a4ac5b9be1ff24beef2c990e6ea3f2079d067b0e0": []byte("Ridiculously long checksums"),
 	} {
 		digest := digest.MustNewDigest("fedora29", hash, int64(len(body)))
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		data, err := buffer.NewCASBufferFromByteSlice(
 			digest,
 			body,
-			buffer.Reparable(digest, repairFunc.Call)).ToByteSlice(len(body))
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(len(body))
 		require.NoError(t, err)
 		require.Equal(t, body, data)
 	}
@@ -49,13 +50,13 @@ func TestNewCASBufferFromByteSliceSizeMismatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	digest := digest.MustNewDigest("ubuntu1804", "8b1a9953c4611296a827abf8c47804d7", 6)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
-	repairFunc.EXPECT().Call()
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(false)
 
 	_, err := buffer.NewCASBufferFromByteSlice(
 		digest,
 		[]byte("Hello"),
-		buffer.Reparable(digest, repairFunc.Call)).ToByteSlice(5)
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
 	require.Equal(t, status.Error(codes.Internal, "Buffer is 5 bytes in size, while 6 bytes were expected"), err)
 }
 
@@ -63,12 +64,12 @@ func TestNewCASBufferFromByteSliceHashMismatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	digest := digest.MustNewDigest("ubuntu1804", "d41d8cd98f00b204e9800998ecf8427e", 5)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
-	repairFunc.EXPECT().Call()
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(false)
 
 	_, err := buffer.NewCASBufferFromByteSlice(
 		digest,
 		[]byte("Hello"),
-		buffer.Reparable(digest, repairFunc.Call)).ToByteSlice(5)
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
 	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 8b1a9953c4611296a827abf8c47804d7, while d41d8cd98f00b204e9800998ecf8427e was expected"), err)
 }

@@ -22,11 +22,12 @@ type protoBuffer struct {
 // NewProtoBufferFromProto creates a buffer for an object contained in a
 // Protobuf storage such as the Action Cache, based on an unmarshaled
 // Protobuf message.
-func NewProtoBufferFromProto(message proto.Message, repairStrategy RepairStrategy) Buffer {
+func NewProtoBufferFromProto(message proto.Message, source Source) Buffer {
 	data, err := proto.Marshal(message)
 	if err != nil {
-		return NewBufferFromError(repairStrategy.repairProtoMarshalFailure(err))
+		return NewBufferFromError(source.notifyProtoMarshalFailure(err))
 	}
+	source.notifyDataValid()
 	return &protoBuffer{
 		validatedByteSliceBuffer: validatedByteSliceBuffer{data: data},
 		message:                  message,
@@ -38,10 +39,11 @@ func NewProtoBufferFromProto(message proto.Message, repairStrategy RepairStrateg
 // Protobuf message stored in a byte slice. An empty Protobuf message
 // object must be provided that corresponds with the type of the data
 // contained in the byte slice.
-func NewProtoBufferFromByteSlice(m proto.Message, data []byte, repairStrategy RepairStrategy) Buffer {
+func NewProtoBufferFromByteSlice(m proto.Message, data []byte, source Source) Buffer {
 	if err := proto.Unmarshal(data, m); err != nil {
-		return NewBufferFromError(repairStrategy.repairProtoUnmarshalFailure(err))
+		return NewBufferFromError(source.notifyProtoUnmarshalFailure(err))
 	}
+	source.notifyDataValid()
 	return &protoBuffer{
 		validatedByteSliceBuffer: validatedByteSliceBuffer{data: data},
 		message:                  m,
@@ -53,7 +55,7 @@ func NewProtoBufferFromByteSlice(m proto.Message, data []byte, repairStrategy Re
 // Protobuf message that may be obtained through a ReadCloser. An empty
 // Protobuf message object must be provided that corresponds with the
 // type of the data contained in the reader.
-func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, repairStrategy RepairStrategy) Buffer {
+func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, source Source) Buffer {
 	// Messages in the Action Cache are relatively small, so it's
 	// safe to keep them in memory. Read and store them in a byte
 	// slice buffer immediately. This permits implementing
@@ -63,7 +65,7 @@ func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, repairStrategy R
 	if err != nil {
 		return NewBufferFromError(err)
 	}
-	return NewProtoBufferFromByteSlice(m, data, repairStrategy)
+	return NewProtoBufferFromByteSlice(m, data, source)
 }
 
 func (b *protoBuffer) ToProto(m proto.Message, maximumSizeBytes int) (proto.Message, error) {

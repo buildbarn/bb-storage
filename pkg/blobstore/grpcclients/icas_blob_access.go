@@ -36,7 +36,7 @@ func (ba *icasBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return buffer.NewProtoBufferFromProto(reference, buffer.Irreparable)
+	return buffer.NewProtoBufferFromProto(reference, buffer.BackendProvided(buffer.Irreparable(digest)))
 }
 
 func (ba *icasBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

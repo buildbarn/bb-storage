@@ -461,12 +461,16 @@ message LocalBlobAccessConfiguration {
     // Recommended value: 3
     int32 spare_blocks = 2;
 
-    // Don't check the integrity of data as it's being read back from
-    // the block device. This speeds up reads significantly, and is a
-    // requirement for being able to randomly access objects quickly.
+    // When set, temporarily cache the integrity of data after it's been
+    // read from the block device. This is a requirement for being able
+    // to randomly access objects quickly.
+    //
     // The disadvantage of enabling this option is that data corruption
-    // on the block device will not be detected.
-    bool disable_integrity_checking = 3;
+    // on the block device may not be detected. It is therefore
+    // recommended to set the cache duration to a limited value (e.g.,
+    // "4h").
+    buildbarn.configuration.digest.ExistenceCacheConfiguration
+        data_integrity_validation_cache = 3;
   }
 
   oneof data_backend {

@@ -139,9 +139,7 @@ func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 		Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
 		Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
 		Build()
-	outputSet := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-		Build()
+	outputSet := digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// Digests of empty blobs should be filtered from the

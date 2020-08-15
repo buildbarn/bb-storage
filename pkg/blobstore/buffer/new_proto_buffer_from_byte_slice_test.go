@@ -8,6 +8,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
@@ -17,11 +18,16 @@ import (
 )
 
 func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
 	t.Run("Success", func(t *testing.T) {
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
+
 		b := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.Irreparable)
+			buffer.BackendProvided(dataIntegrityCallback.Call))
 		n, err := b.GetSizeBytes()
 		require.NoError(t, err)
 		require.Equal(t, int64(len(exampleActionResultBytes)), n)
@@ -29,10 +35,13 @@ func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
 	})
 
 	t.Run("DataCorruption", func(t *testing.T) {
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
+
 		b := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.Irreparable)
+			buffer.BackendProvided(dataIntegrityCallback.Call))
 		_, err := b.GetSizeBytes()
 		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 		b.Discard()
@@ -43,50 +52,54 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.Reparable(exampleDigest, repairFunc.Call)).ReadAt(p[:], 0)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 0)
 		require.Equal(t, 5, n)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes[:5], p[:])
 	})
 
 	t.Run("NegativeOffset", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.Reparable(exampleDigest, repairFunc.Call)).ReadAt(p[:], -123)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.Reparable(exampleDigest, repairFunc.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)+1))
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)+1))
 		require.Equal(t, 0, n)
 		require.Equal(t, io.EOF, err)
 	})
 
 	t.Run("ShortRead", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
 
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.Reparable(exampleDigest, repairFunc.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)-3))
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)-3))
 		require.Equal(t, 3, n)
 		require.Equal(t, io.EOF, err)
 		require.Equal(t, exampleActionResultBytes[len(exampleActionResultBytes)-3:], p[:3])
@@ -107,20 +120,20 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.Irreparable).ReadAt(p[:], 0)
+			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", "f988a36ed06e17f6c4a258ec8e03fe88", 123)))).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
 
 	t.Run("DataCorruptionReparable", func(t *testing.T) {
-		repairFunc := mock.NewMockRepairFunc(ctrl)
-		repairFunc.EXPECT().Call()
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(false)
 
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.Reparable(exampleDigest, repairFunc.Call)).ReadAt(p[:], 0)
+			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
@@ -133,36 +146,39 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	actionResult, err := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).ToProto(&remoteexecution.ActionResult{}, 1000)
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToProto(&remoteexecution.ActionResult{}, 1000)
 	require.NoError(t, err)
 	require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 }
 
 func TestNewProtoBufferFromByteSliceToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	data, err := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).ToByteSlice(10000)
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10000)
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data)
 }
 
 func TestNewProtoBufferFromByteSliceToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	r := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).ToChunkReader(
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
 		/* offset = */ 0,
 		/* chunk size = */ 10000)
 
@@ -178,12 +194,13 @@ func TestNewProtoBufferFromByteSliceToChunkReader(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	r := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).ToReader()
+		buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
 
 	data, err := ioutil.ReadAll(r)
 	require.NoError(t, err)
@@ -194,12 +211,13 @@ func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).CloneCopy(len(exampleActionResultBytes))
+		buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(len(exampleActionResultBytes))
 
 	data1, err := b1.ToByteSlice(len(exampleActionResultBytes))
 	require.NoError(t, err)
@@ -212,12 +230,13 @@ func TestNewProtoBufferFromByteSliceCloneCopy(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).CloneStream()
+		buffer.BackendProvided(dataIntegrityCallback.Call)).CloneStream()
 	done := make(chan struct{}, 2)
 
 	go func() {
@@ -240,10 +259,11 @@ func TestNewProtoBufferFromByteSliceCloneStream(t *testing.T) {
 
 func TestNewProtoBufferFromByteSliceDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	repairFunc := mock.NewMockRepairFunc(ctrl)
+	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+	dataIntegrityCallback.EXPECT().Call(true)
 
 	buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.Reparable(exampleDigest, repairFunc.Call)).Discard()
+		buffer.BackendProvided(dataIntegrityCallback.Call)).Discard()
 }

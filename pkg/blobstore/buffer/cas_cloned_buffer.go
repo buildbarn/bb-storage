@@ -13,9 +13,9 @@ const (
 )
 
 type casClonedBuffer struct {
-	base           Buffer
-	digest         digest.Digest
-	repairStrategy RepairStrategy
+	base   Buffer
+	digest digest.Digest
+	source Source
 
 	lock                  sync.Mutex
 	consumersRemaining    uint
@@ -28,11 +28,11 @@ type casClonedBuffer struct {
 // that permits concurrent access to the same buffer. All consumers will
 // be synchronized, meaning that they will get access to the buffer's
 // contents at the same pace.
-func newCASClonedBuffer(base Buffer, digest digest.Digest, repairStrategy RepairStrategy) Buffer {
+func newCASClonedBuffer(base Buffer, digest digest.Digest, source Source) Buffer {
 	return &casClonedBuffer{
-		base:           base,
-		digest:         digest,
-		repairStrategy: repairStrategy,
+		base:   base,
+		digest: digest,
+		source: source,
 
 		consumersRemaining:    1,
 		maximumChunkSizeBytes: -1,
@@ -133,7 +133,7 @@ func (b *casClonedBuffer) applyErrorHandler(errorHandler ErrorHandler) (replacem
 	// For stream-backed buffers, it is not yet known whether they
 	// may be read successfully. Wrap the buffer into one that
 	// handles I/O errors upon access.
-	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.repairStrategy), false
+	return newCASErrorHandlingBuffer(b, errorHandler, b.digest, b.source), false
 }
 
 func (b *casClonedBuffer) toUnvalidatedChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

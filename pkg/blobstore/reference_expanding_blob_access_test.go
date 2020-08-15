@@ -47,7 +47,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		require.Equal(t, status.Error(codes.Unimplemented, "Reference uses an unsupported medium"), err)
@@ -65,7 +65,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		require.Equal(t, status.Error(codes.Internal, "Failed to create HTTP request: parse \"\\x00\": net/url: invalid control character in URL"), err)
@@ -82,7 +82,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		httpClient.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
 			Op:  "Get",
 			URL: "http://example.com/file.txt",
@@ -105,7 +105,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
 		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			Status:     "404 Not Found",
@@ -130,7 +130,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
 		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			Status:     "206 Partial Content",
@@ -158,7 +158,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
 		httpClient.EXPECT().Do(gomock.Any()).DoAndReturn(
 			func(req *http.Request) (*http.Response, error) {
@@ -197,7 +197,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: icas.Reference_DEFLATE,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
@@ -223,7 +223,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: icas.Reference_DEFLATE,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
@@ -257,7 +257,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: icas.Reference_DEFLATE,
 				},
-				buffer.Irreparable))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
