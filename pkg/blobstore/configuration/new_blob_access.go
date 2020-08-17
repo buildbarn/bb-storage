@@ -495,7 +495,7 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		return BlobAccessInfo{}, err
 	}
 	return BlobAccessInfo{
-		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, fmt.Sprintf("%s_%s", backendType, backendType)),
+		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, fmt.Sprintf("%s_%s", creator.GetStorageTypeName(), backendType)),
 		DigestKeyFormat: backend.DigestKeyFormat,
 	}, nil
 }
