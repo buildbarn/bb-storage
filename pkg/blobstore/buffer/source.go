@@ -32,7 +32,9 @@ type DataIntegrityCallback func(dataIsValid bool)
 // and that there is no need for us to report those.
 func Irreparable(blobDigest digest.Digest) DataIntegrityCallback {
 	return func(dataIsValid bool) {
-		log.Printf("Digest %#v is corrupted, but its storage backend does not support repairing corrupted blobs", blobDigest.String())
+		if !dataIsValid {
+			log.Printf("Digest %#v is corrupted, but its storage backend does not support repairing corrupted blobs", blobDigest.String())
+		}
 	}
 }
 
