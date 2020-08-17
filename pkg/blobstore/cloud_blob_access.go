@@ -19,16 +19,18 @@ type cloudBlobAccess struct {
 	keyPrefix         string
 	readBufferFactory ReadBufferFactory
 	digestKeyFormat   digest.KeyFormat
+	partSize          int64
 }
 
 // NewCloudBlobAccess creates a BlobAccess that uses a cloud-based blob storage
 // as a backend.
-func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat) BlobAccess {
+func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, partSize int64) BlobAccess {
 	return &cloudBlobAccess{
 		bucket:            bucket,
 		keyPrefix:         keyPrefix,
 		readBufferFactory: readBufferFactory,
 		digestKeyFormat:   digestKeyFormat,
+		partSize:          partSize,
 	}
 }
 
@@ -57,7 +59,9 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	ctx, cancel := context.WithCancel(ctx)
-	w, err := ba.bucket.NewWriter(ctx, ba.getKey(digest), nil)
+	w, err := ba.bucket.NewWriter(ctx, ba.getKey(digest), &blob.WriterOptions{
+		BufferSize: int(ba.partSize),
+	})
 	if err != nil {
 		cancel()
 		b.Discard()

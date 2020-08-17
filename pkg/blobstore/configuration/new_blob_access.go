@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
@@ -76,7 +78,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, 0),
 				DigestKeyFormat: digestKeyFormat,
 			}, "cloud", nil
 		case *pb.CloudBlobAccessConfiguration_Azure:
@@ -91,7 +93,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, 0),
 				DigestKeyFormat: digestKeyFormat,
 			}, "azure", nil
 		case *pb.CloudBlobAccessConfiguration_Gcs:
@@ -115,7 +117,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, 0),
 				DigestKeyFormat: digestKeyFormat,
 			}, "gcs", nil
 		case *pb.CloudBlobAccessConfiguration_S3:
@@ -123,13 +125,17 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS session")
 			}
+			partSize := backendConfig.S3.PartSize
+			if partSize != 0 && partSize < s3manager.MinUploadPartSize {
+				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "part_size must be at least %d", s3manager.MinUploadPartSize)
+			}
 			ctx := context.Background()
 			bucket, err := s3blob.OpenBucket(ctx, sess, backendConfig.S3.Bucket, nil)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
 			}
 			return BlobAccessInfo{
-				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat),
+				BlobAccess:      blobstore.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, partSize),
 				DigestKeyFormat: digestKeyFormat,
 			}, "s3", nil
 		default:

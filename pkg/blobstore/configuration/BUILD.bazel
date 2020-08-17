@@ -36,6 +36,7 @@ go_library(
         "//pkg/proto/configuration/blobstore:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
+        "@com_github_aws_aws_sdk_go//service/s3/s3manager:go_default_library",
         "@com_github_azure_azure_storage_blob_go//azblob:go_default_library",
         "@com_github_go_redis_redis//:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",

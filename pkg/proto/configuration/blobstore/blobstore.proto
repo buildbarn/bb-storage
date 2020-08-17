@@ -293,6 +293,10 @@ message S3BlobAccessConfiguration {
 
   // AWS access options and credentials.
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 7;
+
+  // Multipart Upload part size. Objects smaller than the part size are uploaded
+  // as a single blob. Default and minimum is 5MB.
+  int64 part_size = 8;
 }
 
 message ShardingBlobAccessConfiguration {
