@@ -1,12 +1,10 @@
 package cloud
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
-
 	"github.com/buildbarn/bb-storage/pkg/clock"
 )
 
@@ -21,7 +19,7 @@ func NewS3CopyMutator(minRefreshAge time.Duration, clock clock.Clock) BeforeCopy
 	return func(asFunc func(interface{}) bool) error {
 		var input *s3.CopyObjectInput
 		if !asFunc(&input) {
-			return fmt.Errorf("failed to get CopyObjectInput - not an s3 bucket?")
+			panic("failed to get CopyObjectInput - not an s3 bucket?")
 		}
 		now := clock.Now()
 		input.CopySourceIfUnmodifiedSince = aws.Time(now.Add(-minRefreshAge))

@@ -115,7 +115,7 @@ func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
 }
 
 func (ba *cloudBlobAccess) touchBlob(ctx context.Context, key string) error {
-	// Touch the object to update its modification time, so that cloud expiration policies will be LRU
+	// Touch the object to update its modification time, so that cloud expiration policies will be LRU.
 	return ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
 		BeforeCopy: ba.beforeCopy,
 	})
