@@ -294,8 +294,9 @@ message S3BlobAccessConfiguration {
   // AWS access options and credentials.
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 7;
 
-  // When the object becomes older than this age, the next FindMissing
-  // call will refresh it by updating the "Used" metadata field.
+  // When the object becomes older than this age, the next Get or
+  // FindMissing call will refresh it by updating the "Used" metadata
+  // field.
   //
   // This can be combined with an externally configured expiration
   // policy to give LRU-like cache behaviour. For example, if you

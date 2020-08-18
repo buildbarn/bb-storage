@@ -44,6 +44,14 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		}
 		return buffer.NewBufferFromError(err)
 	}
+
+	go func() {
+		err := ba.touchBlob(ctx, digest)
+		if err != nil {
+			log.Printf("failed to touch blob %#v: %s", digest.String(), err)
+		}
+	}()
+
 	return ba.readBufferFactory.NewBufferFromReader(
 		digest,
 		result,
@@ -82,11 +90,7 @@ func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	missing := digest.NewSetBuilder()
 
 	for _, blobDigest := range digests.Items() {
-		key := ba.getKey(blobDigest)
-		// Touch the object to update its modification time, so that cloud expiry will be LRU
-		err := ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
-			BeforeCopy: ba.beforeCopy,
-		})
+		err := ba.touchBlob(ctx, blobDigest)
 		switch gcerrors.Code(err) {
 		case gcerrors.OK:
 			// Not missing
@@ -103,4 +107,12 @@ func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 
 func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
 	return ba.keyPrefix + digest.GetKey(ba.digestKeyFormat)
+}
+
+func (ba *cloudBlobAccess) touchBlob(ctx context.Context, blobDigest digest.Digest) error {
+	key := ba.getKey(blobDigest)
+	// Touch the object to update its modification time, so that cloud expiration policies will be LRU
+	return ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
+		BeforeCopy: ba.beforeCopy,
+	})
 }
