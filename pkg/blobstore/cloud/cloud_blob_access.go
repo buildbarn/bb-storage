@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
@@ -45,14 +46,7 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		return buffer.NewBufferFromError(err)
 	}
 
-	go func() {
-		err := ba.touchBlob(ctx, digest)
-		if err != nil {
-			log.Printf("failed to touch blob %#v: %s", digest.String(), err)
-		}
-	}()
-
-	return ba.readBufferFactory.NewBufferFromReader(
+	b, t := buffer.WithBackgroundTask(ba.readBufferFactory.NewBufferFromReader(
 		digest,
 		result,
 		func(dataIsValid bool) {
@@ -63,7 +57,17 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 					log.Printf("Blob %#v was malformed and could not be deleted from its bucket: %s", digest.String(), err)
 				}
 			}
-		})
+		}))
+
+	go func() {
+		err := ba.touchBlob(ctx, key)
+		if err != nil {
+			err = util.StatusWrap(err, "Failed to refresh blob")
+		}
+		t.Finish(err)
+	}()
+
+	return b
 }
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -90,7 +94,8 @@ func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	missing := digest.NewSetBuilder()
 
 	for _, blobDigest := range digests.Items() {
-		err := ba.touchBlob(ctx, blobDigest)
+		key := ba.getKey(blobDigest)
+		err := ba.touchBlob(ctx, key)
 		switch gcerrors.Code(err) {
 		case gcerrors.OK:
 			// Not missing
@@ -109,8 +114,7 @@ func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
 	return ba.keyPrefix + digest.GetKey(ba.digestKeyFormat)
 }
 
-func (ba *cloudBlobAccess) touchBlob(ctx context.Context, blobDigest digest.Digest) error {
-	key := ba.getKey(blobDigest)
+func (ba *cloudBlobAccess) touchBlob(ctx context.Context, key string) error {
 	// Touch the object to update its modification time, so that cloud expiration policies will be LRU
 	return ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
 		BeforeCopy: ba.beforeCopy,
