@@ -276,6 +276,11 @@ message RedisBlobAccessConfiguration {
   // instead of blocking. Defaults to ReadTimeout,
   // can be overidden (e.g, '300s').
   google.protobuf.Duration write_timeout = 12;
+
+  // If true, the TTL of keys will be refreshed when they are visited
+  // by Get or FindMissing, so that key_ttl will count from last
+  // use. Otherwise, key_ttl will count from first insert.
+  bool refresh_ttl_on_use = 13;
 }
 
 message RemoteBlobAccessConfiguration {

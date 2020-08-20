@@ -26,18 +26,20 @@ type redisBlobAccess struct {
 	readBufferFactory  ReadBufferFactory
 	digestKeyFormat    digest.KeyFormat
 	keyTTL             time.Duration
+	refreshOnUse       bool
 	replicationCount   int64
 	replicationTimeout int
 }
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, keyTTL time.Duration, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, keyTTL time.Duration, refreshOnUse bool, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
 	return &redisBlobAccess{
 		redisClient:        redisClient,
 		readBufferFactory:  readBufferFactory,
 		digestKeyFormat:    digestKeyFormat,
 		keyTTL:             keyTTL,
+		refreshOnUse:       refreshOnUse,
 		replicationCount:   int64(replicationCount),
 		replicationTimeout: int(replicationTimeout.Milliseconds()),
 	}
@@ -48,7 +50,15 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		return buffer.NewBufferFromError(err)
 	}
 	key := digest.GetKey(ba.digestKeyFormat)
-	value, err := ba.redisClient.Get(key).Bytes()
+
+	pipeline := ba.redisClient.Pipeline()
+	get := pipeline.Get(key)
+	if ba.refreshOnUse {
+		pipeline.Expire(key, ba.keyTTL)
+	}
+	pipeline.Exec()
+
+	value, err := get.Bytes()
 	if err == redis.Nil {
 		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.NotFound, "Blob not found"))
 	} else if err != nil {
@@ -117,7 +127,11 @@ func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	pipeline := ba.redisClient.Pipeline()
 	cmds := make([]*redis.IntCmd, 0, digests.Length())
 	for _, digest := range digests.Items() {
-		cmds = append(cmds, pipeline.Exists(digest.GetKey(ba.digestKeyFormat)))
+		key := digest.GetKey(ba.digestKeyFormat)
+		cmds = append(cmds, pipeline.Exists(key))
+		if ba.refreshOnUse {
+			pipeline.Expire(key, ba.keyTTL)
+		}
 	}
 	if _, err := pipeline.Exec(); err != nil {
 		return digest.EmptySet, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")

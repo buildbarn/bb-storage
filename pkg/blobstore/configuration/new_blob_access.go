@@ -262,6 +262,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				readBufferFactory,
 				digestKeyFormat,
 				keyTTL,
+				backend.Redis.RefreshTtlOnUse,
 				backend.Redis.ReplicationCount,
 				replicationTimeout),
 			DigestKeyFormat: digestKeyFormat,
