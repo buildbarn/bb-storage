@@ -16,8 +16,15 @@ message ClientConfiguration {
   // TLS configuration. TLS is not enabled when left unset.
   buildbarn.configuration.tls.ClientConfiguration tls = 2;
 
-  // Keepalive messages for point-to-point healthchecking. Keepalive is
-  // not enabled when left unset.
+  // Keepalive messages for point-to-point healthchecking. Keepalive
+  // is not enabled when left unset.
+  //
+  // WARNING: When enabling this option, please make sure that
+  // keepalive_enforcement_policy is set on the server with a
+  // configuration that permits these keepalives. Failure to do this
+  // will result in "transport is closing" errors being returned to
+  // the client. The default server configuration is unlikely to be
+  // correct.
   ClientKeepaliveConfiguration keepalive = 3;
 
   // List of gRPC metadata headers to forward from the calling context.
@@ -117,7 +124,9 @@ message ServerConfiguration {
   int64 maximum_received_message_size_bytes = 5;
 
   // Policy for allowing clients to send messages for point-to-point
-  // healthchecking. The default policy is used when left unset.
+  // healthchecking. The default policy is used if this field is
+  // unset, which currently sets min_time to 5 minutes and
+  // permit_without_stream to false.
   ServerKeepaliveEnforcementPolicy keepalive_enforcement_policy = 6;
 
   // Service name for health check requests. The gRPC server will
