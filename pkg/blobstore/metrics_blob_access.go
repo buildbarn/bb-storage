@@ -89,9 +89,8 @@ func (ba *metricsBlobAccess) updateDurationSeconds(vec prometheus.ObserverVec, c
 }
 
 func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	ctx, span := trace.StartSpan(ctx, "BlobAccess.Get")
+	ctx, span := trace.StartSpan(ctx, ba.name+".Get")
 	span.AddAttributes(
-		trace.StringAttribute("BlobAccess", ba.name),
 		trace.StringAttribute("digest", digest.String()),
 	)
 
@@ -110,9 +109,8 @@ func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 }
 
 func (ba *metricsBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	ctx, span := trace.StartSpan(ctx, "BlobAccess.Put")
+	ctx, span := trace.StartSpan(ctx, ba.name+".Put")
 	span.AddAttributes(
-		trace.StringAttribute("BlobAccess", ba.name),
 		trace.StringAttribute("digest", digest.String()),
 	)
 	defer span.End()
@@ -135,9 +133,8 @@ func (ba *metricsBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 }
 
 func (ba *metricsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	ctx, span := trace.StartSpan(ctx, "BlobAccess.FindMissing")
+	ctx, span := trace.StartSpan(ctx, ba.name+".FindMissing")
 	span.AddAttributes(
-		trace.StringAttribute("BlobAccess", ba.name),
 		trace.Int64Attribute("digests", int64(digests.Length())),
 	)
 	defer span.End()
