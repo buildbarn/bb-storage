@@ -22,7 +22,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8/redisext"
 	"github.com/golang/protobuf/ptypes"
 
 	"gocloud.dev/blob"
@@ -239,9 +240,15 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					DialTimeout:     dialTimeout,
 					ReadTimeout:     readTimeout,
 					WriteTimeout:    writeTimeout,
+					NewClient: func(opt *redis.Options) *redis.Client {
+						client := redis.NewClient(opt)
+						client.AddHook(redisext.OpenTelemetryHook{})
+						return client
+					},
 				})
+
 		case *pb.RedisBlobAccessConfiguration_Single:
-			redisClient = redis.NewClient(
+			r := redis.NewClient(
 				&redis.Options{
 					Addr:         mode.Single.Endpoint,
 					Password:     mode.Single.Password,
@@ -251,6 +258,8 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					ReadTimeout:  readTimeout,
 					WriteTimeout: writeTimeout,
 				})
+			r.AddHook(redisext.OpenTelemetryHook{})
+			redisClient = r
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Redis configuration must either be clustered or single server")
 		}

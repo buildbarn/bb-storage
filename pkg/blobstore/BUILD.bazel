@@ -34,7 +34,7 @@ go_library(
         "@com_github_aws_aws_sdk_go//aws:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_go_redis_redis//:go_default_library",
+        "@com_github_go_redis_redis_v8//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_prometheus_client_golang//prometheus:go_default_library",
         "@dev_gocloud//blob:go_default_library",
