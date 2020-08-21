@@ -173,5 +173,8 @@ func (eh *metricsErrorHandler) Done() {
 }
 
 func errToStatus(err error) trace.Status {
+	if err == nil {
+		return trace.Status{}
+	}
 	return trace.Status{Code: int32(status.Code(err)), Message: err.Error()}
 }
