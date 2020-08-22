@@ -18,7 +18,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"go.opencensus.io/plugin/ocgrpc"
+	grpcotel "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc"
+	"go.opentelemetry.io/otel/api/global"
 )
 
 func init() {
@@ -47,14 +48,20 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// Default server options.
+		tracer := global.Tracer("github.com/buildbarn/bb-storage")
 		serverOptions := []grpc.ServerOption{
 			grpc.ChainUnaryInterceptor(
 				grpc_prometheus.UnaryServerInterceptor,
-				NewAuthenticatingUnaryInterceptor(authenticator)),
+				grpcotel.UnaryServerInterceptor(tracer),
+				NewAuthenticatingUnaryInterceptor(authenticator),
+				NewRequestMetadataFetchingUnaryServerInterceptor(),
+			),
 			grpc.ChainStreamInterceptor(
 				grpc_prometheus.StreamServerInterceptor,
-				NewAuthenticatingStreamInterceptor(authenticator)),
-			grpc.StatsHandler(NewRequestMetadataFetchingStatsHandler(&ocgrpc.ServerHandler{})),
+				grpcotel.StreamServerInterceptor(tracer),
+				NewAuthenticatingStreamInterceptor(authenticator),
+				NewRequestMetadataFetchingStreamServerInterceptor(),
+			),
 		}
 
 		// Enable TLS if provided.

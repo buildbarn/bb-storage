@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
+import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
@@ -56,18 +57,101 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
+message OpenCensusConfiguration {
+  // Export data to an OpenCensus agent. The recommended configuration
+  // is to use opentelemetry-collector and enable its opencensus-agent
+  // receiver.
+
+  // Connection address for the agent. Default is localhost:55678.
+  string address = 1;
+
+  // TLS configuration. TLS is not enabled when left unset.
+  buildbarn.configuration.tls.ClientConfiguration tls = 2;
+
+  // OpenCensus service name.
+  string service_name = 3;
+
+  // Export opencensus metrics to Prometheus.
+  bool enable_prometheus = 4;
+}
+
+message OpenTelemetryConfiguration {
+  // Connection address for the collector. Default is localhost:55680.
+  string address = 1;
+
+  // TLS configuration. TLS is not enabled when left unset.
+  buildbarn.configuration.tls.ClientConfiguration tls = 2;
+
+  // Resource detectors. Labels will be merged, with earlier things in
+  // this entries being preferred over later ones.
+  enum ResourceDetector {
+    FROM_ENVIRONMENT_VARIABLE =
+        0;    // Use OTEL_RESOURCE_ATTRIBUTES environment variable
+    AWS = 1;  // Use AWS instance metadata
+    GCE = 2;  // Use GCE instance metadata
+    GKE = 3;  // Use GKE API
+  }
+  repeated ResourceDetector resource_detectors = 3;
+
+  // Queue size for buffering spans. Default is 2048.
+  int32 max_queue_size = 4;
+
+  // If true, then span Start() and End() functions will block when
+  // the queue is full. This will significantly degrade performance,
+  // but does guarantee no spans are lost, which can be useful when
+  // debugging with the sampling probability set to 1.0.
+  bool block_on_queue_full = 5;
+
+  // Maximum duration to hold a batch before sending. Default is 5s.
+  google.protobuf.Duration batch_timeout = 6;
+
+  // Maximum number of spans to batch before sending. Default is 512.
+  int32 max_export_batch_size = 7;
+}
+
 message TracingConfiguration {
-  // Jaeger configuration for tracing.
-  JaegerConfiguration jaeger = 1;
+  // Jaeger configuration for tracing has been replaced by open_census
+  // and open_telemetry.
+  reserved 1;
 
-  // Stackdriver Trace configuration for tracing.
-  StackdriverConfiguration stackdriver = 2;
+  // Stackdriver Trace configuration has been replaced by open_census
+  // and open_telemetry.
+  reserved 2;
 
-  // Export stats on traces to Prometheus.
-  bool enable_prometheus = 3;
+  // enable_prometheus has moved into open_census.
+  reserved 3;
 
-  // Whether or not all traces should be sampled.
-  bool always_sample = 4;
+  // Trace sampling is now configured with sample_probability.
+  reserved 4;
+
+  // Fraction of traces that should be sampled. 0 will disable
+  // tracing, 1 will sample all traces.
+  double sample_probability = 5;
+
+  // The intended usage is to run the opentelemetry-collector agent as
+  // a sidecar, with both the opencensus and otel receivers enabled,
+  // and configure that agent to send traces to your preferred
+  // backend.
+
+  // In order to fully capture all traces, it is currently necessary
+  // to configure both oc and otel, because not all libraries have
+  // migrated to OpenTelemtry yet. A sufficient minimal configuration is:
+  //
+  // openCensus: {
+  //   serviceName: "buildbarn",
+  // },
+  // openTelemetry: {
+  //   resourceDetectors: ['FROM_ENVIRONMENT_VARIABLE'],
+  // },
+  //
+  // And set the environment variable OTEL_RESOURCE_ATTRIBUTES to
+  // 'service.name=buildbarn'.
+
+  // Export data to an OpenCensus agent.
+  OpenCensusConfiguration open_census = 6;
+
+  // Export data to an OpenTelemetry collector.
+  OpenTelemetryConfiguration open_telemetry = 7;
 }
 
 message Configuration {

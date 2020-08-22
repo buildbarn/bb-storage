@@ -143,7 +143,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					WriteTimeout:    writeTimeout,
 					NewClient:       newRedisClient,
 				})
-
 		case *pb.RedisBlobAccessConfiguration_Single:
 			redisClient = newRedisClient(
 				&redis.Options{
