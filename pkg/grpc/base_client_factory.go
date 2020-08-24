@@ -34,6 +34,10 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 
 	dialOptions := []grpc.DialOption{
 		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}),
+		// We consistently prefer to wait for a connection rather than
+		// abort builds when there is a tcp error. Can be overridden
+		// on a per-call basis.
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
 	}
 	unaryInterceptors := []grpc.UnaryClientInterceptor{
 		grpc_prometheus.UnaryClientInterceptor,
