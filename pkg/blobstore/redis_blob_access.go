@@ -11,6 +11,7 @@ import (
 	"github.com/go-redis/redis"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // RedisClient is an interface that contains the set of functions of the
@@ -100,7 +101,7 @@ func (ba *redisBlobAccess) waitIfReplicationEnabled() error {
 		return util.StatusWrapWithCode(err, codes.Internal, "Error replicating blob")
 	}
 	if replicatedCount < ba.replicationCount {
-		return util.StatusWrapfWithCode(err, codes.Internal, "Replication not completed. Requested %d, actual %d", ba.replicationCount, replicatedCount)
+		return status.Errorf(codes.Internal, "Replication not completed. Requested %d, actual %d", ba.replicationCount, replicatedCount)
 	}
 	return nil
 }
