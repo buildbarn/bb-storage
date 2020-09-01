@@ -37,6 +37,7 @@ go_test(
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/digest:go_default_library",
+        "@com_github_aws_aws_sdk_go//aws:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
