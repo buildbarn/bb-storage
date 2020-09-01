@@ -8,14 +8,9 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 )
 
-type s3CopyMutator struct {
-	minRefreshAge time.Duration
-	clock         clock.Clock
-}
-
-// NewS3CopyMutator creates a BeforeCopyFunc which updates the "Used"
+// NewS3LRURefreshingBeforeCopyFunc creates a BeforeCopyFunc which updates the "Used"
 // metadata field on s3 objects with the current time.
-func NewS3CopyMutator(minRefreshAge time.Duration, clock clock.Clock) BeforeCopyFunc {
+func NewS3LRURefreshingBeforeCopyFunc(minRefreshAge time.Duration, clock clock.Clock) BeforeCopyFunc {
 	return func(asFunc func(interface{}) bool) error {
 		var input *s3.CopyObjectInput
 		if !asFunc(&input) {

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cloud"
@@ -19,7 +20,7 @@ func TestS3CopyMutator(t *testing.T) {
 	now := time.Unix(1000, 0)
 	clock.EXPECT().Now().Return(now)
 
-	mutator := cloud.NewS3CopyMutator(minRefreshAge, clock)
+	mutator := cloud.NewS3LRURefreshingBeforeCopyFunc(minRefreshAge, clock)
 	var input s3.CopyObjectInput
 	require.NoError(t, mutator(func(i interface{}) bool {
 		// https://github.com/google/go-cloud/blob/master/blob/s3blob/s3blob.go
@@ -32,7 +33,9 @@ func TestS3CopyMutator(t *testing.T) {
 		return false
 	}))
 
-	require.Equal(t, now.String(), *input.Metadata["Used"])
-	require.Equal(t, "REPLACE", *input.MetadataDirective)
-	require.Equal(t, time.Unix(1000-17, 0), *input.CopySourceIfUnmodifiedSince)
+	require.Equal(t, s3.CopyObjectInput{
+		Metadata:                    aws.StringMap(map[string]string{"Used": now.String()}),
+		MetadataDirective:           aws.String("REPLACE"),
+		CopySourceIfUnmodifiedSince: aws.Time(time.Unix(1000-17, 0)),
+	}, input)
 }

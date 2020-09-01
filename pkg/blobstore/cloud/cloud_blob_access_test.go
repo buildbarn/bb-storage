@@ -55,7 +55,7 @@ func TestCloudBlobAccessGet(t *testing.T) {
 		// Precondition to validate the above code: key exists before we run .Get
 		existsBefore, err := bucket.Exists(ctx, bucketKey)
 		require.NoError(t, err)
-		require.Equal(t, existsBefore, true)
+		require.True(t, existsBefore)
 
 		_, err = blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
 		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 787ec76dcafd20c1908eb0936a12f91edd105ab5cd7ecc2b1ae2032648345dff, while 64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c was expected"), err)
@@ -63,7 +63,7 @@ func TestCloudBlobAccessGet(t *testing.T) {
 		// Postcondition: repair deletes the incorrect object
 		existsAfter, err := bucket.Exists(ctx, bucketKey)
 		require.NoError(t, err)
-		require.Equal(t, existsAfter, false)
+		require.False(t, existsAfter)
 	})
 }
 

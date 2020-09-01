@@ -134,7 +134,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain S3 refresh age")
 			}
 			return BlobAccessInfo{
-				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, cloud.NewS3CopyMutator(minRefreshAge, clock.SystemClock)),
+				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, cloud.NewS3LRURefreshingBeforeCopyFunc(minRefreshAge, clock.SystemClock)),
 				DigestKeyFormat: digestKeyFormat,
 			}, "s3", nil
 		default:
