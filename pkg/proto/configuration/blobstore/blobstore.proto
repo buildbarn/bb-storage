@@ -263,6 +263,13 @@ message RedisBlobAccessConfiguration {
   // the master is lost.
   google.protobuf.Duration replication_timeout = 9;
 
+  // The following three timeouts are for individual dial/read/write
+  // operations within a retriable operation. In particular, if using
+  // a clustered redis configuration with default retries, you want to
+  // set these to be no more than a few seconds, so that slow or
+  // unresponsive redis nodes are skipped and the operation is retried
+  // on a different node.
+
   // Dial timeout for establishing new connections.
   // Default value can be overidden (e.g, '30s').
   google.protobuf.Duration dial_timeout = 10;
