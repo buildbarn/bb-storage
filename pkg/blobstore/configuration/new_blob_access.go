@@ -54,6 +54,12 @@ type BlobAccessInfo struct {
 	DigestKeyFormat digest.KeyFormat
 }
 
+func newRedisClient(opt *redis.Options) *redis.Client {
+	client := redis.NewClient(opt)
+	client.AddHook(redisext.OpenTelemetryHook{})
+	return client
+}
+
 func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
@@ -240,15 +246,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					DialTimeout:     dialTimeout,
 					ReadTimeout:     readTimeout,
 					WriteTimeout:    writeTimeout,
-					NewClient: func(opt *redis.Options) *redis.Client {
-						client := redis.NewClient(opt)
-						client.AddHook(redisext.OpenTelemetryHook{})
-						return client
-					},
+					NewClient:       newRedisClient,
 				})
 
 		case *pb.RedisBlobAccessConfiguration_Single:
-			r := redis.NewClient(
+			redisClient = newRedisClient(
 				&redis.Options{
 					Addr:         mode.Single.Endpoint,
 					Password:     mode.Single.Password,
@@ -258,8 +260,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					ReadTimeout:  readTimeout,
 					WriteTimeout: writeTimeout,
 				})
-			r.AddHook(redisext.OpenTelemetryHook{})
-			redisClient = r
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Redis configuration must either be clustered or single server")
 		}
