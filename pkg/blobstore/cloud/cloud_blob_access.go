@@ -1,11 +1,13 @@
-package blobstore
+package cloud
 
 import (
 	"context"
 	"log"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
@@ -17,18 +19,20 @@ import (
 type cloudBlobAccess struct {
 	bucket            *blob.Bucket
 	keyPrefix         string
-	readBufferFactory ReadBufferFactory
+	readBufferFactory blobstore.ReadBufferFactory
 	digestKeyFormat   digest.KeyFormat
+	beforeCopy        BeforeCopyFunc
 }
 
 // NewCloudBlobAccess creates a BlobAccess that uses a cloud-based blob storage
 // as a backend.
-func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat) BlobAccess {
+func NewCloudBlobAccess(bucket *blob.Bucket, keyPrefix string, readBufferFactory blobstore.ReadBufferFactory, digestKeyFormat digest.KeyFormat, beforeCopy BeforeCopyFunc) blobstore.BlobAccess {
 	return &cloudBlobAccess{
 		bucket:            bucket,
 		keyPrefix:         keyPrefix,
 		readBufferFactory: readBufferFactory,
 		digestKeyFormat:   digestKeyFormat,
+		beforeCopy:        beforeCopy,
 	}
 }
 
@@ -41,7 +45,8 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		}
 		return buffer.NewBufferFromError(err)
 	}
-	return ba.readBufferFactory.NewBufferFromReader(
+
+	b, t := buffer.WithBackgroundTask(ba.readBufferFactory.NewBufferFromReader(
 		digest,
 		result,
 		func(dataIsValid bool) {
@@ -52,7 +57,17 @@ func (ba *cloudBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 					log.Printf("Blob %#v was malformed and could not be deleted from its bucket: %s", digest.String(), err)
 				}
 			}
-		})
+		}))
+
+	go func() {
+		err := ba.touchBlob(ctx, key)
+		if err != nil {
+			err = util.StatusWrap(err, "Failed to refresh blob")
+		}
+		t.Finish(err)
+	}()
+
+	return b
 }
 
 func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -77,16 +92,31 @@ func (ba *cloudBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 
 func (ba *cloudBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	missing := digest.NewSetBuilder()
+
 	for _, blobDigest := range digests.Items() {
-		if exists, err := ba.bucket.Exists(ctx, ba.getKey(blobDigest)); err != nil {
-			return digest.EmptySet, err
-		} else if !exists {
+		key := ba.getKey(blobDigest)
+		err := ba.touchBlob(ctx, key)
+		switch gcerrors.Code(err) {
+		case gcerrors.OK:
+			// Not missing
+		case gcerrors.NotFound:
+			// Missing
 			missing.Add(blobDigest)
+		default:
+			return digest.EmptySet, err
 		}
 	}
+
 	return missing.Build(), nil
 }
 
 func (ba *cloudBlobAccess) getKey(digest digest.Digest) string {
 	return ba.keyPrefix + digest.GetKey(ba.digestKeyFormat)
+}
+
+func (ba *cloudBlobAccess) touchBlob(ctx context.Context, key string) error {
+	// Touch the object to update its modification time, so that cloud expiration policies will be LRU.
+	return ba.bucket.Copy(ctx, key, key, &blob.CopyOptions{
+		BeforeCopy: ba.beforeCopy,
+	})
 }
