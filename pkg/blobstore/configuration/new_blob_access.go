@@ -22,7 +22,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8/redisext"
 	"github.com/golang/protobuf/ptypes"
 
 	"gocloud.dev/blob"
@@ -51,6 +52,12 @@ import (
 type BlobAccessInfo struct {
 	BlobAccess      blobstore.BlobAccess
 	DigestKeyFormat digest.KeyFormat
+}
+
+func newRedisClient(opt *redis.Options) *redis.Client {
+	client := redis.NewClient(opt)
+	client.AddHook(redisext.OpenTelemetryHook{})
+	return client
 }
 
 func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
@@ -239,9 +246,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					DialTimeout:     dialTimeout,
 					ReadTimeout:     readTimeout,
 					WriteTimeout:    writeTimeout,
+					NewClient:       newRedisClient,
 				})
+
 		case *pb.RedisBlobAccessConfiguration_Single:
-			redisClient = redis.NewClient(
+			redisClient = newRedisClient(
 				&redis.Options{
 					Addr:         mode.Single.Endpoint,
 					Password:     mode.Single.Password,

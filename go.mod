@@ -8,9 +8,11 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.2.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.9
 	github.com/Azure/azure-storage-blob-go v0.10.0
+	github.com/DataDog/sketches-go v0.0.0-20190923095040-43f19ad77ff7 // indirect
 	github.com/aws/aws-sdk-go v1.33.12
 	github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9
-	github.com/go-redis/redis v6.15.8+incompatible
+	github.com/benbjohnson/clock v1.0.3 // indirect
+	github.com/go-redis/redis/v8 v8.0.0-beta.8
 	github.com/golang/mock v1.4.4-0.20200406172829-6d816de489c1
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-jsonnet v0.16.0
@@ -32,5 +34,5 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sys v0.0.0-20200727154430-2d971f7391a4
 	google.golang.org/genproto v0.0.0-20200726014623-da3ae01ef02d
-	google.golang.org/grpc v1.30.0
+	google.golang.org/grpc v1.31.0
 )
