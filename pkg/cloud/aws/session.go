@@ -31,5 +31,27 @@ func NewSessionFromConfiguration(configuration *aws_pb.SessionConfiguration) (*s
 			staticCredentials.SecretAccessKey,
 			"")
 	}
+	logLevel := aws.LogOff
+	if configuration.GetLogDebug() {
+		logLevel |= aws.LogDebug
+	}
+	if configuration.GetLogSigning() {
+		logLevel |= aws.LogDebugWithSigning
+	}
+	if configuration.GetLogHttpBody() {
+		logLevel |= aws.LogDebugWithHTTPBody
+	}
+	if configuration.GetLogRequestRetries() {
+		logLevel |= aws.LogDebugWithRequestRetries
+	}
+	if configuration.GetLogRequestErrors() {
+		logLevel |= aws.LogDebugWithRequestErrors
+	}
+	if configuration.GetLogEventStreamBody() {
+		logLevel |= aws.LogDebugWithEventStreamBody
+	}
+	if logLevel != aws.LogOff {
+		cfg.LogLevel = &logLevel
+	}
 	return session.NewSession(&cfg)
 }

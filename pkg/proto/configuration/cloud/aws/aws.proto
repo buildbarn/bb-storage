@@ -30,4 +30,13 @@ message SessionConfiguration {
   // will search the default credential provider chain (e.g.,
   // environment variables, EC2 instance IAM roles).
   StaticCredentials static_credentials = 5;
+
+  // Log levels are documented at
+  // https://docs.aws.amazon.com/sdk-for-go/api/aws/#LogLevelType
+  bool log_debug = 6;
+  bool log_signing = 7;
+  bool log_http_body = 8;
+  bool log_request_retries = 9;
+  bool log_request_errors = 10;
+  bool log_event_stream_body = 11;
 }
