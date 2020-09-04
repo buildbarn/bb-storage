@@ -320,7 +320,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			BlobAccess: sharding.NewShardingBlobAccess(
 				backends,
 				sharding.NewWeightedShardPermuter(weights),
-				*combinedDigestKeyFormat,
 				backend.Sharding.HashInitialization),
 			DigestKeyFormat: *combinedDigestKeyFormat,
 		}, "sharding", nil

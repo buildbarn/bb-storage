@@ -11,26 +11,24 @@ import (
 type shardingBlobAccess struct {
 	backends           []blobstore.BlobAccess
 	shardPermuter      ShardPermuter
-	digestKeyFormat    digest.KeyFormat
 	hashInitialization uint64
 }
 
 // NewShardingBlobAccess is an adapter for BlobAccess that partitions
 // requests across backends by hashing the digest. A ShardPermuter is
 // used to map hashes to backends.
-func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardPermuter, digestKeyFormat digest.KeyFormat, hashInitialization uint64) blobstore.BlobAccess {
+func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardPermuter, hashInitialization uint64) blobstore.BlobAccess {
 	return &shardingBlobAccess{
 		backends:           backends,
 		shardPermuter:      shardPermuter,
-		digestKeyFormat:    digestKeyFormat,
 		hashInitialization: hashInitialization,
 	}
 }
 
-func (ba *shardingBlobAccess) getBackend(digest digest.Digest) blobstore.BlobAccess {
+func (ba *shardingBlobAccess) getBackend(blobDigest digest.Digest) blobstore.BlobAccess {
 	// Hash the key using FNV-1a.
 	h := ba.hashInitialization
-	for _, c := range digest.GetKey(ba.digestKeyFormat) {
+	for _, c := range blobDigest.GetKey(digest.KeyWithoutInstance) {
 		h ^= uint64(c)
 		h *= 1099511628211
 	}
