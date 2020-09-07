@@ -229,8 +229,8 @@ def go_dependencies():
     go_repository(
         name = "com_github_gordonklaus_ineffassign",
         importpath = "github.com/gordonklaus/ineffassign",
-        sum = "h1:vc7Dmrk4JwS0ZPS6WZvWlwDflgDTA26jItmbSj83nug=",
-        version = "v0.0.0-20200309095847-7953dde2c7bf",
+        sum = "h1:U/zHjaVG/sECz5xhnh7kPH+Fv/maPbhZPcaTquo5sPg=",
+        version = "v0.0.0-20200809085317-e36bfde3bb78",
     )
     go_repository(
         name = "org_golang_x_lint",
@@ -959,30 +959,7 @@ def go_dependencies():
         sum = "h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=",
         version = "v1.2.0",
     )
-    go_repository(
-        name = "com_github_uber_jaeger_lib",
-        importpath = "github.com/uber/jaeger-lib",
-        sum = "h1:MxZXOiR2JuoANZ3J6DE/U0kSFv/eJ/GfSYVCjK7dyaw=",
-        version = "v2.2.0+incompatible",
-    )
-    go_repository(
-        name = "com_github_uber_go_atomic",
-        importpath = "github.com/uber-go/atomic",
-        sum = "h1:yOuPqEq4ovnhEjpHmfFwsqBXDYbQeT6Nb0bwD6XnD5o=",
-        version = "v1.4.0",
-    )
-    go_repository(
-        name = "com_github_benbjohnson_clock",
-        importpath = "github.com/benbjohnson/clock",
-        sum = "h1:vkLuvpK4fmtSCuo60+yC63p7y0BmQ8gm5ZXGuBCJyXg=",
-        version = "v1.0.3",
-    )
-    go_repository(
-        name = "com_github_datadog_sketches_go",
-        importpath = "github.com/DataDog/sketches-go",
-        sum = "h1:qELHH0AWCvf98Yf+CNIJx9vOZOfHFDDzgDRYsnNk/vs=",
-        version = "v0.0.0-20190923095040-43f19ad77ff7",
-    )
+
     go_repository(
         name = "com_github_dgryski_go_rendezvous",
         importpath = "github.com/dgryski/go-rendezvous",

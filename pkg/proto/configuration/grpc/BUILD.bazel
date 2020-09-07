@@ -23,6 +23,7 @@ go_proto_library(
 
 go_library(
     name = "go_default_library",
+    srcs = ["doc.go"],
     embed = [":grpc_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc",
     visibility = ["//visibility:public"],
