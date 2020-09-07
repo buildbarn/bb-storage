@@ -13,5 +13,6 @@ jsonnet_to_json(
         "master.yaml",
         "pull-requests.yaml",
     ],
+    visibility = ["//tools/tidy:__pkg__"],
     deps = [":workflows_template"],
 )

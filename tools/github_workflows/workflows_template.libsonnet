@@ -38,36 +38,12 @@
           uses: 'actions/checkout@v1',
         },
         {
-          name: 'Buildifier',
-          run: 'bazel run @com_github_bazelbuild_buildtools//:buildifier',
-        },
-        {
-          name: 'Gazelle',
-          run: 'bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle',
-        },
-        {
-          name: 'Gofmt',
-          run: 'bazel run @go_sdk//:bin/gofmt -- -s -w .',
-        },
-        {
-          name: 'Clang format',
-          run: "find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +",
-        },
-        {
-          name: 'GitHub workflows',
-          run: 'bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/* .github/workflows',
+          name: 'Tidy and lint',
+          run: 'bazel run //tools/tidy',
         },
         {
           name: 'Test style conformance',
           run: 'git diff --exit-code HEAD --',
-        },
-        {
-          name: 'Golint',
-          run: 'bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/...',
-        },
-        {
-          name: 'Check for ineffective assignments',
-          run: 'bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)',
         },
       ] + std.flattenArrays([
         [{
