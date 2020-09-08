@@ -26,19 +26,17 @@ type redisBlobAccess struct {
 	redisClient        RedisClient
 	readBufferFactory  ReadBufferFactory
 	digestKeyFormat    digest.KeyFormat
-	keyTTL             time.Duration
 	replicationCount   int64
 	replicationTimeout int
 }
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, keyTTL time.Duration, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
 	return &redisBlobAccess{
 		redisClient:        redisClient,
 		readBufferFactory:  readBufferFactory,
 		digestKeyFormat:    digestKeyFormat,
-		keyTTL:             keyTTL,
 		replicationCount:   int64(replicationCount),
 		replicationTimeout: int(replicationTimeout.Milliseconds()),
 	}
@@ -79,7 +77,7 @@ func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
-	if err := ba.redisClient.Set(ctx, digest.GetKey(ba.digestKeyFormat), value, ba.keyTTL).Err(); err != nil {
+	if err := ba.redisClient.Set(ctx, digest.GetKey(ba.digestKeyFormat), value, 0).Err(); err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
 	return ba.waitIfReplicationEnabled(ctx)

@@ -244,12 +244,9 @@ message RedisBlobAccessConfiguration {
   // when not set.
   buildbarn.configuration.tls.ClientConfiguration tls = 4;
 
-  // How long to keep a cache key in Redis, specified as a duration.
-  // When unset, this means keys do not expire and and rely on Redis
-  // eviction policy to efficiently remove keys when storage gets full.
-  // A reasonable number for this would allow keys to live long enough
-  // objects to be found in the CAS once the client uploads them.
-  google.protobuf.Duration key_ttl = 7;
+  // key_ttl was removed because it gives the wrong eviction
+  // behaviour. Use redis's own eviction policies instead.
+  reserved 7;
 
   // The minimum number of replicas to successfully replicate put calls to
   // before considering it successful.
