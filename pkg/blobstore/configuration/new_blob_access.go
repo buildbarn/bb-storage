@@ -175,14 +175,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain TLS configuration")
 		}
 
-		var keyTTL time.Duration
-		if backend.Redis.KeyTtl != nil {
-			keyTTL, err = ptypes.Duration(backend.Redis.KeyTtl)
-			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain key TTL configuration")
-			}
-		}
-
 		var replicationTimeout time.Duration
 		if backend.Redis.ReplicationTimeout != nil {
 			replicationTimeout, err = ptypes.Duration(backend.Redis.ReplicationTimeout)
@@ -275,7 +267,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				redisClient,
 				readBufferFactory,
 				digestKeyFormat,
-				keyTTL,
 				backend.Redis.ReplicationCount,
 				replicationTimeout),
 			DigestKeyFormat: digestKeyFormat,
