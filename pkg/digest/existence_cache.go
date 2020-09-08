@@ -82,3 +82,15 @@ func (ec *ExistenceCache) Add(digests Set) {
 	}
 	ec.lock.Unlock()
 }
+
+func (ec *ExistenceCache) Remove(digest Digest) {
+	ec.lock.Lock()
+	key := digest.GetKey(ec.keyFormat)
+	// Simply deleting would mess up the cache size handling above, so
+	// we zero the time instead. It will be evicted as usual, but will
+	// no longer affect the result of RemoveExisting
+	if _, ok := ec.insertionTimes[key]; ok {
+		ec.insertionTimes[key] = time.Time{}
+	}
+	ec.lock.Unlock()
+}

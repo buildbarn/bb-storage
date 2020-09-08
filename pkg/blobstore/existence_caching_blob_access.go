@@ -3,7 +3,10 @@ package blobstore
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type existenceCachingBlobAccess struct {
@@ -29,6 +32,13 @@ func NewExistenceCachingBlobAccess(base BlobAccess, existenceCache *digest.Exist
 	}
 }
 
+func (ba *existenceCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	return buffer.WithErrorHandler(ba.BlobAccess.Get(ctx, digest), &existenceCachingErrorHandler{
+		existenceCache: ba.existenceCache,
+		digest:         digest,
+	})
+}
+
 func (ba *existenceCachingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Determine which digests don't need to be checked, because
 	// they have already been requested recently.
@@ -45,3 +55,20 @@ func (ba *existenceCachingBlobAccess) FindMissing(ctx context.Context, digests d
 	ba.existenceCache.Add(present)
 	return missing, nil
 }
+
+type existenceCachingErrorHandler struct {
+	existenceCache *digest.ExistenceCache
+	digest         digest.Digest
+}
+
+func (eh *existenceCachingErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	if status.Code(err) == codes.NotFound {
+		// To reduce invalid caching after eviction, we immediately
+		// evict when Get returns NOT_FOUND, instead of waiting for it
+		// to expire naturally.
+		eh.existenceCache.Remove(eh.digest)
+	}
+	return nil, err
+}
+
+func (eh *existenceCachingErrorHandler) Done() {}

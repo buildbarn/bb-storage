@@ -109,4 +109,21 @@ func TestExistenceCache(t *testing.T) {
 		t,
 		allDigests,
 		existenceCache.RemoveExisting(allDigests))
+
+	// Add two elements, then remove one. The removed item should not
+	// be pruned.
+	clock.EXPECT().Now().Return(time.Unix(1100, 0))
+	existenceCache.Add(digest.NewSetBuilder().
+		Add(digests[0]).
+		Add(digests[1]).
+		Build())
+	existenceCache.Remove(digests[1])
+	clock.EXPECT().Now().Return(time.Unix(1101, 0))
+	require.Equal(
+		t,
+		digest.NewSetBuilder().
+			Add(digests[1]).
+			Add(digests[2]).
+			Build(),
+		existenceCache.RemoveExisting(allDigests))
 }
