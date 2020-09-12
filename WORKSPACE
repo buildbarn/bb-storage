@@ -44,6 +44,17 @@ http_archive(
     ],
 )
 
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+# gazelle:repository_macro go_dependencies.bzl%go_dependencies
+load(":go_dependencies.bzl", "go_dependencies")
+
+go_dependencies()
+
 load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
 
 container_repositories()
@@ -55,12 +66,6 @@ container_deps()
 load("@io_bazel_rules_docker//repositories:pip_repositories.bzl", "pip_deps")
 
 pip_deps()
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains()
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
@@ -81,19 +86,12 @@ load("@com_github_bazelbuild_buildtools//buildifier:deps.bzl", "buildifier_depen
 
 buildifier_dependencies()
 
-# gazelle:repository_macro go_dependencies.bzl%go_dependencies
-load(":go_dependencies.bzl", "go_dependencies")
-
-go_dependencies()
-
 load("@com_github_bazelbuild_remote_apis//:repository_rules.bzl", "switched_rules_by_language")
 
 switched_rules_by_language(
     name = "bazel_remote_apis_imports",
     go = True,
 )
-
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "com_google_protobuf",
