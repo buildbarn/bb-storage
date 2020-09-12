@@ -18,8 +18,8 @@ import (
 func TestPartitioningBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	f := mock.NewMockFileReadWriter(ctrl)
-	pa := local.NewPartitioningBlockAllocator(f, blobstore.CASReadBufferFactory, 1, 100, 10)
+	blockDevice := mock.NewMockBlockDevice(ctrl)
+	pa := local.NewPartitioningBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10)
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
@@ -36,7 +36,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 
 	// Blocks should initially be handed out in order of the offset.
 	// The third block should thus start at offset 300.
-	f.EXPECT().WriteAt([]byte("Hello"), int64(317)).Return(5, nil)
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(317)).Return(5, nil)
 	require.NoError(t, blocks[3].Put(17, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 
 	// Fetch a blob from a block. Don't consume it yet, but do
@@ -56,7 +56,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 
 	// The blob may still be consumed with the block being released.
 	// It should have started at offset 700.
-	f.EXPECT().ReadAt(gomock.Any(), int64(725)).DoAndReturn(
+	blockDevice.EXPECT().ReadAt(gomock.Any(), int64(725)).DoAndReturn(
 		func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")
 			return 5, nil
@@ -70,7 +70,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	// It should still start at offset 700.
 	blocks[7], err = pa.NewBlock()
 	require.NoError(t, err)
-	f.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
 	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 
 	// When blocks are reused, they should be allocated according to
@@ -84,7 +84,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 		blocks[i], err = pa.NewBlock()
 		require.NoError(t, err)
 
-		f.EXPECT().WriteAt([]byte("Hello"), int64(100*i+83)).Return(5, nil)
+		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i+83)).Return(5, nil)
 		require.NoError(t, blocks[i].Put(83, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	}
 }

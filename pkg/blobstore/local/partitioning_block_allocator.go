@@ -51,7 +51,7 @@ var (
 )
 
 type partitioningBlockAllocator struct {
-	f                 blockdevice.ReadWriterAt
+	blockDevice       blockdevice.BlockDevice
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
 
@@ -61,7 +61,7 @@ type partitioningBlockAllocator struct {
 
 // NewPartitioningBlockAllocator implements a BlockAllocator that can be
 // used by LocalBlobAccess to store data. Blocks created by this
-// allocator are backed by a single ReadWriterAt. Storage is partitioned
+// allocator are backed by a single BlockDevice. Storage is partitioned
 // into equally sized blocks that are stored consecutively.
 //
 // Blocks are initially allocated out by increasing offset. Later on,
@@ -71,7 +71,7 @@ type partitioningBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
+func NewPartitioningBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
 	partitioningBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(partitioningBlockAllocatorAllocations)
 		prometheus.MustRegister(partitioningBlockAllocatorReleases)
@@ -81,7 +81,7 @@ func NewPartitioningBlockAllocator(f blockdevice.ReadWriterAt, readBufferFactory
 	})
 
 	pa := &partitioningBlockAllocator{
-		f:                 f,
+		blockDevice:       blockDevice,
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
 	}
@@ -138,7 +138,7 @@ func (pb *partitioningBlock) Get(digest digest.Digest, offsetBytes int64, sizeBy
 		digest,
 		&partitioningBlockReader{
 			SectionReader: *io.NewSectionReader(
-				pb.blockAllocator.f,
+				pb.blockAllocator.blockDevice,
 				pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
 				sizeBytes),
 			block: pb,
@@ -158,7 +158,7 @@ func (pb *partitioningBlock) Put(offsetBytes int64, b buffer.Buffer) error {
 	}
 
 	w := &partitioningBlockWriter{
-		w:             pb.blockAllocator.f,
+		w:             pb.blockAllocator.blockDevice,
 		partialSector: make([]byte, 0, pb.blockAllocator.sectorSizeBytes),
 		offset:        pb.offset + offsetBytes/int64(sectorSizeBytes),
 	}

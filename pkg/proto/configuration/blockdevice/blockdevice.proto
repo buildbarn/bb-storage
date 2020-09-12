@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package buildbarn.configuration.blockdevice;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice";
+
+message FileConfiguration {
+  // The path of the regular file that should act as a block device.
+  string path = 1;
+
+  // The desired size of the regular file. The provided size is rounded
+  // up according to the block size of the file system.
+  int64 size_bytes = 2;
+}
+
+message Configuration {
+  oneof source {
+    // Let the block device be backed by a device node provided by the
+    // host operating system.
+    string device_path = 1;
+
+    // Let the block device be backed by a regular file stored on a file
+    // system. This approach tends to have more overhead than using a
+    // device node, but is often easier to set up in environments where
+    // spare disks (or the privileges needed to access those) aren't
+    // readily available.
+    //
+    // Using this method is preferred over using tools such as Linux's
+    // losetup, FreeBSD's mdconfig, etc.
+    FileConfiguration file = 2;
+  };
+}

@@ -5,6 +5,7 @@ package buildbarn.configuration.blobstore;
 import "google/rpc/status.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "pkg/proto/configuration/cloud/aws/aws.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
@@ -473,8 +474,8 @@ message LocalBlobAccessConfiguration {
   }
 
   message BlockDevice {
-    // Path of the block device where data needs to be stored.
-    string path = 1;
+    // The block device where data needs to be stored.
+    buildbarn.configuration.blockdevice.Configuration source = 1;
 
     // To deal with lingering read requests, a small number of old
     // blocks may need to be retained for a short period of time. This

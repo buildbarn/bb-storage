@@ -1,37 +1,50 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
-        "memory_map_block_device_disabled.go",
-        "memory_map_block_device_linux.go",
-        "read_writer_at.go",
+        "block_device.go",
+        "configuration.go",
+        "memory_mapped_block_device_unix.go",
+        "new_block_device_from_device_disabled.go",
+        "new_block_device_from_device_linux.go",
+        "new_block_device_from_file_disabled.go",
+        "new_block_device_from_file_unix.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blockdevice",
     visibility = ["//visibility:public"],
-    deps = select({
+    deps = [
+        "//pkg/proto/configuration/blockdevice:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+    ] + select({
         "@io_bazel_rules_go//go/platform:android": [
+            "//pkg/util:go_default_library",
             "@org_golang_x_sys//unix:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:darwin": [
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-        ],
-        "@io_bazel_rules_go//go/platform:freebsd": [
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-        ],
-        "@io_bazel_rules_go//go/platform:ios": [
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
+            "//pkg/util:go_default_library",
             "@org_golang_x_sys//unix:go_default_library",
         ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "//pkg/util:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "//pkg/util:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//pkg/util:go_default_library",
+            "@org_golang_x_sys//unix:go_default_library",
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["new_block_device_from_file_test.go"],
+    embed = [":go_default_library"],
+    deps = ["@com_github_stretchr_testify//require:go_default_library"],
 )

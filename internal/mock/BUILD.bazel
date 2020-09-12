@@ -49,6 +49,14 @@ gomock(
 )
 
 gomock(
+    name = "blockdevice",
+    out = "blockdevice.go",
+    interfaces = ["BlockDevice"],
+    library = "//pkg/blockdevice:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "buffer",
     out = "buffer.go",
     interfaces = [
@@ -168,6 +176,7 @@ go_library(
         ":blobstore.go",
         ":blobstore_local.go",
         ":blobstore_replication.go",
+        ":blockdevice.go",
         ":buffer.go",
         ":builder.go",
         ":clock.go",

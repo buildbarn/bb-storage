@@ -371,12 +371,12 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			// memory mapped. Automatically determine the
 			// block size based on the size of the block
 			// device and the number of blocks.
-			var f blockdevice.ReadWriterAt
+			var blockDevice blockdevice.BlockDevice
 			var sectorCount int64
 			var err error
-			f, sectorSizeBytes, sectorCount, err = blockdevice.MemoryMapBlockDevice(dataBackend.BlockDevice.Path)
+			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(dataBackend.BlockDevice.Source)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open block device %#v", dataBackend.BlockDevice.Path)
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open blocks block device")
 			}
 			blockCount := dataBackend.BlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			blockSectorCount = sectorCount / int64(blockCount)
@@ -393,7 +393,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			}
 
 			blockAllocator = local.NewPartitioningBlockAllocator(
-				f,
+				blockDevice,
 				cachedReadBufferFactory,
 				sectorSizeBytes,
 				blockSectorCount,
