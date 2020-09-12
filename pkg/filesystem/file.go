@@ -22,11 +22,8 @@ type FileReader interface {
 // handle for a file that permits data to be read from and written to
 // arbitrary locations.
 type FileReadWriter interface {
-	io.Closer
-	io.ReaderAt
-	io.WriterAt
-
-	Truncate(size int64) error
+	FileReader
+	FileWriter
 }
 
 // FileWriter is returned by Directory.OpenWrite(). It is a handle for a
