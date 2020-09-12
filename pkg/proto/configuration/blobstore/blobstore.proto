@@ -48,12 +48,6 @@ message BlobAccessConfiguration {
     // Split up objects across two storage backends by digest size.
     SizeDistinguishingBlobAccessConfiguration size_distinguishing = 5;
 
-    // Read objects from/write objects to a circular file on disk.
-    // TODO: CircularBlobAccess should be considered deprecated as it is
-    // prone to data corruption. LocalBlobAccess should be used instead
-    // if at all possible.
-    CircularBlobAccessConfiguration circular = 6;
-
     // Read objects from/write objects to a GRPC service that
     // implements the remote execution protocol.
     buildbarn.configuration.grpc.ClientConfiguration grpc = 7;
@@ -78,10 +72,6 @@ message BlobAccessConfiguration {
     MirroredBlobAccessConfiguration mirrored = 14;
 
     // Store blobs on the local system.
-    //
-    // TODO: Right now this backend can only be used to store data in
-    // a non-persistent way. We should work towards letting this backend
-    // replace circular by supporting persistent on-disk storage.
     LocalBlobAccessConfiguration local = 15;
 
     // Cache knowledge of which blobs exist locally.
@@ -139,33 +129,10 @@ message BlobAccessConfiguration {
     // configuration option for more details.
     DemultiplexingBlobAccessConfiguration demultiplexing = 20;
   }
-}
 
-message CircularBlobAccessConfiguration {
-  // Directory where the files created by the circular file storage
-  // backend are located.
-  string directory = 1;
-
-  // Maximum size of the hash table containing data offsets.
-  uint64 offset_file_size_bytes = 2;
-
-  // Maximum size of the circular file containing data.
-  uint64 data_file_size_bytes = 3;
-
-  // Number of offset entries to cache in memory.
-  uint32 offset_cache_size = 4;
-
-  // Instances for which to store entries. For the Content Addressable
-  // Storage, this field may be omitted, as data for all instances is
-  // stored together. For the Action Cache, this field is required, as
-  // every instance needs its own offset file and cache.
-  repeated string instances = 5;
-
-  // Amount of space to allocate in the data file at once. Setting
-  // this value too low may cause an excessive number of writes to the
-  // state file. Setting this value too high may cause excessive
-  // amounts of old data to be invalidated upon process restart.
-  uint64 data_allocation_chunk_size_bytes = 6;
+  // Was 'circular' (CircularBlobAccess). This backend has been replaced
+  // by 'local' (LocalBlobAccess).
+  reserved 6;
 }
 
 message CloudBlobAccessConfiguration {

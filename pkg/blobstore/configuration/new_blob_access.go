@@ -9,7 +9,6 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/circular"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cloud"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
@@ -66,15 +65,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
-	case *pb.BlobAccessConfiguration_Circular:
-		implementation, err := createCircularBlobAccess(backend.Circular, creator)
-		if err != nil {
-			return BlobAccessInfo{}, "", err
-		}
-		return BlobAccessInfo{
-			BlobAccess:      implementation,
-			DigestKeyFormat: creator.GetBaseDigestKeyFormat(),
-		}, "circular", nil
 	case *pb.BlobAccessConfiguration_Cloud:
 		digestKeyFormat := creator.GetBaseDigestKeyFormat()
 		switch backendConfig := backend.Cloud.Config.(type) {
@@ -641,68 +631,4 @@ func NewCASAndACBlobAccessFromConfiguration(configuration *pb.BlobstoreConfigura
 	}
 
 	return contentAddressableStorage.BlobAccess, actionCache.BlobAccess, nil
-}
-
-func createCircularBlobAccess(config *pb.CircularBlobAccessConfiguration, creator BlobAccessCreator) (blobstore.BlobAccess, error) {
-	// Open input files.
-	circularDirectory, err := filesystem.NewLocalDirectory(config.Directory)
-	if err != nil {
-		return nil, err
-	}
-	defer circularDirectory.Close()
-	dataFile, err := circularDirectory.OpenReadWrite("data", filesystem.CreateReuse(0644))
-	if err != nil {
-		return nil, err
-	}
-	stateFile, err := circularDirectory.OpenReadWrite("state", filesystem.CreateReuse(0644))
-	if err != nil {
-		return nil, err
-	}
-
-	var offsetStore circular.OffsetStore
-	switch creator.GetBaseDigestKeyFormat() {
-	case digest.KeyWithoutInstance:
-		// Open a single offset file for all entries. This is
-		// sufficient for the Content Addressable Storage.
-		offsetFile, err := circularDirectory.OpenReadWrite("offset", filesystem.CreateReuse(0644))
-		if err != nil {
-			return nil, err
-		}
-		offsetStore = circular.NewCachingOffsetStore(
-			circular.NewFileOffsetStore(offsetFile, config.OffsetFileSizeBytes),
-			uint(config.OffsetCacheSize))
-	case digest.KeyWithInstance:
-		// Open an offset file for every instance. This is
-		// required for the Action Cache.
-		offsetStores := map[string]circular.OffsetStore{}
-		for _, instance := range config.Instances {
-			offsetFile, err := circularDirectory.OpenReadWrite("offset."+instance, filesystem.CreateReuse(0644))
-			if err != nil {
-				return nil, err
-			}
-			offsetStores[instance] = circular.NewCachingOffsetStore(
-				circular.NewFileOffsetStore(offsetFile, config.OffsetFileSizeBytes),
-				uint(config.OffsetCacheSize))
-		}
-		offsetStore = circular.NewDemultiplexingOffsetStore(func(instance string) (circular.OffsetStore, error) {
-			offsetStore, ok := offsetStores[instance]
-			if !ok {
-				return nil, status.Errorf(codes.InvalidArgument, "Unknown instance name")
-			}
-			return offsetStore, nil
-		})
-	}
-	stateStore, err := circular.NewFileStateStore(stateFile, config.DataFileSizeBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return circular.NewCircularBlobAccess(
-		offsetStore,
-		circular.NewFileDataStore(dataFile, config.DataFileSizeBytes),
-		circular.NewPositiveSizedBlobStateStore(
-			circular.NewBulkAllocatingStateStore(
-				stateStore,
-				config.DataAllocationChunkSizeBytes)),
-		creator.GetReadBufferFactory()), nil
 }

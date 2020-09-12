@@ -18,7 +18,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore:go_default_library",
-        "//pkg/blobstore/circular:go_default_library",
         "//pkg/blobstore/cloud:go_default_library",
         "//pkg/blobstore/completenesschecking:go_default_library",
         "//pkg/blobstore/grpcclients:go_default_library",
