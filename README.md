@@ -16,9 +16,9 @@ requests to be forwarded to a separate remote execution service.
 
 This storage daemon can be configured to use a whole series of backends.
 Examples include Redis and S3. It also provides a local on-disk storage
-backend that writes data to a circular file, using a hash table as an
+backend that writes data to a large file, using a hash table as an
 index. This storage backend is self-cleaning; no garbage collection is
-needed. The [schema of the storage configuration file](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/bb_storage/bb_storage.proto)
+needed. The [schema of the storage configuration file](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/blobstore/blobstore.proto)
 gives a good overview of which storage backends are available and how
 they can be configured.
 
@@ -41,23 +41,60 @@ $ cat config/bb_storage.jsonnet
 {
   blobstore: {
     contentAddressableStorage: {
-      circular: {
-        directory: '/storage-cas',
-        offsetFileSizeBytes: 16 * 1024 * 1024,
-        offsetCacheSize: 10000,
-        dataFileSizeBytes: 10 * 1024 * 1024 * 1024,
-        dataAllocationChunkSizeBytes: 16 * 1024 * 1024,
+      'local': {
+        keyLocationMapOnBlockDevice: {
+          file: {
+            path: '/storage-cas/key_location_map',
+            sizeBytes: 16 * 1024 * 1024,
+          },
+        },
+        keyLocationMapMaximumGetAttempts: 8,
+        keyLocationMapMaximumPutAttempts: 32,
+        oldBlocks: 8,
+        currentBlocks: 24,
+        newBlocks: 3,
+        blocksOnBlockDevice: {
+          source: {
+            file: {
+              path: '/storage-cas/blocks',
+              sizeBytes: 10 * 1024 * 1024 * 1024,
+            },
+          },
+          spareBlocks: 3,
+        },
+        persistent: {
+          stateDirectoryPath: '/storage-cas/persistent_state',
+          minimumEpochInterval: '5m',
+        },
       },
     },
     actionCache: {
       completenessChecking: {
-        circular: {
-          directory: '/storage-ac',
-          offsetFileSizeBytes: 1024 * 1024,
-          offsetCacheSize: 1000,
-          dataFileSizeBytes: 100 * 1024 * 1024,
-          dataAllocationChunkSizeBytes: 1024 * 1024,
-          instances: ['foo', 'bar'],
+        'local': {
+          keyLocationMapOnBlockDevice: {
+            file: {
+              path: '/storage-ac/key_location_map',
+              sizeBytes: 1024 * 1024,
+            },
+          },
+          keyLocationMapMaximumGetAttempts: 8,
+          keyLocationMapMaximumPutAttempts: 32,
+          oldBlocks: 8,
+          currentBlocks: 24,
+          newBlocks: 3,
+          blocksOnBlockDevice: {
+            source: {
+              file: {
+                path: '/storage-ac/blocks',
+                sizeBytes: 100 * 1024 * 1024,
+              },
+            },
+            spareBlocks: 3,
+          },
+          persistent: {
+            stateDirectoryPath: '/storage-ac/persistent_state',
+            minimumEpochInterval: '5m',
+          },
         },
       },
     },
@@ -73,7 +110,7 @@ $ cat config/bb_storage.jsonnet
   allowAcUpdatesForInstanceNamePrefixes: ['foo'],
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
-
+$ mkdir -p storage-{ac,cas}/persistent_state
 $ docker run \
       -p 8980:8980 \
       -p 9980:9980 \
