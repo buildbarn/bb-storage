@@ -6,7 +6,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 )
 
 type acReadBufferFactory struct{}
@@ -19,8 +18,8 @@ func (f acReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.Read
 	return buffer.NewProtoBufferFromReader(&remoteexecution.ActionResult{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f acReadBufferFactory) NewBufferFromFileReader(digest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return f.NewBufferFromReader(digest, newReaderFromFileReader(r), dataIntegrityCallback)
+func (f acReadBufferFactory) NewBufferFromReaderAt(digest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	return f.NewBufferFromReader(digest, newReaderFromReaderAt(r), dataIntegrityCallback)
 }
 
 // ACReadBufferFactory is capable of buffers for objects stored in the

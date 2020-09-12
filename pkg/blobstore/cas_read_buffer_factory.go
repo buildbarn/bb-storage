@@ -6,7 +6,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -20,8 +19,8 @@ func (f casReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.Rea
 	return buffer.NewCASBufferFromReader(digest, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f casReadBufferFactory) NewBufferFromFileReader(digest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return f.NewBufferFromReader(digest, newReaderFromFileReader(r), dataIntegrityCallback)
+func (f casReadBufferFactory) NewBufferFromReaderAt(digest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	return f.NewBufferFromReader(digest, newReaderFromReaderAt(r), dataIntegrityCallback)
 }
 
 // CASReadBufferFactory is capable of creating buffers for objects

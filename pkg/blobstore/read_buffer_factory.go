@@ -6,7 +6,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 )
 
 // ReadBufferFactory is passed to many implementations of BlobAccess to
@@ -19,12 +18,12 @@ type ReadBufferFactory interface {
 	NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
 	// NewBufferFromReader creates a buffer from a reader.
 	NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
-	// NewBufferFromFileReader creates a buffer from a reader that
+	// NewBufferFromReaderAt creates a buffer from a reader that
 	// provides random access.
-	NewBufferFromFileReader(digest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
+	NewBufferFromReaderAt(digest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
 }
 
-func newReaderFromFileReader(r filesystem.FileReader) io.ReadCloser {
+func newReaderFromReaderAt(r buffer.ReadAtCloser) io.ReadCloser {
 	return &struct {
 		io.SectionReader
 		io.Closer

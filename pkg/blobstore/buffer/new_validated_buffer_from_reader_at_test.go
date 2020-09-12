@@ -16,24 +16,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestNewValidatedBufferFromFileReaderGetSizeBytes(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	reader := mock.NewMockFileReader(ctrl)
+	reader := mock.NewMockReadAtCloser(ctrl)
 	reader.EXPECT().Close()
 
-	b := buffer.NewValidatedBufferFromFileReader(reader, 123)
+	b := buffer.NewValidatedBufferFromReaderAt(reader, 123)
 	n, err := b.GetSizeBytes()
 	require.NoError(t, err)
 	require.Equal(t, int64(123), n)
 	b.Discard()
 }
 
-func TestNewValidatedBufferFromFileReaderIntoWriter(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("Hello")), nil
@@ -42,29 +42,29 @@ func TestNewValidatedBufferFromFileReaderIntoWriter(t *testing.T) {
 		)
 		writer := bytes.NewBuffer(nil)
 
-		err := buffer.NewValidatedBufferFromFileReader(reader, 5).IntoWriter(writer)
+		err := buffer.NewValidatedBufferFromReaderAt(reader, 5).IntoWriter(writer)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), writer.Bytes())
 	})
 
 	t.Run("IOError", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).Return(0, status.Error(codes.Internal, "Storage backend on fire")),
 			reader.EXPECT().Close(),
 		)
 		writer := bytes.NewBuffer(nil)
 
-		err := buffer.NewValidatedBufferFromFileReader(reader, 10).IntoWriter(writer)
+		err := buffer.NewValidatedBufferFromReaderAt(reader, 10).IntoWriter(writer)
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderReadAt(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("Hello")), nil
@@ -73,29 +73,29 @@ func TestNewValidatedBufferFromFileReaderReadAt(t *testing.T) {
 		)
 
 		var p [5]byte
-		n, err := buffer.NewValidatedBufferFromFileReader(reader, 5).ReadAt(p[:], 0)
+		n, err := buffer.NewValidatedBufferFromReaderAt(reader, 5).ReadAt(p[:], 0)
 		require.Equal(t, 5, n)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), p[:])
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		reader.EXPECT().ReadAt(gomock.Any(), int64(0)).Return(0, status.Error(codes.Internal, "Server on fire"))
 		reader.EXPECT().Close()
 
 		var p [5]byte
-		n, err := buffer.NewValidatedBufferFromFileReader(reader, 5).ReadAt(p[:], 0)
+		n, err := buffer.NewValidatedBufferFromReaderAt(reader, 5).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, exampleActionResultBytes), nil
@@ -103,14 +103,14 @@ func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
 			reader.EXPECT().Close(),
 		)
 
-		actionResult, err := buffer.NewValidatedBufferFromFileReader(reader, int64(len(exampleActionResultBytes))).
+		actionResult, err := buffer.NewValidatedBufferFromReaderAt(reader, int64(len(exampleActionResultBytes))).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
 	})
 
 	t.Run("InvalidProtobuf", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("Hello")), nil
@@ -118,31 +118,31 @@ func TestNewValidatedBufferFromFileReaderToProto(t *testing.T) {
 			reader.EXPECT().Close(),
 		)
 
-		_, err := buffer.NewValidatedBufferFromFileReader(reader, 5).
+		_, err := buffer.NewValidatedBufferFromReaderAt(reader, 5).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).Return(0, status.Error(codes.Internal, "Storage backend on fire")),
 			reader.EXPECT().Close(),
 		)
 
-		_, err := buffer.NewValidatedBufferFromFileReader(reader, int64(len(exampleActionResultBytes))).
+		_, err := buffer.NewValidatedBufferFromReaderAt(reader, int64(len(exampleActionResultBytes))).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderToByteSlice(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtToByteSlice(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	// Only test the successful case, as other aspects are already
-	// covered by TestNewValidatedBufferFromFileReaderToProto.
+	// covered by TestNewValidatedBufferFromReaderAtToProto.
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("Hello")), nil
@@ -150,26 +150,26 @@ func TestNewValidatedBufferFromFileReaderToByteSlice(t *testing.T) {
 			reader.EXPECT().Close(),
 		)
 
-		data, err := buffer.NewValidatedBufferFromFileReader(reader, 5).ToByteSlice(10)
+		data, err := buffer.NewValidatedBufferFromReaderAt(reader, 5).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 	})
 
 	t.Run("Empty", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		reader.EXPECT().Close()
 
-		data, err := buffer.NewValidatedBufferFromFileReader(reader, 0).ToByteSlice(10)
+		data, err := buffer.NewValidatedBufferFromReaderAt(reader, 0).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Empty(t, data)
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(3)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("lo")), nil
@@ -189,7 +189,7 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 		// The ChunkReader returned by ToChunkReader() should
 		// omit empty chunks and split up chunks that are too
 		// large.
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToChunkReader(
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 3,
 			/* chunk size = */ 2)
 		chunk, err := r.Read()
@@ -212,12 +212,12 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("AtTheEnd", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		reader.EXPECT().Close()
 
 		// Reading at the very end is permitted, but should
 		// return an end-of-file immediately.
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToChunkReader(
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 11,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -226,10 +226,10 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("NegativeOffset", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		reader.EXPECT().Close()
 
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToChunkReader(
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ -1,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -238,10 +238,10 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("TooFar", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		reader.EXPECT().Close()
 
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToChunkReader(
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 12,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -250,13 +250,13 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(3)).Return(0, status.Error(codes.Internal, "Storage backend on fire")),
 			reader.EXPECT().Close(),
 		)
 
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToChunkReader(
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 3,
 			/* chunk size = */ 2)
 		_, err := r.Read()
@@ -265,11 +265,11 @@ func TestNewValidatedBufferFromFileReaderToChunkReader(t *testing.T) {
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 				return copy(p, []byte("Hel")), nil
@@ -286,7 +286,7 @@ func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
 			reader.EXPECT().Close(),
 		)
 
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToReader()
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToReader()
 		var p [3]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 3, n)
@@ -311,13 +311,13 @@ func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
-		reader := mock.NewMockFileReader(ctrl)
+		reader := mock.NewMockReadAtCloser(ctrl)
 		gomock.InOrder(
 			reader.EXPECT().ReadAt(gomock.Any(), int64(0)).Return(0, status.Error(codes.Internal, "Storage backend on fire")),
 			reader.EXPECT().Close(),
 		)
 
-		r := buffer.NewValidatedBufferFromFileReader(reader, 11).ToReader()
+		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToReader()
 		var p [3]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 0, n)
@@ -326,14 +326,14 @@ func TestNewValidatedBufferFromFileReaderToReader(t *testing.T) {
 	})
 }
 
-func TestNewValidatedBufferFromFileReaderCloneCopy(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	// Because NewValidatedBufferFromFileReader() returns a buffer
+	// Because NewValidatedBufferFromReaderAt() returns a buffer
 	// that supports random access, cloned versions of the buffer
 	// can do very little to merge read operations. Both the
 	// ToByteSlice() calls should trigger a read.
-	reader := mock.NewMockFileReader(ctrl)
+	reader := mock.NewMockReadAtCloser(ctrl)
 	gomock.InOrder(
 		reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 			return copy(p, []byte("Hello")), nil
@@ -341,7 +341,7 @@ func TestNewValidatedBufferFromFileReaderCloneCopy(t *testing.T) {
 		reader.EXPECT().Close(),
 	)
 
-	b1, b2 := buffer.NewValidatedBufferFromFileReader(reader, 5).CloneCopy(10)
+	b1, b2 := buffer.NewValidatedBufferFromReaderAt(reader, 5).CloneCopy(10)
 
 	data1, err := b1.ToByteSlice(10)
 	require.NoError(t, err)
@@ -352,10 +352,10 @@ func TestNewValidatedBufferFromFileReaderCloneCopy(t *testing.T) {
 	require.Equal(t, []byte("Hello"), data2)
 }
 
-func TestNewValidatedBufferFromFileReaderCloneStream(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	reader := mock.NewMockFileReader(ctrl)
+	reader := mock.NewMockReadAtCloser(ctrl)
 	gomock.InOrder(
 		reader.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 			return copy(p, []byte("Hello")), nil
@@ -363,7 +363,7 @@ func TestNewValidatedBufferFromFileReaderCloneStream(t *testing.T) {
 		reader.EXPECT().Close(),
 	)
 
-	b1, b2 := buffer.NewValidatedBufferFromFileReader(reader, 5).CloneCopy(10)
+	b1, b2 := buffer.NewValidatedBufferFromReaderAt(reader, 5).CloneCopy(10)
 	done := make(chan struct{}, 2)
 
 	go func() {
@@ -384,11 +384,11 @@ func TestNewValidatedBufferFromFileReaderCloneStream(t *testing.T) {
 	<-done
 }
 
-func TestNewValidatedBufferFromFileReaderDiscard(t *testing.T) {
+func TestNewValidatedBufferFromReaderAtDiscard(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	reader := mock.NewMockFileReader(ctrl)
+	reader := mock.NewMockReadAtCloser(ctrl)
 	reader.EXPECT().Close()
 
-	buffer.NewValidatedBufferFromFileReader(reader, 11).Discard()
+	buffer.NewValidatedBufferFromReaderAt(reader, 11).Discard()
 }

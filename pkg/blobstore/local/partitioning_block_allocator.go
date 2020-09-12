@@ -134,7 +134,7 @@ func (pb *partitioningBlock) Get(digest digest.Digest, offsetBytes int64, sizeBy
 	}
 	partitioningBlockAllocatorGetsStarted.Inc()
 
-	return pb.blockAllocator.readBufferFactory.NewBufferFromFileReader(
+	return pb.blockAllocator.readBufferFactory.NewBufferFromReaderAt(
 		digest,
 		&partitioningBlockReader{
 			SectionReader: *io.NewSectionReader(

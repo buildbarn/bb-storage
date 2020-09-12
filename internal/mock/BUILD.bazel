@@ -63,6 +63,7 @@ gomock(
         "ChunkReader",
         "DataIntegrityCallback",
         "ErrorHandler",
+        "ReadAtCloser",
     ],
     library = "//pkg/blobstore/buffer:go_default_library",
     package = "mock",

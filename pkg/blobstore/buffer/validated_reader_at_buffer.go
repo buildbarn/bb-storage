@@ -5,32 +5,39 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+// ReadAtCloser is the stream type that is accepted by
+// NewValidatedBufferFromReaderAt(). As the name implies, it only
+// provides ReadAt() and Close().
+type ReadAtCloser interface {
+	io.ReaderAt
+	io.Closer
+}
+
 type validatedReaderBuffer struct {
-	r          filesystem.FileReader
+	r          ReadAtCloser
 	sizeBytes  int64
 	cloneCount int32
 }
 
-// NewValidatedBufferFromFileReader creates a Buffer that is backed by a
-// FileReader. No checking of data integrity is performed, as it is
+// NewValidatedBufferFromReaderAt creates a Buffer that is backed by a
+// ReadAtCloser. No checking of data integrity is performed, as it is
 // assumed that the data stored in the slice is valid.
 //
-// This function should be used with care, as media backing FileReaders
-// (e.g., local file systems, block devices) may well be prone to data
-// corruption. This will not be detected if buffers are constructed
-// using this function.
+// This function should be used with care, as media backing
+// ReadAtClosers (e.g., local file systems, block devices) may well be
+// prone to data corruption. This will not be detected if buffers are
+// constructed using this function.
 //
-// The provided FileReader must permit ReadAt() to be called in
+// The provided ReadAtCloser must permit ReadAt() to be called in
 // parallel, as cloning the buffer may permit multiple goroutines to
 // access the data.
-func NewValidatedBufferFromFileReader(r filesystem.FileReader, sizeBytes int64) Buffer {
+func NewValidatedBufferFromReaderAt(r ReadAtCloser, sizeBytes int64) Buffer {
 	return &validatedReaderBuffer{
 		r:         r,
 		sizeBytes: sizeBytes,
@@ -70,7 +77,7 @@ func (b *validatedReaderBuffer) ToChunkReader(off int64, maximumChunkSizeBytes i
 }
 
 func (b *validatedReaderBuffer) ToReader() io.ReadCloser {
-	return &validatedFileReaderReader{
+	return &validatedReaderAtReader{
 		SectionReader: *io.NewSectionReader(b.r, 0, b.sizeBytes),
 		b:             b,
 	}
@@ -101,8 +108,8 @@ func (b *validatedReaderBuffer) applyErrorHandler(errorHandler ErrorHandler) (re
 	// Error handlers may currently only be invoked sequentially.
 	//
 	// Right now this is not causing any loss of functionality, as
-	// the FileReaders currently provided to
-	// NewValidatedBufferFromFileReader cannot realistically fail.
+	// the ReadAtCloser currently provided to
+	// NewValidatedBufferFromReaderAt cannot realistically fail.
 	errorHandler.Done()
 	return b, false
 }
@@ -120,18 +127,18 @@ func (b *validatedReaderBuffer) toUnvalidatedReader(off int64) io.ReadCloser {
 		b.Discard()
 		return newErrorReader(err)
 	}
-	return &validatedFileReaderReader{
+	return &validatedReaderAtReader{
 		SectionReader: *io.NewSectionReader(b.r, off, b.sizeBytes-off),
 		b:             b,
 	}
 }
 
-type validatedFileReaderReader struct {
+type validatedReaderAtReader struct {
 	io.SectionReader
 	b *validatedReaderBuffer
 }
 
-func (r *validatedFileReaderReader) Close() error {
+func (r *validatedReaderAtReader) Close() error {
 	r.b.Discard()
 	return nil
 }

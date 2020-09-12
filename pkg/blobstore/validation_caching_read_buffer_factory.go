@@ -5,7 +5,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 )
 
 type validationCachingReadBufferFactory struct {
@@ -60,11 +59,11 @@ func (f *validationCachingReadBufferFactory) NewBufferFromReader(blobDigest dige
 	return f.base.NewBufferFromReader(blobDigest, r, dataIntegrityCallback)
 }
 
-func (f *validationCachingReadBufferFactory) NewBufferFromFileReader(blobDigest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (f *validationCachingReadBufferFactory) NewBufferFromReaderAt(blobDigest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	if f.isCached(blobDigest) {
-		return buffer.NewValidatedBufferFromFileReader(r, sizeBytes)
+		return buffer.NewValidatedBufferFromReaderAt(r, sizeBytes)
 	}
-	return f.base.NewBufferFromFileReader(
+	return f.base.NewBufferFromReaderAt(
 		blobDigest,
 		r,
 		sizeBytes,

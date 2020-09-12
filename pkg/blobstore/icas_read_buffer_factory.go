@@ -5,7 +5,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 )
 
@@ -19,8 +18,8 @@ func (f icasReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.Re
 	return buffer.NewProtoBufferFromReader(&icas.Reference{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f icasReadBufferFactory) NewBufferFromFileReader(digest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return f.NewBufferFromReader(digest, newReaderFromFileReader(r), dataIntegrityCallback)
+func (f icasReadBufferFactory) NewBufferFromReaderAt(digest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	return f.NewBufferFromReader(digest, newReaderFromReaderAt(r), dataIntegrityCallback)
 }
 
 // ICASReadBufferFactory is capable of creating identifiers and buffers

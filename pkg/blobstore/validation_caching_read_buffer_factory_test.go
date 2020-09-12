@@ -10,7 +10,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
-	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -106,8 +105,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 }
 
-func TestValidationCachingReadBufferFactoryNewBufferFromFileReader(t *testing.T) {
-	// Reduced test case for NewBufferFromFileReader() that is based
+func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
+	// Reduced test case for NewBufferFromReaderAt() that is based
 	// on the test above. We assume that all other cases are covered
 	// sufficiently.
 	ctrl := gomock.NewController(t)
@@ -124,19 +123,19 @@ func TestValidationCachingReadBufferFactoryNewBufferFromFileReader(t *testing.T)
 	// thereby causing integrity checking to be performed.
 	clock.EXPECT().Now().Return(time.Unix(1001, 0))
 	clock.EXPECT().Now().Return(time.Unix(1002, 0))
-	fileReader1 := mock.NewMockFileReader(ctrl)
-	baseReadBufferFactory.EXPECT().NewBufferFromFileReader(
+	fileReader1 := mock.NewMockReadAtCloser(ctrl)
+	baseReadBufferFactory.EXPECT().NewBufferFromReaderAt(
 		helloDigest,
 		fileReader1,
 		int64(5),
 		gomock.Any(),
-	).DoAndReturn(func(blobDigest digest.Digest, r filesystem.FileReader, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	).DoAndReturn(func(blobDigest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 		return buffer.NewCASBufferFromByteSlice(blobDigest, []byte("Hello"), buffer.BackendProvided(dataIntegrityCallback))
 	})
 	dataIntegrityCallback1 := mock.NewMockDataIntegrityCallback(ctrl)
 	dataIntegrityCallback1.EXPECT().Call(true)
 
-	data, err := readBufferFactory.NewBufferFromFileReader(
+	data, err := readBufferFactory.NewBufferFromReaderAt(
 		helloDigest,
 		fileReader1,
 		5,
@@ -150,7 +149,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromFileReader(t *testing.T)
 	// entirely, as nothing is known about the integrity of the
 	// data.
 	clock.EXPECT().Now().Return(time.Unix(1061, 0))
-	fileReader2 := mock.NewMockFileReader(ctrl)
+	fileReader2 := mock.NewMockReadAtCloser(ctrl)
 	fileReader2.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 		copy(p, "xyzzy")
 		return 5, io.EOF
@@ -158,7 +157,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromFileReader(t *testing.T)
 	fileReader2.EXPECT().Close()
 	dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
 
-	data, err = readBufferFactory.NewBufferFromFileReader(
+	data, err = readBufferFactory.NewBufferFromReaderAt(
 		helloDigest,
 		fileReader2,
 		5,
