@@ -8,7 +8,8 @@ import (
 )
 
 type inMemoryBlockAllocator struct {
-	blockSize int
+	blockSize  int
+	nextOffset int64
 }
 
 // NewInMemoryBlockAllocator creates a block allocator that stores its
@@ -21,10 +22,21 @@ func NewInMemoryBlockAllocator(blockSize int) BlockAllocator {
 	}
 }
 
-func (ia *inMemoryBlockAllocator) NewBlock() (Block, error) {
+func (ia *inMemoryBlockAllocator) NewBlock() (Block, int64, error) {
+	// Consumers of BlockAllocator require that every block has a
+	// unique offset. Satisfy this contract by handing out made-up
+	// offsets.
+	offset := ia.nextOffset
+	ia.nextOffset += int64(ia.blockSize)
+
 	return inMemoryBlock{
 		data: make([]byte, ia.blockSize),
-	}, nil
+	}, offset, nil
+}
+
+func (ia *inMemoryBlockAllocator) NewBlockAtOffset(offset int64) (Block, bool) {
+	// There is no way to access old blocks again.
+	return nil, false
 }
 
 type inMemoryBlock struct {

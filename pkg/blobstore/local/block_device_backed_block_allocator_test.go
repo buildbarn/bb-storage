@@ -15,23 +15,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestPartitioningBlockAllocator(t *testing.T) {
+func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
-	pa := local.NewPartitioningBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10)
+	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10)
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
 	var blocks []local.Block
 	for i := 0; i < 10; i++ {
-		block, err := pa.NewBlock()
+		block, offset, err := pa.NewBlock()
 		require.NoError(t, err)
+		require.Equal(t, int64(i)*100, offset)
 		blocks = append(blocks, block)
 	}
 
 	// Creating an eleventh block should fail.
-	_, err := pa.NewBlock()
+	_, _, err := pa.NewBlock()
 	require.Equal(t, err, status.Error(codes.ResourceExhausted, "No unused blocks available"))
 
 	// Blocks should initially be handed out in order of the offset.
@@ -51,7 +52,7 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 		5,
 		dataIntegrityCallback.Call)
 	blocks[7].Release()
-	_, err = pa.NewBlock()
+	_, _, err = pa.NewBlock()
 	require.Equal(t, err, status.Error(codes.ResourceExhausted, "No unused blocks available"))
 
 	// The blob may still be consumed with the block being released.
@@ -68,8 +69,10 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 	// With the blob being consumed, the underlying block should be
 	// released. This means the block can be allocated once again.
 	// It should still start at offset 700.
-	blocks[7], err = pa.NewBlock()
+	var offset int64
+	blocks[7], offset, err = pa.NewBlock()
 	require.NoError(t, err)
+	require.Equal(t, int64(700), offset)
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
 	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 
@@ -81,10 +84,25 @@ func TestPartitioningBlockAllocator(t *testing.T) {
 		blocks[i].Release()
 	}
 	for _, i := range order {
-		blocks[i], err = pa.NewBlock()
+		blocks[i], offset, err = pa.NewBlock()
 		require.NoError(t, err)
+		require.Equal(t, int64(i)*100, offset)
 
 		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i+83)).Return(5, nil)
 		require.NoError(t, blocks[i].Put(83, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	}
+
+	// The NewBlockAtOffset() function allows extracting blocks at a
+	// given offset. It shouldn't work on offsets of blocks that are
+	// already allocated.
+	_, found := pa.NewBlockAtOffset(700)
+	require.False(t, found)
+
+	// Releasing a block should make it possible to extract it using
+	// NewBlockAtOffset() again.
+	blocks[7].Release()
+	blocks[7], found = pa.NewBlockAtOffset(700)
+	require.True(t, found)
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
+	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 }

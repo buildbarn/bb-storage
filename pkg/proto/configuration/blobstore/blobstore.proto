@@ -391,35 +391,52 @@ message MirroredBlobAccessConfiguration {
 }
 
 message LocalBlobAccessConfiguration {
-  // The digest-location map is a hash table that is used by this
-  // storage backend to resolve digests to locations where data is
-  // stored. Because entries are small (64 bytes in size), it is
-  // recommended to make this map relatively large to reduce collisions.
-  //
-  // Recommended value: between 2 and 10 times the expected number of
-  // objects stored.
-  int64 digest_location_map_size = 1;
+  // Was 'digest_location_map_size'. This option has been moved to
+  // 'key_location_map_in_memory.entries'.
+  reserved 1;
 
-  // The number of indices a Get() call on the digest-location map may
+  message KeyLocationMapInMemory {
+    // The key-location map is a hash table that is used by this storage
+    // backend to resolve digests to locations where data is stored.
+    // This option determines the size of this hash table. Because
+    // entries are small (about 64 bytes in size), it is recommended to
+    // make this map relatively large to reduce collisions.
+    //
+    // Recommended value: between 2 and 10 times the expected number of
+    // objects stored.
+    int64 entries = 1;
+  }
+
+  oneof key_location_map_backend {
+    // Store the key-location map in memory.
+    KeyLocationMapInMemory key_location_map_in_memory = 11;
+
+    // Store the key-location map on a block device. The size of the
+    // block device determines the number of entries stored.
+    buildbarn.configuration.blockdevice.Configuration
+        key_location_map_on_block_device = 12;
+  }
+
+  // The number of indices a Get() call on the key-location map may
   // attempt to access. The lower the utilization rate of the
-  // digest-location map, the lower this value may be set. For example,
-  // if the size of the digest-location map is set in such a way that it
-  // is only utilized by 10% (factor 0.1), setting this field to 16
-  // means there is only a 0.1^8 chance that inserting an entry
-  // prematurely displaces another object from storage.
+  // key-location map, the lower this value may be set. For example, if
+  // the size of the key-location map is set in such a way that it is
+  // only utilized by 10% (factor 0.1), setting this field to 16 means
+  // there is only a 0.1^16 chance that inserting an entry prematurely
+  // displaces another object from storage.
   //
   // Recommended value: 8
-  uint32 digest_location_map_maximum_get_attempts = 2;
+  uint32 key_location_map_maximum_get_attempts = 2;
 
-  // The number of mutations that a Put() on the digest-location map may
-  // perform. Because the digest-location map uses a scheme similar to
-  // cuckoo hashing, insertions may cause other entries to be displaced.
-  // Those entries may then cause even more entries to be displaced.
-  // Because of that, it is recommended to set this field to a small
-  // multiple of the maximum Get() attempts.
+  // The number of mutations that a Put() on the key-location map may
+  // perform. Because the key-location map uses a scheme similar to
+  // Robin Hood hashing, insertions may cause other entries to be
+  // displaced. Those entries may then cause even more entries to be
+  // displaced. Because of that, it is recommended to set this field to
+  // a small multiple of the maximum Get() attempts.
   //
   // Recommended value: 32
-  int64 digest_location_map_maximum_put_attempts = 3;
+  int64 key_location_map_maximum_put_attempts = 3;
 
   // The number of blocks, where attempting to access any data stored
   // within will cause it to be refreshed (i.e., copied into new
@@ -462,7 +479,7 @@ message LocalBlobAccessConfiguration {
   // instance names transparently.
   reserved 8;
 
-  message InMemory {
+  message BlocksInMemory {
     // Data is stored in a list of blocks. The total number of blocks
     // constant over time, with small fluctuations to deal with lingering
     // requests when removing a block. This option sets the size of an
@@ -473,13 +490,14 @@ message LocalBlobAccessConfiguration {
     int64 block_size_bytes = 1;
   }
 
-  message BlockDevice {
+  message BlocksOnBlockDevice {
     // The block device where data needs to be stored.
     buildbarn.configuration.blockdevice.Configuration source = 1;
 
     // To deal with lingering read requests, a small number of old
-    // blocks may need to be retained for a short period of time. This
-    // option determines how many of such blocks are allocated.
+    // blocks may need to be retained for a short period of time before
+    // being recycled to store new data. This option determines how many
+    // of such lingering blocks are allocated.
     //
     // Unlike in-memory storage, where the block size is configured
     // explicitly, block device backed storage automatically infers an
@@ -503,16 +521,59 @@ message LocalBlobAccessConfiguration {
         data_integrity_validation_cache = 3;
   }
 
-  oneof data_backend {
-    // Store all data in memory.
-    InMemory in_memory = 9;
+  oneof blocks_backend {
+    // Store all data in memory. For larger setups, this may place a lot
+    // of pressure on Go's garbage collector. It may be necessary to
+    // reduce the value of GOGC to use this option reliably.
+    BlocksInMemory blocks_in_memory = 9;
 
-    // Store the blocks containing data directly on a block device. The
-    // digest-location map is still stored in memory, meaning that
-    // setting this option does not introduce persistency. It is only
-    // intended to grow capacity beyond the size of memory.
-    BlockDevice block_device = 10;
+    // Store the blocks containing data on a block device.
+    BlocksOnBlockDevice blocks_on_block_device = 10;
   }
+
+  message Persistent {
+    // Path to a directory on disk where metadata can be stored to be
+    // able to persist. This metadata needs to be reloaded on startup to
+    // be able to access previous data.
+    //
+    // This directory will hold a single file named "state", containing
+    // a Protobuf message of type
+    // buildbarn.blobstore.local.PersistentState. It is not recommended
+    // to use this directory for any purpose other than storing the
+    // persistent state file, as fsync() is called on it regularly.
+    string state_directory_path = 1;
+
+    // The amount of time between fsync() calls against the block device
+    // used to store blocks of data. Setting this option to a lower
+    // value reduces the amount of data that may get lost across
+    // restarts.
+    //
+    // This option acts as a lower bound on the amount of time between
+    // fsync() calls. No calls to fsync() are made if the system is
+    // idle, nor are multiple calls performed in parallel in case they
+    // take longer to complete than the configured interval.
+    //
+    // Care should be taken that this value is not set too low. Every
+    // epoch that still references valid data consumes 16 bytes of
+    // memory and increases the size of the state file by a similar
+    // amount. This means that if this option is set to 5m, epoch
+    // bookkeeping consumes up to 12*24*365*16 B = ~1.68 MB of space if
+    // the system were to operate for a full year without blocks being
+    // released. Setting this to 1s would blow this up by a factor 300.
+    //
+    // Recommended value: 5m
+    google.protobuf.Duration minimum_epoch_interval = 2;
+  }
+
+  // When set, persist data across restarts. This feature is only
+  // available when both the key-location map and blocks are stored on a
+  // block device.
+  //
+  // When not set, data is not persisted. The data store will be empty
+  // every time the application is restarted. Existing entries in the
+  // key-location map and data in blocks will be ignored, even if their
+  // contents are valid.
+  Persistent persistent = 13;
 }
 
 message ExistenceCachingBlobAccessConfiguration {

@@ -17,40 +17,40 @@ import (
 )
 
 var (
-	partitioningBlockAllocatorPrometheusMetrics sync.Once
+	blockDeviceBackedBlockAllocatorPrometheusMetrics sync.Once
 
-	partitioningBlockAllocatorAllocations = prometheus.NewCounter(
+	blockDeviceBackedBlockAllocatorAllocations = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "partitioning_block_allocator_allocations_total",
-			Help:      "Number of times blocks managed by PartitioningBlockAllocator were allocated",
+			Name:      "block_device_backed_block_allocator_allocations_total",
+			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were allocated",
 		})
-	partitioningBlockAllocatorReleases = prometheus.NewCounter(
+	blockDeviceBackedBlockAllocatorReleases = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "partitioning_block_allocator_releases_total",
-			Help:      "Number of times blocks managed by PartitioningBlockAllocator were released",
+			Name:      "block_device_backed_block_allocator_releases_total",
+			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were released",
 		})
 
-	partitioningBlockAllocatorGetsStarted = prometheus.NewCounter(
+	blockDeviceBackedBlockAllocatorGetsStarted = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "partitioning_block_allocator_gets_started_total",
-			Help:      "Number of Get() operations PartitioningBlockAllocator that were started",
+			Name:      "block_device_backed_block_allocator_gets_started_total",
+			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were started",
 		})
-	partitioningBlockAllocatorGetsCompleted = prometheus.NewCounter(
+	blockDeviceBackedBlockAllocatorGetsCompleted = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "partitioning_block_allocator_gets_completed_total",
-			Help:      "Number of Get() operations PartitioningBlockAllocator that were completed",
+			Name:      "block_device_backed_block_allocator_gets_completed_total",
+			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were completed",
 		})
 )
 
-type partitioningBlockAllocator struct {
+type blockDeviceBackedBlockAllocator struct {
 	blockDevice       blockdevice.BlockDevice
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
@@ -59,28 +59,29 @@ type partitioningBlockAllocator struct {
 	freeOffsets []int64
 }
 
-// NewPartitioningBlockAllocator implements a BlockAllocator that can be
-// used by LocalBlobAccess to store data. Blocks created by this
-// allocator are backed by a single BlockDevice. Storage is partitioned
-// into equally sized blocks that are stored consecutively.
+// NewBlockDeviceBackedBlockAllocator implements a BlockAllocator that
+// can be used by implementations of BlockList to store data. Blocks
+// created by this allocator are backed by a single BlockDevice. The
+// BlockDevice is partitioned into equally sized blocks that are stored
+// consecutively.
 //
-// Blocks are initially allocated out by increasing offset. Later on,
-// the least recently released blocks are reused. This adds wear
-// leveling to the system.
+// Blocks are initially handed out by increasing offset. Later on, the
+// least recently released blocks are reused. This adds wear leveling to
+// the system.
 //
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewPartitioningBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
-	partitioningBlockAllocatorPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(partitioningBlockAllocatorAllocations)
-		prometheus.MustRegister(partitioningBlockAllocatorReleases)
+func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
+	blockDeviceBackedBlockAllocatorPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(blockDeviceBackedBlockAllocatorAllocations)
+		prometheus.MustRegister(blockDeviceBackedBlockAllocatorReleases)
 
-		prometheus.MustRegister(partitioningBlockAllocatorGetsStarted)
-		prometheus.MustRegister(partitioningBlockAllocatorGetsCompleted)
+		prometheus.MustRegister(blockDeviceBackedBlockAllocatorGetsStarted)
+		prometheus.MustRegister(blockDeviceBackedBlockAllocatorGetsCompleted)
 	})
 
-	pa := &partitioningBlockAllocator{
+	pa := &blockDeviceBackedBlockAllocator{
 		blockDevice:       blockDevice,
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
@@ -91,30 +92,48 @@ func NewPartitioningBlockAllocator(blockDevice blockdevice.BlockDevice, readBuff
 	return pa
 }
 
-func (pa *partitioningBlockAllocator) NewBlock() (Block, error) {
+func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
+	blockDeviceBackedBlockAllocatorAllocations.Inc()
+	return &blockDeviceBackedBlock{
+		blockAllocator: pa,
+		offset:         offset,
+		usecount:       1,
+	}
+}
+
+func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, int64, error) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
 	if len(pa.freeOffsets) == 0 {
-		return nil, status.Error(codes.ResourceExhausted, "No unused blocks available")
+		return nil, 0, status.Error(codes.ResourceExhausted, "No unused blocks available")
 	}
-	block := &partitioningBlock{
-		blockAllocator: pa,
-		offset:         pa.freeOffsets[0],
-		usecount:       1,
-	}
+	offset := pa.freeOffsets[0]
 	pa.freeOffsets = pa.freeOffsets[1:]
-	partitioningBlockAllocatorAllocations.Inc()
-	return block, nil
+	return pa.newBlockObject(offset), offset, nil
 }
 
-type partitioningBlock struct {
-	blockAllocator *partitioningBlockAllocator
+func (pa *blockDeviceBackedBlockAllocator) NewBlockAtOffset(desiredOffset int64) (Block, bool) {
+	pa.lock.Lock()
+	defer pa.lock.Unlock()
+
+	for i, offset := range pa.freeOffsets {
+		if offset == desiredOffset {
+			pa.freeOffsets[i] = pa.freeOffsets[len(pa.freeOffsets)-1]
+			pa.freeOffsets = pa.freeOffsets[:len(pa.freeOffsets)-1]
+			return pa.newBlockObject(offset), true
+		}
+	}
+	return nil, false
+}
+
+type blockDeviceBackedBlock struct {
+	blockAllocator *blockDeviceBackedBlockAllocator
 	offset         int64
 	usecount       int64
 }
 
-func (pb *partitioningBlock) Release() {
+func (pb *blockDeviceBackedBlock) Release() {
 	if c := atomic.AddInt64(&pb.usecount, -1); c < 0 {
 		panic(fmt.Sprintf("Release(): Block has invalid reference count %d", c))
 	} else if c == 0 {
@@ -124,19 +143,19 @@ func (pb *partitioningBlock) Release() {
 		pa.lock.Lock()
 		pa.freeOffsets = append(pa.freeOffsets, pb.offset)
 		pa.lock.Unlock()
-		partitioningBlockAllocatorReleases.Inc()
+		blockDeviceBackedBlockAllocatorReleases.Inc()
 	}
 }
 
-func (pb *partitioningBlock) Get(digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	if c := atomic.AddInt64(&pb.usecount, 1); c <= 1 {
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}
-	partitioningBlockAllocatorGetsStarted.Inc()
+	blockDeviceBackedBlockAllocatorGetsStarted.Inc()
 
 	return pb.blockAllocator.readBufferFactory.NewBufferFromReaderAt(
 		digest,
-		&partitioningBlockReader{
+		&blockDeviceBackedBlockReader{
 			SectionReader: *io.NewSectionReader(
 				pb.blockAllocator.blockDevice,
 				pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
@@ -147,7 +166,7 @@ func (pb *partitioningBlock) Get(digest digest.Digest, offsetBytes int64, sizeBy
 		dataIntegrityCallback)
 }
 
-func (pb *partitioningBlock) Put(offsetBytes int64, b buffer.Buffer) error {
+func (pb *blockDeviceBackedBlock) Put(offsetBytes int64, b buffer.Buffer) error {
 	if pb.usecount <= 0 {
 		panic("Attempted to store buffer in unused block")
 	}
@@ -157,7 +176,7 @@ func (pb *partitioningBlock) Put(offsetBytes int64, b buffer.Buffer) error {
 		panic("Attempted to store buffer at unaligned location")
 	}
 
-	w := &partitioningBlockWriter{
+	w := &blockDeviceBackedBlockWriter{
 		w:             pb.blockAllocator.blockDevice,
 		partialSector: make([]byte, 0, pb.blockAllocator.sectorSizeBytes),
 		offset:        pb.offset + offsetBytes/int64(sectorSizeBytes),
@@ -169,31 +188,31 @@ func (pb *partitioningBlock) Put(offsetBytes int64, b buffer.Buffer) error {
 	return w.flush()
 }
 
-// partitioningBlockReader reads a blob from underlying storage at the
-// right offset. When released, it drops the use count on the containing
-// block, so that can be freed when unreferenced.
-type partitioningBlockReader struct {
+// blockDeviceBackedBlockReader reads a blob from underlying storage at
+// the right offset. When released, it drops the use count on the
+// containing block, so that can be freed when unreferenced.
+type blockDeviceBackedBlockReader struct {
 	io.SectionReader
-	block *partitioningBlock
+	block *blockDeviceBackedBlock
 }
 
-func (r *partitioningBlockReader) Close() error {
+func (r *blockDeviceBackedBlockReader) Close() error {
 	r.block.Release()
 	r.block = nil
-	partitioningBlockAllocatorGetsCompleted.Inc()
+	blockDeviceBackedBlockAllocatorGetsCompleted.Inc()
 	return nil
 }
 
-// partitioningBlockWriter writes a blob to underlying storage at the
-// right offset. It could simply have used an io.SectionWriter if that
-// had existed.
-type partitioningBlockWriter struct {
+// blockDeviceBackedBlockWriter writes a blob to underlying storage at
+// the right offset. It could simply have used an io.SectionWriter if
+// that had existed.
+type blockDeviceBackedBlockWriter struct {
 	w             io.WriterAt
 	partialSector []byte
 	offset        int64
 }
 
-func (w *partitioningBlockWriter) Write(p []byte) (int, error) {
+func (w *blockDeviceBackedBlockWriter) Write(p []byte) (int, error) {
 	sectorSizeBytes := cap(w.partialSector)
 
 	leadingSize := 0
@@ -233,7 +252,7 @@ func (w *partitioningBlockWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (w *partitioningBlockWriter) flush() error {
+func (w *blockDeviceBackedBlockWriter) flush() error {
 	if len(w.partialSector) == 0 {
 		return nil
 	}

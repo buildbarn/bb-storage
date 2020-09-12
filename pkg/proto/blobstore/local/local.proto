@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package buildbarn.blobstore.local;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local";
+
+message BlockState {
+  // The offset at which this block is stored on the block device.
+  int64 block_offset_bytes = 1;
+
+  // The amount of space in the block that is already in use. No data
+  // should be written before this offset, as the key-location map may
+  // contain references to it.
+  int64 write_offset_bytes = 2;
+
+  // The randomized hash seed for each of the epochs that were created
+  // while this block was the last allocated block. These hash seeds are
+  // necessary to validate the integrity of key-location map entries.
+  repeated uint64 epoch_hash_seeds = 3;
+}
+
+message PersistentState {
+  // The oldest epoch ID for which entries in the key-location map may
+  // be interpreted. The next usable epoch ID can be computed as
+  // follows:
+  //
+  //     next_epoch_id = oldest_epoch_id +
+  //                     sum(len(b.epoch_hash_seeds) for b in blocks)
+  uint32 oldest_epoch_id = 1;
+
+  // Information on every block that was accessible at the time state
+  // was persisted.
+  repeated BlockState blocks = 2;
+
+  // The randomized hash seed that is used by the key-location map. It
+  // needs to be preserved to ensure entries created by previous
+  // invocations can still be located.
+  uint64 key_location_map_hash_initialization = 3;
+}

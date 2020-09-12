@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -350,12 +351,15 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		}, "mirrored", nil
 	case *pb.BlobAccessConfiguration_Local:
 		digestKeyFormat := creator.GetBaseDigestKeyFormat()
+
+		// Create the backing store for blocks of data.
 		var backendType string
 		var sectorSizeBytes int
 		var blockSectorCount int64
 		var blockAllocator local.BlockAllocator
-		switch dataBackend := backend.Local.DataBackend.(type) {
-		case *pb.LocalBlobAccessConfiguration_InMemory_:
+		dataSyncer := func() error { return nil }
+		switch blocksBackend := backend.Local.BlocksBackend.(type) {
+		case *pb.LocalBlobAccessConfiguration_BlocksInMemory_:
 			backendType = "local_in_memory"
 			// All data must be stored in memory. Because we
 			// are not dealing with physical storage, there
@@ -363,26 +367,28 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			// Use a sector size of 1 byte to achieve
 			// maximum storage density.
 			sectorSizeBytes = 1
-			blockSectorCount = dataBackend.InMemory.BlockSizeBytes
-			blockAllocator = local.NewInMemoryBlockAllocator(int(dataBackend.InMemory.BlockSizeBytes))
-		case *pb.LocalBlobAccessConfiguration_BlockDevice_:
+			blockSectorCount = blocksBackend.BlocksInMemory.BlockSizeBytes
+			blockAllocator = local.NewInMemoryBlockAllocator(int(blocksBackend.BlocksInMemory.BlockSizeBytes))
+		case *pb.LocalBlobAccessConfiguration_BlocksOnBlockDevice_:
 			backendType = "local_block_device"
 			// Data may be stored on a block device that is
 			// memory mapped. Automatically determine the
 			// block size based on the size of the block
 			// device and the number of blocks.
+			blocksOnBlockDevice := blocksBackend.BlocksOnBlockDevice
 			var blockDevice blockdevice.BlockDevice
 			var sectorCount int64
 			var err error
-			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(dataBackend.BlockDevice.Source)
+			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(blocksOnBlockDevice.Source)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open blocks block device")
 			}
-			blockCount := dataBackend.BlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
+			dataSyncer = blockDevice.Sync
+			blockCount := blocksOnBlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			blockSectorCount = sectorCount / int64(blockCount)
 
 			cachedReadBufferFactory := readBufferFactory
-			if cacheConfiguration := dataBackend.BlockDevice.DataIntegrityValidationCache; cacheConfiguration != nil {
+			if cacheConfiguration := blocksOnBlockDevice.DataIntegrityValidationCache; cacheConfiguration != nil {
 				dataIntegrityCheckingCache, err := digest.NewExistenceCacheFromConfiguration(cacheConfiguration, digestKeyFormat, "DataIntegrityValidationCache")
 				if err != nil {
 					return BlobAccessInfo{}, "", err
@@ -392,36 +398,131 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					dataIntegrityCheckingCache)
 			}
 
-			blockAllocator = local.NewPartitioningBlockAllocator(
+			blockAllocator = local.NewBlockDeviceBackedBlockAllocator(
 				blockDevice,
 				cachedReadBufferFactory,
 				sectorSizeBytes,
 				blockSectorCount,
 				int(blockCount))
+		default:
+			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Blocks backend not specified")
 		}
 
-		implementation, err := local.NewLocalBlobAccess(
-			local.NewHashingDigestLocationMap(
-				local.NewInMemoryLocationRecordArray(int(backend.Local.DigestLocationMapSize)),
-				int(backend.Local.DigestLocationMapSize),
-				rand.Uint64(),
-				backend.Local.DigestLocationMapMaximumGetAttempts,
-				int(backend.Local.DigestLocationMapMaximumPutAttempts),
-				storageTypeName),
-			blockAllocator,
+		var globalLock sync.RWMutex
+		var blockList local.BlockList
+		var keyLocationMapHashInitialization uint64
+		initialBlockCount := 0
+		if persistent := backend.Local.Persistent; persistent == nil {
+			// Persistency is disabled. Provide a simple
+			// volatile BlockList.
+			blockList = local.NewVolatileBlockList(
+				blockAllocator,
+				sectorSizeBytes,
+				blockSectorCount)
+			keyLocationMapHashInitialization = rand.Uint64()
+		} else {
+			// Persistency is enabled. Reload previous
+			// persistent state from disk.
+			persistentStateDirectory, err := filesystem.NewLocalDirectory(persistent.StateDirectoryPath)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open persistent state directory")
+			}
+			persistentStateStore := local.NewDirectoryBackedPersistentStateStore(persistentStateDirectory)
+			persistentState, err := persistentStateStore.ReadPersistentState()
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to reload persistent state")
+			}
+			keyLocationMapHashInitialization = persistentState.KeyLocationMapHashInitialization
+
+			// Create a persistent BlockList. This will
+			// attempt to reattach the old blocks. The
+			// number of valid blocks is returned, so that
+			// the dimensions of the OldNewCurrentLocationBlobMap
+			// can be set properly.
+			var persistentBlockList *local.PersistentBlockList
+			persistentBlockList, initialBlockCount = local.NewPersistentBlockList(
+				blockAllocator,
+				sectorSizeBytes,
+				blockSectorCount,
+				persistentState.OldestEpochId,
+				persistentState.Blocks)
+			blockList = persistentBlockList
+
+			// Start goroutines that update the persistent
+			// state file when writes and block releases
+			// occur.
+			minimumEpochInterval, err := ptypes.Duration(persistent.MinimumEpochInterval)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain minimum epoch duration")
+			}
+			periodicSyncer := local.NewPeriodicSyncer(
+				persistentBlockList,
+				&globalLock,
+				persistentStateStore,
+				clock.SystemClock,
+				util.DefaultErrorLogger,
+				10*time.Second,
+				minimumEpochInterval,
+				keyLocationMapHashInitialization,
+				dataSyncer)
+			go func() {
+				for {
+					periodicSyncer.ProcessBlockRelease()
+				}
+			}()
+			go func() {
+				for {
+					periodicSyncer.ProcessBlockPut()
+				}
+			}()
+		}
+
+		locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
+			blockList,
 			util.DefaultErrorLogger,
-			digestKeyFormat,
 			storageTypeName,
-			sectorSizeBytes,
-			blockSectorCount,
+			int64(sectorSizeBytes)*blockSectorCount,
 			int(backend.Local.OldBlocks),
 			int(backend.Local.CurrentBlocks),
-			int(backend.Local.NewBlocks))
-		if err != nil {
-			return BlobAccessInfo{}, "", err
+			int(backend.Local.NewBlocks),
+			initialBlockCount)
+
+		// Create the backing store for the key-location map.
+		var locationRecordArraySize int
+		var locationRecordArray local.LocationRecordArray
+		switch keyLocationMapBackend := backend.Local.KeyLocationMapBackend.(type) {
+		case *pb.LocalBlobAccessConfiguration_KeyLocationMapInMemory_:
+			locationRecordArraySize = int(keyLocationMapBackend.KeyLocationMapInMemory.Entries)
+			locationRecordArray = local.NewInMemoryLocationRecordArray(
+				locationRecordArraySize,
+				locationBlobMap)
+		case *pb.LocalBlobAccessConfiguration_KeyLocationMapOnBlockDevice:
+			blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromConfiguration(keyLocationMapBackend.KeyLocationMapOnBlockDevice)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open key-location map block device")
+			}
+			locationRecordArraySize = int((int64(sectorSizeBytes) * sectorCount) / local.BlockDeviceBackedLocationRecordSize)
+			locationRecordArray = local.NewBlockDeviceBackedLocationRecordArray(
+				blockDevice,
+				locationBlobMap)
+		default:
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Key-location map backend not specified")
 		}
+
 		return BlobAccessInfo{
-			BlobAccess:      implementation,
+			BlobAccess: local.NewKeyBlobMapBackedBlobAccess(
+				local.NewLocationBasedKeyBlobMap(
+					local.NewHashingKeyLocationMap(
+						locationRecordArray,
+						locationRecordArraySize,
+						keyLocationMapHashInitialization,
+						backend.Local.KeyLocationMapMaximumGetAttempts,
+						int(backend.Local.KeyLocationMapMaximumPutAttempts),
+						storageTypeName),
+					locationBlobMap),
+				digestKeyFormat,
+				&globalLock,
+				storageTypeName),
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_ReadFallback:

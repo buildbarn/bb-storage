@@ -12,26 +12,22 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestHashingDigestLocationMapGet(t *testing.T) {
+func TestHashingKeyLocationMapGet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	array := mock.NewMockLocationRecordArray(ctrl)
-	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
+	klm := local.NewHashingKeyLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
 
-	digest1 := local.CompactDigest{
+	key1 := local.Key{
 		0xca, 0x2b, 0xd6, 0xc9, 0xc9, 0x9e, 0x7b, 0xc0,
 		0x0a, 0x44, 0x09, 0x73, 0xd6, 0xe1, 0xa3, 0x69,
 	}
-	digest2 := local.CompactDigest{
+	key2 := local.Key{
 		0x49, 0x42, 0x69, 0x1f, 0x59, 0x07, 0xd5, 0xed,
 		0xdb, 0x71, 0x81, 0x8f, 0x65, 0x8f, 0x20, 0x71,
 	}
-	validator := local.LocationValidator{
-		OldestValidBlockID: 13,
-		NewestValidBlockID: 20,
-	}
 	validLocation := local.Location{
-		BlockID:     17,
+		BlockIndex:  17,
 		OffsetBytes: 864,
 		SizeBytes:   12,
 	}
@@ -42,69 +38,51 @@ func TestHashingDigestLocationMapGet(t *testing.T) {
 		// table is full. Put() will also only consider a finite
 		// number of places to store the record.
 		array.EXPECT().Get(5).Return(local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest2},
-			Location: validLocation,
-		})
+			RecordKey: local.LocationRecordKey{Key: key2},
+			Location:  validLocation,
+		}, nil)
 		array.EXPECT().Get(2).Return(local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest2},
-			Location: validLocation,
-		})
-		_, err := dlm.Get(digest1, &validator)
+			RecordKey: local.LocationRecordKey{Key: key2},
+			Location:  validLocation,
+		}, nil)
+		_, err := klm.Get(key1)
 		require.Equal(t, status.Error(codes.NotFound, "Object not found"), err)
 	})
 }
 
-func TestHashingDigestLocationMapPut(t *testing.T) {
+func TestHashingKeyLocationMapPut(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	array := mock.NewMockLocationRecordArray(ctrl)
-	dlm := local.NewHashingDigestLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
+	klm := local.NewHashingKeyLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
 
-	digest1 := local.CompactDigest{
+	key1 := local.Key{
 		0xca, 0x2b, 0xd6, 0xc9, 0xc9, 0x9e, 0x7b, 0xc0,
 		0x0a, 0x44, 0x09, 0x73, 0xd6, 0xe1, 0xa3, 0x69,
 	}
-	digest2 := local.CompactDigest{
+	key2 := local.Key{
 		0x49, 0x42, 0x69, 0x1f, 0x59, 0x07, 0xd5, 0xed,
 		0xdb, 0x71, 0x81, 0x8f, 0x65, 0x8f, 0x20, 0x71,
 	}
-	validator := local.LocationValidator{
-		OldestValidBlockID: 13,
-		NewestValidBlockID: 20,
-	}
-	outdatedLocation := local.Location{
-		BlockID:     12,
-		OffsetBytes: 923843,
-		SizeBytes:   8975495,
-	}
 	oldLocation := local.Location{
-		BlockID:     14,
+		BlockIndex:  14,
 		OffsetBytes: 859,
 		SizeBytes:   12930,
 	}
 	newLocation := local.Location{
-		BlockID:     17,
+		BlockIndex:  17,
 		OffsetBytes: 864,
 		SizeBytes:   12,
 	}
 
 	t.Run("SimpleInsertion", func(t *testing.T) {
 		// An unused slot should be overwritten immediately.
-		array.EXPECT().Get(5).Return(local.LocationRecord{})
+		array.EXPECT().Get(5).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
 		array.EXPECT().Put(5, local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: newLocation,
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  newLocation,
 		})
-		require.NoError(t, dlm.Put(digest1, &validator, newLocation))
-	})
-
-	t.Run("Outdated", func(t *testing.T) {
-		// Calling Put() with an outdated location shouldn't do
-		// anything. This could happen in the obscure case where
-		// someone attempts to take infinitely to upload a file.
-		// By the time that's done, there's no need to store it
-		// in the map any longer.
-		require.NoError(t, dlm.Put(digest1, &validator, outdatedLocation))
+		require.NoError(t, klm.Put(key1, newLocation))
 	})
 
 	t.Run("OverwriteWithNewer", func(t *testing.T) {
@@ -113,24 +91,24 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		// happen in situations where two clients attempt to
 		// upload the same object concurrently.
 		array.EXPECT().Get(5).Return(local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: oldLocation,
-		})
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  oldLocation,
+		}, nil)
 		array.EXPECT().Put(5, local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: newLocation,
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  newLocation,
 		})
-		require.NoError(t, dlm.Put(digest1, &validator, newLocation))
+		require.NoError(t, klm.Put(key1, newLocation))
 	})
 
 	t.Run("OverwriteWithOlder", func(t *testing.T) {
 		// Overwriting the same key with an older location
 		// should be ignored.
 		array.EXPECT().Get(5).Return(local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: newLocation,
-		})
-		require.NoError(t, dlm.Put(digest1, &validator, oldLocation))
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  newLocation,
+		}, nil)
+		require.NoError(t, klm.Put(key1, oldLocation))
 	})
 
 	t.Run("TwoAttempts", func(t *testing.T) {
@@ -138,35 +116,35 @@ func TestHashingDigestLocationMapPut(t *testing.T) {
 		// location, the other entry is permitted to stay. We
 		// should fall back to an alternative index.
 		array.EXPECT().Get(5).Return(local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest2},
-			Location: newLocation,
-		})
-		array.EXPECT().Get(2).Return(local.LocationRecord{})
+			RecordKey: local.LocationRecordKey{Key: key2},
+			Location:  newLocation,
+		}, nil)
+		array.EXPECT().Get(2).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
 		locationRecord := local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: oldLocation,
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  oldLocation,
 		}
-		locationRecord.Key.Attempt++
+		locationRecord.RecordKey.Attempt++
 		array.EXPECT().Put(2, locationRecord)
-		require.NoError(t, dlm.Put(digest1, &validator, oldLocation))
+		require.NoError(t, klm.Put(key1, oldLocation))
 	})
 
 	t.Run("TwoAttemptsDisplaced", func(t *testing.T) {
 		// In case we collide with an entry with an older
 		// location, we should displace that entry.
 		locationRecord := local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest2},
-			Location: oldLocation,
+			RecordKey: local.LocationRecordKey{Key: key2},
+			Location:  oldLocation,
 		}
-		array.EXPECT().Get(5).Return(locationRecord)
+		array.EXPECT().Get(5).Return(locationRecord, nil)
 		array.EXPECT().Put(5, local.LocationRecord{
-			Key:      local.LocationRecordKey{Digest: digest1},
-			Location: newLocation,
+			RecordKey: local.LocationRecordKey{Key: key1},
+			Location:  newLocation,
 		})
-		array.EXPECT().Get(6).Return(local.LocationRecord{})
-		locationRecord.Key.Attempt++
+		array.EXPECT().Get(6).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
+		locationRecord.RecordKey.Attempt++
 		array.EXPECT().Put(6, locationRecord)
-		require.NoError(t, dlm.Put(digest1, &validator, newLocation))
+		require.NoError(t, klm.Put(key1, newLocation))
 	})
 }
 

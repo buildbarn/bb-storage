@@ -1,15 +1,13 @@
 package local
 
 // LocationRecordKey contains a compact, partial binary representation
-// of digest.Digest that is used to identify blobs in
-// HashingDigestLocationMap.
+// of a Key that is used to identify blobs in HashingKeyLocationMap.
 //
-// Because HashingDigestLocationMap uses open addressing,
-// LocationRecords may be stored at alternative, less preferred indices.
-// The Attempt field contains the probing distance at which the record
-// is stored.
+// Because HashingKeyLocationMap uses open addressing, LocationRecords
+// may be stored at alternative, less preferred indices. The Attempt
+// field contains the probing distance at which the record is stored.
 type LocationRecordKey struct {
-	Digest  CompactDigest
+	Key     Key
 	Attempt uint32
 }
 
@@ -27,7 +25,7 @@ type LocationRecordKey struct {
 // offset basis to prevent collision attacks.
 func (k *LocationRecordKey) Hash(hashInitialization uint64) uint64 {
 	h := hashInitialization
-	for _, c := range k.Digest {
+	for _, c := range k.Key {
 		h ^= uint64(c)
 		h *= 1099511628211
 	}

@@ -11,11 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInMemoryBlockAllocator(t *testing.T) {
+func TestInMemoryBlockAllocatorNewBlock(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	block, err := local.NewInMemoryBlockAllocator(1024).NewBlock()
+	blockAllocator := local.NewInMemoryBlockAllocator(1024)
+
+	block, offset, err := blockAllocator.NewBlock()
 	require.NoError(t, err)
+	require.Equal(t, int64(0), offset)
 
 	// Write an object into the block.
 	require.NoError(t, block.Put(
@@ -33,4 +36,28 @@ func TestInMemoryBlockAllocator(t *testing.T) {
 	require.Equal(t, []byte("Hello world"), data)
 
 	block.Release()
+
+	// Successive blocks should have distinct offsets. This is
+	// needed to explain to the caller that blocks aren't being
+	// recycled.
+	block, offset, err = blockAllocator.NewBlock()
+	require.NoError(t, err)
+	require.Equal(t, int64(1024), offset)
+
+	block, offset, err = blockAllocator.NewBlock()
+	require.NoError(t, err)
+	require.Equal(t, int64(2048), offset)
+}
+
+func TestInMemoryBlockAllocatorNewBlockAtOffset(t *testing.T) {
+	blockAllocator := local.NewInMemoryBlockAllocator(1024)
+
+	// InMemoryBlockAllocator provide no persistency, so
+	// NewBlockAtOffset() should simply not function. There is no
+	// way to get historical blocks back.
+	_, found := blockAllocator.NewBlockAtOffset(0)
+	require.False(t, found)
+
+	_, found = blockAllocator.NewBlockAtOffset(1024)
+	require.False(t, found)
 }
