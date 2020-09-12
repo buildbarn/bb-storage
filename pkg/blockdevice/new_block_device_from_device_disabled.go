@@ -1,4 +1,4 @@
-// +build darwin freebsd windows
+// +build darwin windows
 
 package blockdevice
 
