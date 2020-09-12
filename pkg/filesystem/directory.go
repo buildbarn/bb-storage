@@ -31,24 +31,6 @@ type CreationMode struct {
 	permissions os.FileMode
 }
 
-// ShouldCreate returns whether a new file should be created if it
-// doesn't exist yet.
-func (c CreationMode) ShouldCreate() bool {
-	return (c.flags & os.O_CREATE) != 0
-}
-
-// ShouldFailWhenExists returns whether a new file must be created. When
-// true, opening must fail in case the target file already exists.
-func (c CreationMode) ShouldFailWhenExists() bool {
-	return (c.flags & os.O_EXCL) != 0
-}
-
-// GetPermissions returns the file permissions the newly created file
-// should have.
-func (c CreationMode) GetPermissions() os.FileMode {
-	return c.permissions
-}
-
 var (
 	// DontCreate indicates that opening should fail in case the
 	// target file does not exist.
