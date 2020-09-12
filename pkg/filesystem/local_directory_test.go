@@ -364,6 +364,39 @@ func TestLocalDirectoryRemoveSymlink(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
+func TestLocalDirectoryRenameBadName(t *testing.T) {
+	d := openTmpDir(t)
+
+	// Invalid source name.
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Rename("", d, "file"))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), d.Rename(".", d, "file"))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), d.Rename("..", d, "file"))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"foo/bar\""), d.Rename("foo/bar", d, "file"))
+
+	// Invalid target name.
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Rename("file", d, ""))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \".\""), d.Rename("file", d, "."))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"..\""), d.Rename("file", d, ".."))
+	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"foo/bar\""), d.Rename("file", d, "foo/bar"))
+
+	require.NoError(t, d.Close())
+}
+
+func TestLocalDirectoryRenameNotFound(t *testing.T) {
+	d := openTmpDir(t)
+	require.True(t, os.IsNotExist(d.Rename("source", d, "target")))
+	require.NoError(t, d.Close())
+}
+
+func TestLocalDirectoryRenameSuccess(t *testing.T) {
+	d := openTmpDir(t)
+	f, err := d.OpenWrite("source", filesystem.CreateExcl(0666))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Rename("source", d, "target"))
+	require.NoError(t, d.Close())
+}
+
 func TestLocalDirectorySymlinkBadName(t *testing.T) {
 	d := openTmpDir(t)
 	require.Equal(t, status.Error(codes.InvalidArgument, "Invalid filename: \"\""), d.Symlink("/whatever", ""))
@@ -383,6 +416,12 @@ func TestLocalDirectorySymlinkExistent(t *testing.T) {
 func TestLocalDirectorySymlinkSuccess(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", "symlink"))
+	require.NoError(t, d.Close())
+}
+
+func TestLocalDirectorySync(t *testing.T) {
+	d := openTmpDir(t)
+	require.NoError(t, d.Sync())
 	require.NoError(t, d.Close())
 }
 

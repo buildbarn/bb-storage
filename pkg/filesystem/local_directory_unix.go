@@ -353,6 +353,21 @@ func (d *localDirectory) RemoveAll(name string) error {
 	}
 }
 
+func (d *localDirectory) Rename(oldName string, newDirectory Directory, newName string) error {
+	if err := validateFilename(oldName); err != nil {
+		return err
+	}
+	if err := validateFilename(newName); err != nil {
+		return err
+	}
+	defer runtime.KeepAlive(d)
+	return newDirectory.Apply(localDirectoryRename{
+		oldFD:   d.fd,
+		oldName: oldName,
+		newName: newName,
+	})
+}
+
 func (d *localDirectory) Symlink(oldName string, newName string) error {
 	if err := validateFilename(newName); err != nil {
 		return err
@@ -360,6 +375,12 @@ func (d *localDirectory) Symlink(oldName string, newName string) error {
 	defer runtime.KeepAlive(d)
 
 	return unix.Symlinkat(oldName, d.fd, newName)
+}
+
+func (d *localDirectory) Sync() error {
+	defer runtime.KeepAlive(d)
+
+	return unix.Fsync(d.fd)
 }
 
 func (d *localDirectory) Chtimes(name string, atime, mtime time.Time) error {
@@ -394,11 +415,20 @@ type localDirectoryLink struct {
 	newName string
 }
 
+type localDirectoryRename struct {
+	oldFD   int
+	oldName string
+	newName string
+}
+
 func (d *localDirectory) Apply(arg interface{}) error {
 	switch a := arg.(type) {
 	case localDirectoryLink:
 		defer runtime.KeepAlive(d)
 		return unix.Linkat(a.oldFD, a.oldName, d.fd, a.newName, 0)
+	case localDirectoryRename:
+		defer runtime.KeepAlive(d)
+		return unix.Renameat(a.oldFD, a.oldName, d.fd, a.newName)
 	default:
 		return syscall.EXDEV
 	}

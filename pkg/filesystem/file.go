@@ -9,6 +9,8 @@ import (
 type FileAppender interface {
 	io.Closer
 	io.Writer
+
+	Sync() error
 }
 
 // FileReader is returned by Directory.OpenRead(). It is a handle

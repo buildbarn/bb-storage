@@ -93,8 +93,14 @@ type Directory interface {
 	// RemoveAllChildren empties out a directory, without removing
 	// the directory itself.
 	RemoveAllChildren() error
+	// Rename is the equivalent of os.Rename().
+	Rename(oldName string, newDirectory Directory, newName string) error
 	// Symlink is the equivalent of os.Symlink().
 	Symlink(oldName string, newName string) error
+	// Sync the contents of a directory (i.e., the list of names) to
+	// disk. This does not sync the contents of the files
+	// themselves.
+	Sync() error
 	// Chtimes sets the atime and mtime of the named file.
 	Chtimes(name string, atime, mtime time.Time) error
 
