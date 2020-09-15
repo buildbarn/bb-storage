@@ -1,3 +1,3 @@
 // Package digest contains the configuration for the digest cache in
-// ExistenceCachingBlobAccess
+// ExistenceCachingBlobAccess.
 package digest

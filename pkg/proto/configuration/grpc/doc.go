@@ -1,2 +1,3 @@
-// Package grpc contains the configuration for grpc servers and clients
+// Package grpc contains the configuration for gRPC servers and
+// clients.
 package grpc
