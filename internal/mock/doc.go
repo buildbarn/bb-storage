@@ -1,2 +1,2 @@
-// Package mock is populated by gomock
+// Package mock is populated by gomock.
 package mock
