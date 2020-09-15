@@ -13,17 +13,6 @@ import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
-message AzureBlobAccessConfiguration {
-  // Azure storage account name.
-  string account_name = 1;
-
-  // The key associated to the account.
-  string account_key = 2;
-
-  // The name of the storage container to use.
-  string container_name = 3;
-}
-
 // Storage configuration for Bazel Buildbarn.
 message BlobstoreConfiguration {
   // Storage configuration for the Content Addressable Storage (CAS).
@@ -58,9 +47,6 @@ message BlobAccessConfiguration {
     // Fan out requests across multiple storage backends to spread
     // out load.
     ShardingBlobAccessConfiguration sharding = 9;
-
-    // Read objects from/write objects to various cloud-based backends.
-    CloudBlobAccessConfiguration cloud = 10;
 
     // Store blobs in two backends. Blobs present in exactly one backend
     // are automatically replicated to the other backend.
@@ -133,29 +119,31 @@ message BlobAccessConfiguration {
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
   // by 'local' (LocalBlobAccess).
   reserved 6;
-}
 
-message CloudBlobAccessConfiguration {
-  // Prefix for keys, e.g. 'bazel_cas/'.
-  string key_prefix = 1;
-
-  // Backend configuration
-  oneof config {
-    // Url of the bucket to use, currently supports the following schemes:
-    // mem, file, s3, gs, azblob.
-    string url = 2;
-    AzureBlobAccessConfiguration azure = 3;
-    GCSBlobAccessConfiguration gcs = 4;
-    S3BlobAccessConfiguration s3 = 5;
-  }
-}
-
-message GCSBlobAccessConfiguration {
-  // Name of the bucket to use.
-  string bucket = 1;
-
-  // The JWT credentials to authenticate against GCP.
-  string credentials = 2;
+  // Was 'cloud' (CloudBlobAccess for systems such as S3 and GCS). This
+  // backend has been removed for several reasons:
+  //
+  // - Compared to other storage backends, its time to first byte (TTFB)
+  //   was relatively high, making it unattractive for storing
+  //   everything but large Content Addressable Storage (CAS) objects.
+  // - The lack of efficient bulk operations meant that
+  //   FindMissingBlobs() performance was very poor.
+  // - The consistency guarantees provided by many bucket
+  //   implementations, most notably Amazon S3, are too weak for build
+  //   clients to function properly.
+  //
+  // Users are instructed to migrate to LocalBlobAccess in combination
+  // with ShardingBlobAccess and MirroredBlobAccess. More details can be
+  // found in the following Architecture Decision Record (ADR):
+  //
+  // https://github.com/buildbarn/bb-adrs/blob/master/0002-storage.md
+  //
+  // If S3 was mainly used to integrate existing large corpora into the
+  // CAS, it may be sufficient to use ReferenceExpandingBlobAccess
+  // instead. More details about that can be found in this ADR:
+  //
+  // https://github.com/buildbarn/bb-adrs/blob/master/0004-icas.md
+  reserved 10;
 }
 
 message ReadCachingBlobAccessConfiguration {
@@ -253,43 +241,6 @@ message RedisBlobAccessConfiguration {
 message RemoteBlobAccessConfiguration {
   // URL of the remote build cache (e.g., "http://localhost:8080/").
   string address = 1;
-}
-
-message S3BlobAccessConfiguration {
-  // Fields 'endpoint', 'access_key_id', 'secret_access_key', 'region'
-  // and 'disable_ssl' have moved into 'aws_session'.
-  reserved 1 to 5;
-
-  // Name of the S3 bucket.
-  string bucket = 6;
-
-  // AWS access options and credentials.
-  buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 7;
-
-  // When the object becomes older than this age, the next Get or
-  // FindMissing call will refresh it by updating the "Used" metadata
-  // field.
-  //
-  // This can be combined with an externally configured expiration
-  // policy to give LRU-like cache behaviour. For example, if you
-  // configure an expiration policy which deletes objects that are
-  // more than 7 days old, and set this field to 1d, then objects
-  // will expire sometime between 6 and 7 days since the last time
-  // they were used.
-  //
-  // AWS S3 only runs expiry once per day, so it is not possible to
-  // get more accuracy than 1d. Other S3 implementations may
-  // vary. Note that the AWS documentation persistently uses the term
-  // "creation date" to mean "last modified date", which is mentioned
-  // on
-  // https://docs.aws.amazon.com/AmazonS3/latest/dev/intro-lifecycle-rules.html
-  // but not on most other documentation pages. AWS S3 expiration is
-  // based on last modified date.
-  //
-  // Updating the object is billed as a COPY operation, so setting
-  // this too low may increase costs - however, there is no data
-  // transfer involved, so the cost is expected to be small.
-  google.protobuf.Duration minimum_refresh_age = 8;
 }
 
 message ShardingBlobAccessConfiguration {

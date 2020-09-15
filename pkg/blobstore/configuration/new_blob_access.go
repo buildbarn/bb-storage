@@ -1,15 +1,12 @@
 package configuration
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cloud"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -17,7 +14,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
-	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -27,24 +23,8 @@ import (
 	"github.com/go-redis/redis/v8/redisext"
 	"github.com/golang/protobuf/ptypes"
 
-	"gocloud.dev/blob"
-	"gocloud.dev/blob/azureblob"
-
-	// Although not explicitly used here, we want to support a file blob
-	// backend for debug.
-	_ "gocloud.dev/blob/fileblob"
-	"gocloud.dev/blob/gcsblob"
-
-	// Same thing for in-memory blob storage.
-	_ "gocloud.dev/blob/memblob"
-	"gocloud.dev/blob/s3blob"
-	"gocloud.dev/gcp"
-
-	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"cloud.google.com/go/storage"
 )
 
 // BlobAccessInfo contains an instance of BlobAccess and information
@@ -65,79 +45,6 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
-	case *pb.BlobAccessConfiguration_Cloud:
-		digestKeyFormat := creator.GetBaseDigestKeyFormat()
-		switch backendConfig := backend.Cloud.Config.(type) {
-		case *pb.CloudBlobAccessConfiguration_Url:
-			ctx := context.Background()
-			bucket, err := blob.OpenBucket(ctx, backendConfig.Url)
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			return BlobAccessInfo{
-				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
-				DigestKeyFormat: digestKeyFormat,
-			}, "cloud", nil
-		case *pb.CloudBlobAccessConfiguration_Azure:
-			credential, err := azureblob.NewCredential(azureblob.AccountName(backendConfig.Azure.AccountName), azureblob.AccountKey(backendConfig.Azure.AccountKey))
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
-			ctx := context.Background()
-			bucket, err := azureblob.OpenBucket(ctx, pipeline, azureblob.AccountName(backendConfig.Azure.AccountName), backendConfig.Azure.ContainerName, nil)
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			return BlobAccessInfo{
-				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
-				DigestKeyFormat: digestKeyFormat,
-			}, "azure", nil
-		case *pb.CloudBlobAccessConfiguration_Gcs:
-			var creds *google.Credentials
-			var err error
-			ctx := context.Background()
-			if backendConfig.Gcs.Credentials != "" {
-				creds, err = google.CredentialsFromJSON(ctx, []byte(backendConfig.Gcs.Credentials), storage.ScopeReadWrite)
-			} else {
-				creds, err = google.FindDefaultCredentials(ctx, storage.ScopeReadWrite)
-			}
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			client, err := gcp.NewHTTPClient(gcp.DefaultTransport(), gcp.CredentialsTokenSource(creds))
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			bucket, err := gcsblob.OpenBucket(ctx, client, backendConfig.Gcs.Bucket, nil)
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			return BlobAccessInfo{
-				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, nil),
-				DigestKeyFormat: digestKeyFormat,
-			}, "gcs", nil
-		case *pb.CloudBlobAccessConfiguration_S3:
-			sess, err := aws.NewSessionFromConfiguration(backendConfig.S3.AwsSession)
-			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS session")
-			}
-			ctx := context.Background()
-			bucket, err := s3blob.OpenBucket(ctx, sess, backendConfig.S3.Bucket, nil)
-			if err != nil {
-				return BlobAccessInfo{}, "", err
-			}
-			minRefreshAge, err := ptypes.Duration(backendConfig.S3.MinimumRefreshAge)
-			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain S3 refresh age")
-			}
-			return BlobAccessInfo{
-				BlobAccess:      cloud.NewCloudBlobAccess(bucket, backend.Cloud.KeyPrefix, readBufferFactory, digestKeyFormat, cloud.NewS3LRURefreshingBeforeCopyFunc(minRefreshAge, clock.SystemClock)),
-				DigestKeyFormat: digestKeyFormat,
-			}, "s3", nil
-		default:
-			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Cloud configuration did not contain a backend")
-		}
 	case *pb.BlobAccessConfiguration_Error:
 		return BlobAccessInfo{
 			BlobAccess:      blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error)),
