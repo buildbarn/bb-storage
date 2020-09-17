@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -16,7 +15,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/gorilla/mux"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -32,7 +30,8 @@ func main() {
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-	if err := global.ApplyConfiguration(configuration.Global); err != nil {
+	lifecycleState, err := global.ApplyConfiguration(configuration.Global)
+	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
 
@@ -167,8 +166,5 @@ func main() {
 				}))
 	}()
 
-	// Web server for metrics and profiling.
-	router := mux.NewRouter()
-	util.RegisterAdministrativeHTTPEndpoints(router)
-	log.Fatal(http.ListenAndServe(configuration.HttpListenAddress, router))
+	lifecycleState.MarkReadyAndWait()
 }

@@ -81,4 +81,13 @@ message Configuration {
   // Periodically push metrics to a Prometheus Pushgateway, as opposed
   // to letting the Prometheus server scrape the metrics.
   PrometheusPushgatewayConfiguration prometheus_pushgateway = 3;
+
+  // When set, enables a HTTP server that provides the following URL
+  // endpoints:
+  //
+  // - /metrics: Metrics that can be scraped by Prometheus.
+  // - /-/healthy: Returns HTTP 200 OK if the application managed to
+  //               start successfully.
+  // - /debug/pprof/*: Endpoints for Go's pprof debug tool.
+  string diagnostics_http_listen_address = 4;
 }

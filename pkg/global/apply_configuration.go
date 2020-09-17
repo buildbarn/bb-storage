@@ -2,13 +2,21 @@ package global
 
 import (
 	"log"
+	"net/http"
+	// The pprof package does not provide a function for registering
+	// its endpoints against an arbitrary mux. Load it to force
+	// registration against the default mux, so we can forward
+	// traffic to that mux instead.
+	_ "net/http/pprof"
 	"runtime"
 	"time"
 
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
@@ -19,14 +27,38 @@ import (
 	"go.opencensus.io/trace"
 )
 
+// LifecycleState is returned by ApplyConfiguration. It can be used by
+// the caller to report whether the application has started up
+// successfully.
+type LifecycleState struct {
+	diagnosticsHTTPListenAddress string
+}
+
+// MarkReadyAndWait can be called to report that the program has started
+// successfully. The application should now be reported as being healthy
+// and ready, and receive incoming requests if applicable.
+func (ls *LifecycleState) MarkReadyAndWait() {
+	// Start a diagnostics web server that exposes Prometheus
+	// metrics and provides a health check endpoint.
+	if ls.diagnosticsHTTPListenAddress == "" {
+		select {}
+	} else {
+		router := mux.NewRouter()
+		router.Handle("/metrics", promhttp.Handler())
+		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
+		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		log.Fatal(http.ListenAndServe(ls.diagnosticsHTTPListenAddress, router))
+	}
+}
+
 // ApplyConfiguration applies configuration options to the running
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
-func ApplyConfiguration(configuration *pb.Configuration) error {
+func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error) {
 	// Push traces to Jaeger.
 	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
 		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-			return util.StatusWrap(err, "Failed to register ocgrpc server views")
+			return nil, util.StatusWrap(err, "Failed to register ocgrpc server views")
 		}
 
 		if jaegerConfiguration := tracingConfiguration.Jaeger; jaegerConfiguration != nil {
@@ -38,7 +70,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 				},
 			})
 			if err != nil {
-				return util.StatusWrap(err, "Failed to create the Jaeger exporter")
+				return nil, util.StatusWrap(err, "Failed to create the Jaeger exporter")
 			}
 			trace.RegisterExporter(je)
 		}
@@ -54,7 +86,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 				DefaultTraceAttributes: defaultTraceAttributes,
 			})
 			if err != nil {
-				return util.StatusWrap(err, "Failed to create the Stackdriver exporter")
+				return nil, util.StatusWrap(err, "Failed to create the Stackdriver exporter")
 			}
 			trace.RegisterExporter(se)
 		}
@@ -65,7 +97,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 				Namespace: "bb_storage",
 			})
 			if err != nil {
-				return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
+				return nil, util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
 			}
 			view.RegisterExporter(pe)
 		}
@@ -91,7 +123,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		}
 		pushInterval, err := ptypes.Duration(pushgateway.PushInterval)
 		if err != nil {
-			return util.StatusWrap(err, "Failed to parse push interval")
+			return nil, util.StatusWrap(err, "Failed to parse push interval")
 		}
 
 		go func() {
@@ -104,5 +136,7 @@ func ApplyConfiguration(configuration *pb.Configuration) error {
 		}()
 	}
 
-	return nil
+	return &LifecycleState{
+		diagnosticsHTTPListenAddress: configuration.GetDiagnosticsHttpListenAddress(),
+	}, nil
 }

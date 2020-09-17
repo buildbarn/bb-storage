@@ -9,8 +9,9 @@ import "pkg/proto/configuration/grpc/grpc.proto";
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator";
 
 message ApplicationConfiguration {
-  // Address on which to listen to expose Prometheus metrics.
-  string http_listen_address = 1;
+  // Was 'http_listen_address'. This option has been moved to
+  // 'global.diagnostics_http_listen_address'.
+  reserved 1;
 
   // gRPC servers to spawn to listen for requests from clients.
   repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 2;

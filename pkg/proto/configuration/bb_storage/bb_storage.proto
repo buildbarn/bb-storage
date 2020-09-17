@@ -16,8 +16,9 @@ message ApplicationConfiguration {
   // Jaeger configuration has moved into 'global'.
   reserved 2;
 
-  // Address on which to listen to expose Prometheus metrics.
-  string http_listen_address = 3;
+  // Was 'http_listen_address'. This option has been moved to
+  // 'global.diagnostics_http_listen_address'.
+  reserved 3;
 
   // gRPC servers to spawn to listen for requests from clients.
   repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 4;
