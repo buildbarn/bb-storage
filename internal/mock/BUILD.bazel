@@ -140,6 +140,7 @@ gomock(
     out = "grpc.go",
     interfaces = [
         "Authenticator",
+        "ClientDialer",
         "ClientFactory",
     ],
     library = "//pkg/grpc:go_default_library",

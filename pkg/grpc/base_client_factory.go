@@ -25,7 +25,17 @@ func init() {
 			util.DecimalExponentialBuckets(-3, 6, 2)))
 }
 
-type baseClientFactory struct{}
+type baseClientFactory struct {
+	dialer ClientDialer
+}
+
+// NewBaseClientFactory creates factory for gRPC clients that calls into
+// ClientDialer to construct the actual client.
+func NewBaseClientFactory(dialer ClientDialer) ClientFactory {
+	return baseClientFactory{
+		dialer: dialer,
+	}
+}
 
 func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.ClientConfiguration) (grpc.ClientConnInterface, error) {
 	if config == nil {
@@ -123,8 +133,5 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...))
-	return grpc.Dial(config.Address, dialOptions...)
+	return cf.dialer(context.Background(), config.Address, dialOptions...)
 }
-
-// BaseClientFactory creates gRPC clients using the go-grpc library.
-var BaseClientFactory ClientFactory = baseClientFactory{}

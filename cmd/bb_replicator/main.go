@@ -28,9 +28,8 @@ func main() {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
 
-	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(bb_grpc.BaseClientFactory)
 	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
-		grpcClientFactory,
+		bb_grpc.DefaultClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 		configuration.Source,
@@ -48,7 +47,7 @@ func main() {
 		configuration.Replicator,
 		source.BlobAccess,
 		sink,
-		blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory))
+		blobstore_configuration.NewCASBlobReplicatorCreator(bb_grpc.DefaultClientFactory))
 	if err != nil {
 		log.Fatal("Failed to create replicator: ", err)
 	}

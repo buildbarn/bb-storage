@@ -36,10 +36,9 @@ func main() {
 	}
 
 	// Storage access.
-	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(bb_grpc.BaseClientFactory)
 	contentAddressableStorage, actionCache, err := blobstore_configuration.NewCASAndACBlobAccessFromConfiguration(
 		configuration.Blobstore,
-		grpcClientFactory,
+		bb_grpc.DefaultClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal(err)
@@ -52,7 +51,7 @@ func main() {
 		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
-				grpcClientFactory,
+				bb_grpc.DefaultClientFactory,
 				int(configuration.MaximumMessageSizeBytes)))
 		if err != nil {
 			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
