@@ -20,7 +20,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/v8"
-	"github.com/go-redis/redis/v8/redisext"
+	"github.com/go-redis/redisext"
 	"github.com/golang/protobuf/ptypes"
 
 	"google.golang.org/grpc/codes"

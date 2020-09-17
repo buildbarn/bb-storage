@@ -12,7 +12,8 @@ require (
 	github.com/aws/aws-sdk-go v1.33.12
 	github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9
 	github.com/benbjohnson/clock v1.0.3 // indirect
-	github.com/go-redis/redis/v8 v8.0.0-beta.8
+	github.com/go-redis/redis/v8 v8.0.0
+	github.com/go-redis/redisext v0.1.7
 	github.com/golang/mock v1.4.4-0.20200406172829-6d816de489c1
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-jsonnet v0.16.0
@@ -21,7 +22,6 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/lazybeaver/xorshift v0.0.0-20170702203709-ce511d4823dd
-	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/prometheus/client_golang v1.7.1
 	github.com/stretchr/testify v1.6.1
