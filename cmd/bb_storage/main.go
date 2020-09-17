@@ -18,8 +18,6 @@ import (
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -59,45 +57,6 @@ func main() {
 		indirectContentAddressableStorage = info.BlobAccess
 	}
 
-	// Create a trie that maps instance names to schedulers capable
-	// of picking up build actions.
-	buildQueuesTrie := digest.NewInstanceNameTrie()
-	type buildQueueInfo struct {
-		backend             builder.BuildQueue
-		backendName         digest.InstanceName
-		instanceNamePatcher digest.InstanceNamePatcher
-	}
-	var buildQueues []buildQueueInfo
-	for k, scheduler := range configuration.Schedulers {
-		matchInstanceNamePrefix, err := digest.NewInstanceName(k)
-		if err != nil {
-			log.Fatalf("Invalid instance name %#v: %s", k, err)
-		}
-		addInstanceNamePrefix, err := digest.NewInstanceName(scheduler.AddInstanceNamePrefix)
-		if err != nil {
-			log.Fatalf("Invalid instance name %#v: %s", scheduler.AddInstanceNamePrefix, err)
-		}
-		endpoint, err := grpcClientFactory.NewClientFromConfiguration(scheduler.Endpoint)
-		if err != nil {
-			log.Fatal("Failed to create scheduler RPC client: ", err)
-		}
-		buildQueuesTrie.Set(matchInstanceNamePrefix, len(buildQueues))
-		buildQueues = append(buildQueues, buildQueueInfo{
-			backend:     builder.NewForwardingBuildQueue(endpoint),
-			backendName: matchInstanceNamePrefix,
-			instanceNamePatcher: digest.NewInstanceNamePatcher(
-				matchInstanceNamePrefix,
-				addInstanceNamePrefix),
-		})
-	}
-	buildQueue := builder.NewDemultiplexingBuildQueue(func(instanceName digest.InstanceName) (builder.BuildQueue, digest.InstanceName, digest.InstanceName, error) {
-		idx := buildQueuesTrie.Get(instanceName)
-		if idx < 0 {
-			return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, status.Errorf(codes.InvalidArgument, "Unknown instance name")
-		}
-		return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
-	})
-
 	// Create a trie for which instance names provide a writable
 	// Action Cache. Use that trie to both limit BlobAccess writes
 	// and determine the value of UpdateEnabled in GetCapabilities()
@@ -109,21 +68,18 @@ func main() {
 			log.Fatalf("Invalid instance name %#v: %s", k, err)
 		}
 		allowActionCacheUpdatesTrie.Set(instanceNamePrefix, 0)
-
-		// Ensure that instance names for which we don't have a
-		// scheduler, but allow AC updates, at least have the
-		// NonExecutableBuildQueue. This makes GetCapabilities()
-		// work for those instance names.
-		if !buildQueuesTrie.Contains(instanceNamePrefix) {
-			buildQueuesTrie.Set(instanceNamePrefix, 0)
-			buildQueuesTrie.Set(instanceNamePrefix, len(buildQueues))
-			buildQueues = append(buildQueues, buildQueueInfo{
-				backend:             builder.NonExecutableBuildQueue,
-				backendName:         instanceNamePrefix,
-				instanceNamePatcher: digest.NoopInstanceNamePatcher,
-			})
-		}
 	}
+
+	// Create a demultiplexing build queue that forwards traffic to
+	// one or more schedulers specified in the configuration file.
+	buildQueue, err := builder.NewDemultiplexingBuildQueueFromConfiguration(
+		configuration.Schedulers,
+		bb_grpc.DefaultClientFactory,
+		allowActionCacheUpdatesTrie.Contains)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	actionCache = blobstore.NewInstanceNameAccessCheckingBlobAccess(
 		actionCache,
 		allowActionCacheUpdatesTrie.Contains)

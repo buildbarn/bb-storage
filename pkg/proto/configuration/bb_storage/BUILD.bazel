@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/blobstore:blobstore_proto",
+        "//pkg/proto/configuration/builder:builder_proto",
         "//pkg/proto/configuration/global:global_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
     ],
@@ -20,6 +21,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/blobstore:go_default_library",
+        "//pkg/proto/configuration/builder:go_default_library",
         "//pkg/proto/configuration/global:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
     ],

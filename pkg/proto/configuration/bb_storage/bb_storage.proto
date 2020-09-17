@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.bb_storage;
 
 import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/builder/builder.proto";
 import "pkg/proto/configuration/global/global.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 
@@ -36,7 +37,8 @@ message ApplicationConfiguration {
   //
   // The empty string can be used to match all instance names, thereby
   // causing all requests to be forwarded to a single scheduler.
-  map<string, SchedulerConfiguration> schedulers = 5;
+  map<string, buildbarn.configuration.builder.SchedulerConfiguration>
+      schedulers = 5;
 
   // List of instance name prefixes for which uploads to the Action
   // Cache are permitted. The empty string can be used to match all
@@ -57,16 +59,4 @@ message ApplicationConfiguration {
   // Storage (ICAS).
   buildbarn.configuration.blobstore.BlobAccessConfiguration
       indirect_content_addressable_storage = 10;
-}
-
-message SchedulerConfiguration {
-  // The gRPC endpoint at which the scheduler can be reached.
-  buildbarn.configuration.grpc.ClientConfiguration endpoint = 1;
-
-  // Add a prefix to the instance name of all requests forwarded to this
-  // scheduler. By default, the prefix that was used to match the
-  // request against a scheduler is stripped from the instance name.
-  // This option can be used to re-add that prefix in case perfect
-  // forwarding is necessary.
-  string add_instance_name_prefix = 2;
 }
