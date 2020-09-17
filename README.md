@@ -99,7 +99,7 @@ $ cat config/bb_storage.jsonnet
       },
     },
   },
-  httpListenAddress: ':9980',
+  global: { diagnosticsHttpListenAddress: ':9980' },
   grpcServers: [{
     listenAddresses: [':8980'],
     authenticationPolicy: { allow: {} },
