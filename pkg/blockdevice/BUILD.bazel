@@ -47,5 +47,9 @@ go_test(
     name = "go_default_test",
     srcs = ["new_block_device_from_file_test.go"],
     embed = [":go_default_library"],
-    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+    deps = [
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+    ],
 )

@@ -4,11 +4,14 @@ package blockdevice
 
 import (
 	"io"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/unix"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type memoryMappedBlockDevice struct {
@@ -30,7 +33,7 @@ func newMemoryMappedBlockDevice(fd int, sizeBytes int) (BlockDevice, error) {
 	}, nil
 }
 
-func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (int, error) {
+func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (n int, err error) {
 	// Let read actions go through the memory map to prevent system
 	// call overhead for commonly requested objects.
 	if off < 0 {
@@ -39,11 +42,23 @@ func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (int, error) {
 	if off > int64(len(bd.data)) {
 		return 0, io.EOF
 	}
-	n := copy(p, bd.data[off:])
+
+	// Install a page fault handler, so that I/O errors against the
+	// memory map (e.g., due to disk failure) don't cause us to
+	// crash.
+	old := debug.SetPanicOnFault(true)
+	defer func() {
+		debug.SetPanicOnFault(old)
+		if recover() != nil {
+			err = status.Error(codes.Internal, "Page fault occurred while reading from memory map")
+		}
+	}()
+
+	n = copy(p, bd.data[off:])
 	if n < len(p) {
-		return n, io.EOF
+		err = io.EOF
 	}
-	return n, nil
+	return
 }
 
 func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
