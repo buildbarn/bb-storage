@@ -140,7 +140,7 @@ func newDigestFromByteStreamPathCommon(header []string, trailer []string) (Diges
 	if err != nil {
 		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid blob size %#v", trailer[2])
 	}
-	instanceName, err := newInstanceNameFromComponents(header)
+	instanceName, err := NewInstanceNameFromComponents(header)
 	if err != nil {
 		return BadDigest, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
 	}

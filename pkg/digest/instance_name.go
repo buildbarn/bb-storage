@@ -69,7 +69,10 @@ func NewInstanceName(value string) (InstanceName, error) {
 	}, nil
 }
 
-func newInstanceNameFromComponents(components []string) (InstanceName, error) {
+// NewInstanceNameFromComponents is identical to NewInstanceName, except
+// that it takes a series of pathname components instead of a single
+// string.
+func NewInstanceNameFromComponents(components []string) (InstanceName, error) {
 	if err := validateInstanceNameComponents(components); err != nil {
 		return InstanceName{}, err
 	}
