@@ -6,7 +6,7 @@ import "pkg/proto/configuration/blobstore/blobstore.proto";
 import "pkg/proto/configuration/global/global.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 
-option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator";
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/replicator";
 
 message ApplicationConfiguration {
   // Was 'http_listen_address'. This option has been moved to

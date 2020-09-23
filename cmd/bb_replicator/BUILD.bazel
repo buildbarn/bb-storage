@@ -12,7 +12,7 @@ go_library(
         "//pkg/blobstore/replication:go_default_library",
         "//pkg/global:go_default_library",
         "//pkg/grpc:go_default_library",
-        "//pkg/proto/configuration/bb_replicator:go_default_library",
+        "//pkg/proto/configuration/replicator:go_default_library",
         "//pkg/proto/replicator:go_default_library",
         "//pkg/util:go_default_library",
         "@org_golang_google_grpc//:go_default_library",

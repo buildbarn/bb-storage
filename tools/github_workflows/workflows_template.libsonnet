@@ -38,6 +38,10 @@
           uses: 'actions/checkout@v1',
         },
         {
+          name: 'go mod tidy',
+          run: 'bazel run @go_sdk//:bin/go mod tidy',
+        },
+        {
           name: 'Buildifier',
           run: 'bazel run @com_github_bazelbuild_buildtools//:buildifier',
         },

@@ -17,6 +17,7 @@ go_proto_library(
 
 go_library(
     name = "go_default_library",
+    srcs = ["doc.go"],
     embed = [":eviction_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction",
     visibility = ["//visibility:public"],

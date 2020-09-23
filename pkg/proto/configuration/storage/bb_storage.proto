@@ -7,7 +7,7 @@ import "pkg/proto/configuration/builder/builder.proto";
 import "pkg/proto/configuration/global/global.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 
-option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/storage";
 
 message ApplicationConfiguration {
   // Blobstore configuration for the Content Addressable Storage (CAS)
