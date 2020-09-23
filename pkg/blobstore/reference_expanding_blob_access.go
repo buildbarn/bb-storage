@@ -19,17 +19,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// HTTPClient is an interface around Go's standard HTTP client type. It
-// has been added to aid unit testing.
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-var _ HTTPClient = &http.Client{}
-
 type referenceExpandingBlobAccess struct {
 	blobAccess              BlobAccess
-	httpClient              HTTPClient
+	httpClient              util.HTTPClient
 	s3                      cloud_aws.S3
 	maximumMessageSizeBytes int
 }
@@ -45,7 +37,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient HTTPClient, s3 cloud_aws.S3, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient util.HTTPClient, s3 cloud_aws.S3, maximumMessageSizeBytes int) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		blobAccess:              blobAccess,
 		httpClient:              httpClient,

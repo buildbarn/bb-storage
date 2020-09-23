@@ -59,10 +59,10 @@ index 88783cf..a9078fb 100644
  
  	return intf, nil
 diff --git mockgen/parse.go mockgen/parse.go
-index 0ba7f80..1aa41b4 100644
+index a8edde8..8610fdc 100644
 --- mockgen/parse.go
 +++ mockgen/parse.go
-@@ -174,7 +174,7 @@ func (p *fileParser) addAuxInterfacesFromFile(pkg string, file *ast.File) {
+@@ -144,7 +144,7 @@ func (p *fileParser) addAuxInterfacesFromFile(pkg string, file *ast.File) {
  	if _, ok := p.auxInterfaces[pkg]; !ok {
  		p.auxInterfaces[pkg] = make(map[string]*ast.InterfaceType)
  	}
@@ -71,7 +71,7 @@ index 0ba7f80..1aa41b4 100644
  		p.auxInterfaces[pkg][ni.name.Name] = ni.it
  	}
  }
-@@ -201,8 +201,22 @@ func (p *fileParser) parseFile(importPath string, file *ast.File) (*model.Packag
+@@ -171,8 +171,22 @@ func (p *fileParser) parseFile(importPath string, file *ast.File) (*model.Packag
  	}
  
  	var is []*model.Interface
@@ -96,17 +96,17 @@ index 0ba7f80..1aa41b4 100644
  		if err != nil {
  			return nil, err
  		}
-@@ -239,7 +253,7 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
- 		if _, ok := newP.importedInterfaces[path]; !ok {
- 			newP.importedInterfaces[path] = make(map[string]*ast.InterfaceType)
+@@ -200,7 +214,7 @@ func (p *fileParser) parsePackage(path string) error {
+ 		if _, ok := p.importedInterfaces[path]; !ok {
+ 			p.importedInterfaces[path] = make(map[string]*ast.InterfaceType)
  		}
 -		for ni := range iterInterfaces(file) {
 +		for _, ni := range extractInterfaces(file) {
- 			newP.importedInterfaces[path][ni.name.Name] = ni.it
+ 			p.importedInterfaces[path][ni.name.Name] = ni.it
  		}
  		imports, _ := importsOfFile(file)
-@@ -250,9 +264,9 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
- 	return newP, nil
+@@ -213,9 +227,9 @@ func (p *fileParser) parsePackage(path string) error {
+ 	return nil
  }
  
 -func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*model.Interface, error) {
@@ -117,7 +117,7 @@ index 0ba7f80..1aa41b4 100644
  		switch v := field.Type.(type) {
  		case *ast.FuncType:
  			if nn := len(field.Names); nn != 1 {
-@@ -275,7 +289,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
+@@ -238,7 +252,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
  					return nil, p.errorf(v.Pos(), "unknown embedded interface %s", v.String())
  				}
  			}
@@ -126,25 +126,16 @@ index 0ba7f80..1aa41b4 100644
  			if err != nil {
  				return nil, err
  			}
-@@ -294,7 +308,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
- 			var err error
- 			ei := p.auxInterfaces[fpkg][sel]
- 			if ei != nil {
--				eintf, err = p.parseInterface(sel, fpkg, ei)
-+				eintf, err = p.parseInterface(sel, fpkg, ei.Methods.List)
- 				if err != nil {
- 					return nil, err
+@@ -264,7 +278,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
+ 					return nil, p.errorf(v.Pos(), "unknown embedded interface %s.%s", fpkg, sel)
  				}
-@@ -315,7 +329,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
- 				if ei = parser.importedInterfaces[path][sel]; ei == nil {
- 					return nil, p.errorf(v.Pos(), "unknown embedded interface %s.%s", path, sel)
- 				}
--				eintf, err = parser.parseInterface(sel, path, ei)
-+				eintf, err = parser.parseInterface(sel, path, ei.Methods.List)
- 				if err != nil {
- 					return nil, err
- 				}
-@@ -549,31 +563,53 @@ type namedInterface struct {
+ 			}
+-			eintf, err := p.parseInterface(sel, fpkg, ei)
++			eintf, err := p.parseInterface(sel, fpkg, ei.Methods.List)
+ 			if err != nil {
+ 				return nil, err
+ 			}
+@@ -484,31 +498,53 @@ type namedInterface struct {
  	it   *ast.InterfaceType
  }
  

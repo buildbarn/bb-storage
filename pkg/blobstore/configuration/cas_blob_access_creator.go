@@ -1,8 +1,6 @@
 package configuration
 
 import (
-	"net/http"
-
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -96,7 +94,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
-				http.DefaultClient,
+				util.DefaultHTTPClient,
 				s3.New(sess),
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,
