@@ -8,7 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator"
+	"github.com/buildbarn/bb-storage/pkg/proto/configuration/replicator"
 	replicator_pb "github.com/buildbarn/bb-storage/pkg/proto/replicator"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -19,7 +19,7 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("Usage: bb_replicator bb_replicator.jsonnet")
 	}
-	var configuration bb_replicator.ApplicationConfiguration
+	var configuration replicator.ApplicationConfiguration
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}

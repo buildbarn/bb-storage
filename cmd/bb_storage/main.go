@@ -12,7 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
+	"github.com/buildbarn/bb-storage/pkg/proto/configuration/storage"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -24,7 +24,7 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("Usage: bb_storage bb_storage.jsonnet")
 	}
-	var configuration bb_storage.ApplicationConfiguration
+	var configuration storage.ApplicationConfiguration
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}

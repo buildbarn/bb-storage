@@ -196,8 +196,8 @@ def go_dependencies():
     go_repository(
         name = "com_github_gordonklaus_ineffassign",
         importpath = "github.com/gordonklaus/ineffassign",
-        sum = "h1:U/zHjaVG/sECz5xhnh7kPH+Fv/maPbhZPcaTquo5sPg=",
-        version = "v0.0.0-20200809085317-e36bfde3bb78",
+        sum = "h1:vc7Dmrk4JwS0ZPS6WZvWlwDflgDTA26jItmbSj83nug=",
+        version = "v0.0.0-20200309095847-7953dde2c7bf",
     )
     go_repository(
         name = "org_golang_x_lint",
@@ -740,12 +740,6 @@ def go_dependencies():
         importpath = "golang.org/x/tools",
         sum = "h1:5Y8c5HBW6hBYnGEE3AbJPV0R8RsQmg1/eaJrpvasns0=",
         version = "v0.0.0-20200606014950-c42cb6316fb6",
-    )
-    go_repository(
-        name = "com_github_opentracing_opentracing_go",
-        importpath = "github.com/opentracing/opentracing-go",
-        sum = "h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=",
-        version = "v1.2.0",
     )
 
     go_repository(
