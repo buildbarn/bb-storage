@@ -57,24 +57,6 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
-message OpenCensusConfiguration {
-  // Export data to an OpenCensus agent. The recommended configuration
-  // is to use opentelemetry-collector and enable its opencensus-agent
-  // receiver.
-
-  // Connection address for the agent. Default is localhost:55678.
-  string address = 1;
-
-  // TLS configuration. TLS is not enabled when left unset.
-  buildbarn.configuration.tls.ClientConfiguration tls = 2;
-
-  // OpenCensus service name.
-  string service_name = 3;
-
-  // Export opencensus metrics to Prometheus.
-  bool enable_prometheus = 4;
-}
-
 message OpenTelemetryConfiguration {
   // Connection address for the collector. Default is localhost:55680.
   string address = 1;
@@ -110,15 +92,13 @@ message OpenTelemetryConfiguration {
 }
 
 message TracingConfiguration {
-  // Jaeger configuration for tracing has been replaced by open_census
-  // and open_telemetry.
+  // Jaeger configuration for tracing has been replaced by open_telemetry.
   reserved 1;
 
-  // Stackdriver Trace configuration has been replaced by open_census
-  // and open_telemetry.
+  // Stackdriver Trace configuration has been replaced by open_telemetry.
   reserved 2;
 
-  // enable_prometheus has moved into open_census.
+  // enable_prometheus is removed.
   reserved 3;
 
   // Trace sampling is now configured with sample_probability.
@@ -129,17 +109,11 @@ message TracingConfiguration {
   double sample_probability = 5;
 
   // The intended usage is to run the opentelemetry-collector agent as
-  // a sidecar, with both the opencensus and otel receivers enabled,
-  // and configure that agent to send traces to your preferred
-  // backend.
+  // a sidecar, with both the otel receiver enabled, and configure
+  // that agent to send traces to your preferred backend.
 
-  // In order to fully capture all traces, it is currently necessary
-  // to configure both oc and otel, because not all libraries have
-  // migrated to OpenTelemtry yet. A sufficient minimal configuration is:
+  // A sufficient minimal configuration is:
   //
-  // openCensus: {
-  //   serviceName: "buildbarn",
-  // },
   // openTelemetry: {
   //   resourceDetectors: ['FROM_ENVIRONMENT_VARIABLE'],
   // },
@@ -147,11 +121,8 @@ message TracingConfiguration {
   // And set the environment variable OTEL_RESOURCE_ATTRIBUTES to
   // 'service.name=buildbarn'.
 
-  // Export data to an OpenCensus agent.
-  OpenCensusConfiguration open_census = 6;
-
   // Export data to an OpenTelemetry collector.
-  OpenTelemetryConfiguration open_telemetry = 7;
+  OpenTelemetryConfiguration open_telemetry = 6;
 }
 
 message Configuration {

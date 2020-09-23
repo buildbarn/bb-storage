@@ -22,11 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 	"google.golang.org/grpc/credentials"
 
-	"contrib.go.opencensus.io/exporter/ocagent"
-	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
-	"go.opencensus.io/stats/view"
-	octrace "go.opencensus.io/trace"
-
 	detectaws "go.opentelemetry.io/contrib/detectors/aws"
 	detectgcp "go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel/api/global"
@@ -62,16 +57,10 @@ func (ls *LifecycleState) MarkReadyAndWait() {
 // ApplyConfiguration applies configuration options to the running
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
-func ApplyConfiguration(configuration *pb.Configuration) (*LicecycleState, error) {
+func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error) {
 	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
 		if tracingConfiguration.OpenTelemetry != nil {
 			if err := applyOpenTelemetryConfiguration(tracingConfiguration.OpenTelemetry, tracingConfiguration.SampleProbability); err != nil {
-				return nil, err
-			}
-		}
-
-		if tracingConfiguration.OpenCensus != nil {
-			if err := applyOpenCensusConfiguration(tracingConfiguration.OpenCensus, tracingConfiguration.SampleProbability); err != nil {
 				return nil, err
 			}
 		}
@@ -180,49 +169,6 @@ func applyOpenTelemetryConfiguration(config *pb.OpenTelemetryConfiguration, samp
 	}
 
 	global.SetTraceProvider(traceProvider)
-
-	return nil
-}
-
-func applyOpenCensusConfiguration(config *pb.OpenCensusConfiguration, sampling float64) error {
-	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)
-	if err != nil {
-		return util.StatusWrap(err, "Failed to create TLS configuration")
-	}
-
-	options := []ocagent.ExporterOption{}
-
-	if config.Address != "" {
-		options = append(options, ocagent.WithAddress(config.Address))
-	}
-	if config.ServiceName != "" {
-		options = append(options, ocagent.WithServiceName(config.ServiceName))
-	}
-
-	if tlsConfig != nil {
-		options = append(options, ocagent.WithTLSCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		options = append(options, ocagent.WithInsecure())
-	}
-	exporter, err := ocagent.NewExporter(options...)
-	if err != nil {
-		return util.StatusWrap(err, "Failed to create OCA exporter")
-	}
-
-	view.RegisterExporter(exporter)
-	octrace.RegisterExporter(exporter)
-	octrace.ApplyConfig(octrace.Config{DefaultSampler: octrace.ProbabilitySampler(sampling)})
-
-	if config.EnablePrometheus {
-		pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
-			Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
-			Namespace: "bb_storage",
-		})
-		if err != nil {
-			return util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
-		}
-		view.RegisterExporter(pe)
-	}
 
 	return nil
 }

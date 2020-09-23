@@ -4,10 +4,6 @@ go 1.14
 
 require (
 	cloud.google.com/go/storage v1.10.0 // indirect
-	contrib.go.opencensus.io/exporter/jaeger v0.2.0 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.7.0
-	contrib.go.opencensus.io/exporter/prometheus v0.2.0
-	contrib.go.opencensus.io/exporter/stackdriver v0.12.9 // indirect
 	github.com/Azure/azure-storage-blob-go v0.10.0 // indirect
 	github.com/aws/aws-sdk-go v1.34.9
 	github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9
@@ -28,7 +24,6 @@ require (
 	github.com/uber-go/atomic v1.4.0 // indirect
 	github.com/uber/jaeger-client-go v2.16.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	go.opencensus.io v0.22.4
 	go.opentelemetry.io/contrib/detectors/aws v0.11.0
 	go.opentelemetry.io/contrib/detectors/gcp v0.11.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc v0.11.0

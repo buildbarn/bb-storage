@@ -20,7 +20,6 @@ go_library(
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_google_go_jsonnet//:go_default_library",
         "@com_github_google_uuid//:go_default_library",
-        "@io_opencensus_go//trace:go_default_library",
         "@io_opentelemetry_go_contrib_instrumentation_net_http//:go_default_library",
         "@io_opentelemetry_go_otel//api/global:go_default_library",
         "@io_opentelemetry_go_otel//api/propagation:go_default_library",
