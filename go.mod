@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-storage-blob-go v0.10.0
 	github.com/DataDog/sketches-go v0.0.0-20190923095040-43f19ad77ff7 // indirect
 	github.com/aws/aws-sdk-go v1.33.12
-	github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9
+	github.com/bazelbuild/remote-apis v0.0.0-20201030192148-aa8e718768c2
 	github.com/benbjohnson/clock v1.0.3 // indirect
 	github.com/go-redis/redis/v8 v8.0.0
 	github.com/go-redis/redisext v0.1.7

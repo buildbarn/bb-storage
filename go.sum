@@ -108,6 +108,8 @@ github.com/aws/aws-sdk-go v1.33.12 h1:eydMoSwfrSTD9PWKUJOiDL7+/UwDW8AjInUGVE5Llh
 github.com/aws/aws-sdk-go v1.33.12/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9 h1:cEFRynjrFOjUj9ZQj/ubiVbKPUcMG2kpMIbQkKGYlcI=
 github.com/bazelbuild/remote-apis v0.0.0-20200708200203-1252343900d9/go.mod h1:9Y+1FnaNUGVV6wKE0Jdh+mguqDUsyd9uUqokalrC7DQ=
+github.com/bazelbuild/remote-apis v0.0.0-20201030192148-aa8e718768c2 h1:in8ww8rHwdcmLN3J9atiRDvAaYHobXBJzp7uAxlUREU=
+github.com/bazelbuild/remote-apis v0.0.0-20201030192148-aa8e718768c2/go.mod h1:9Y+1FnaNUGVV6wKE0Jdh+mguqDUsyd9uUqokalrC7DQ=
 github.com/benbjohnson/clock v1.0.3 h1:vkLuvpK4fmtSCuo60+yC63p7y0BmQ8gm5ZXGuBCJyXg=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
