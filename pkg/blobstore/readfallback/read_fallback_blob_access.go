@@ -25,7 +25,7 @@ type readFallbackBlobAccess struct {
 //
 // This decorator can be used to integrate external data sets into the
 // system, e.g. by combining it with ReferenceExpandingBlobAccess.
-func NewReadFallbackBlobAccess(primary blobstore.BlobAccess, secondary blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
+func NewReadFallbackBlobAccess(primary, secondary blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readFallbackBlobAccess{
 		primary:    primary,
 		secondary:  secondary,

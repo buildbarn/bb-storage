@@ -14,20 +14,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	// Keywords that are not permitted to be placed inside instance
-	// names by the REv2 protocol. Permitting these would make
-	// parsing of URLs, such as the ones provided to the ByteStream
-	// service, ambiguous.
-	reservedInstanceNameKeywords = map[string]bool{
-		"blobs":         true,
-		"uploads":       true,
-		"actions":       true,
-		"actionResults": true,
-		"operations":    true,
-		"capabilities":  true,
-	}
-)
+// Keywords that are not permitted to be placed inside instance names by
+// the REv2 protocol. Permitting these would make parsing of URLs, such
+// as the ones provided to the ByteStream service, ambiguous.
+var reservedInstanceNameKeywords = map[string]bool{
+	"blobs":         true,
+	"uploads":       true,
+	"actions":       true,
+	"actionResults": true,
+	"operations":    true,
+	"capabilities":  true,
+}
 
 // InstanceName is a simple container around REv2 instance name strings.
 // Because instance names are embedded in URLs, the REv2 protocol places

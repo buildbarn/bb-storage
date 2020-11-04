@@ -60,5 +60,4 @@ func TestLazyClientDialer(t *testing.T) {
 			t,
 			clientConnection.Invoke(ctx, "method", nil, nil))
 	})
-
 }

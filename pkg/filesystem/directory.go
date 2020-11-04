@@ -6,23 +6,21 @@ import (
 	"time"
 )
 
-var (
-	// DeterministicFileModificationTimestamp is a fixed timestamp that
-	// can be provided to Directory.Chtimes() to give files deterministic
-	// modification times. It is used by bb_worker to ensure that all
-	// files in the input root of a build action have the same
-	// modification time. This is needed to make certain kinds of build
-	// actions (most notably Autoconf scripts) succeed.
-	//
-	// 2000-01-01T00:00:00Z was chosen, because it's easy to distinguish
-	// from genuine timestamps. 1970-01-01T00:00:00Z would be impractical
-	// to use, because it tends to cause regressions in practice.
-	//
-	// Examples:
-	// https://bugs.python.org/issue34097
-	// https://gerrit.wikimedia.org/r/#/c/mediawiki/core/+/437977/
-	DeterministicFileModificationTimestamp = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-)
+// DeterministicFileModificationTimestamp is a fixed timestamp that can
+// be provided to Directory.Chtimes() to give files deterministic
+// modification times. It is used by bb_worker to ensure that all files
+// in the input root of a build action have the same modification time.
+// This is needed to make certain kinds of build actions (most notably
+// Autoconf scripts) succeed.
+//
+// 2000-01-01T00:00:00Z was chosen, because it's easy to distinguish
+// from genuine timestamps. 1970-01-01T00:00:00Z would be impractical to
+// use, because it tends to cause regressions in practice.
+//
+// Examples:
+// https://bugs.python.org/issue34097
+// https://gerrit.wikimedia.org/r/#/c/mediawiki/core/+/437977/
+var DeterministicFileModificationTimestamp = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 // CreationMode specifies whether and how Directory.Open*() should
 // create new files.
@@ -31,11 +29,9 @@ type CreationMode struct {
 	permissions os.FileMode
 }
 
-var (
-	// DontCreate indicates that opening should fail in case the
-	// target file does not exist.
-	DontCreate = CreationMode{}
-)
+// DontCreate indicates that opening should fail in case the target file
+// does not exist.
+var DontCreate = CreationMode{}
 
 // CreateReuse indicates that a new file should be created if it doesn't
 // already exist. If the target file already exists, that file will be
@@ -96,7 +92,7 @@ type Directory interface {
 	// Rename is the equivalent of os.Rename().
 	Rename(oldName string, newDirectory Directory, newName string) error
 	// Symlink is the equivalent of os.Symlink().
-	Symlink(oldName string, newName string) error
+	Symlink(oldName, newName string) error
 	// Sync the contents of a directory (i.e., the list of names) to
 	// disk. This does not sync the contents of the files
 	// themselves.

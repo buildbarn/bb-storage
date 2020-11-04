@@ -103,7 +103,7 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage blobstore.BlobAccess, batchSize int, maximumMessageSizeBytes int) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, batchSize, maximumMessageSizeBytes int) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		contentAddressableStorage: contentAddressableStorage,

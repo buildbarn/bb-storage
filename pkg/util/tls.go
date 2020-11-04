@@ -10,9 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	cipherSuiteIDs = map[string]uint16{}
-)
+var cipherSuiteIDs = map[string]uint16{}
 
 func init() {
 	// Initialize the map of cipher suite IDs based on the ciphers

@@ -56,10 +56,10 @@ func (l digestList) Len() int {
 	return len(l)
 }
 
-func (l digestList) Less(i int, j int) bool {
+func (l digestList) Less(i, j int) bool {
 	return l[i].String() < l[j].String()
 }
 
-func (l digestList) Swap(i int, j int) {
+func (l digestList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }

@@ -368,7 +368,7 @@ func (d *localDirectory) Rename(oldName string, newDirectory Directory, newName 
 	})
 }
 
-func (d *localDirectory) Symlink(oldName string, newName string) error {
+func (d *localDirectory) Symlink(oldName, newName string) error {
 	if err := validateFilename(newName); err != nil {
 		return err
 	}

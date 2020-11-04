@@ -24,7 +24,7 @@ type localBlobReplicator struct {
 // concurrency, this replicator may cause redundant replications and
 // load spikes. A separate replication daemon (bb_replicator) should be
 // used for such setups.
-func NewLocalBlobReplicator(source blobstore.BlobAccess, sink blobstore.BlobAccess) BlobReplicator {
+func NewLocalBlobReplicator(source, sink blobstore.BlobAccess) BlobReplicator {
 	return &localBlobReplicator{
 		source: source,
 		sink:   sink,

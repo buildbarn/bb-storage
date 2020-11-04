@@ -64,5 +64,4 @@ func TestNewBlockDeviceFromFile(t *testing.T) {
 	require.True(t, debug.SetPanicOnFault(false))
 	require.Equal(t, 0, n)
 	require.Equal(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
-
 }

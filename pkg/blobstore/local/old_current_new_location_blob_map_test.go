@@ -94,7 +94,7 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	// first two blocks to be marked for immediate release.
 	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
 	blockList.EXPECT().Get(2, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
-		func(blockIndex int, digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
 		})
 	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 3 blocks due to a data integrity error"))

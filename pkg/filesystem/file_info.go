@@ -55,11 +55,11 @@ func (l FileInfoList) Len() int {
 	return len(l)
 }
 
-func (l FileInfoList) Less(i int, j int) bool {
+func (l FileInfoList) Less(i, j int) bool {
 	return l[i].Name() < l[j].Name()
 }
 
-func (l FileInfoList) Swap(i int, j int) {
+func (l FileInfoList) Swap(i, j int) {
 	t := l[i]
 	l[i] = l[j]
 	l[j] = t

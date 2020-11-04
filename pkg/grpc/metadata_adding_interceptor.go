@@ -12,7 +12,7 @@ import (
 // values into the outgoing metadata headers. This may, for example, be
 // used to perform authentication.
 func NewMetadataAddingUnaryClientInterceptor(headerValues MetadataHeaderValues) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		return invoker(metadata.AppendToOutgoingContext(ctx, headerValues...), method, req, resp, cc, opts...)
 	}
 }

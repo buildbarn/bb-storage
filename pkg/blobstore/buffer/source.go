@@ -65,7 +65,7 @@ func (s Source) notifyProtoUnmarshalFailure(unmarshalErr error) error {
 
 // notifyCASTooBig triggers a repair due to a Content Addressable
 // Storage object being larger than expected.
-func (s Source) notifyCASTooBig(sizeExpected int64, sizeObserved int64) error {
+func (s Source) notifyCASTooBig(sizeExpected, sizeObserved int64) error {
 	s.dataIntegrityCallback(false)
 	return status.Errorf(
 		s.errorCode,
@@ -76,7 +76,7 @@ func (s Source) notifyCASTooBig(sizeExpected int64, sizeObserved int64) error {
 
 // notifyCASSizeMismatch triggers a repair due to a Content Addressable
 // Storage object having the wrong exact size.
-func (s Source) notifyCASSizeMismatch(sizeExpected int64, sizeObserved int64) error {
+func (s Source) notifyCASSizeMismatch(sizeExpected, sizeObserved int64) error {
 	s.dataIntegrityCallback(false)
 	return status.Errorf(
 		s.errorCode,
@@ -87,7 +87,7 @@ func (s Source) notifyCASSizeMismatch(sizeExpected int64, sizeObserved int64) er
 
 // notifyCASHashMismatch triggers a repair due to a Content Addressable
 // Storage object having the wrong cryptographic checksum.
-func (s Source) notifyCASHashMismatch(hashExpected []byte, hashObserved []byte) error {
+func (s Source) notifyCASHashMismatch(hashExpected, hashObserved []byte) error {
 	s.dataIntegrityCallback(false)
 	return status.Errorf(
 		s.errorCode,
@@ -96,17 +96,15 @@ func (s Source) notifyCASHashMismatch(hashExpected []byte, hashObserved []byte) 
 		hex.EncodeToString(hashExpected))
 }
 
-var (
-	// UserProvided indicates that the buffer did not come from
-	// storage. Instead, it is an artifact that is currently being
-	// uploaded by a user or automated process. When data
-	// consistency errors occur, no data needs to be repaired. It is
-	// sufficient to return an error to the user.
-	UserProvided = Source{
-		errorCode:             codes.InvalidArgument,
-		dataIntegrityCallback: func(dataIsValid bool) {},
-	}
-)
+// UserProvided indicates that the buffer did not come from storage.
+// Instead, it is an artifact that is currently being uploaded by a user
+// or automated process. When data consistency errors occur, no data
+// needs to be repaired. It is sufficient to return an error to the
+// user.
+var UserProvided = Source{
+	errorCode:             codes.InvalidArgument,
+	dataIntegrityCallback: func(dataIsValid bool) {},
+}
 
 // BackendProvided indicates that the buffer came from storage. A
 // DataIntegrityCallback can be provided to receive notifications on

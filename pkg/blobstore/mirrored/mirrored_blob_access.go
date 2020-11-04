@@ -45,7 +45,7 @@ type mirroredBlobAccess struct {
 // inconsistencies between the two storage backends are detected (i.e.,
 // a blob is only present in one of the backends), the blob is
 // replicated.
-func NewMirroredBlobAccess(backendA blobstore.BlobAccess, backendB blobstore.BlobAccess, replicatorAToB replication.BlobReplicator, replicatorBToA replication.BlobReplicator) blobstore.BlobAccess {
+func NewMirroredBlobAccess(backendA, backendB blobstore.BlobAccess, replicatorAToB, replicatorBToA replication.BlobReplicator) blobstore.BlobAccess {
 	mirroredBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(mirroredBlobAccessFindMissingSynchronizations)
 	})

@@ -26,7 +26,7 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 		req := &empty.Empty{}
 		resp := &empty.Empty{}
 		invoker.EXPECT().Call(gomock.Any(), "SomeMethod", req, resp, nil).DoAndReturn(
-			func(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+			func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
 				actualMD, ok := metadata.FromOutgoingContext(ctx)
 				require.True(t, ok)
 				require.Equal(t, metadata.New(expectedMD), actualMD)

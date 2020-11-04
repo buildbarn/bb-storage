@@ -38,7 +38,7 @@ type actualInstanceNamePatcher struct {
 // given prefix of an instance name with another value. It is not valid
 // to apply the resulting InstanceNamePatcher against objects that don't
 // have an instance name starting with the provided prefix.
-func NewInstanceNamePatcher(oldPrefix InstanceName, newPrefix InstanceName) InstanceNamePatcher {
+func NewInstanceNamePatcher(oldPrefix, newPrefix InstanceName) InstanceNamePatcher {
 	// Prevent unnecessary string allocations in case the
 	// substitutions have no effect.
 	if oldPrefix == newPrefix {
@@ -60,7 +60,7 @@ func NewInstanceNamePatcher(oldPrefix InstanceName, newPrefix InstanceName) Inst
 	return ip
 }
 
-func patchInstanceName(i string, oldPrefixWithSlashLength int, newPrefixWithSlash string, newPrefixWithoutSlash string) string {
+func patchInstanceName(i string, oldPrefixWithSlashLength int, newPrefixWithSlash, newPrefixWithoutSlash string) string {
 	if len(i) > oldPrefixWithSlashLength {
 		// The instance name starts with the old prefix, but
 		// also has trailing pathname components. Replace the
@@ -79,7 +79,7 @@ func (ip *actualInstanceNamePatcher) PatchInstanceName(i InstanceName) InstanceN
 	}
 }
 
-func patchDigest(d Digest, oldPrefixWithSlashLength int, newPrefixWithSlash string, newPrefixWithoutSlash string) Digest {
+func patchDigest(d Digest, oldPrefixWithSlashLength int, newPrefixWithSlash, newPrefixWithoutSlash string) Digest {
 	_, _, sizeBytesEnd := d.unpack()
 	instanceNameStart := sizeBytesEnd + 1
 	return Digest{

@@ -18,7 +18,7 @@ type ChunkReader interface {
 // validateReaderOffset is used by ToChunkReader() to validate the
 // offset that is provided. The interface does not permit reading at
 // negative offsets or beyond the end of the object.
-func validateReaderOffset(length int64, requested int64) error {
+func validateReaderOffset(length, requested int64) error {
 	if requested < 0 {
 		return status.Errorf(codes.InvalidArgument, "Negative read offset: %d", requested)
 	}

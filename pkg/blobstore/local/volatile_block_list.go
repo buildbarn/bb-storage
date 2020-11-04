@@ -117,7 +117,7 @@ func (bl *volatileBlockList) PushBack() error {
 	return nil
 }
 
-func (bl *volatileBlockList) Get(index int, digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (bl *volatileBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return bl.blocks[index].block.block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
 }
 

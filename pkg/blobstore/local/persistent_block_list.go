@@ -170,8 +170,10 @@ func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, 
 	return bl, len(bl.blocks)
 }
 
-var _ BlockList = (*PersistentBlockList)(nil)
-var _ PersistentStateSource = (*PersistentBlockList)(nil)
+var (
+	_ BlockList             = (*PersistentBlockList)(nil)
+	_ PersistentStateSource = (*PersistentBlockList)(nil)
+)
 
 // BlockReferenceToBlockIndex converts a BlockReference to the index of
 // the block in the BlockList. This conversion may fail if the block has
@@ -257,7 +259,7 @@ func (bl *PersistentBlockList) PushBack() error {
 }
 
 // Get data from one of the blocks managed by this BlockList.
-func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return bl.blocks[index].block.block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
 }
 

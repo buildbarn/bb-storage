@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testPatcher(t *testing.T, ip digest.InstanceNamePatcher, oldInstanceName string, newInstanceName string) {
+func testPatcher(t *testing.T, ip digest.InstanceNamePatcher, oldInstanceName, newInstanceName string) {
 	require.Equal(
 		t,
 		digest.MustNewInstanceName(newInstanceName),

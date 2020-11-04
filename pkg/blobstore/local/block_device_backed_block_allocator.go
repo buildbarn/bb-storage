@@ -147,7 +147,7 @@ func (pb *blockDeviceBackedBlock) Release() {
 	}
 }
 
-func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes int64, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	if c := atomic.AddInt64(&pb.usecount, 1); c <= 1 {
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}

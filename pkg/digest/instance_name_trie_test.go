@@ -20,7 +20,6 @@ func TestInstanceNameTrie(t *testing.T) {
 
 		require.Equal(t, -1, it.Get(digest.MustNewInstanceName("hello/world")))
 		require.False(t, it.Contains(digest.MustNewInstanceName("hello/world")))
-
 	})
 
 	t.Run("WithoutRoot", func(t *testing.T) {

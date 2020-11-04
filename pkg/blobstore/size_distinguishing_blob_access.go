@@ -18,7 +18,7 @@ type sizeDistinguishingBlobAccess struct {
 // specified in the digest. Backends tend to have different performance
 // characteristics based on blob size. This adapter may be used to
 // optimize performance based on that.
-func NewSizeDistinguishingBlobAccess(smallBlobAccess BlobAccess, largeBlobAccess BlobAccess, cutoffSizeBytes int64) BlobAccess {
+func NewSizeDistinguishingBlobAccess(smallBlobAccess, largeBlobAccess BlobAccess, cutoffSizeBytes int64) BlobAccess {
 	return &sizeDistinguishingBlobAccess{
 		smallBlobAccess: smallBlobAccess,
 		largeBlobAccess: largeBlobAccess,

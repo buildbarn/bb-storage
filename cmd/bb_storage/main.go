@@ -114,7 +114,6 @@ func main() {
 							grpcservers.NewIndirectContentAddressableStorageServer(
 								indirectContentAddressableStorage,
 								int(configuration.MaximumMessageSizeBytes)))
-
 					}
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)
 					remoteexecution.RegisterExecutionServer(s, buildQueue)

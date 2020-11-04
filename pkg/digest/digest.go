@@ -43,24 +43,20 @@ type Digest struct {
 	value string
 }
 
-var (
-	// BadDigest is a default instance of Digest. It can, for
-	// example, be used as a function return value for error cases.
-	BadDigest Digest
-)
+// BadDigest is a default instance of Digest. It can, for example, be
+// used as a function return value for error cases.
+var BadDigest Digest
 
-var (
-	// SupportedDigestFunctions is the list of digest functions
-	// supported by digest.Digest, using the enumeration values that
-	// are part of the Remote Execution protocol.
-	SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
-		remoteexecution.DigestFunction_MD5,
-		remoteexecution.DigestFunction_SHA1,
-		remoteexecution.DigestFunction_SHA256,
-		remoteexecution.DigestFunction_SHA384,
-		remoteexecution.DigestFunction_SHA512,
-	}
-)
+// SupportedDigestFunctions is the list of digest functions supported by
+// digest.Digest, using the enumeration values that are part of the
+// Remote Execution protocol.
+var SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
+	remoteexecution.DigestFunction_MD5,
+	remoteexecution.DigestFunction_SHA1,
+	remoteexecution.DigestFunction_SHA256,
+	remoteexecution.DigestFunction_SHA384,
+	remoteexecution.DigestFunction_SHA512,
+}
 
 // Unpack the individual hash, size and instance name fields from the
 // string representation stored inside the Digest object.
@@ -85,7 +81,7 @@ func (d Digest) unpack() (int, int64, int) {
 // MustNewDigest constructs a Digest similar to NewDigest, but never
 // returns an error. Instead, execution will abort if the resulting
 // instance would be degenerate. Useful for unit testing.
-func MustNewDigest(instanceName string, hash string, sizeBytes int64) Digest {
+func MustNewDigest(instanceName, hash string, sizeBytes int64) Digest {
 	in, err := NewInstanceName(instanceName)
 	if err != nil {
 		panic(err)
@@ -132,7 +128,7 @@ func NewDigestFromByteStreamWritePath(path string) (Digest, error) {
 	return newDigestFromByteStreamPathCommon(fields[:split], fields[split+2:])
 }
 
-func newDigestFromByteStreamPathCommon(header []string, trailer []string) (Digest, error) {
+func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, error) {
 	if trailer[0] != "blobs" {
 		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}

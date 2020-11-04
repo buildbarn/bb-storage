@@ -41,7 +41,7 @@ type DataSyncer func() error
 
 // NewPeriodicSyncer creates a new PeriodicSyncer according to the
 // arguments provided.
-func NewPeriodicSyncer(source PersistentStateSource, sourceLock *sync.RWMutex, store PersistentStateStore, clock clock.Clock, errorLogger util.ErrorLogger, errorRetryInterval time.Duration, minimumEpochInterval time.Duration, keyLocationMapHashInitialization uint64, dataSyncer DataSyncer) *PeriodicSyncer {
+func NewPeriodicSyncer(source PersistentStateSource, sourceLock *sync.RWMutex, store PersistentStateStore, clock clock.Clock, errorLogger util.ErrorLogger, errorRetryInterval, minimumEpochInterval time.Duration, keyLocationMapHashInitialization uint64, dataSyncer DataSyncer) *PeriodicSyncer {
 	return &PeriodicSyncer{
 		clock:                            clock,
 		errorLogger:                      errorLogger,

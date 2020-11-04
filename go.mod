@@ -35,4 +35,5 @@ require (
 	golang.org/x/sys v0.0.0-20200727154430-2d971f7391a4
 	google.golang.org/genproto v0.0.0-20200726014623-da3ae01ef02d
 	google.golang.org/grpc v1.31.0
+	mvdan.cc/gofumpt v0.0.0-20201027171050-85d5401eb0f6 // indirect
 )

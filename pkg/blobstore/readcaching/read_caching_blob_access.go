@@ -23,7 +23,7 @@ type readCachingBlobAccess struct {
 // store directly. The slow data store is only accessed for reading in
 // case the fast data store does not contain the blob. The blob is then
 // streamed into the fast data store using a replicator.
-func NewReadCachingBlobAccess(slow blobstore.BlobAccess, fast blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
+func NewReadCachingBlobAccess(slow, fast blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readCachingBlobAccess{
 		slow:       slow,
 		fast:       fast,

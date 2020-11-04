@@ -29,7 +29,7 @@ func getBucketBoundary(significand string, exponent int) float64 {
 // Under the hood, strconv.ParseFloat() is used. Unlike math.Pow(), it
 // ensures that the resulting floating point value is the one that
 // yields the desired shortest decimal representation.
-func DecimalExponentialBuckets(lowestPowerOf10 int, powersOf10 int, stepsInBetween int) []float64 {
+func DecimalExponentialBuckets(lowestPowerOf10, powersOf10, stepsInBetween int) []float64 {
 	// Compute boundaries within a single power of 10.
 	boundaries := make([]string, 0, stepsInBetween+1)
 	for i := 0; i <= stepsInBetween; i++ {

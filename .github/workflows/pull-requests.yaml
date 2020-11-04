@@ -18,7 +18,7 @@
             },
             {
                "name": "Gofmt",
-               "run": "bazel run @go_sdk//:bin/gofmt -- -s -w ."
+               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -s -w -extra $(pwd)"
             },
             {
                "name": "Clang format",

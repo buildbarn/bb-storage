@@ -99,7 +99,7 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 	}
 }
 
-func (cc *lazyClientConn) Invoke(ctx context.Context, method string, args interface{}, reply interface{}, opts ...grpc.CallOption) error {
+func (cc *lazyClientConn) Invoke(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 	conn, err := cc.openConnection(ctx)
 	if err != nil {
 		return err

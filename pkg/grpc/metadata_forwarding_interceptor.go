@@ -32,7 +32,7 @@ func forwardMetadataHeaders(ctx context.Context, headers []string) context.Conte
 // metadata headers. This may, for example, be used to perform
 // credential forwarding.
 func NewMetadataForwardingUnaryClientInterceptor(headers []string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		return invoker(forwardMetadataHeaders(ctx, headers), method, req, resp, cc, opts...)
 	}
 }

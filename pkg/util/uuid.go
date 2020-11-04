@@ -9,7 +9,9 @@ import (
 // generator injectable as part of unit tests.
 type UUIDGenerator func() (uuid.UUID, error)
 
-var _ UUIDGenerator = uuid.NewDCEGroup
-var _ UUIDGenerator = uuid.NewDCEPerson
-var _ UUIDGenerator = uuid.NewRandom
-var _ UUIDGenerator = uuid.NewUUID
+var (
+	_ UUIDGenerator = uuid.NewDCEGroup
+	_ UUIDGenerator = uuid.NewDCEPerson
+	_ UUIDGenerator = uuid.NewRandom
+	_ UUIDGenerator = uuid.NewUUID
+)

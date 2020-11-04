@@ -90,7 +90,7 @@ func (i *MetadataForwardingAndReusingInterceptor) saveHeaders(headersToSave []he
 
 // InterceptUnaryClient can be used as an interceptor for unary client
 // gRPC calls.
-func (i *MetadataForwardingAndReusingInterceptor) InterceptUnaryClient(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (i *MetadataForwardingAndReusingInterceptor) InterceptUnaryClient(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	ctx, headersToSave := i.prepareContext(ctx)
 	if err := invoker(ctx, method, req, resp, cc, opts...); err != nil {
 		return err

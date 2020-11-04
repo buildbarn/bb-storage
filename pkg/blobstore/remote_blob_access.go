@@ -30,7 +30,7 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewRemoteBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewRemoteBlobAccess(address string, prefix string, readBufferFactory ReadBufferFactory) BlobAccess {
+func NewRemoteBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory) BlobAccess {
 	return &remoteBlobAccess{
 		address:           address,
 		prefix:            prefix,

@@ -55,7 +55,7 @@ func TestMetadataForwardingUnaryClientInterceptor(t *testing.T) {
 		// header, the outgoing request metadata should be
 		// extended. Only matching headers should get copied.
 		invoker.EXPECT().Call(gomock.Any(), "SomeMethod", req, resp, nil).DoAndReturn(
-			func(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+			func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
 				md, ok := metadata.FromOutgoingContext(ctx)
 				require.True(t, ok)
 				require.Equal(

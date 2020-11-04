@@ -10,10 +10,8 @@ type Set struct {
 	digests []Digest
 }
 
-var (
-	// EmptySet is an instance of Set that contains zero elements.
-	EmptySet = Set{}
-)
+// EmptySet is an instance of Set that contains zero elements.
+var EmptySet = Set{}
 
 // Items returns a sorted list of all elements stored within the set.
 func (s Set) Items() []Digest {
@@ -66,7 +64,7 @@ func (s Set) RemoveEmptyBlob() Set {
 // and B across three resulting sets: one containing the elements
 // present only in A, one containing the elements present in both A and
 // B, and one containing thelements present only in B.
-func GetDifferenceAndIntersection(setA Set, setB Set) (onlyA, both Set, onlyB Set) {
+func GetDifferenceAndIntersection(setA, setB Set) (onlyA, both, onlyB Set) {
 	a, b := setA.digests, setB.digests
 	for len(a) > 0 && len(b) > 0 {
 		if sA, sB := a[0].String(), b[0].String(); sA < sB {
@@ -142,11 +140,11 @@ func (h *setHeap) Len() int {
 	return len(*h)
 }
 
-func (h *setHeap) Less(i int, j int) bool {
+func (h *setHeap) Less(i, j int) bool {
 	return (*h)[i].digests[0].String() < (*h)[j].digests[0].String()
 }
 
-func (h *setHeap) Swap(i int, j int) {
+func (h *setHeap) Swap(i, j int) {
 	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
 }
 

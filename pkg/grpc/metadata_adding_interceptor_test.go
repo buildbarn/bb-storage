@@ -28,7 +28,7 @@ func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {
 		// Outgoing request metadata should be extended
 		// with pair ("header", "value").
 		invoker.EXPECT().Call(gomock.Any(), "SomeMethod", req, resp, nil).DoAndReturn(
-			func(ctx context.Context, method string, req interface{}, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+			func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
 				md, ok := metadata.FromOutgoingContext(ctx)
 				require.True(t, ok)
 				require.Equal(
@@ -42,7 +42,6 @@ func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {
 
 		require.NoError(t, interceptor(ctx, "SomeMethod", req, resp, nil, invoker.Call))
 	})
-
 }
 
 func TestMetadataAddingStreamClientInterceptor(t *testing.T) {

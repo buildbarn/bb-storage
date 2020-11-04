@@ -22,7 +22,7 @@ type memoryMappedBlockDevice struct {
 // newMemoryMappedBlockDevice creates a BlockDevice from a file
 // descriptor referring either to a regular file or UNIX device node. To
 // speed up reads, a memory map is used.
-func newMemoryMappedBlockDevice(fd int, sizeBytes int) (BlockDevice, error) {
+func newMemoryMappedBlockDevice(fd, sizeBytes int) (BlockDevice, error) {
 	data, err := unix.Mmap(fd, 0, sizeBytes, syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to memory map block device")

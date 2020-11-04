@@ -129,7 +129,7 @@ func unixTime() float64 {
 
 // NewOldCurrentNewLocationBlobMap creates a new instance of
 // OldCurrentNewLocationBlobMap.
-func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount int, currentBlocksCount int, newBlocksCount int, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
+func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount, currentBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
 	oldCurrentNewLocationBlobMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime)
 	})
@@ -172,8 +172,10 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.Error
 	return lbm
 }
 
-var _ LocationBlobMap = (*OldCurrentNewLocationBlobMap)(nil)
-var _ BlockReferenceResolver = (*OldCurrentNewLocationBlobMap)(nil)
+var (
+	_ LocationBlobMap        = (*OldCurrentNewLocationBlobMap)(nil)
+	_ BlockReferenceResolver = (*OldCurrentNewLocationBlobMap)(nil)
+)
 
 // BlockReferenceToBlockIndex converts a BlockReference that contains a
 // stable reference to a block to an integer index. The integer index
