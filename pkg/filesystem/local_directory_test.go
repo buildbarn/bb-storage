@@ -436,3 +436,53 @@ func TestLocalDirectoryChtimes(t *testing.T) {
 }
 
 // TODO(edsch): Add testing coverage for RemoveAll().
+
+func TestLocalDirectoryIsWritable(t *testing.T) {
+	d := openTmpDir(t)
+	{
+		isWritable, err := d.IsWritable()
+		require.NoError(t, err)
+		require.True(t, isWritable, "Want dir to be writable")
+	}
+
+	require.NoError(t, d.Mkdir("child", 0o555))
+	child, err := d.EnterDirectory("child")
+	require.NoError(t, err)
+	defer child.Close()
+
+	{
+		isWritable, err := child.IsWritable()
+		require.NoError(t, err)
+		require.False(t, isWritable)
+	}
+}
+
+func TestLocalDirectoryIsWritableChild(t *testing.T) {
+	d := openTmpDir(t)
+	require.NoError(t, d.Mkdir("subdir", 0o555))
+	{
+		isWritable, err := d.IsWritableChild("subdir")
+		require.NoError(t, err)
+		require.False(t, isWritable, "Want dir not to be writable")
+	}
+
+	writeFile(t, d, "writable_file", 0o777)
+	{
+		isWritable, err := d.IsWritableChild("writable_file")
+		require.NoError(t, err)
+		require.True(t, isWritable, "Want file to be writable")
+	}
+
+	writeFile(t, d, "unwritable_file", 0o555)
+	{
+		isWritable, err := d.IsWritableChild("unwritable_file")
+		require.NoError(t, err)
+		require.False(t, isWritable, "Want file not to be writable")
+	}
+}
+
+func writeFile(t *testing.T, directory filesystem.Directory, name string, permissions os.FileMode) {
+	f, err := directory.OpenWrite(name, filesystem.CreateExcl(permissions))
+	require.NoError(t, err)
+	f.Close()
+}

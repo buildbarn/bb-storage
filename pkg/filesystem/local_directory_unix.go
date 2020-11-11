@@ -409,6 +409,30 @@ func (d *localDirectory) Chtimes(name string, atime, mtime time.Time) error {
 	return unix.UtimesNanoAt(d.fd, name, ts[:], unix.AT_SYMLINK_NOFOLLOW)
 }
 
+func (d *localDirectory) IsWritable() (bool, error) {
+	return d.isWritable(".")
+}
+
+func (d *localDirectory) IsWritableChild(name string) (bool, error) {
+	if err := validateFilename(name); err != nil {
+		return false, err
+	}
+
+	return d.isWritable(name)
+}
+
+func (d *localDirectory) isWritable(name string) (bool, error) {
+	defer runtime.KeepAlive(d)
+	err := unix.Faccessat(d.fd, name, unix.W_OK, unix.AT_SYMLINK_NOFOLLOW)
+	if os.IsPermission(err) || err == syscall.EROFS {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 type localDirectoryLink struct {
 	oldFD   int
 	oldName string

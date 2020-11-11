@@ -100,6 +100,11 @@ type Directory interface {
 	// Chtimes sets the atime and mtime of the named file.
 	Chtimes(name string, atime, mtime time.Time) error
 
+	// IsWritable checks whether the Directory can be written to by the current user.
+	IsWritable() (bool, error)
+	// IsWritableChild checks whether the path in the Directory can be written to by the current user.
+	IsWritableChild(name string) (bool, error)
+
 	// Function that base types may use to implement calls that
 	// require double dispatching, such as hardlinking and renaming.
 	Apply(arg interface{}) error
