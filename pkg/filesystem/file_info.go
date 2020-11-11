@@ -15,6 +15,14 @@ const (
 	FileTypeDirectory
 	// FileTypeSymlink means the file is a symbolic link.
 	FileTypeSymlink
+	// FileTypeBlockDevice means the file is a block device.
+	FileTypeBlockDevice
+	// FileTypeCharacterDevice means the file is a character device.
+	FileTypeCharacterDevice
+	// FileTypeFIFO means the file is a FIFO.
+	FileTypeFIFO
+	// FileTypeSocket means the file is a socket.
+	FileTypeSocket
 	// FileTypeOther means the file is neither a regular file, a
 	// directory or symbolic link.
 	FileTypeOther

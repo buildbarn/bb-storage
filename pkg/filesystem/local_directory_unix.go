@@ -145,6 +145,14 @@ func (d *localDirectory) lstat(name string) (FileType, deviceNumber, error) {
 		} else {
 			fileType = FileTypeRegularFile
 		}
+	case syscall.S_IFBLK:
+		fileType = FileTypeBlockDevice
+	case syscall.S_IFCHR:
+		fileType = FileTypeCharacterDevice
+	case syscall.S_IFIFO:
+		fileType = FileTypeFIFO
+	case syscall.S_IFSOCK:
+		fileType = FileTypeSocket
 	}
 	return fileType, stat.Dev, nil
 }
