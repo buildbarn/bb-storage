@@ -2,7 +2,7 @@
   local platforms = [
     {
       name: 'linux_amd64',
-      buildAndTestCommand: 'test',
+      buildAndTestCommand: 'test --test_output=errors',
       buildJustBinaries: false,
       extension: '',
     },

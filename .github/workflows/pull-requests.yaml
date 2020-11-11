@@ -42,7 +42,7 @@
             },
             {
                "name": "linux_amd64: build and test",
-               "run": "bazel test --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
+               "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
             },
             {
                "name": "darwin_amd64: build and test",
