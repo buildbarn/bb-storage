@@ -10,8 +10,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -124,11 +124,11 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				m, err := b.ToProto(&icas.Reference{}, 1000)
 				require.NoError(t, err)
-				require.True(t, proto.Equal(&icas.Reference{
+				testutil.RequireEqualProto(t, &icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file3.txt",
 					},
-				}, m))
+				}, m)
 				return nil
 			})
 
@@ -255,10 +255,10 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&icas.Reference{
+		testutil.RequireEqualProto(t, &icas.Reference{
 			Medium: &icas.Reference_HttpUrl{
 				HttpUrl: "http://example.com/file3.txt",
 			},
-		}, resp))
+		}, resp)
 	})
 }

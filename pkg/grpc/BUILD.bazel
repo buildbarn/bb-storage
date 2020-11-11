@@ -64,6 +64,7 @@ go_test(
     deps = [
         "//internal/mock:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
+        "//pkg/testutil:go_default_library",
         "@com_github_golang_mock//gomock:go_default_library",
         "@com_github_stretchr_testify//require:go_default_library",
         "@io_bazel_rules_go//proto/wkt:empty_go_proto",

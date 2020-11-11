@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -50,7 +51,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.NotFound, "Blob not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
 	})
 
 	t.Run("RepairSuccess", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		// should be prepended.
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Backend A: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend A: Server on fire"), err)
 	})
 
 	t.Run("ErrorBackendB", func(t *testing.T) {
@@ -81,7 +82,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Backend B: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend B: Server on fire"), err)
 	})
 }
 
@@ -210,7 +211,7 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 		replicatorBToA.EXPECT().ReplicateMultiple(ctx, onlyOnB).Return(nil)
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Failed to synchronize from backend A to backend B: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend A to backend B: Server on fire"), err)
 	})
 
 	t.Run("ReplicateErrorBToA", func(t *testing.T) {
@@ -221,6 +222,6 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 		replicatorBToA.EXPECT().ReplicateMultiple(ctx, onlyOnB).Return(status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Failed to synchronize from backend B to backend A: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend B to backend A: Server on fire"), err)
 	})
 }

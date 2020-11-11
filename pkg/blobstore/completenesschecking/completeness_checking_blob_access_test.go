@@ -9,8 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -253,6 +253,6 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 		actualResult, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		require.NoError(t, err)
-		require.True(t, proto.Equal(actualResult, &actionResult))
+		testutil.RequireEqualProto(t, &actionResult, actualResult)
 	})
 }

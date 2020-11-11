@@ -10,8 +10,8 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -44,29 +44,29 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 
 	t.Run("RetriesFailed", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
+		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.Internal, "Network error"))).
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
 				buffer.UserProvided), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
+		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"))).
 			Return(nil, status.Error(codes.Internal, "Maximum number of retries reached"))
 		errorHandler.EXPECT().Done()
 
 		_, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
 			errorHandler).ToByteSlice(1000)
-		require.Equal(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
 	})
 
 	t.Run("RetriesSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
-		errorHandler.EXPECT().OnError(status.Error(codes.Internal, "Network error")).
+		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.Internal, "Network error"))).
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
 				buffer.UserProvided), nil)
-		errorHandler.EXPECT().OnError(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4")).
+		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"))).
 			Return(buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided), nil)
 		errorHandler.EXPECT().Done()
 
@@ -261,7 +261,7 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 
 		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -287,7 +287,7 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 		// initially.
 		actionResult, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 }
 

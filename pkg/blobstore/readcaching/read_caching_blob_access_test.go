@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -50,7 +51,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 		fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire")))
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
 	})
 
 	t.Run("SlowError", func(t *testing.T) {
@@ -59,7 +60,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 		blobReplicator.EXPECT().ReplicateSingle(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire")))
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
 	})
 }
 

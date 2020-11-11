@@ -9,8 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -241,7 +241,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 
 	t.Run("Exact", func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 
 	t.Run("TooBig", func(t *testing.T) {
@@ -271,7 +271,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 
 	t.Run("DataCorruption", func(t *testing.T) {
@@ -287,7 +287,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
 	})
 
 	t.Run("InvalidProtobuf", func(t *testing.T) {
@@ -308,7 +308,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"), err)
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {

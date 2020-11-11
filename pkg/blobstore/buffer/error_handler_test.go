@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -45,7 +46,7 @@ func TestErrorHandlerProtoRetryingSuccess(t *testing.T) {
 		buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")),
 		errorHandler).ToProto(&remoteexecution.ActionResult{}, 100)
 	require.NoError(t, err)
-	require.Equal(t, &remoteexecution.ActionResult{}, actionResult)
+	testutil.RequireEqualProto(t, &remoteexecution.ActionResult{}, actionResult)
 }
 
 func TestErrorHandlerProtoRetryingFailure(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -80,7 +80,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 
 		persistentState, err := persistentStateStore.ReadPersistentState()
 		require.NoError(t, err)
-		require.True(t, proto.Equal(persistentState, &examplePersistentState))
+		testutil.RequireEqualProto(t, &examplePersistentState, persistentState)
 	})
 
 	t.Run("WriteTemporaryFileRemovalFailure", func(t *testing.T) {

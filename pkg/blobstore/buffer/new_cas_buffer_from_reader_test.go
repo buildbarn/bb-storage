@@ -10,8 +10,8 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -216,7 +216,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 
 	t.Run("Exact", func(t *testing.T) {
@@ -230,7 +230,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
-		require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 	})
 
 	t.Run("TooBig", func(t *testing.T) {
@@ -274,7 +274,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"), err)
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {

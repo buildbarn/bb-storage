@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -37,7 +38,7 @@ func TestAnyAuthenticatorExample(t *testing.T) {
 		m1.EXPECT().Authenticate(ctx).Return(status.Error(codes.Unauthenticated, "No token present"))
 		m2.EXPECT().Authenticate(ctx).Return(status.Error(codes.Unauthenticated, "Not an internal IP range"))
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "No TLS used, No token present, Not an internal IP range"),
 			a.Authenticate(ctx))
@@ -51,7 +52,7 @@ func TestAnyAuthenticatorExample(t *testing.T) {
 		m1.EXPECT().Authenticate(ctx).Return(status.Error(codes.Internal, "Failed to contact OAuth2 server"))
 		m2.EXPECT().Authenticate(ctx).Return(status.Error(codes.Unauthenticated, "Not an internal IP range"))
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to contact OAuth2 server"),
 			a.Authenticate(ctx))

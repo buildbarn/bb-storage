@@ -11,6 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -47,7 +48,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("ReadInvalidDigestLength", func(t *testing.T) {
@@ -57,7 +58,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 8 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 8 characters"), err)
 	})
 
 	t.Run("ReadUppercaseDigest", func(t *testing.T) {
@@ -67,7 +68,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Non-hexadecimal character in digest hash: U+0044 'D'"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Non-hexadecimal character in digest hash: U+0044 'D'"), err)
 	})
 
 	t.Run("ReadNegativeSizeInDigest", func(t *testing.T) {
@@ -77,7 +78,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid digest size: -42 bytes"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid digest size: -42 bytes"), err)
 	})
 
 	t.Run("ReadSuccessEmptyInstance", func(t *testing.T) {
@@ -135,7 +136,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -4"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -4"), err)
 	})
 
 	t.Run("ReadOffsetBeyondEnd", func(t *testing.T) {
@@ -152,7 +153,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 13 bytes in size, while a read at offset 100 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 13 bytes in size, while a read at offset 100 was requested"), err)
 	})
 
 	t.Run("ReadSuccessWithOffset", func(t *testing.T) {
@@ -189,7 +190,7 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = req.Recv()
-		require.Equal(t, status.Error(codes.NotFound, "Blob not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
 	})
 
 	t.Run("WriteBadResourceName", func(t *testing.T) {
@@ -201,7 +202,7 @@ func TestByteStreamServer(t *testing.T) {
 			Data:         []byte("Bleep bloop!"),
 		}))
 		_, err = stream.CloseAndRecv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("WriteSuccessEmptyInstance", func(t *testing.T) {
@@ -241,7 +242,7 @@ func TestByteStreamServer(t *testing.T) {
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
-			require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
 			return err
 		})
 
@@ -252,7 +253,7 @@ func TestByteStreamServer(t *testing.T) {
 			Data:         []byte("Foo"),
 		}))
 		_, err = stream.CloseAndRecv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
 	})
 
 	t.Run("WriteFailFinishTwice", func(t *testing.T) {
@@ -263,7 +264,7 @@ func TestByteStreamServer(t *testing.T) {
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
-			require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
 			return err
 		})
 
@@ -280,7 +281,7 @@ func TestByteStreamServer(t *testing.T) {
 			FinishWrite: true,
 		}))
 		_, err = stream.CloseAndRecv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
 	})
 
 	t.Run("WriteFailBadOffset", func(t *testing.T) {
@@ -291,7 +292,7 @@ func TestByteStreamServer(t *testing.T) {
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 			_, err := b.ToByteSlice(100)
-			require.Equal(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
 			return err
 		})
 
@@ -307,13 +308,13 @@ func TestByteStreamServer(t *testing.T) {
 			FinishWrite: true,
 		}))
 		_, err = stream.CloseAndRecv()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
 	})
 
 	t.Run("QueryWriteStatus", func(t *testing.T) {
 		_, err := client.QueryWriteStatus(ctx, &bytestream.QueryWriteStatusRequest{
 			ResourceName: "windows10/uploads/d834d9c2-f3c9-4f30-a698-75fd4be9470d/blobs/68e109f0f40ca72a15e05cc22786f8e6/10",
 		})
-		require.Equal(t, status.Error(codes.Unimplemented, "This service does not support querying write status"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This service does not support querying write status"), err)
 	})
 }

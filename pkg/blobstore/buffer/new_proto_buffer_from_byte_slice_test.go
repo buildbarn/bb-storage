@@ -9,8 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -43,7 +43,7 @@ func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
 			[]byte("Hello world"),
 			buffer.BackendProvided(dataIntegrityCallback.Call))
 		_, err := b.GetSizeBytes()
-		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 		b.Discard()
 	})
 }
@@ -112,7 +112,7 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 			[]byte("Hello world"),
 			buffer.UserProvided).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"), err)
 	})
 
 	t.Run("DataCorruptionIrreparable", func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 			[]byte("Hello world"),
 			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", "f988a36ed06e17f6c4a258ec8e03fe88", 123)))).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 	})
 
 	t.Run("DataCorruptionReparable", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 			[]byte("Hello world"),
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Failed to unmarshal message: proto: can't skip unknown wire type 4"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 	})
 }
 
@@ -154,7 +154,7 @@ func TestNewProtoBufferFromByteSliceToProto(t *testing.T) {
 		exampleActionResultBytes,
 		buffer.BackendProvided(dataIntegrityCallback.Call)).ToProto(&remoteexecution.ActionResult{}, 1000)
 	require.NoError(t, err)
-	require.True(t, proto.Equal(&exampleActionResultMessage, actionResult))
+	testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 }
 
 func TestNewProtoBufferFromByteSliceToByteSlice(t *testing.T) {

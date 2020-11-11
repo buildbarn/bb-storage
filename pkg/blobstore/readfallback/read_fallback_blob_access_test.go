@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -81,7 +82,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.NotFound, "Object not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
 	})
 }
 
