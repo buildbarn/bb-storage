@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "filesystem",
     srcs = [
         "directory.go",
         "file.go",
@@ -16,50 +16,50 @@ go_library(
     visibility = ["//visibility:public"],
     deps = select({
         "@io_bazel_rules_go//go/platform:android": [
-            "//pkg/util:go_default_library",
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-            "@org_golang_x_sys//unix:go_default_library",
+            "//pkg/util",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:darwin": [
-            "//pkg/util:go_default_library",
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-            "@org_golang_x_sys//unix:go_default_library",
+            "//pkg/util",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:freebsd": [
-            "//pkg/util:go_default_library",
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-            "@org_golang_x_sys//unix:go_default_library",
+            "//pkg/util",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:ios": [
-            "//pkg/util:go_default_library",
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-            "@org_golang_x_sys//unix:go_default_library",
+            "//pkg/util",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
-            "//pkg/util:go_default_library",
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
-            "@org_golang_x_sys//unix:go_default_library",
+            "//pkg/util",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:windows": [
-            "@org_golang_google_grpc//codes:go_default_library",
-            "@org_golang_google_grpc//status:go_default_library",
+            "@org_golang_google_grpc//codes",
+            "@org_golang_google_grpc//status",
         ],
         "//conditions:default": [],
     }),
 )
 
 go_test(
-    name = "go_default_test",
+    name = "filesystem_test",
     srcs = ["local_directory_test.go"],
-    embed = [":go_default_library"],
+    embed = [":filesystem"],
     deps = [
-        "@com_github_stretchr_testify//require:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

@@ -16,7 +16,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "aws",
     embed = [":aws_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws",
     visibility = ["//visibility:public"],

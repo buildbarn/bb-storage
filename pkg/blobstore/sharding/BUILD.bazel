@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "sharding",
     srcs = [
         "shard_permuter.go",
         "sharding_blob_access.go",
@@ -10,16 +10,16 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/sharding",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/blobstore:go_default_library",
-        "//pkg/blobstore/buffer:go_default_library",
-        "//pkg/digest:go_default_library",
-        "@com_github_lazybeaver_xorshift//:go_default_library",
+        "//pkg/blobstore",
+        "//pkg/blobstore/buffer",
+        "//pkg/digest",
+        "@com_github_lazybeaver_xorshift//:xorshift",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "sharding_test",
     srcs = ["weighted_shard_permuter_test.go"],
-    embed = [":go_default_library"],
-    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+    embed = [":sharding"],
+    deps = ["@com_github_stretchr_testify//require"],
 )

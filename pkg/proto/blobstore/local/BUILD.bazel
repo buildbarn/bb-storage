@@ -16,7 +16,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "local",
     embed = [":local_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local",
     visibility = ["//visibility:public"],

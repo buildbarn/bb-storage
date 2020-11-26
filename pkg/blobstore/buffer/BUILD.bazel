@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "buffer",
     srcs = [
         "buffer.go",
         "cas_chunk_reader_buffer.go",
@@ -33,16 +33,16 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/buffer",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/digest:go_default_library",
-        "//pkg/util:go_default_library",
+        "//pkg/digest",
+        "//pkg/util",
         "@com_github_golang_protobuf//proto:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "buffer_test",
     srcs = [
         "error_handler_test.go",
         "example_test.go",
@@ -57,15 +57,15 @@ go_test(
         "with_background_task_test.go",
         "with_error_handler_test.go",
     ],
-    embed = [":go_default_library"],
+    embed = [":buffer"],
     deps = [
         "//internal/mock:go_default_library",
-        "//pkg/digest:go_default_library",
-        "//pkg/testutil:go_default_library",
+        "//pkg/digest",
+        "//pkg/testutil",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_golang_mock//gomock:go_default_library",
-        "@com_github_stretchr_testify//require:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@com_github_golang_mock//gomock",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

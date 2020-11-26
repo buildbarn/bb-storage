@@ -19,7 +19,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "icas",
     embed = [":icas_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/icas",
     visibility = ["//visibility:public"],

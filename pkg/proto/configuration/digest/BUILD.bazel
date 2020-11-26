@@ -17,11 +17,11 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest",
     proto = ":digest_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/eviction:go_default_library"],
+    deps = ["//pkg/proto/configuration/eviction"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "digest",
     embed = [":digest_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest",
     visibility = ["//visibility:public"],

@@ -18,11 +18,11 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc",
     proto = ":grpc_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/tls:go_default_library"],
+    deps = ["//pkg/proto/configuration/tls"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "grpc",
     embed = [":grpc_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc",
     visibility = ["//visibility:public"],

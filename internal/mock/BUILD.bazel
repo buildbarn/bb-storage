@@ -10,7 +10,7 @@ gomock(
         "ReadCloser",
         "Writer",
     ],
-    library = "//internal/mock/aliases:go_default_library",
+    library = "//internal/mock/aliases",
     package = "mock",
 )
 
@@ -23,7 +23,7 @@ gomock(
         "HTTPClient",
         "ReadBufferFactory",
     ],
-    library = "//pkg/blobstore:go_default_library",
+    library = "//pkg/blobstore",
     package = "mock",
 )
 
@@ -51,7 +51,7 @@ gomock(
         "PersistentStateSource",
         "PersistentStateStore",
     ],
-    library = "//pkg/blobstore/local:go_default_library",
+    library = "//pkg/blobstore/local",
     package = "mock",
 )
 
@@ -59,7 +59,7 @@ gomock(
     name = "blobstore_replication",
     out = "blobstore_replication.go",
     interfaces = ["BlobReplicator"],
-    library = "//pkg/blobstore/replication:go_default_library",
+    library = "//pkg/blobstore/replication",
     package = "mock",
 )
 
@@ -67,7 +67,7 @@ gomock(
     name = "blockdevice",
     out = "blockdevice.go",
     interfaces = ["BlockDevice"],
-    library = "//pkg/blockdevice:go_default_library",
+    library = "//pkg/blockdevice",
     package = "mock",
 )
 
@@ -80,7 +80,7 @@ gomock(
         "ErrorHandler",
         "ReadAtCloser",
     ],
-    library = "//pkg/blobstore/buffer:go_default_library",
+    library = "//pkg/blobstore/buffer",
     package = "mock",
 )
 
@@ -91,7 +91,7 @@ gomock(
         "BuildQueue",
         "DemultiplexedBuildQueueGetter",
     ],
-    library = "//pkg/builder:go_default_library",
+    library = "//pkg/builder",
     package = "mock",
 )
 
@@ -102,7 +102,7 @@ gomock(
         "Clock",
         "Timer",
     ],
-    library = "//pkg/clock:go_default_library",
+    library = "//pkg/clock",
     package = "mock",
 )
 
@@ -110,7 +110,7 @@ gomock(
     name = "cloud_aws",
     out = "cloud_aws.go",
     interfaces = ["S3"],
-    library = "//pkg/cloud/aws:go_default_library",
+    library = "//pkg/cloud/aws",
     package = "mock",
 )
 
@@ -118,7 +118,7 @@ gomock(
     name = "digest",
     out = "digest.go",
     interfaces = ["InstanceNameMatcher"],
-    library = "//pkg/digest:go_default_library",
+    library = "//pkg/digest",
     package = "mock",
 )
 
@@ -131,7 +131,7 @@ gomock(
         "FileReader",
         "FileReadWriter",
     ],
-    library = "//pkg/filesystem:go_default_library",
+    library = "//pkg/filesystem",
     package = "mock",
 )
 
@@ -143,7 +143,7 @@ gomock(
         "ClientDialer",
         "ClientFactory",
     ],
-    library = "//pkg/grpc:go_default_library",
+    library = "//pkg/grpc",
     package = "mock",
 )
 
@@ -164,7 +164,7 @@ gomock(
     name = "redis",
     out = "redis.go",
     interfaces = ["RedisClient"],
-    library = "//pkg/blobstore:go_default_library",
+    library = "//pkg/blobstore",
     package = "mock",
 )
 
@@ -183,7 +183,7 @@ gomock(
     name = "util",
     out = "util.go",
     interfaces = ["ErrorLogger"],
-    library = "//pkg/util:go_default_library",
+    library = "//pkg/util",
     package = "mock",
 )
 
@@ -210,16 +210,16 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//pkg/blobstore:go_default_library",
-        "//pkg/blobstore/buffer:go_default_library",
-        "//pkg/blobstore/local:go_default_library",
-        "//pkg/builder:go_default_library",
-        "//pkg/clock:go_default_library",
-        "//pkg/digest:go_default_library",
-        "//pkg/filesystem:go_default_library",
-        "//pkg/proto/blobstore/local:go_default_library",
-        "//pkg/proto/configuration/grpc:go_default_library",
-        "//pkg/util:go_default_library",
+        "//pkg/blobstore",
+        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/local",
+        "//pkg/builder",
+        "//pkg/clock",
+        "//pkg/digest",
+        "//pkg/filesystem",
+        "//pkg/proto/blobstore/local",
+        "//pkg/proto/configuration/grpc",
+        "//pkg/util",
         "@com_github_aws_aws_sdk_go//aws/request:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
