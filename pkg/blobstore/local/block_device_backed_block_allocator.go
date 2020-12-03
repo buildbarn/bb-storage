@@ -95,9 +95,9 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
 	blockDeviceBackedBlockAllocatorAllocations.Inc()
 	return &blockDeviceBackedBlock{
+		usecount:       1,
 		blockAllocator: pa,
 		offset:         offset,
-		usecount:       1,
 	}
 }
 
@@ -128,9 +128,11 @@ func (pa *blockDeviceBackedBlockAllocator) NewBlockAtOffset(desiredOffset int64)
 }
 
 type blockDeviceBackedBlock struct {
+	// Keep usecount at the top to ensure proper alignment.
+	// See: https://github.com/golang/go/issues/13868
+	usecount       int64
 	blockAllocator *blockDeviceBackedBlockAllocator
 	offset         int64
-	usecount       int64
 }
 
 func (pb *blockDeviceBackedBlock) Release() {

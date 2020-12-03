@@ -69,6 +69,34 @@
                }
             },
             {
+               "name": "linux_386: build and test",
+               "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //..."
+            },
+            {
+               "name": "linux_386: copy bb_replicator",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_replicator $(pwd)/bb_replicator"
+            },
+            {
+               "name": "linux_386: upload bb_replicator",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_replicator.linux_386",
+                  "path": "bb_replicator"
+               }
+            },
+            {
+               "name": "linux_386: copy bb_storage",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_storage $(pwd)/bb_storage"
+            },
+            {
+               "name": "linux_386: upload bb_storage",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_storage.linux_386",
+                  "path": "bb_storage"
+               }
+            },
+            {
                "name": "darwin_amd64: build and test",
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
             },

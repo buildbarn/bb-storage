@@ -7,6 +7,12 @@
       extension: '',
     },
     {
+      name: 'linux_386',
+      buildAndTestCommand: 'test --test_output=errors',
+      buildJustBinaries: false,
+      extension: '',
+    },
+    {
       name: 'darwin_amd64',
       buildAndTestCommand: 'build',
       buildJustBinaries: false,
