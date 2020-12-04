@@ -51,6 +51,7 @@ func (r *byteStreamChunkReader) Read() ([]byte, error) {
 
 func (r *byteStreamChunkReader) Close() {
 	r.cancel()
+	r.client.Recv()
 }
 
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
@@ -72,8 +73,10 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 	r := b.ToChunkReader(0, ba.readChunkSize)
 	defer r.Close()
 
-	client, err := ba.byteStreamClient.Write(ctx)
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	client, err := ba.byteStreamClient.Write(ctxWithCancel)
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -87,6 +90,8 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 				WriteOffset:  writeOffset,
 				Data:         data,
 			}); err != nil {
+				cancel()
+				client.CloseAndRecv()
 				return err
 			}
 			writeOffset += int64(len(data))
@@ -98,11 +103,16 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 				WriteOffset:  writeOffset,
 				FinishWrite:  true,
 			}); err != nil {
+				cancel()
+				client.CloseAndRecv()
 				return err
 			}
 			_, err := client.CloseAndRecv()
+			cancel()
 			return err
-		} else {
+		} else if err != nil {
+			cancel()
+			client.CloseAndRecv()
 			return err
 		}
 	}
