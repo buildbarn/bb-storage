@@ -6,6 +6,7 @@ go_library(
         "configuration.go",
         "digest.go",
         "existence_cache.go",
+        "function.go",
         "instance_name.go",
         "instance_name_patcher.go",
         "instance_name_trie.go",

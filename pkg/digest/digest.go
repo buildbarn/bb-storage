@@ -284,57 +284,40 @@ func (d Digest) ToSingletonSet() Set {
 	}
 }
 
-// NewHasher creates a standard hash.Hash object that may be used to
-// compute a checksum of data. The hash.Hash object uses the same
-// algorithm as the one that was used to create the digest, making it
-// possible to validate data against a digest.
-func (d Digest) NewHasher() hash.Hash {
+func (d Digest) getHasherFactory() func() hash.Hash {
 	hashEnd, _, _ := d.unpack()
 	switch hashEnd {
 	case md5.Size * 2:
-		return md5.New()
+		return md5.New
 	case sha1.Size * 2:
-		return sha1.New()
+		return sha1.New
 	case sha256.Size * 2:
-		return sha256.New()
+		return sha256.New
 	case sha512.Size384 * 2:
-		return sha512.New384()
+		return sha512.New384
 	case sha512.Size * 2:
-		return sha512.New()
+		return sha512.New
 	default:
 		panic("Digest hash is of unknown type")
 	}
 }
 
-// NewGenerator creates a writer that may be used to compute digests of
-// newly created files.
-func (d Digest) NewGenerator() *Generator {
-	return &Generator{
-		instanceName: d.GetInstanceName(),
-		partialHash:  d.NewHasher(),
+// NewHasher creates a standard hash.Hash object that may be used to
+// compute a checksum of data. The hash.Hash object uses the same
+// algorithm as the one that was used to create the digest, making it
+// possible to validate data against a digest.
+func (d Digest) NewHasher() hash.Hash {
+	return d.getHasherFactory()()
+}
+
+// GetDigestFunction returns a Function object that can be used to
+// generate new Digest objects that use the same instance name and
+// hashing algorithm. This method can be used in case new digests need
+// to be derived based on an existing instance. For example, to generate
+// a digest of an output file of a build action, given an action digest.
+func (d Digest) GetDigestFunction() Function {
+	return Function{
+		instanceName:  d.GetInstanceName(),
+		hasherFactory: d.getHasherFactory(),
 	}
-}
-
-// Generator is a writer that may be used to compute digests of newly
-// created files.
-type Generator struct {
-	instanceName InstanceName
-	partialHash  hash.Hash
-	sizeBytes    int64
-}
-
-// Write a chunk of data from a newly created file into the state of the
-// Generator.
-func (dg *Generator) Write(p []byte) (int, error) {
-	n, err := dg.partialHash.Write(p)
-	dg.sizeBytes += int64(n)
-	return n, err
-}
-
-// Sum creates a new digest based on the data written into the
-// Generator.
-func (dg *Generator) Sum() Digest {
-	return dg.instanceName.newDigestUnchecked(
-		hex.EncodeToString(dg.partialHash.Sum(nil)),
-		dg.sizeBytes)
 }

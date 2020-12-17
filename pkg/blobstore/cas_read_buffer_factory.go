@@ -31,14 +31,14 @@ var CASReadBufferFactory ReadBufferFactory = casReadBufferFactory{}
 // Content Addressable Storage (CAS). It computes the digest of the
 // message and stores it under that key. The digest is then returned, so
 // that the object may be referenced.
-func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Message, parentDigest digest.Digest) (digest.Digest, error) {
+func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Message, digestFunction digest.Function) (digest.Digest, error) {
 	data, err := proto.Marshal(message)
 	if err != nil {
 		return digest.BadDigest, err
 	}
 
 	// Compute new digest of data.
-	digestGenerator := parentDigest.NewGenerator()
+	digestGenerator := digestFunction.NewGenerator()
 	if _, err := digestGenerator.Write(data); err != nil {
 		panic(err)
 	}
