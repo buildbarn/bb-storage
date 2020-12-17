@@ -37,6 +37,7 @@ def go_dependencies():
     go_repository(
         name = "com_github_grpc_ecosystem_go_grpc_prometheus",
         importpath = "github.com/grpc-ecosystem/go-grpc-prometheus",
+        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
         sum = "h1:Ovs26xHkKqVztRpIrF/92BcuyuQ/YW4NSIpoGtfXNho=",
         version = "v1.2.0",
     )

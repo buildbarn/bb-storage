@@ -51,7 +51,11 @@ func (r *byteStreamChunkReader) Read() ([]byte, error) {
 
 func (r *byteStreamChunkReader) Close() {
 	r.cancel()
-	r.client.Recv()
+	for {
+		if _, err := r.client.Recv(); err != nil {
+			break
+		}
+	}
 }
 
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {

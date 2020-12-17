@@ -1,0 +1,66 @@
+diff --git client_metrics.go client_metrics.go
+index a344084..8bcb809 100644
+--- client_metrics.go
++++ client_metrics.go
+@@ -198,7 +198,7 @@ func (m *ClientMetrics) StreamClientInterceptor() func(ctx context.Context, desc
+ 			monitor.Handled(st.Code())
+ 			return nil, err
+ 		}
+-		return &monitoredClientStream{clientStream, monitor}, nil
++		return &monitoredClientStream{clientStream, monitor, desc.ServerStreams, false}, nil
+ 	}
+ }
+ 
+@@ -214,7 +214,9 @@ func clientStreamType(desc *grpc.StreamDesc) grpcType {
+ // monitoredClientStream wraps grpc.ClientStream allowing each Sent/Recv of message to increment counters.
+ type monitoredClientStream struct {
+ 	grpc.ClientStream
+-	monitor *clientReporter
++	monitor       *clientReporter
++	serverStreams bool
++	handled       bool
+ }
+ 
+ func (s *monitoredClientStream) SendMsg(m interface{}) error {
+@@ -227,6 +229,25 @@ func (s *monitoredClientStream) SendMsg(m interface{}) error {
+ 	return err
+ }
+ 
++func (s *monitoredClientStream) markHandled(err error) {
++	if !s.handled {
++		if err == io.EOF {
++			s.monitor.Handled(codes.OK)
++		} else {
++			s.monitor.Handled(status.Code(err))
++		}
++		s.handled = true
++	}
++}
++
++func (s *monitoredClientStream) CloseSend() error {
++	err := s.ClientStream.CloseSend()
++	if err != nil {
++		s.markHandled(err)
++	}
++	return err
++}
++
+ func (s *monitoredClientStream) RecvMsg(m interface{}) error {
+ 	timer := s.monitor.ReceiveMessageTimer()
+ 	err := s.ClientStream.RecvMsg(m)
+@@ -234,11 +255,11 @@ func (s *monitoredClientStream) RecvMsg(m interface{}) error {
+ 
+ 	if err == nil {
+ 		s.monitor.ReceivedMessage()
+-	} else if err == io.EOF {
+-		s.monitor.Handled(codes.OK)
++		if !s.serverStreams {
++			s.markHandled(io.EOF)
++		}
+ 	} else {
+-		st, _ := status.FromError(err)
+-		s.monitor.Handled(st.Code())
++		s.markHandled(err)
+ 	}
+ 	return err
+ }
