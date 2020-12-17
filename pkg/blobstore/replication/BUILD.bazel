@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "blob_replicator.go",
+        "deduplicating_blob_replicator.go",
         "local_blob_replicator.go",
         "noop_blob_replicator.go",
         "queued_blob_replicator.go",
@@ -27,6 +28,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "deduplicating_blob_replicator_test.go",
         "local_blob_replicator_test.go",
         "queued_blob_replicator_test.go",
     ],

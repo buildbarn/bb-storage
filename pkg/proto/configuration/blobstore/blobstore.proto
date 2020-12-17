@@ -575,6 +575,27 @@ message BlobReplicatorConfiguration {
     // No replication will be performed. This can be useful when one
     // or more of the backends have their contents managed externally.
     google.protobuf.Empty noop = 4;
+
+    // Ensure that blobs are not replicated redundantly. Replication
+    // requests for the same blob are merged. To deal with potential
+    // race conditions, double check whether the sink already contains a
+    // blob before copying.
+    //
+    // In order to guarantee responsiveness for all callers, this
+    // replicator decomposes requests for multiple blobs into one
+    // request per blob. To prevent callers from stalling the
+    // replication process, it also doesn't stream data back to the
+    // caller as it is being replicated. This means that blobs are fully
+    // replicated from the source to the sink, prior to letting the
+    // caller read the data from the sink at its own pace.
+    //
+    // This replicator has been designed to reduce the amount of traffic
+    // against the source to an absolute minimum, at the cost of
+    // generating more traffic against the sink. It is recommended to
+    // use this replicator when the sink is an instance of
+    // LocalBlobAccess that is embedded into the same process, and blobs
+    // are expected to be consumed locally.
+    BlobReplicatorConfiguration deduplicating = 5;
   }
 }
 

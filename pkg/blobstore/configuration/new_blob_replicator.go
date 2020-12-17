@@ -17,6 +17,12 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
 	switch mode := configuration.Mode.(type) {
+	case *pb.BlobReplicatorConfiguration_Deduplicating:
+		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, creator)
+		if err != nil {
+			return nil, err
+		}
+		return replication.NewDeduplicatingBlobReplicator(base, sink.BlobAccess, sink.DigestKeyFormat), nil
 	case *pb.BlobReplicatorConfiguration_Local:
 		return replication.NewLocalBlobReplicator(source, sink.BlobAccess), nil
 	case *pb.BlobReplicatorConfiguration_Noop:
