@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "int32.go",
+        "int64.go",
+        "int64_aligned.go",
+        "int64_unaligned.go",
+        "uint32.go",
+        "uint64.go",
+        "uint64_aligned.go",
+        "uint64_unaligned.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/atomic",
+    visibility = ["//visibility:public"],
+)

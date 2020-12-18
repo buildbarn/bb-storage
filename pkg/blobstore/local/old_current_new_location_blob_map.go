@@ -2,9 +2,9 @@ package local
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -114,7 +114,7 @@ type OldCurrentNewLocationBlobMap struct {
 	// total number that we should be releasing. These values are
 	// used to force blocks with data corruption to be discarded.
 	totalBlocksReleased     uint64
-	totalBlocksToBeReleased uint64
+	totalBlocksToBeReleased atomic.Uint64
 
 	// Counters to decide which block should store the next blob.
 	allocationAttemptsRemaining int
@@ -166,7 +166,7 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.Error
 			})
 		}
 		if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
-			lbm.totalBlocksToBeReleased = uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount)
+			lbm.totalBlocksToBeReleased.Initialize(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
 		}
 	}
 	return lbm
@@ -186,7 +186,7 @@ func (lbm *OldCurrentNewLocationBlobMap) BlockReferenceToBlockIndex(blockReferen
 	if !found {
 		return 0, 0, false
 	}
-	if uint64(blockIndex) < atomic.LoadUint64(&lbm.totalBlocksToBeReleased)-lbm.totalBlocksReleased {
+	if uint64(blockIndex) < lbm.totalBlocksToBeReleased.Load()-lbm.totalBlocksReleased {
 		// We know data corruption exists for this block. We
 		// just haven't been able to release this block yet,
 		// because no calls to Put() were made in the meantime.
@@ -220,11 +220,11 @@ func (lbm *OldCurrentNewLocationBlobMap) BlockIndexToBlockReference(blockIndex i
 // context.
 func (lbm *OldCurrentNewLocationBlobMap) increaseTotalBlocksToBeReleased(newValue uint64) uint64 {
 	for {
-		oldValue := atomic.LoadUint64(&lbm.totalBlocksToBeReleased)
+		oldValue := lbm.totalBlocksToBeReleased.Load()
 		if newValue <= oldValue {
 			return 0
 		}
-		if atomic.CompareAndSwapUint64(&lbm.totalBlocksToBeReleased, oldValue, newValue) {
+		if lbm.totalBlocksToBeReleased.CompareAndSwap(oldValue, newValue) {
 			return newValue - oldValue
 		}
 	}
@@ -287,7 +287,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 	// has been observed. This cannot be done as part of the
 	// DataIntegrityCallback, as it's impossible to pick up a write
 	// lock from that context.
-	totalBlocksToBeReleased := atomic.LoadUint64(&lbm.totalBlocksToBeReleased)
+	totalBlocksToBeReleased := lbm.totalBlocksToBeReleased.Load()
 	for lbm.totalBlocksReleased < totalBlocksToBeReleased {
 		lbm.popFront()
 		if len(lbm.oldBlocks) > 0 {
@@ -380,7 +380,7 @@ func (lbm *OldCurrentNewLocationBlobMap) Put(sizeBytes int64) (LocationBlobPutWr
 			// simply sized inadequately, the write won't
 			// have any effect. Return an error, so that
 			// clients retry.
-			if absoluteBlockIndex < atomic.LoadUint64(&lbm.totalBlocksToBeReleased) {
+			if absoluteBlockIndex < lbm.totalBlocksToBeReleased.Load() {
 				return Location{}, status.Error(codes.Internal, "The block to which this blob was written, has already been released")
 			}
 			return Location{

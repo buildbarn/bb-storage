@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
@@ -94,11 +94,12 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 
 func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
 	blockDeviceBackedBlockAllocatorAllocations.Inc()
-	return &blockDeviceBackedBlock{
-		usecount:       1,
+	pb := &blockDeviceBackedBlock{
 		blockAllocator: pa,
 		offset:         offset,
 	}
+	pb.usecount.Initialize(1)
+	return pb
 }
 
 func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, int64, error) {
@@ -128,15 +129,13 @@ func (pa *blockDeviceBackedBlockAllocator) NewBlockAtOffset(desiredOffset int64)
 }
 
 type blockDeviceBackedBlock struct {
-	// Keep usecount at the top to ensure proper alignment.
-	// See: https://github.com/golang/go/issues/13868
-	usecount       int64
+	usecount       atomic.Int64
 	blockAllocator *blockDeviceBackedBlockAllocator
 	offset         int64
 }
 
 func (pb *blockDeviceBackedBlock) Release() {
-	if c := atomic.AddInt64(&pb.usecount, -1); c < 0 {
+	if c := pb.usecount.Add(-1); c < 0 {
 		panic(fmt.Sprintf("Release(): Block has invalid reference count %d", c))
 	} else if c == 0 {
 		// Block has no remaining consumers. Allow the region in
@@ -150,7 +149,7 @@ func (pb *blockDeviceBackedBlock) Release() {
 }
 
 func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	if c := atomic.AddInt64(&pb.usecount, 1); c <= 1 {
+	if c := pb.usecount.Add(1); c <= 1 {
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}
 	blockDeviceBackedBlockAllocatorGetsStarted.Inc()
@@ -169,7 +168,7 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 }
 
 func (pb *blockDeviceBackedBlock) Put(offsetBytes int64, b buffer.Buffer) error {
-	if pb.usecount <= 0 {
+	if pb.usecount.Load() <= 0 {
 		panic("Attempted to store buffer in unused block")
 	}
 

@@ -3,8 +3,8 @@ package mirrored
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
@@ -37,7 +37,7 @@ type mirroredBlobAccess struct {
 	backendB       blobstore.BlobAccess
 	replicatorAToB replication.BlobReplicator
 	replicatorBToA replication.BlobReplicator
-	round          uint32
+	round          atomic.Uint32
 }
 
 // NewMirroredBlobAccess creates a BlobAccess that applies operations to
@@ -63,7 +63,7 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 	var firstBackend blobstore.BlobAccess
 	var firstBackendName, secondBackendName string
 	var replicator replication.BlobReplicator
-	if atomic.AddUint32(&ba.round, 1)%2 == 1 {
+	if ba.round.Add(1)%2 == 1 {
 		firstBackend = ba.backendA
 		firstBackendName, secondBackendName = "Backend A", "Backend B"
 		replicator = ba.replicatorBToA

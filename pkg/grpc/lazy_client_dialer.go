@@ -3,8 +3,8 @@ package grpc
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"
@@ -39,7 +39,7 @@ type lazyClientConn struct {
 	target      string
 	dialOptions []grpc.DialOption
 
-	state      uint32
+	state      atomic.Uint32
 	wakeup     chan struct{}
 	connection grpc.ClientConnInterface
 	lock       sync.Mutex
@@ -48,7 +48,7 @@ type lazyClientConn struct {
 func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnInterface, error) {
 	// Fast path: immediately return the existing connection that
 	// was created previously.
-	if atomic.LoadUint32(&cc.state) == 2 {
+	if cc.state.Load() == 2 {
 		return cc.connection, nil
 	}
 
@@ -56,12 +56,12 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 	// goroutine to complete.
 	for {
 		cc.lock.Lock()
-		switch atomic.LoadUint32(&cc.state) {
+		switch cc.state.Load() {
 		case 0:
 			// Connection is uninitialized. Attempt to
 			// create it ourselves.
 			cc.wakeup = make(chan struct{}, 1)
-			atomic.StoreUint32(&cc.state, 1)
+			cc.state.Store(1)
 			cc.lock.Unlock()
 
 			conn, err := cc.dialer(ctx, cc.target, cc.dialOptions...)
@@ -71,13 +71,13 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 			if err != nil {
 				// Creation failed. Return to the
 				// initial state.
-				atomic.StoreUint32(&cc.state, 0)
+				cc.state.Store(0)
 				cc.lock.Unlock()
 				return nil, util.StatusWrap(err, "Failed to create client connection")
 			}
 
 			// Creation succeeded.
-			atomic.StoreUint32(&cc.state, 2)
+			cc.state.Store(2)
 			cc.connection = conn
 			cc.lock.Unlock()
 			return conn, nil

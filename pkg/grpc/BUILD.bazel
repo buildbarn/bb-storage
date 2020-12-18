@@ -23,6 +23,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/grpc",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/atomic:go_default_library",
         "//pkg/clock:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
         "//pkg/util:go_default_library",

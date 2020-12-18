@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/mirrored",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/atomic:go_default_library",
         "//pkg/blobstore:go_default_library",
         "//pkg/blobstore/buffer:go_default_library",
         "//pkg/blobstore/replication:go_default_library",

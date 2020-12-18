@@ -3,8 +3,8 @@ package buffer
 import (
 	"io"
 	"io/ioutil"
-	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
@@ -22,7 +22,7 @@ type ReadAtCloser interface {
 type validatedReaderBuffer struct {
 	r          ReadAtCloser
 	sizeBytes  int64
-	cloneCount int32
+	cloneCount atomic.Int32
 }
 
 // NewValidatedBufferFromReaderAt creates a Buffer that is backed by a
@@ -84,17 +84,17 @@ func (b *validatedReaderBuffer) ToReader() io.ReadCloser {
 }
 
 func (b *validatedReaderBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer) {
-	atomic.AddInt32(&b.cloneCount, 1)
+	b.cloneCount.Add(1)
 	return b, b
 }
 
 func (b *validatedReaderBuffer) CloneStream() (Buffer, Buffer) {
-	atomic.AddInt32(&b.cloneCount, 1)
+	b.cloneCount.Add(1)
 	return b, b
 }
 
 func (b *validatedReaderBuffer) Discard() {
-	if atomic.AddInt32(&b.cloneCount, -1) < 0 {
+	if b.cloneCount.Add(-1) < 0 {
 		// There are no more cloned instances of this buffer.
 		b.r.Close()
 		b.r = nil
