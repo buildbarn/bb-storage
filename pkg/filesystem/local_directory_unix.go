@@ -6,27 +6,19 @@ import (
 	"os"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type localDirectory struct {
 	fd int
-}
-
-func validateFilename(name string) error {
-	if name == "" || name == "." || name == ".." || strings.ContainsRune(name, '/') {
-		return status.Errorf(codes.InvalidArgument, "Invalid filename: %#v", name)
-	}
-	return nil
 }
 
 func newLocalDirectoryFromFileDescriptor(fd int) (*localDirectory, error) {
@@ -47,13 +39,10 @@ func NewLocalDirectory(path string) (DirectoryCloser, error) {
 	return newLocalDirectoryFromFileDescriptor(fd)
 }
 
-func (d *localDirectory) enter(name string) (*localDirectory, error) {
-	if err := validateFilename(name); err != nil {
-		return nil, err
-	}
+func (d *localDirectory) enter(name path.Component) (*localDirectory, error) {
 	defer runtime.KeepAlive(d)
 
-	fd, err := unix.Openat(d.fd, name, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
+	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
 	if err != nil {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
@@ -67,7 +56,7 @@ func (d *localDirectory) enter(name string) (*localDirectory, error) {
 	return newLocalDirectoryFromFileDescriptor(fd)
 }
 
-func (d *localDirectory) EnterDirectory(name string) (DirectoryCloser, error) {
+func (d *localDirectory) EnterDirectory(name path.Component) (DirectoryCloser, error) {
 	return d.enter(name)
 }
 
@@ -78,13 +67,10 @@ func (d *localDirectory) Close() error {
 	return unix.Close(fd)
 }
 
-func (d *localDirectory) open(name string, creationMode CreationMode, flag int) (*os.File, error) {
-	if err := validateFilename(name); err != nil {
-		return nil, err
-	}
+func (d *localDirectory) open(name path.Component, creationMode CreationMode, flag int) (*os.File, error) {
 	defer runtime.KeepAlive(d)
 
-	fd, err := unix.Openat(d.fd, name, flag|creationMode.flags|unix.O_NOFOLLOW, uint32(creationMode.permissions))
+	fd, err := unix.Openat(d.fd, name.String(), flag|creationMode.flags|unix.O_NOFOLLOW, uint32(creationMode.permissions))
 	if err != nil {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
@@ -92,32 +78,26 @@ func (d *localDirectory) open(name string, creationMode CreationMode, flag int) 
 		}
 		return nil, err
 	}
-	return os.NewFile(uintptr(fd), name), nil
+	return os.NewFile(uintptr(fd), name.String()), nil
 }
 
-func (d *localDirectory) OpenAppend(name string, creationMode CreationMode) (FileAppender, error) {
+func (d *localDirectory) OpenAppend(name path.Component, creationMode CreationMode) (FileAppender, error) {
 	return d.open(name, creationMode, os.O_APPEND|os.O_WRONLY)
 }
 
-func (d *localDirectory) OpenRead(name string) (FileReader, error) {
+func (d *localDirectory) OpenRead(name path.Component) (FileReader, error) {
 	return d.open(name, DontCreate, os.O_RDONLY)
 }
 
-func (d *localDirectory) OpenReadWrite(name string, creationMode CreationMode) (FileReadWriter, error) {
+func (d *localDirectory) OpenReadWrite(name path.Component, creationMode CreationMode) (FileReadWriter, error) {
 	return d.open(name, creationMode, os.O_RDWR)
 }
 
-func (d *localDirectory) OpenWrite(name string, creationMode CreationMode) (FileWriter, error) {
+func (d *localDirectory) OpenWrite(name path.Component, creationMode CreationMode) (FileWriter, error) {
 	return d.open(name, creationMode, os.O_WRONLY)
 }
 
-func (d *localDirectory) Link(oldName string, newDirectory Directory, newName string) error {
-	if err := validateFilename(oldName); err != nil {
-		return err
-	}
-	if err := validateFilename(newName); err != nil {
-		return err
-	}
+func (d *localDirectory) Link(oldName path.Component, newDirectory Directory, newName path.Component) error {
 	defer runtime.KeepAlive(d)
 	return newDirectory.Apply(localDirectoryLink{
 		oldFD:   d.fd,
@@ -126,11 +106,11 @@ func (d *localDirectory) Link(oldName string, newDirectory Directory, newName st
 	})
 }
 
-func (d *localDirectory) lstat(name string) (FileType, deviceNumber, error) {
+func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, error) {
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
-	if err := unix.Fstatat(d.fd, name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	if err := unix.Fstatat(d.fd, name.String(), &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return FileTypeOther, 0, err
 	}
 	fileType := FileTypeOther
@@ -157,10 +137,7 @@ func (d *localDirectory) lstat(name string) (FileType, deviceNumber, error) {
 	return fileType, stat.Dev, nil
 }
 
-func (d *localDirectory) Lstat(name string) (FileInfo, error) {
-	if err := validateFilename(name); err != nil {
-		return FileInfo{}, err
-	}
+func (d *localDirectory) Lstat(name path.Component) (FileInfo, error) {
 	fileType, _, err := d.lstat(name)
 	if err != nil {
 		return FileInfo{}, err
@@ -168,13 +145,10 @@ func (d *localDirectory) Lstat(name string) (FileInfo, error) {
 	return NewFileInfo(name, fileType), nil
 }
 
-func (d *localDirectory) Mkdir(name string, perm os.FileMode) error {
-	if err := validateFilename(name); err != nil {
-		return err
-	}
+func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	defer runtime.KeepAlive(d)
 
-	return unix.Mkdirat(d.fd, name, uint32(perm))
+	return unix.Mkdirat(d.fd, name.String(), uint32(perm))
 }
 
 func (d *localDirectory) readdirnames() ([]string, error) {
@@ -201,7 +175,7 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	// Obtain file info.
 	list := make([]FileInfo, 0, len(names))
 	for _, name := range names {
-		info, err := d.Lstat(name)
+		info, err := d.Lstat(path.MustNewComponent(name))
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -213,15 +187,12 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	return list, nil
 }
 
-func (d *localDirectory) Readlink(name string) (string, error) {
-	if err := validateFilename(name); err != nil {
-		return "", err
-	}
+func (d *localDirectory) Readlink(name path.Component) (string, error) {
 	defer runtime.KeepAlive(d)
 
 	for l := 128; ; l *= 2 {
 		b := make([]byte, l)
-		n, err := unix.Readlinkat(d.fd, name, b)
+		n, err := unix.Readlinkat(d.fd, name.String(), b)
 		if err != nil {
 			return "", err
 		}
@@ -231,19 +202,16 @@ func (d *localDirectory) Readlink(name string) (string, error) {
 	}
 }
 
-func (d *localDirectory) Remove(name string) error {
-	if err := validateFilename(name); err != nil {
-		return err
-	}
+func (d *localDirectory) Remove(name path.Component) error {
 	defer runtime.KeepAlive(d)
 
 	// First try deleting it as a regular file.
-	err1 := unix.Unlinkat(d.fd, name, 0)
+	err1 := unix.Unlinkat(d.fd, name.String(), 0)
 	if err1 == nil {
 		return nil
 	}
 	// Then try to delete it as a directory.
-	err2 := unix.Unlinkat(d.fd, name, unix.AT_REMOVEDIR)
+	err2 := unix.Unlinkat(d.fd, name.String(), unix.AT_REMOVEDIR)
 	if err2 == nil {
 		return nil
 	}
@@ -256,7 +224,7 @@ func (d *localDirectory) Remove(name string) error {
 
 var workingDirectoryLock sync.Mutex
 
-func (d *localDirectory) unmount(name string) error {
+func (d *localDirectory) unmount(name path.Component) error {
 	defer runtime.KeepAlive(d)
 
 	// POSIX systems provide no umountat() system call that permits
@@ -269,7 +237,7 @@ func (d *localDirectory) unmount(name string) error {
 	if err := syscall.Fchdir(d.fd); err != nil {
 		return err
 	}
-	return syscall.Unmount(name, 0)
+	return syscall.Unmount(name.String(), 0)
 }
 
 func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) error {
@@ -280,7 +248,8 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 		return err
 	}
 	for _, name := range names {
-		fileType, childDeviceNumber, err := d.lstat(name)
+		component := path.MustNewComponent(name)
+		fileType, childDeviceNumber, err := d.lstat(component)
 		if err != nil {
 			return err
 		}
@@ -289,10 +258,10 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 		// unmount until the remaining directory is on the same
 		// file system.
 		for parentDeviceNumber != childDeviceNumber {
-			if err := d.unmount(name); err != nil {
+			if err := d.unmount(component); err != nil {
 				return err
 			}
-			fileType, childDeviceNumber, err = d.lstat(name)
+			fileType, childDeviceNumber, err = d.lstat(component)
 			if err != nil {
 				return err
 			}
@@ -306,7 +275,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 			// Unfortunately, this is broken on Linux.
 			// Details: https://github.com/golang/go/issues/20130
 			unix.Fchmodat(d.fd, name, 0700, 0)
-			subdirectory, err := d.enter(name)
+			subdirectory, err := d.enter(component)
 			if err != nil {
 				return err
 			}
@@ -338,10 +307,7 @@ func (d *localDirectory) RemoveAllChildren() error {
 	return d.removeAllChildren(stat.Dev)
 }
 
-func (d *localDirectory) RemoveAll(name string) error {
-	if err := validateFilename(name); err != nil {
-		return err
-	}
+func (d *localDirectory) RemoveAll(name path.Component) error {
 	defer runtime.KeepAlive(d)
 
 	// TODO(edsch): Call chmod(700) to ensure directory can be accessed?
@@ -352,22 +318,16 @@ func (d *localDirectory) RemoveAll(name string) error {
 		if err != nil {
 			return err
 		}
-		return unix.Unlinkat(d.fd, name, unix.AT_REMOVEDIR)
+		return unix.Unlinkat(d.fd, name.String(), unix.AT_REMOVEDIR)
 	} else if err == syscall.ENOTDIR {
 		// Not a directory. Remove it immediately.
-		return unix.Unlinkat(d.fd, name, 0)
+		return unix.Unlinkat(d.fd, name.String(), 0)
 	} else {
 		return err
 	}
 }
 
-func (d *localDirectory) Rename(oldName string, newDirectory Directory, newName string) error {
-	if err := validateFilename(oldName); err != nil {
-		return err
-	}
-	if err := validateFilename(newName); err != nil {
-		return err
-	}
+func (d *localDirectory) Rename(oldName path.Component, newDirectory Directory, newName path.Component) error {
 	defer runtime.KeepAlive(d)
 	return newDirectory.Apply(localDirectoryRename{
 		oldFD:   d.fd,
@@ -376,13 +336,10 @@ func (d *localDirectory) Rename(oldName string, newDirectory Directory, newName 
 	})
 }
 
-func (d *localDirectory) Symlink(oldName, newName string) error {
-	if err := validateFilename(newName); err != nil {
-		return err
-	}
+func (d *localDirectory) Symlink(oldName string, newName path.Component) error {
 	defer runtime.KeepAlive(d)
 
-	return unix.Symlinkat(oldName, d.fd, newName)
+	return unix.Symlinkat(oldName, d.fd, newName.String())
 }
 
 func (d *localDirectory) Sync() error {
@@ -391,10 +348,7 @@ func (d *localDirectory) Sync() error {
 	return unix.Fsync(d.fd)
 }
 
-func (d *localDirectory) Chtimes(name string, atime, mtime time.Time) error {
-	if err := validateFilename(name); err != nil {
-		return err
-	}
+func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) error {
 	defer runtime.KeepAlive(d)
 
 	var ts [2]unix.Timespec
@@ -414,19 +368,15 @@ func (d *localDirectory) Chtimes(name string, atime, mtime time.Time) error {
 		return nil
 	}
 
-	return unix.UtimesNanoAt(d.fd, name, ts[:], unix.AT_SYMLINK_NOFOLLOW)
+	return unix.UtimesNanoAt(d.fd, name.String(), ts[:], unix.AT_SYMLINK_NOFOLLOW)
 }
 
 func (d *localDirectory) IsWritable() (bool, error) {
 	return d.isWritable(".")
 }
 
-func (d *localDirectory) IsWritableChild(name string) (bool, error) {
-	if err := validateFilename(name); err != nil {
-		return false, err
-	}
-
-	return d.isWritable(name)
+func (d *localDirectory) IsWritableChild(name path.Component) (bool, error) {
+	return d.isWritable(name.String())
 }
 
 func (d *localDirectory) isWritable(name string) (bool, error) {
@@ -443,24 +393,24 @@ func (d *localDirectory) isWritable(name string) (bool, error) {
 
 type localDirectoryLink struct {
 	oldFD   int
-	oldName string
-	newName string
+	oldName path.Component
+	newName path.Component
 }
 
 type localDirectoryRename struct {
 	oldFD   int
-	oldName string
-	newName string
+	oldName path.Component
+	newName path.Component
 }
 
 func (d *localDirectory) Apply(arg interface{}) error {
 	switch a := arg.(type) {
 	case localDirectoryLink:
 		defer runtime.KeepAlive(d)
-		return unix.Linkat(a.oldFD, a.oldName, d.fd, a.newName, 0)
+		return unix.Linkat(a.oldFD, a.oldName.String(), d.fd, a.newName.String(), 0)
 	case localDirectoryRename:
 		defer runtime.KeepAlive(d)
-		return unix.Renameat(a.oldFD, a.oldName, d.fd, a.newName)
+		return unix.Renameat(a.oldFD, a.oldName.String(), d.fd, a.newName.String())
 	default:
 		return syscall.EXDEV
 	}

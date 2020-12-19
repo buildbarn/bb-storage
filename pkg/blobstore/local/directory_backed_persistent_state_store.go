@@ -9,11 +9,17 @@ import (
 	"os"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
+)
+
+var (
+	componentState    = path.MustNewComponent("state")
+	componentStateNew = path.MustNewComponent("state.new")
 )
 
 type directoryBackedPersistentStateStore struct {
@@ -37,7 +43,7 @@ func newPersistentState() *pb.PersistentState {
 }
 
 func (pss directoryBackedPersistentStateStore) ReadPersistentState() (*pb.PersistentState, error) {
-	f, err := pss.directory.OpenRead("state")
+	f, err := pss.directory.OpenRead(componentState)
 	if os.IsNotExist(err) {
 		// No state file present. Reinitialize the data store.
 		log.Print("Reinitializing data store, as persistent state was not found")
@@ -72,10 +78,10 @@ func (pss directoryBackedPersistentStateStore) WritePersistentState(persistentSt
 	}
 
 	// Write the persistent state to a temporary file.
-	if err := pss.directory.Remove("state.new"); err != nil && !os.IsNotExist(err) {
+	if err := pss.directory.Remove(componentStateNew); err != nil && !os.IsNotExist(err) {
 		return util.StatusWrapWithCode(err, codes.Internal, "Failed to remove previous temporary file")
 	}
-	f, err := pss.directory.OpenAppend("state.new", filesystem.CreateExcl(0666))
+	f, err := pss.directory.OpenAppend(componentStateNew, filesystem.CreateExcl(0666))
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Internal, "Failed to create temporary file")
 	}
@@ -92,7 +98,7 @@ func (pss directoryBackedPersistentStateStore) WritePersistentState(persistentSt
 	}
 
 	// Move the new persistent state over the old copy.
-	if err := pss.directory.Rename("state.new", pss.directory, "state"); err != nil {
+	if err := pss.directory.Rename(componentStateNew, pss.directory, componentState); err != nil {
 		return util.StatusWrapWithCode(err, codes.Internal, "Failed to rename temporary file")
 	}
 	if err := pss.directory.Sync(); err != nil {

@@ -1,5 +1,9 @@
 package filesystem
 
+import (
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
+)
+
 // FileType is an enumeration of the type of a file stored on a file
 // system.
 type FileType int
@@ -31,13 +35,13 @@ const (
 // FileInfo is a subset of os.FileInfo, only containing the features
 // used by the Buildbarn codebase.
 type FileInfo struct {
-	name     string
+	name     path.Component
 	fileType FileType
 }
 
 // NewFileInfo constructs a FileInfo object that returns fixed values
 // for its methods.
-func NewFileInfo(name string, fileType FileType) FileInfo {
+func NewFileInfo(name path.Component, fileType FileType) FileInfo {
 	return FileInfo{
 		name:     name,
 		fileType: fileType,
@@ -45,7 +49,7 @@ func NewFileInfo(name string, fileType FileType) FileInfo {
 }
 
 // Name returns the filename of the file.
-func (fi *FileInfo) Name() string {
+func (fi *FileInfo) Name() path.Component {
 	return fi.name
 }
 
@@ -64,7 +68,7 @@ func (l FileInfoList) Len() int {
 }
 
 func (l FileInfoList) Less(i, j int) bool {
-	return l[i].Name() < l[j].Name()
+	return l[i].Name().String() < l[j].Name().String()
 }
 
 func (l FileInfoList) Swap(i, j int) {

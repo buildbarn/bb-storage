@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -31,7 +32,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	examplePersistentStateBytes := []byte{0x08, 0x7b, 0x18, 0xa6, 0xea, 0x82, 0xd2, 0xbd, 0x93, 0xe5, 0xe8, 0xa0, 0x01}
 
 	t.Run("ReadNotFound", func(t *testing.T) {
-		directory.EXPECT().OpenRead("state").Return(nil, syscall.ENOENT)
+		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(nil, syscall.ENOENT)
 
 		persistentState, err := persistentStateStore.ReadPersistentState()
 		require.NoError(t, err)
@@ -40,7 +41,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("ReadOpenFailure", func(t *testing.T) {
-		directory.EXPECT().OpenRead("state").Return(nil, syscall.EIO)
+		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(nil, syscall.EIO)
 
 		_, err := persistentStateStore.ReadPersistentState()
 		require.Equal(t, status.Error(codes.Internal, "Failed to open file: input/output error"), err)
@@ -48,7 +49,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 
 	t.Run("ReadReadFailure", func(t *testing.T) {
 		f := mock.NewMockFileReader(ctrl)
-		directory.EXPECT().OpenRead("state").Return(f, nil)
+		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(f, nil)
 		f.EXPECT().ReadAt(gomock.Any(), gomock.Any()).Return(0, syscall.EIO)
 		f.EXPECT().Close()
 
@@ -58,7 +59,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 
 	t.Run("ReadCorrupted", func(t *testing.T) {
 		f := mock.NewMockFileReader(ctrl)
-		directory.EXPECT().OpenRead("state").Return(f, nil)
+		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(f, nil)
 		f.EXPECT().ReadAt(gomock.Any(), gomock.Any()).DoAndReturn(func(p []byte, off int64) (int, error) {
 			return copy(p, "This is not a valid protobuf"), io.EOF
 		})
@@ -72,7 +73,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 
 	t.Run("ReadSuccess", func(t *testing.T) {
 		f := mock.NewMockFileReader(ctrl)
-		directory.EXPECT().OpenRead("state").Return(f, nil)
+		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(f, nil)
 		f.EXPECT().ReadAt(gomock.Any(), gomock.Any()).DoAndReturn(func(p []byte, off int64) (int, error) {
 			return copy(p, examplePersistentStateBytes), io.EOF
 		})
@@ -84,7 +85,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteTemporaryFileRemovalFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new").Return(syscall.EACCES)
+		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.EACCES)
 
 		require.Equal(
 			t,
@@ -93,8 +94,8 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteTemporaryFileCreationFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new").Return(syscall.ENOENT)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(nil, syscall.EIO)
+		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(nil, syscall.EIO)
 
 		require.Equal(
 			t,
@@ -103,9 +104,9 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteTemporaryFileWriteFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new").Return(syscall.ENOENT)
+		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(0, syscall.ENOSPC)
 		f.EXPECT().Close()
 
@@ -116,9 +117,9 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteTemporaryFileSyncFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new").Return(syscall.ENOENT)
+		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync().Return(syscall.EIO)
 		f.EXPECT().Close()
@@ -130,9 +131,9 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteTemporaryFileCloseFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new").Return(syscall.ENOENT)
+		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close().Return(syscall.EIO)
@@ -144,13 +145,13 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteDirectoryRenameFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new")
+		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()
-		directory.EXPECT().Rename("state.new", directory, "state").Return(syscall.EACCES)
+		directory.EXPECT().Rename(path.MustNewComponent("state.new"), directory, path.MustNewComponent("state")).Return(syscall.EACCES)
 
 		require.Equal(
 			t,
@@ -159,13 +160,13 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteDirectorySyncFailure", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new")
+		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()
-		directory.EXPECT().Rename("state.new", directory, "state")
+		directory.EXPECT().Rename(path.MustNewComponent("state.new"), directory, path.MustNewComponent("state"))
 		directory.EXPECT().Sync().Return(syscall.EIO)
 
 		require.Equal(
@@ -175,13 +176,13 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	})
 
 	t.Run("WriteSuccess", func(t *testing.T) {
-		directory.EXPECT().Remove("state.new")
+		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend("state.new", filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()
-		directory.EXPECT().Rename("state.new", directory, "state")
+		directory.EXPECT().Rename(path.MustNewComponent("state.new"), directory, path.MustNewComponent("state"))
 		directory.EXPECT().Sync()
 
 		require.NoError(t, persistentStateStore.WritePersistentState(&examplePersistentState))

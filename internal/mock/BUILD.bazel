@@ -136,6 +136,17 @@ gomock(
 )
 
 gomock(
+    name = "filesystem_path",
+    out = "filesystem_path.go",
+    interfaces = [
+        "ComponentWalker",
+        "ScopeWalker",
+    ],
+    library = "//pkg/filesystem/path:go_default_library",
+    package = "mock",
+)
+
+gomock(
     name = "grpc",
     out = "grpc.go",
     interfaces = [
@@ -201,6 +212,7 @@ go_library(
         ":cloud_aws.go",
         ":digest.go",
         ":filesystem.go",
+        ":filesystem_path.go",
         ":grpc.go",
         ":grpc_go.go",
         ":redis.go",
@@ -217,6 +229,7 @@ go_library(
         "//pkg/clock:go_default_library",
         "//pkg/digest:go_default_library",
         "//pkg/filesystem:go_default_library",
+        "//pkg/filesystem/path:go_default_library",
         "//pkg/proto/blobstore/local:go_default_library",
         "//pkg/proto/configuration/grpc:go_default_library",
         "//pkg/util:go_default_library",
