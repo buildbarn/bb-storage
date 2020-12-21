@@ -97,6 +97,62 @@
                }
             },
             {
+               "name": "linux_arm: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //..."
+            },
+            {
+               "name": "linux_arm: copy bb_replicator",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
+            },
+            {
+               "name": "linux_arm: upload bb_replicator",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_replicator.linux_arm",
+                  "path": "bb_replicator"
+               }
+            },
+            {
+               "name": "linux_arm: copy bb_storage",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_storage $(pwd)/bb_storage"
+            },
+            {
+               "name": "linux_arm: upload bb_storage",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_storage.linux_arm",
+                  "path": "bb_storage"
+               }
+            },
+            {
+               "name": "linux_arm64: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //..."
+            },
+            {
+               "name": "linux_arm64: copy bb_replicator",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
+            },
+            {
+               "name": "linux_arm64: upload bb_replicator",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_replicator.linux_arm64",
+                  "path": "bb_replicator"
+               }
+            },
+            {
+               "name": "linux_arm64: copy bb_storage",
+               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_storage $(pwd)/bb_storage"
+            },
+            {
+               "name": "linux_arm64: upload bb_storage",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_storage.linux_arm64",
+                  "path": "bb_storage"
+               }
+            },
+            {
                "name": "darwin_amd64: build and test",
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
             },

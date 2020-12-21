@@ -13,6 +13,18 @@
       extension: '',
     },
     {
+      name: 'linux_arm',
+      buildAndTestCommand: 'build',
+      buildJustBinaries: false,
+      extension: '',
+    },
+    {
+      name: 'linux_arm64',
+      buildAndTestCommand: 'build',
+      buildJustBinaries: false,
+      extension: '',
+    },
+    {
       name: 'darwin_amd64',
       buildAndTestCommand: 'build',
       buildJustBinaries: false,
