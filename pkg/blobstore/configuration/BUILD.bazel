@@ -33,6 +33,7 @@ go_library(
         "//pkg/filesystem:go_default_library",
         "//pkg/grpc:go_default_library",
         "//pkg/proto/configuration/blobstore:go_default_library",
+        "//pkg/random:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
         "@com_github_go_redis_redis_v8//:go_default_library",

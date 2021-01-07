@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/proto"
 
@@ -38,7 +38,7 @@ func NewDirectoryBackedPersistentStateStore(directory filesystem.Directory) Pers
 func newPersistentState() *pb.PersistentState {
 	return &pb.PersistentState{
 		OldestEpochId:                    1,
-		KeyLocationMapHashInitialization: rand.Uint64(),
+		KeyLocationMapHashInitialization: random.CryptoThreadSafeGenerator.Uint64(),
 	}
 }
 

@@ -1,11 +1,12 @@
 package eviction
 
 import (
-	"math/rand"
+	"github.com/buildbarn/bb-storage/pkg/random"
 )
 
 type rrSet struct {
-	elements []string
+	generator random.SingleThreadedGenerator
+	elements  []string
 }
 
 // NewRRSet creates a new cache replacement set that implements the
@@ -13,13 +14,15 @@ type rrSet struct {
 //
 // https://en.wikipedia.org/wiki/Cache_replacement_policies#Random_replacement_(RR)
 func NewRRSet() Set {
-	return &rrSet{}
+	return &rrSet{
+		generator: random.NewFastSingleThreadedGenerator(),
+	}
 }
 
 func (s *rrSet) Insert(value string) {
 	// Insert element into a random location in the list, opening up
 	// space by moving an existing element to the end of the list.
-	index := rand.Intn(len(s.elements) + 1)
+	index := s.generator.Intn(len(s.elements) + 1)
 	if index == len(s.elements) {
 		s.elements = append(s.elements, value)
 	} else {

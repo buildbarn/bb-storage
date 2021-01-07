@@ -1,10 +1,9 @@
 package local
 
 import (
-	"math/rand"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/random"
 )
 
 // sharedBlock is a reference counted Block. Whereas Block can only be
@@ -112,7 +111,7 @@ func (bl *volatileBlockList) PushBack() error {
 
 	bl.blocks = append(bl.blocks, volatileBlockInfo{
 		block:         newSharedBlock(block),
-		epochHashSeed: rand.Uint64(),
+		epochHashSeed: random.CryptoThreadSafeGenerator.Uint64(),
 	})
 	return nil
 }

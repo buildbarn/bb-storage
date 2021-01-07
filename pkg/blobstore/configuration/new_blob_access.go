@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redisext"
@@ -316,7 +316,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				blockAllocator,
 				sectorSizeBytes,
 				blockSectorCount)
-			keyLocationMapHashInitialization = rand.Uint64()
+			keyLocationMapHashInitialization = random.CryptoThreadSafeGenerator.Uint64()
 		} else {
 			// Persistency is enabled. Reload previous
 			// persistent state from disk.

@@ -40,6 +40,7 @@ go_library(
         "//pkg/filesystem:go_default_library",
         "//pkg/filesystem/path:go_default_library",
         "//pkg/proto/blobstore/local:go_default_library",
+        "//pkg/random:go_default_library",
         "//pkg/util:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_prometheus_client_golang//prometheus:go_default_library",

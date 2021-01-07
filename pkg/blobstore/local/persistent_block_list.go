@@ -1,11 +1,10 @@
 package local
 
 import (
-	"math/rand"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/random"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -328,7 +327,7 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 			//    created. This means the current epoch
 			//    cannot reference the block.
 			if len(bl.epochLastAbsoluteBlockIndex) == bl.synchronizingEpochs || bl.epochLastAbsoluteBlockIndex[len(bl.epochLastAbsoluteBlockIndex)-1] < absoluteBlockIndex {
-				bl.epochHashSeeds = append(bl.epochHashSeeds, rand.Uint64())
+				bl.epochHashSeeds = append(bl.epochHashSeeds, random.CryptoThreadSafeGenerator.Uint64())
 				bl.epochLastAbsoluteBlockIndex = append(bl.epochLastAbsoluteBlockIndex, bl.totalBlocksReleased+len(bl.blocks)-1)
 				bl.blocks[len(bl.blocks)-1].epochCount++
 
