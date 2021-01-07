@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 )
 
-// Uint32 holds an uint32 that can only be accessed through atomic
+// Uint32 holds a uint32 that can only be accessed through atomic
 // operations. This type is guaranteed to be properly aligned. Instances
 // of this type cannot be moved to a different location in memory.
 type Uint32 struct {
