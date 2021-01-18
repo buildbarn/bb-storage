@@ -26,12 +26,12 @@ func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobRepli
 
 func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
-	case *pb.BlobReplicatorConfiguration_Remote:
-		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Remote)
+	case *pb.BlobReplicatorConfiguration_Grpc:
+		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Grpc)
 		if err != nil {
 			return nil, err
 		}
-		return replication.NewRemoteBlobReplicator(source, client), nil
+		return replication.NewGrpcBlobReplicator(source, client), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain a supported replicator")
 	}

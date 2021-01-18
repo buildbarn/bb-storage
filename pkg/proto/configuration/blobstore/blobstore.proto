@@ -556,7 +556,7 @@ message BlobReplicatorConfiguration {
     //
     // This strategy is only supported for the Content Addressable
     // Storage.
-    buildbarn.configuration.grpc.ClientConfiguration remote = 2;
+    buildbarn.configuration.grpc.ClientConfiguration grpc = 2;
 
     // Queue and deduplicate all replication operations prior to
     // executing them.

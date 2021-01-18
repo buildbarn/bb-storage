@@ -12,22 +12,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-type remoteBlobReplicator struct {
+type GrpcBlobReplicator struct {
 	source           blobstore.BlobAccess
 	replicatorClient replicator.ReplicatorClient
 }
 
-// NewRemoteBlobReplicator creates a BlobReplicator that forwards
+// NewGrpcBlobReplicator creates a BlobReplicator that forwards
 // requests to a remote gRPC service. This service may be used to
 // deduplicate and queue replication actions globally.
-func NewRemoteBlobReplicator(source blobstore.BlobAccess, client grpc.ClientConnInterface) BlobReplicator {
-	return &remoteBlobReplicator{
+func NewGrpcBlobReplicator(source blobstore.BlobAccess, client grpc.ClientConnInterface) BlobReplicator {
+	return &GrpcBlobReplicator{
 		source:           source,
 		replicatorClient: replicator.NewReplicatorClient(client),
 	}
 }
 
-func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (br *GrpcBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	b := br.source.Get(ctx, digest)
 	b, t := buffer.WithBackgroundTask(b)
 	go func() {
@@ -44,7 +44,7 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 	return b
 }
 
-func (br *remoteBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (br *GrpcBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	// Partition all digests by instance name, as the
 	// ReplicateBlobs() RPC can only process digests for a single
 	// instance. This is not a serious limitation, as digest sets
