@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "aws",
     srcs = [
         "s3.go",
         "session.go",
@@ -9,11 +9,11 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/cloud/aws",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/proto/configuration/cloud/aws:go_default_library",
-        "@com_github_aws_aws_sdk_go//aws:go_default_library",
-        "@com_github_aws_aws_sdk_go//aws/credentials:go_default_library",
-        "@com_github_aws_aws_sdk_go//aws/request:go_default_library",
-        "@com_github_aws_aws_sdk_go//aws/session:go_default_library",
-        "@com_github_aws_aws_sdk_go//service/s3:go_default_library",
+        "//pkg/proto/configuration/cloud/aws",
+        "@com_github_aws_aws_sdk_go//aws",
+        "@com_github_aws_aws_sdk_go//aws/credentials",
+        "@com_github_aws_aws_sdk_go//aws/request",
+        "@com_github_aws_aws_sdk_go//aws/session",
+        "@com_github_aws_aws_sdk_go//service/s3",
     ],
 )

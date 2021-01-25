@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "digest",
     srcs = [
         "configuration.go",
         "digest.go",
@@ -16,20 +16,20 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/digest",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/clock:go_default_library",
-        "//pkg/eviction:go_default_library",
-        "//pkg/proto/configuration/digest:go_default_library",
-        "//pkg/util:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
+        "//pkg/clock",
+        "//pkg/eviction",
+        "//pkg/proto/configuration/digest",
+        "//pkg/util",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
-        "@com_github_google_uuid//:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@com_github_google_uuid//:uuid",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "digest_test",
     srcs = [
         "digest_test.go",
         "existence_cache_test.go",
@@ -39,15 +39,15 @@ go_test(
         "set_builder_test.go",
         "set_test.go",
     ],
-    embed = [":go_default_library"],
+    embed = [":digest"],
     deps = [
         "//internal/mock:go_default_library",
-        "//pkg/eviction:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_golang_mock//gomock:go_default_library",
-        "@com_github_google_uuid//:go_default_library",
-        "@com_github_stretchr_testify//require:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "//pkg/eviction",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_golang_mock//gomock",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

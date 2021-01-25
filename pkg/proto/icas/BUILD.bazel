@@ -15,11 +15,11 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/icas",
     proto = ":icas_proto",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library"],
+    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "icas",
     embed = [":icas_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/icas",
     visibility = ["//visibility:public"],

@@ -24,17 +24,17 @@ go_proto_library(
     proto = ":blobstore_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/proto/configuration/blockdevice:go_default_library",
-        "//pkg/proto/configuration/cloud/aws:go_default_library",
-        "//pkg/proto/configuration/digest:go_default_library",
-        "//pkg/proto/configuration/grpc:go_default_library",
-        "//pkg/proto/configuration/tls:go_default_library",
+        "//pkg/proto/configuration/blockdevice",
+        "//pkg/proto/configuration/cloud/aws",
+        "//pkg/proto/configuration/digest",
+        "//pkg/proto/configuration/grpc",
+        "//pkg/proto/configuration/tls",
         "@go_googleapis//google/rpc:status_go_proto",
     ],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "blobstore",
     embed = [":blobstore_go_proto"],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore",
     visibility = ["//visibility:public"],

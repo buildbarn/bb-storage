@@ -3,32 +3,32 @@ load("@io_bazel_rules_docker//go:image.bzl", "go_image")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bb_replicator_lib",
     srcs = ["main.go"],
     importpath = "github.com/buildbarn/bb-storage/cmd/bb_replicator",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/blobstore/configuration:go_default_library",
-        "//pkg/blobstore/replication:go_default_library",
-        "//pkg/global:go_default_library",
-        "//pkg/grpc:go_default_library",
-        "//pkg/proto/configuration/bb_replicator:go_default_library",
-        "//pkg/proto/replicator:go_default_library",
-        "//pkg/util:go_default_library",
+        "//pkg/blobstore/configuration",
+        "//pkg/blobstore/replication",
+        "//pkg/global",
+        "//pkg/grpc",
+        "//pkg/proto/configuration/bb_replicator",
+        "//pkg/proto/replicator",
+        "//pkg/util",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )
 
 go_binary(
     name = "bb_replicator",
-    embed = [":go_default_library"],
+    embed = [":bb_replicator_lib"],
     pure = "on",
     visibility = ["//visibility:public"],
 )
 
 go_image(
     name = "bb_replicator_container",
-    embed = [":go_default_library"],
+    embed = [":bb_replicator_lib"],
     pure = "on",
     visibility = ["//visibility:public"],
 )

@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "grpcclients",
     srcs = [
         "ac_blob_access.go",
         "cas_blob_access.go",
@@ -10,16 +10,16 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/blobstore:go_default_library",
-        "//pkg/blobstore/buffer:go_default_library",
-        "//pkg/digest:go_default_library",
-        "//pkg/proto/icas:go_default_library",
-        "//pkg/util:go_default_library",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:go_default_library",
-        "@com_github_google_uuid//:go_default_library",
+        "//pkg/blobstore",
+        "//pkg/blobstore/buffer",
+        "//pkg/digest",
+        "//pkg/proto/icas",
+        "//pkg/util",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_google_uuid//:uuid",
         "@go_googleapis//google/bytestream:bytestream_go_proto",
         "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

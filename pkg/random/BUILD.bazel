@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "random",
     srcs = [
         "crypto_thread_safe_generator.go",
         "fast_single_threaded_generator.go",
@@ -14,8 +14,8 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "random_test",
     srcs = ["single_threaded_generator_test.go"],
-    embed = [":go_default_library"],
-    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+    embed = [":random"],
+    deps = ["@com_github_stretchr_testify//require"],
 )
