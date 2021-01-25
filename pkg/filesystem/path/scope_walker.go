@@ -13,5 +13,13 @@ type ScopeWalker interface {
 	// whether path resolution needs to be relative to the current
 	// directory (e.g., working directory or parent directory of the
 	// previous symlink encountered) or the root directory.
+	//
+	// For every instance of ScopeWalker, OnScope() may be called at
+	// most once. Resolve() will always call into OnScope() for
+	// every ScopeWalker presented, though decorators such as
+	// VirtualRootScopeWalkerFactory may only call it when the path
+	// is known to be valid. Absence of calls to OnScope() are used
+	// to indicate that the provided path does not resolve to a
+	// location inside the file system.
 	OnScope(absolute bool) (ComponentWalker, error)
 }

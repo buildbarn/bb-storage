@@ -3,15 +3,22 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "absolute_scope_walker.go",
+        "builder.go",
         "component.go",
         "component_walker.go",
+        "loop_detecting_scope_walker.go",
         "relative_scope_walker.go",
         "resolve.go",
         "scope_walker.go",
+        "virtual_root_scope_walker_factory.go",
+        "void_component_walker.go",
+        "void_scope_walker.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem/path",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/util:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//status:go_default_library",
     ],
@@ -20,9 +27,13 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "absolute_scope_walker_test.go",
+        "builder_test.go",
         "component_test.go",
+        "loop_detecting_scope_walker_test.go",
         "relative_scope_walker_test.go",
         "resolve_test.go",
+        "virtual_root_scope_walker_factory_test.go",
     ],
     embed = [":go_default_library"],
     deps = [

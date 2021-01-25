@@ -43,8 +43,8 @@ func (GotSymlink) isGotDirectoryOrSymlink()   {}
 // every pathname component that is processed.
 //
 // Each of ComponentWalker's methods invalidate the object on which it
-// is called. Additional calls must be directed against the Walkers and
-// ComponentWalkers yielded by these methods.
+// is called. Additional calls must be directed against the ScopeWalkers
+// and ComponentWalkers yielded by these methods.
 type ComponentWalker interface {
 	// OnDirectory is called for every pathname component that must
 	// resolve to a directory or a symbolic link to a directory.
