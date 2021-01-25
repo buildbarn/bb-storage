@@ -248,6 +248,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		}, "mirrored", nil
 	case *pb.BlobAccessConfiguration_Local:
 		digestKeyFormat := creator.GetBaseDigestKeyFormat()
+		persistent := backend.Local.Persistent
 
 		// Create the backing store for blocks of data.
 		var backendType string
@@ -276,7 +277,9 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			var blockDevice blockdevice.BlockDevice
 			var sectorCount int64
 			var err error
-			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(blocksOnBlockDevice.Source)
+			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(
+				blocksOnBlockDevice.Source,
+				persistent == nil)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open blocks block device")
 			}
@@ -309,7 +312,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		var blockList local.BlockList
 		var keyLocationMapHashInitialization uint64
 		initialBlockCount := 0
-		if persistent := backend.Local.Persistent; persistent == nil {
+		if persistent == nil {
 			// Persistency is disabled. Provide a simple
 			// volatile BlockList.
 			blockList = local.NewVolatileBlockList(
@@ -394,7 +397,9 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				locationRecordArraySize,
 				locationBlobMap)
 		case *pb.LocalBlobAccessConfiguration_KeyLocationMapOnBlockDevice:
-			blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromConfiguration(keyLocationMapBackend.KeyLocationMapOnBlockDevice)
+			blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromConfiguration(
+				keyLocationMapBackend.KeyLocationMapOnBlockDevice,
+				persistent == nil)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open key-location map block device")
 			}

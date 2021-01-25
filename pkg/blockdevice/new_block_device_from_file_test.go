@@ -14,8 +14,8 @@ import (
 )
 
 func TestNewBlockDeviceFromFile(t *testing.T) {
-	blockDevicePath := filepath.Join(os.Getenv("TEST_TMPDIR"), t.Name())
-	blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 123456)
+	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
+	blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 123456, true)
 	require.NoError(t, err)
 
 	// The sector size should be a power of two, and the number of
@@ -64,4 +64,47 @@ func TestNewBlockDeviceFromFile(t *testing.T) {
 	require.True(t, debug.SetPanicOnFault(false))
 	require.Equal(t, 0, n)
 	require.Equal(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+}
+
+func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {
+	// Initialize the file that backs the block device with some
+	// contents. These contents should be accessible when the block
+	// device is created without the zeroInitialize option set.
+	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
+	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0666)
+	require.NoError(t, err)
+	_, err = f.Write([]byte("Hello"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, false)
+	require.NoError(t, err)
+
+	var b [5]byte
+	n, err := blockDevice.ReadAt(b[:], 0)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+	require.Equal(t, []byte("Hello"), b[:])
+}
+
+func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
+	// This test is identical to the previous one, except that the
+	// block device is opened with the zeroInitialize option set.
+	// This means that the original contents of the file that backs
+	// the block device are gone.
+	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
+	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0666)
+	require.NoError(t, err)
+	_, err = f.Write([]byte("Hello"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, true)
+	require.NoError(t, err)
+
+	var b [5]byte
+	n, err := blockDevice.ReadAt(b[:], 0)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+	require.Equal(t, []byte("\x00\x00\x00\x00\x00"), b[:])
 }

@@ -15,8 +15,12 @@ import (
 // using NewBlockDeviceFromDevice, but is often easier to set up in
 // environments where spare disks (or the privileges needed to access
 // those) aren't readily available.
-func NewBlockDeviceFromFile(path string, minimumSizeBytes int) (BlockDevice, int, int64, error) {
-	fd, err := unix.Open(path, unix.O_CREAT|unix.O_RDWR, 0666)
+func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bool) (BlockDevice, int, int64, error) {
+	flags := unix.O_CREAT | unix.O_RDWR
+	if zeroInitialize {
+		flags |= unix.O_TRUNC
+	}
+	fd, err := unix.Open(path, flags, 0666)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to open file %#v", path)
 	}
