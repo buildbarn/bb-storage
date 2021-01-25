@@ -110,7 +110,17 @@ message ServerConfiguration {
   // Network addresses on which to listen (e.g., ":8980").
   repeated string listen_addresses = 1;
 
-  // UNIX socket paths on which to listen (e.g., "/var/run/runner.sock").
+  // UNIX socket paths on which to listen (e.g., "/var/run/runner/grpc").
+  //
+  // NOTE: No facilities are provided to set the ownership or
+  // permissions on the socket file. On most operating systems, the
+  // socket file will have mode 0777. How the mode is interpreted when
+  // changed is inconsistent between operating systems. Some require the
+  // socket to be writable in order to connect, while others ignore the
+  // permissions altogether.
+  //
+  // It is therefore strongly advised that socket files are placed
+  // inside directories that have access controls set up properly.
   repeated string listen_paths = 2;
 
   // TLS configuration. TLS is not enabled when left unset.
