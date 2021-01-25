@@ -1,3 +1,4 @@
+*注：本文档是从2021-01-25的英语版本翻译而来的*
 # Buildbarn的Storage守护进程
 
 Buildbarn提供了远程执行协议（[Remote Execution protocol](https://github.com/bazelbuild/remote-apis)）的一种实现。远端执行协议被 [Bazel](https://bazel.build/)、[BuildStream](https://wiki.gnome.org/Projects/BuildStream/) 、[recc](https://gitlab.com/bloomberg/recc) 等工具用作远端缓存和远端执行。
