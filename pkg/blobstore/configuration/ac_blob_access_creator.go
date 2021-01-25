@@ -54,7 +54,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
 				bac.contentAddressableStorage.BlobAccess,
-				100,
+				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
