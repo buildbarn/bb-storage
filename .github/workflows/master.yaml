@@ -1,7 +1,7 @@
 {
    "jobs": {
       "build_and_test": {
-         "container": "docker://l.gcr.io/google/bazel:3.3.1",
+         "container": "docker://l.gcr.io/google/bazel:3.5.0",
          "runs-on": "ubuntu-latest",
          "steps": [
             {

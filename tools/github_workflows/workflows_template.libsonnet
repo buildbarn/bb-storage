@@ -49,7 +49,7 @@
   local getJobs(binaries, containers, doUpload) = {
     build_and_test: {
       'runs-on': 'ubuntu-latest',
-      container: 'docker://l.gcr.io/google/bazel:3.3.1',
+      container: 'docker://l.gcr.io/google/bazel:3.5.0',
       steps: [
         {
           name: 'Check out source code',
