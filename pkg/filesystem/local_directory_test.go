@@ -2,7 +2,6 @@ package filesystem_test
 
 import (
 	"os"
-	"path/filepath"
 	"runtime"
 	"syscall"
 	"testing"
@@ -13,9 +12,7 @@ import (
 )
 
 func openTmpDir(t *testing.T) filesystem.DirectoryCloser {
-	p := filepath.Join(os.Getenv("TEST_TMPDIR"), t.Name())
-	require.NoError(t, os.Mkdir(p, 0777))
-	d, err := filesystem.NewLocalDirectory(p)
+	d, err := filesystem.NewLocalDirectory(t.TempDir())
 	require.NoError(t, err)
 	return d
 }
