@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
@@ -56,6 +57,25 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
+message ProbabilitySamplingPolicy {
+  // Probability in range [0, 1.0] with which to sample a trace.
+  // (Traces with a parent trace will also be sampled.)
+  double p = 1;
+}
+
+message SamplingPolicy {
+  oneof policy {
+    // Sample all traces.
+    google.protobuf.Empty always = 1;
+
+    // Never sample traces.
+    google.protobuf.Empty never = 2;
+
+    // Sample traces based on a probability.
+    ProbabilitySamplingPolicy probability = 3;
+  }
+}
+
 message TracingConfiguration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
@@ -68,6 +88,9 @@ message TracingConfiguration {
 
   // Whether or not all traces should be sampled.
   bool always_sample = 4;
+
+  // Policy to use to decide to sample traces.
+  SamplingPolicy sampling_policy = 5;
 }
 
 message Configuration {

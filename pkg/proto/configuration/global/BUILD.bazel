@@ -13,7 +13,10 @@ proto_library(
     name = "global_proto",
     srcs = ["global.proto"],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_protobuf//:duration_proto"],
+    deps = [
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:empty_proto",
+    ],
 )
 
 go_proto_library(

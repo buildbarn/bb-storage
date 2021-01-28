@@ -13,6 +13,8 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@com_github_prometheus_client_golang//prometheus/push",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
         "@io_opencensus_go//plugin/ocgrpc",
         "@io_opencensus_go//stats/view",
         "@io_opencensus_go//trace",
