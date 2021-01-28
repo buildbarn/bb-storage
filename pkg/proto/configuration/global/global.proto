@@ -57,12 +57,6 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
-message ProbabilitySamplingPolicy {
-  // Probability in range [0, 1.0] with which to sample a trace.
-  // (Traces with a parent trace will also be sampled.)
-  double p = 1;
-}
-
 message TracingConfiguration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
@@ -81,8 +75,9 @@ message TracingConfiguration {
     // Never sample traces.
     google.protobuf.Empty sample_never = 6;
 
-    // Sample traces based on a probability.
-    ProbabilitySamplingPolicy sample_probability = 7;
+    // Probability in range [0, 1.0] with which to sample a trace.
+    // (Traces with a parent trace will also be sampled.)
+    double sample_probability = 7;
   }
 }
 

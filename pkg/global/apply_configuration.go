@@ -114,7 +114,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.NeverSample()})
 
 			case *pb.TracingConfiguration_SampleProbability:
-				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability.P)})
+				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability)})
 
 			default:
 				return nil, status.Error(codes.InvalidArgument, "Failed to decode sampling policy from configuration")
