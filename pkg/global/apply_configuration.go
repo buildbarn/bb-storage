@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -105,15 +106,15 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 		}
 
 		if samplingPolicy := tracingConfiguration.SamplingPolicy; samplingPolicy != nil {
-			switch policyKind := samplingPolicy.Policy.(type) {
-			case *pb.SamplingPolicy_Always:
+			switch policy := samplingPolicy.(type) {
+			case *pb.TracingConfiguration_SampleAlways:
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 
-			case *pb.SamplingPolicy_Never:
+			case *pb.TracingConfiguration_SampleNever:
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.NeverSample()})
 
-			case *pb.SamplingPolicy_Probability:
-				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policyKind.Probability.P)})
+			case *pb.TracingConfiguration_SampleProbability:
+				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability.P)})
 
 			default:
 				return nil, status.Error(codes.InvalidArgument, "Failed to decode sampling policy from configuration")

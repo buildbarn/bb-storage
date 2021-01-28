@@ -63,19 +63,6 @@ message ProbabilitySamplingPolicy {
   double p = 1;
 }
 
-message SamplingPolicy {
-  oneof policy {
-    // Sample all traces.
-    google.protobuf.Empty always = 1;
-
-    // Never sample traces.
-    google.protobuf.Empty never = 2;
-
-    // Sample traces based on a probability.
-    ProbabilitySamplingPolicy probability = 3;
-  }
-}
-
 message TracingConfiguration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
@@ -86,11 +73,17 @@ message TracingConfiguration {
   // Export stats on traces to Prometheus.
   bool enable_prometheus = 3;
 
-  // Whether or not all traces should be sampled.
-  bool always_sample = 4;
-
   // Policy to use to decide to sample traces.
-  SamplingPolicy sampling_policy = 5;
+  oneof sampling_policy {
+    // Sample all traces.
+    google.protobuf.Empty sample_always = 5;
+
+    // Never sample traces.
+    google.protobuf.Empty sample_never = 6;
+
+    // Sample traces based on a probability.
+    ProbabilitySamplingPolicy sample_probability = 7;
+  }
 }
 
 message Configuration {
