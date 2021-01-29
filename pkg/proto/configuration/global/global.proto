@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
@@ -66,8 +67,18 @@ message TracingConfiguration {
   // Export stats on traces to Prometheus.
   bool enable_prometheus = 3;
 
-  // Whether or not all traces should be sampled.
-  bool always_sample = 4;
+  // Policy to use to decide to sample traces.
+  oneof sampling_policy {
+    // Sample all traces.
+    google.protobuf.Empty sample_always = 5;
+
+    // Never sample traces.
+    google.protobuf.Empty sample_never = 6;
+
+    // Probability in range [0, 1.0] with which to sample a trace.
+    // (Traces with a parent trace will also be sampled.)
+    double sample_probability = 7;
+  }
 }
 
 message Configuration {

@@ -19,5 +19,7 @@ go_library(
         "@io_opencensus_go_contrib_exporter_jaeger//:jaeger",
         "@io_opencensus_go_contrib_exporter_prometheus//:prometheus",
         "@io_opencensus_go_contrib_exporter_stackdriver//:stackdriver",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
