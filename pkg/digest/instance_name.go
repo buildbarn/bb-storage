@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"hash"
 	"strings"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -132,4 +133,36 @@ func (in InstanceName) newDigestUnchecked(hash string, sizeBytes int64) Digest {
 
 func (in InstanceName) String() string {
 	return in.value
+}
+
+// GetDigestFunction creates a digest function object that is based on
+// an instance name object and an REv2 digest function enumeration
+// value.
+//
+// When generating digests from within a context where a parent digest
+// exists (e.g., on a worker that is executing an action), it is
+// possible to call Digest.GetDigestFunction(). This function can be
+// used when digests need to be generated outside of such contexts
+// (e.g., on a client that is uploading actions into the Content
+// Addressable Storage).
+func (in InstanceName) GetDigestFunction(digestFunction remoteexecution.DigestFunction_Value) (Function, error) {
+	var hasherFactory func() hash.Hash
+	switch digestFunction {
+	case remoteexecution.DigestFunction_MD5:
+		hasherFactory = md5.New
+	case remoteexecution.DigestFunction_SHA1:
+		hasherFactory = sha1.New
+	case remoteexecution.DigestFunction_SHA256:
+		hasherFactory = sha256.New
+	case remoteexecution.DigestFunction_SHA384:
+		hasherFactory = sha512.New384
+	case remoteexecution.DigestFunction_SHA512:
+		hasherFactory = sha512.New
+	default:
+		return Function{}, status.Error(codes.InvalidArgument, "Unknown digest function")
+	}
+	return Function{
+		instanceName:  in,
+		hasherFactory: hasherFactory,
+	}, nil
 }

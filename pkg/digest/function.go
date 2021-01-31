@@ -3,6 +3,8 @@ package digest
 import (
 	"encoding/hex"
 	"hash"
+
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 )
 
 // Function for computing new Digest objects. Function is a tuple of the
@@ -10,6 +12,22 @@ import (
 type Function struct {
 	instanceName  InstanceName
 	hasherFactory func() hash.Hash
+}
+
+// MustNewFunction constructs a Function similar to
+// InstanceName.GetDigestFunction(), but never returns an error.
+// Instead, execution will abort if the provided options are invalid.
+// Useful for unit testing.
+func MustNewFunction(instanceName string, digestFunction remoteexecution.DigestFunction_Value) Function {
+	in, err := NewInstanceName(instanceName)
+	if err != nil {
+		panic(err)
+	}
+	f, err := in.GetDigestFunction(digestFunction)
+	if err != nil {
+		panic(err)
+	}
+	return f
 }
 
 // GetInstanceName returns the instance name that Digest objects would
