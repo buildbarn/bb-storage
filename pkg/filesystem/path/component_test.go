@@ -20,6 +20,9 @@ func TestComponent(t *testing.T) {
 
 		_, ok = path.NewComponent("foo/bar")
 		require.False(t, ok)
+
+		_, ok = path.NewComponent("hello\x00world")
+		require.False(t, ok)
 	})
 
 	t.Run("Valid", func(t *testing.T) {

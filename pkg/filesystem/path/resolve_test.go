@@ -7,10 +7,22 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestResolve(t *testing.T) {
 	ctrl := gomock.NewController(t)
+
+	t.Run("NullByte", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+
+		require.Equal(
+			t,
+			status.Error(codes.InvalidArgument, "Path contains a null byte"),
+			path.Resolve("hello\x00world", scopeWalker))
+	})
 
 	t.Run("Empty", func(t *testing.T) {
 		scopeWalker := mock.NewMockScopeWalker(ctrl)

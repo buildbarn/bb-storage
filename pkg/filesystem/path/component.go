@@ -11,9 +11,10 @@ type Component struct {
 }
 
 // NewComponent creates a new pathname component. Creation fails in case
-// the name is empty, ".", ".." or contains a slash.
+// the name is empty, ".", "..", contains a slash, or is not a valid
+// C string.
 func NewComponent(name string) (Component, bool) {
-	if name == "" || name == "." || name == ".." || strings.ContainsRune(name, '/') {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\x00") {
 		return Component{}, false
 	}
 	return Component{name: name}, true

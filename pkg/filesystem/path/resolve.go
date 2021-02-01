@@ -2,6 +2,9 @@ package path
 
 import (
 	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func stripOneOrMoreSlashes(p string) string {
@@ -22,6 +25,13 @@ type resolverState struct {
 // processed. This happens once when the resolution process starts, and
 // will happen for every symlink encountered.
 func (rs *resolverState) push(scopeWalker ScopeWalker, path string) error {
+	// Unix-style paths are generally passed to system calls that
+	// accept C strings. There is no way these can accept null
+	// bytes.
+	if strings.ContainsRune(path, '\x00') {
+		return status.Error(codes.InvalidArgument, "Path contains a null byte")
+	}
+
 	// Determine whether the path is absolute.
 	absolute := false
 	if path != "" && path[0] == '/' {
