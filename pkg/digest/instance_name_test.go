@@ -66,6 +66,10 @@ func TestInstanceNameGetDigestFunction(t *testing.T) {
 		g := digestFunction.NewGenerator()
 		g.Write([]byte("Hello"))
 		require.Equal(t, digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5), g.Sum())
+
+		require.True(t, digest.MustNewDigest("hello", "ff9cecc701d5f6c1e45d5163a4cf850a", 123).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("bye", "74979421339434acb78d07ad44754015", 456).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("hello", "5ad9e0fd2f11ec59c95c60020c2b00afbef10e5b", 789).UsesDigestFunction(digestFunction))
 	})
 
 	t.Run("SHA-1", func(t *testing.T) {
@@ -75,5 +79,9 @@ func TestInstanceNameGetDigestFunction(t *testing.T) {
 		g := digestFunction.NewGenerator()
 		g.Write([]byte("Hello"))
 		require.Equal(t, digest.MustNewDigest("hello", "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0", 5), g.Sum())
+
+		require.True(t, digest.MustNewDigest("hello", "b407b10e52b2bddee20be9e475c8755d9de67473", 123).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("bye", "f11999245771a5c184b62dc5380e0d8b42df67b4", 456).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("hello", "1f69e2d170a0ada2b853fe2adc6d1c47", 789).UsesDigestFunction(digestFunction))
 	})
 }

@@ -12,6 +12,7 @@ import (
 type Function struct {
 	instanceName  InstanceName
 	hasherFactory func() hash.Hash
+	hashLength    int
 }
 
 // MustNewFunction constructs a Function similar to

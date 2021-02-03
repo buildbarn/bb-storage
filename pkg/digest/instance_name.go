@@ -147,22 +147,29 @@ func (in InstanceName) String() string {
 // Addressable Storage).
 func (in InstanceName) GetDigestFunction(digestFunction remoteexecution.DigestFunction_Value) (Function, error) {
 	var hasherFactory func() hash.Hash
+	var hashLength int
 	switch digestFunction {
 	case remoteexecution.DigestFunction_MD5:
 		hasherFactory = md5.New
+		hashLength = md5.Size * 2
 	case remoteexecution.DigestFunction_SHA1:
 		hasherFactory = sha1.New
+		hashLength = sha1.Size * 2
 	case remoteexecution.DigestFunction_SHA256:
 		hasherFactory = sha256.New
+		hashLength = sha256.Size * 2
 	case remoteexecution.DigestFunction_SHA384:
 		hasherFactory = sha512.New384
+		hashLength = sha512.Size384 * 2
 	case remoteexecution.DigestFunction_SHA512:
 		hasherFactory = sha512.New
+		hashLength = sha512.Size * 2
 	default:
 		return Function{}, status.Error(codes.InvalidArgument, "Unknown digest function")
 	}
 	return Function{
 		instanceName:  in,
 		hasherFactory: hasherFactory,
+		hashLength:    hashLength,
 	}, nil
 }

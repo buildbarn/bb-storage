@@ -263,9 +263,8 @@ func (d Digest) ToSingletonSet() Set {
 	}
 }
 
-func (d Digest) getHasherFactory() func() hash.Hash {
-	hashEnd, _, _ := d.unpack()
-	switch hashEnd {
+func getHasherFactory(hashLength int) func() hash.Hash {
+	switch hashLength {
 	case md5.Size * 2:
 		return md5.New
 	case sha1.Size * 2:
@@ -286,7 +285,8 @@ func (d Digest) getHasherFactory() func() hash.Hash {
 // algorithm as the one that was used to create the digest, making it
 // possible to validate data against a digest.
 func (d Digest) NewHasher() hash.Hash {
-	return d.getHasherFactory()()
+	hashEnd, _, _ := d.unpack()
+	return getHasherFactory(hashEnd)()
 }
 
 // GetDigestFunction returns a Function object that can be used to
@@ -295,8 +295,20 @@ func (d Digest) NewHasher() hash.Hash {
 // to be derived based on an existing instance. For example, to generate
 // a digest of an output file of a build action, given an action digest.
 func (d Digest) GetDigestFunction() Function {
+	hashEnd, _, sizeBytesEnd := d.unpack()
 	return Function{
-		instanceName:  d.GetInstanceName(),
-		hasherFactory: d.getHasherFactory(),
+		instanceName: InstanceName{
+			value: d.value[sizeBytesEnd+1:],
+		},
+		hasherFactory: getHasherFactory(hashEnd),
+		hashLength:    hashEnd,
 	}
+}
+
+// UsesDigestFunction returns true iff a Digest has the same instance
+// name and uses the same hashing algorithm as a provided Function
+// object.
+func (d Digest) UsesDigestFunction(f Function) bool {
+	hashEnd, _, sizeBytesEnd := d.unpack()
+	return hashEnd == f.hashLength && d.value[sizeBytesEnd+1:] == f.instanceName.value
 }
