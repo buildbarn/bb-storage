@@ -51,7 +51,10 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 		// it. Simulate that this fails.
 		source.EXPECT().GetPersistentState().Return(uint32(7), []*pb.BlockState{
 			{
-				BlockOffsetBytes: 1024,
+				BlockLocation: &pb.BlockLocation{
+					OffsetBytes: 1024,
+					SizeBytes:   1024,
+				},
 				WriteOffsetBytes: 123,
 				EpochHashSeeds:   []uint64{1, 2, 3},
 			},
@@ -60,7 +63,10 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 			OldestEpochId: 7,
 			Blocks: []*pb.BlockState{
 				{
-					BlockOffsetBytes: 1024,
+					BlockLocation: &pb.BlockLocation{
+						OffsetBytes: 1024,
+						SizeBytes:   1024,
+					},
 					WriteOffsetBytes: 123,
 					EpochHashSeeds:   []uint64{1, 2, 3},
 				},
@@ -78,7 +84,10 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 		// We'd better write the latest version of it.
 		source.EXPECT().GetPersistentState().Return(uint32(7), []*pb.BlockState{
 			{
-				BlockOffsetBytes: 1024,
+				BlockLocation: &pb.BlockLocation{
+					OffsetBytes: 1024,
+					SizeBytes:   1024,
+				},
 				WriteOffsetBytes: 456,
 				EpochHashSeeds:   []uint64{1, 2, 3, 4},
 			},
@@ -87,7 +96,10 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 			OldestEpochId: 7,
 			Blocks: []*pb.BlockState{
 				{
-					BlockOffsetBytes: 1024,
+					BlockLocation: &pb.BlockLocation{
+						OffsetBytes: 1024,
+						SizeBytes:   1024,
+					},
 					WriteOffsetBytes: 456,
 					EpochHashSeeds:   []uint64{1, 2, 3, 4},
 				},
@@ -168,7 +180,10 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 		// available after restarts.
 		source.EXPECT().GetPersistentState().Return(uint32(7), []*pb.BlockState{
 			{
-				BlockOffsetBytes: 1024,
+				BlockLocation: &pb.BlockLocation{
+					OffsetBytes: 1024,
+					SizeBytes:   1024,
+				},
 				WriteOffsetBytes: 456,
 				EpochHashSeeds:   []uint64{1, 2, 3, 4},
 			},
@@ -177,7 +192,10 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 			OldestEpochId: 7,
 			Blocks: []*pb.BlockState{
 				{
-					BlockOffsetBytes: 1024,
+					BlockLocation: &pb.BlockLocation{
+						OffsetBytes: 1024,
+						SizeBytes:   1024,
+					},
 					WriteOffsetBytes: 456,
 					EpochHashSeeds:   []uint64{1, 2, 3, 4},
 				},

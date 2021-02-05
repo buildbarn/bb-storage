@@ -10,6 +10,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
@@ -54,6 +56,7 @@ type blockDeviceBackedBlockAllocator struct {
 	blockDevice       blockdevice.BlockDevice
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
+	blockSizeBytes    int64
 
 	lock        sync.Mutex
 	freeOffsets []int64
@@ -85,6 +88,7 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 		blockDevice:       blockDevice,
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
+		blockSizeBytes:    blockSectorCount * int64(sectorSizeBytes),
 	}
 	for i := 0; i < blockCount; i++ {
 		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
@@ -102,24 +106,30 @@ func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
 	return pb
 }
 
-func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, int64, error) {
+func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
 	if len(pa.freeOffsets) == 0 {
-		return nil, 0, status.Error(codes.ResourceExhausted, "No unused blocks available")
+		return nil, nil, status.Error(codes.ResourceExhausted, "No unused blocks available")
 	}
 	offset := pa.freeOffsets[0]
 	pa.freeOffsets = pa.freeOffsets[1:]
-	return pa.newBlockObject(offset), offset, nil
+	return pa.newBlockObject(offset), &pb.BlockLocation{
+		OffsetBytes: offset * int64(pa.sectorSizeBytes),
+		SizeBytes:   pa.blockSizeBytes,
+	}, nil
 }
 
-func (pa *blockDeviceBackedBlockAllocator) NewBlockAtOffset(desiredOffset int64) (Block, bool) {
+func (pa *blockDeviceBackedBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation) (Block, bool) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
 	for i, offset := range pa.freeOffsets {
-		if offset == desiredOffset {
+		if proto.Equal(&pb.BlockLocation{
+			OffsetBytes: offset * int64(pa.sectorSizeBytes),
+			SizeBytes:   pa.blockSizeBytes,
+		}, location) {
 			pa.freeOffsets[i] = pa.freeOffsets[len(pa.freeOffsets)-1]
 			pa.freeOffsets = pa.freeOffsets[:len(pa.freeOffsets)-1]
 			return pa.newBlockObject(offset), true

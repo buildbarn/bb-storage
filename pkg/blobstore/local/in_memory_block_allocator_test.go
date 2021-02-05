@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -16,9 +17,9 @@ func TestInMemoryBlockAllocatorNewBlock(t *testing.T) {
 
 	blockAllocator := local.NewInMemoryBlockAllocator(1024)
 
-	block, offset, err := blockAllocator.NewBlock()
+	block, location, err := blockAllocator.NewBlock()
 	require.NoError(t, err)
-	require.Equal(t, int64(0), offset)
+	require.Nil(t, location)
 
 	// Write an object into the block.
 	require.NoError(t, block.Put(
@@ -36,28 +37,20 @@ func TestInMemoryBlockAllocatorNewBlock(t *testing.T) {
 	require.Equal(t, []byte("Hello world"), data)
 
 	block.Release()
-
-	// Successive blocks should have distinct offsets. This is
-	// needed to explain to the caller that blocks aren't being
-	// recycled.
-	block, offset, err = blockAllocator.NewBlock()
-	require.NoError(t, err)
-	require.Equal(t, int64(1024), offset)
-
-	block, offset, err = blockAllocator.NewBlock()
-	require.NoError(t, err)
-	require.Equal(t, int64(2048), offset)
 }
 
-func TestInMemoryBlockAllocatorNewBlockAtOffset(t *testing.T) {
+func TestInMemoryBlockAllocatorNewBlockAtLocation(t *testing.T) {
 	blockAllocator := local.NewInMemoryBlockAllocator(1024)
 
 	// InMemoryBlockAllocator provide no persistency, so
-	// NewBlockAtOffset() should simply not function. There is no
+	// NewBlockAtLocation() should simply not function. There is no
 	// way to get historical blocks back.
-	_, found := blockAllocator.NewBlockAtOffset(0)
+	_, found := blockAllocator.NewBlockAtLocation(nil)
 	require.False(t, found)
 
-	_, found = blockAllocator.NewBlockAtOffset(1024)
+	_, found = blockAllocator.NewBlockAtLocation(&pb.BlockLocation{
+		OffsetBytes: 1024,
+		SizeBytes:   1024,
+	})
 	require.False(t, found)
 }

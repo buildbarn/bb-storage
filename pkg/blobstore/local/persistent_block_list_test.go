@@ -31,13 +31,22 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// the persistent state yet, as no epochs were persisted after
 	// their creation.
 	block1 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block1, int64(0), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block1, &pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}, nil)
 	require.NoError(t, blockList.PushBack())
 	block2 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block2, int64(160), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block2, &pb.BlockLocation{
+		OffsetBytes: 160,
+		SizeBytes:   160,
+	}, nil)
 	require.NoError(t, blockList.PushBack())
 	block3 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block3, int64(320), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block3, &pb.BlockLocation{
+		OffsetBytes: 320,
+		SizeBytes:   160,
+	}, nil)
 	require.NoError(t, blockList.PushBack())
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()
@@ -84,17 +93,26 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	require.Equal(t, uint32(1), oldestEpochID)
 	require.Equal(t, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 0,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 0,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 69,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 320,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 320,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{epoch1HashSeed},
 		},
@@ -128,17 +146,26 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	require.Equal(t, uint32(1), oldestEpochID)
 	require.Equal(t, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 0,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 0,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 69,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 320,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 320,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{epoch1HashSeed},
 		},
@@ -154,17 +181,26 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	require.Equal(t, uint32(1), oldestEpochID)
 	require.Equal(t, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 0,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 0,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 37,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 69,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 320,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 320,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{epoch1HashSeed, epoch2HashSeed},
 		},
@@ -190,12 +226,18 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	require.Equal(t, uint32(1), oldestEpochID)
 	require.Equal(t, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 69,
 			EpochHashSeeds:   []uint64{},
 		},
 		{
-			BlockOffsetBytes: 320,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 320,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 0,
 			EpochHashSeeds:   []uint64{epoch1HashSeed, epoch2HashSeed},
 		},
@@ -215,7 +257,10 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	// Attach a Block to the BlockList in which we're going to write
 	// some data.
 	block := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block, int64(0), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block, &pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}, nil)
 	require.NoError(t, blockList.PushBack())
 
 	putWriter := blockList.Put(0, 5)
@@ -271,18 +316,30 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	// block at that specific offset.
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
 	block1 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlockAtOffset(int64(0)).Return(block1, true)
+	blockAllocator.EXPECT().NewBlockAtLocation(&pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}).Return(block1, true)
 	block2 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlockAtOffset(int64(160)).Return(block2, true)
+	blockAllocator.EXPECT().NewBlockAtLocation(&pb.BlockLocation{
+		OffsetBytes: 160,
+		SizeBytes:   160,
+	}).Return(block2, true)
 
 	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 5, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 0,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 0,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 42,
 			EpochHashSeeds:   []uint64{0x7c9dbac171efb2ee},
 		},
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 103,
 			EpochHashSeeds:   []uint64{0x598d432e782bf169, 0xff2c0b9d38a2b09c},
 		},
@@ -295,12 +352,18 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	require.Equal(t, uint32(5), oldestEpochID)
 	require.Equal(t, []*pb.BlockState{
 		{
-			BlockOffsetBytes: 0,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 0,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 42,
 			EpochHashSeeds:   []uint64{0x7c9dbac171efb2ee},
 		},
 		{
-			BlockOffsetBytes: 160,
+			BlockLocation: &pb.BlockLocation{
+				OffsetBytes: 160,
+				SizeBytes:   160,
+			},
 			WriteOffsetBytes: 103,
 			EpochHashSeeds:   []uint64{0x598d432e782bf169, 0xff2c0b9d38a2b09c},
 		},

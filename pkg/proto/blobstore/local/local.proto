@@ -4,9 +4,17 @@ package buildbarn.blobstore.local;
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local";
 
+message BlockLocation {
+  // Offset on the block device at which this block starts.
+  int64 offset_bytes = 1;
+
+  // Total size of this block.
+  int64 size_bytes = 2;
+}
+
 message BlockState {
-  // The offset at which this block is stored on the block device.
-  int64 block_offset_bytes = 1;
+  // Was 'block_offset_bytes'.
+  reserved 1;
 
   // The amount of space in the block that is already in use. No data
   // should be written before this offset, as the key-location map may
@@ -17,6 +25,9 @@ message BlockState {
   // while this block was the last allocated block. These hash seeds are
   // necessary to validate the integrity of key-location map entries.
   repeated uint64 epoch_hash_seeds = 3;
+
+  // The location at which this block is stored on the block device.
+  BlockLocation block_location = 4;
 }
 
 message PersistentState {

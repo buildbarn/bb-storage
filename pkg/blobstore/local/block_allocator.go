@@ -3,6 +3,7 @@ package local
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 )
 
 // Block of storage that contains a sequence of blobs. Buffers returned
@@ -20,19 +21,18 @@ type Block interface {
 // The methods provided this interface are not thread-safe. Exclusive
 // locking must be used when allocating blocks.
 type BlockAllocator interface {
-	// Used to allocate a fresh block of data. The offset at which
+	// Used to allocate a fresh block of data. The location at which
 	// this block is stored is returned, both to allow the caller to
 	// store this information as part of persistent state and to
 	// detect recycling of blocks that were used previously.
 	//
-	// If persistent storage is not supported, a made up offset
-	// (e.g., an incrementing counter value) needs to be returned.
-	NewBlock() (Block, int64, error)
+	// If persistent storage is not supported, nil may be returned.
+	NewBlock() (Block, *pb.BlockLocation, error)
 
-	// Used to obtain a block of data at an explicit offset. This is
+	// Used to obtain a block of data at an explicit location. This is
 	// called when attempting to reuse previous persistent state.
 	//
-	// This function may fail if no free block at this offset
+	// This function may fail if no free block at this location
 	// exists, or if persistent storage is not provided.
-	NewBlockAtOffset(offset int64) (Block, bool)
+	NewBlockAtLocation(location *pb.BlockLocation) (Block, bool)
 }

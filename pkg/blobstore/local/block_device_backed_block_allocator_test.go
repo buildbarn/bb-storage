@@ -8,6 +8,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -25,9 +27,12 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	// create ten blocks.
 	var blocks []local.Block
 	for i := 0; i < 10; i++ {
-		block, offset, err := pa.NewBlock()
+		block, location, err := pa.NewBlock()
 		require.NoError(t, err)
-		require.Equal(t, int64(i)*100, offset)
+		testutil.RequireEqualProto(t, &pb.BlockLocation{
+			OffsetBytes: int64(i) * 100,
+			SizeBytes:   100,
+		}, location)
 		blocks = append(blocks, block)
 	}
 
@@ -69,10 +74,13 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	// With the blob being consumed, the underlying block should be
 	// released. This means the block can be allocated once again.
 	// It should still start at offset 700.
-	var offset int64
-	blocks[7], offset, err = pa.NewBlock()
+	var location *pb.BlockLocation
+	blocks[7], location, err = pa.NewBlock()
 	require.NoError(t, err)
-	require.Equal(t, int64(700), offset)
+	testutil.RequireEqualProto(t, &pb.BlockLocation{
+		OffsetBytes: 700,
+		SizeBytes:   100,
+	}, location)
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
 	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 
@@ -84,24 +92,36 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		blocks[i].Release()
 	}
 	for _, i := range order {
-		blocks[i], offset, err = pa.NewBlock()
+		blocks[i], location, err = pa.NewBlock()
 		require.NoError(t, err)
-		require.Equal(t, int64(i)*100, offset)
+		testutil.RequireEqualProto(t, &pb.BlockLocation{
+			OffsetBytes: int64(i) * 100,
+			SizeBytes:   100,
+		}, location)
 
 		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i+83)).Return(5, nil)
 		require.NoError(t, blocks[i].Put(83, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	}
 
-	// The NewBlockAtOffset() function allows extracting blocks at a
-	// given offset. It shouldn't work on offsets of blocks that are
-	// already allocated.
-	_, found := pa.NewBlockAtOffset(700)
+	// The NewBlockAtLocation() function allows extracting blocks at
+	// a given location. It shouldn't work on invalid locations, or
+	// locations of blocks that are already allocated.
+	_, found := pa.NewBlockAtLocation(nil)
+	require.False(t, found)
+
+	_, found = pa.NewBlockAtLocation(&pb.BlockLocation{
+		OffsetBytes: 700,
+		SizeBytes:   100,
+	})
 	require.False(t, found)
 
 	// Releasing a block should make it possible to extract it using
-	// NewBlockAtOffset() again.
+	// NewBlockAtLocation() again.
 	blocks[7].Release()
-	blocks[7], found = pa.NewBlockAtOffset(700)
+	blocks[7], found = pa.NewBlockAtLocation(&pb.BlockLocation{
+		OffsetBytes: 700,
+		SizeBytes:   100,
+	})
 	require.True(t, found)
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
 	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))

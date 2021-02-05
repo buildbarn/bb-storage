@@ -42,14 +42,14 @@ func TestVolatileBlockList(t *testing.T) {
 
 	// Attempt to add a new block to the BlockList. Let the initial
 	// attempt fail. Errors should be propagated.
-	blockAllocator.EXPECT().NewBlock().Return(nil, int64(0), status.Error(codes.Internal, "No blocks available"))
+	blockAllocator.EXPECT().NewBlock().Return(nil, nil, status.Error(codes.Internal, "No blocks available"))
 	require.Equal(
 		t,
 		status.Error(codes.Internal, "No blocks available"),
 		blockList.PushBack())
 
 	block1 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block1, int64(0), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block1, nil, nil)
 	require.NoError(t, blockList.PushBack())
 
 	// With the new block added, we should now have entered epoch 1.
@@ -127,7 +127,7 @@ func TestVolatileBlockList(t *testing.T) {
 
 	// Add a second block to the BlockList.
 	block2 := mock.NewMockBlock(ctrl)
-	blockAllocator.EXPECT().NewBlock().Return(block2, int64(160), nil)
+	blockAllocator.EXPECT().NewBlock().Return(block2, nil, nil)
 	require.NoError(t, blockList.PushBack())
 
 	// Ensure that calls to BlockReferenceToBlockIndex() and

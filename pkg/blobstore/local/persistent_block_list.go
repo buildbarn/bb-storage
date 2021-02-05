@@ -44,8 +44,8 @@ func (nc *notificationChannel) unblock() {
 }
 
 type persistentBlockInfo struct {
-	block            *sharedBlock
-	blockOffsetBytes int64
+	block         *sharedBlock
+	blockLocation *pb.BlockLocation
 
 	// The offsets at which new data needs to be stored, the highest
 	// offset at which writes actually completed and how much of it
@@ -138,7 +138,7 @@ func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, 
 
 	// Attempt to restore blocks from a previous run.
 	for _, blockState := range initialBlocks {
-		block, found := blockAllocator.NewBlockAtOffset(blockState.BlockOffsetBytes)
+		block, found := blockAllocator.NewBlockAtLocation(blockState.BlockLocation)
 		if !found {
 			// Persistence state references an unknown
 			// block. Skip the remaining blocks.
@@ -153,7 +153,7 @@ func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, 
 
 		bl.blocks = append(bl.blocks, persistentBlockInfo{
 			block:                    newSharedBlock(block),
-			blockOffsetBytes:         blockState.BlockOffsetBytes,
+			blockLocation:            blockState.BlockLocation,
 			allocationOffsetSectors:  (blockState.WriteOffsetBytes + int64(sectorSizeBytes) - 1) / int64(sectorSizeBytes),
 			writtenOffsetBytes:       blockState.WriteOffsetBytes,
 			synchronizingOffsetBytes: blockState.WriteOffsetBytes,
@@ -245,14 +245,14 @@ func (bl *PersistentBlockList) PopFront() {
 // PushBack appends a new block to the BlockList. The block is obtained
 // by calling into the underlying BlockAllocator.
 func (bl *PersistentBlockList) PushBack() error {
-	block, offset, err := bl.blockAllocator.NewBlock()
+	block, location, err := bl.blockAllocator.NewBlock()
 	if err != nil {
 		return err
 	}
 
 	bl.blocks = append(bl.blocks, persistentBlockInfo{
-		block:            newSharedBlock(block),
-		blockOffsetBytes: offset,
+		block:         newSharedBlock(block),
+		blockLocation: location,
 	})
 	return nil
 }
@@ -406,7 +406,7 @@ func (bl *PersistentBlockList) GetPersistentState() (uint32, []*pb.BlockState) {
 		}
 
 		blocks = append(blocks, &pb.BlockState{
-			BlockOffsetBytes: bl.blocks[blockIndex].blockOffsetBytes,
+			BlockLocation:    bl.blocks[blockIndex].blockLocation,
 			WriteOffsetBytes: bl.blocks[blockIndex].synchronizedOffsetBytes,
 			EpochHashSeeds:   bl.epochHashSeeds[firstEpochIndex:lastEpochIndex],
 		})

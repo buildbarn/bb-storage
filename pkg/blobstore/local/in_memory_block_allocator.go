@@ -5,11 +5,11 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 )
 
 type inMemoryBlockAllocator struct {
-	blockSize  int
-	nextOffset int64
+	blockSize int
 }
 
 // NewInMemoryBlockAllocator creates a block allocator that stores its
@@ -22,19 +22,13 @@ func NewInMemoryBlockAllocator(blockSize int) BlockAllocator {
 	}
 }
 
-func (ia *inMemoryBlockAllocator) NewBlock() (Block, int64, error) {
-	// Consumers of BlockAllocator require that every block has a
-	// unique offset. Satisfy this contract by handing out made-up
-	// offsets.
-	offset := ia.nextOffset
-	ia.nextOffset += int64(ia.blockSize)
-
+func (ia *inMemoryBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
 	return inMemoryBlock{
 		data: make([]byte, ia.blockSize),
-	}, offset, nil
+	}, nil, nil
 }
 
-func (ia *inMemoryBlockAllocator) NewBlockAtOffset(offset int64) (Block, bool) {
+func (ia *inMemoryBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation) (Block, bool) {
 	// There is no way to access old blocks again.
 	return nil, false
 }
