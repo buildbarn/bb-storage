@@ -11,8 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type nonExecutableBuildQueue struct {
-}
+type nonExecutableBuildQueue struct{}
 
 // NonExecutableBuildQueue is a build queue that is incapable of
 // executing anything. It is merely needed to provide a functional
