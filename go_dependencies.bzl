@@ -490,8 +490,9 @@ def go_dependencies():
     go_repository(
         name = "com_github_gordonklaus_ineffassign",
         importpath = "github.com/gordonklaus/ineffassign",
-        sum = "h1:wHGrcNkjqm/QJeljJ9bkFWtND9I0ASarwpBlRcwRymk=",
-        version = "v0.0.0-20210104184537-8eed68eb605f",
+        replace = "github.com/gordonklaus/ineffassign",
+        sum = "h1:ISiYmLMC4o0lTlN31qYlz2NTpU8Pgrv54nVAJMOf+Fw=",
+        version = "v0.0.0-20201223204552-cba2d2a1d5d9",
     )
 
     go_repository(
@@ -1287,6 +1288,12 @@ def go_dependencies():
         importpath = "cloud.google.com/go/storage",
         sum = "h1:UDpwYIwla4jHGzZJaEJYx1tOejbgSoNqsAfHAUYe2r8=",
         version = "v1.6.0",
+    )
+    go_repository(
+        name = "com_shuralyov_dmitri_go_generated",
+        importpath = "dmitri.shuralyov.com/go/generated",
+        sum = "h1:o4lAkfETerCnr1kF9/qwkwjICnU+YLHNDCM8h2xj7as=",
+        version = "v0.0.0-20170818220700-b1254a446363",
     )
     go_repository(
         name = "com_shuralyov_dmitri_gpu_mtl",
