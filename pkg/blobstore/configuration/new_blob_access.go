@@ -19,8 +19,8 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
-	"github.com/go-redis/redisext"
 	"github.com/golang/protobuf/ptypes"
 
 	"google.golang.org/grpc/codes"
@@ -37,7 +37,7 @@ type BlobAccessInfo struct {
 
 func newRedisClient(opt *redis.Options) *redis.Client {
 	client := redis.NewClient(opt)
-	client.AddHook(redisext.OpenTelemetryHook{})
+	client.AddHook(redisotel.TracingHook{})
 	return client
 }
 
