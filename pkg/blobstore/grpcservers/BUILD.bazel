@@ -32,7 +32,7 @@ go_test(
     ],
     embed = [":grpcservers"],
     deps = [
-        "//internal/mock:go_default_library",
+        "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",
         "//pkg/proto/icas",

@@ -199,7 +199,7 @@ gomock(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "mock",
     srcs = [
         ":aliases.go",
         ":blobstore.go",

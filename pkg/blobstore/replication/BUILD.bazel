@@ -34,7 +34,7 @@ go_test(
     ],
     embed = [":replication"],
     deps = [
-        "//internal/mock:go_default_library",
+        "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",
         "//pkg/eviction",

@@ -37,7 +37,7 @@ go_test(
     ],
     embed = [":path"],
     deps = [
-        "//internal/mock:go_default_library",
+        "//internal/mock",
         "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
