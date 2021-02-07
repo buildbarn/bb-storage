@@ -1,5 +1,5 @@
 diff --git mockgen/model/model.go mockgen/model/model.go
-index 88783cf..a9078fb 100644
+index c5428c2..09af6ec 100644
 --- mockgen/model/model.go
 +++ mockgen/model/model.go
 @@ -290,28 +290,44 @@ func (pt PredeclaredType) addImports(map[string]bool)              {}
@@ -59,10 +59,10 @@ index 88783cf..a9078fb 100644
  
  	return intf, nil
 diff --git mockgen/parse.go mockgen/parse.go
-index 0ba7f80..1aa41b4 100644
+index dfdad8a..ff85155 100644
 --- mockgen/parse.go
 +++ mockgen/parse.go
-@@ -174,7 +174,7 @@ func (p *fileParser) addAuxInterfacesFromFile(pkg string, file *ast.File) {
+@@ -175,7 +175,7 @@ func (p *fileParser) addAuxInterfacesFromFile(pkg string, file *ast.File) {
  	if _, ok := p.auxInterfaces[pkg]; !ok {
  		p.auxInterfaces[pkg] = make(map[string]*ast.InterfaceType)
  	}
@@ -71,7 +71,7 @@ index 0ba7f80..1aa41b4 100644
  		p.auxInterfaces[pkg][ni.name.Name] = ni.it
  	}
  }
-@@ -201,8 +201,22 @@ func (p *fileParser) parseFile(importPath string, file *ast.File) (*model.Packag
+@@ -202,8 +202,22 @@ func (p *fileParser) parseFile(importPath string, file *ast.File) (*model.Packag
  	}
  
  	var is []*model.Interface
@@ -96,7 +96,7 @@ index 0ba7f80..1aa41b4 100644
  		if err != nil {
  			return nil, err
  		}
-@@ -239,7 +253,7 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
+@@ -240,7 +254,7 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
  		if _, ok := newP.importedInterfaces[path]; !ok {
  			newP.importedInterfaces[path] = make(map[string]*ast.InterfaceType)
  		}
@@ -105,7 +105,7 @@ index 0ba7f80..1aa41b4 100644
  			newP.importedInterfaces[path][ni.name.Name] = ni.it
  		}
  		imports, _ := importsOfFile(file)
-@@ -250,9 +264,9 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
+@@ -251,9 +265,9 @@ func (p *fileParser) parsePackage(path string) (*fileParser, error) {
  	return newP, nil
  }
  
@@ -117,16 +117,16 @@ index 0ba7f80..1aa41b4 100644
  		switch v := field.Type.(type) {
  		case *ast.FuncType:
  			if nn := len(field.Names); nn != 1 {
-@@ -275,7 +289,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
- 					return nil, p.errorf(v.Pos(), "unknown embedded interface %s", v.String())
+@@ -278,7 +292,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
+ 			var eintf *model.Interface
+ 			if ei != nil {
+ 				var err error
+-				eintf, err = p.parseInterface(v.String(), pkg, ei)
++				eintf, err = p.parseInterface(v.String(), pkg, ei.Methods.List)
+ 				if err != nil {
+ 					return nil, err
  				}
- 			}
--			eintf, err := p.parseInterface(v.String(), pkg, ei)
-+			eintf, err := p.parseInterface(v.String(), pkg, ei.Methods.List)
- 			if err != nil {
- 				return nil, err
- 			}
-@@ -294,7 +308,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
+@@ -305,7 +319,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
  			var err error
  			ei := p.auxInterfaces[fpkg][sel]
  			if ei != nil {
@@ -135,7 +135,7 @@ index 0ba7f80..1aa41b4 100644
  				if err != nil {
  					return nil, err
  				}
-@@ -315,7 +329,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
+@@ -326,7 +340,7 @@ func (p *fileParser) parseInterface(name, pkg string, it *ast.InterfaceType) (*m
  				if ei = parser.importedInterfaces[path][sel]; ei == nil {
  					return nil, p.errorf(v.Pos(), "unknown embedded interface %s.%s", path, sel)
  				}
@@ -144,7 +144,7 @@ index 0ba7f80..1aa41b4 100644
  				if err != nil {
  					return nil, err
  				}
-@@ -549,31 +563,53 @@ type namedInterface struct {
+@@ -560,32 +574,54 @@ type namedInterface struct {
  	it   *ast.InterfaceType
  }
  
@@ -165,6 +165,10 @@ index 0ba7f80..1aa41b4 100644
 +		for _, spec := range gd.Specs {
 +			ts, ok := spec.(*ast.TypeSpec)
 +			if !ok {
++					continue
++			}
++			it, ok := ts.Type.(*ast.InterfaceType)
++			if !ok {
  				continue
  			}
 -			for _, spec := range gd.Specs {
@@ -176,22 +180,18 @@ index 0ba7f80..1aa41b4 100644
 -				if !ok {
 -					continue
 -				}
-+			it, ok := ts.Type.(*ast.InterfaceType)
-+			if !ok {
-+				continue
-+			}
 +			interfaces = append(interfaces, namedInterface{ts.Name, it})
 +		}
 +	}
 +	return
 +}
- 
--				ch <- namedInterface{ts.Name, it}
++
 +type namedFunc struct {
 +	name *ast.Ident
 +	ft   *ast.FuncType
 +}
-+
+ 
+-				ch <- namedInterface{ts.Name, it}
 +// Extracts all function types from a file.
 +func extractFuncs(file *ast.File) (funcs []namedFunc) {
 +	for _, decl := range file.Decls {
@@ -203,21 +203,23 @@ index 0ba7f80..1aa41b4 100644
 +			ts, ok := spec.(*ast.TypeSpec)
 +			if !ok {
 +				continue
- 			}
++ 			}
 +			ft, ok := ts.Type.(*ast.FuncType)
 +			if !ok {
 +				continue
-+			}
+ 			}
 +			funcs = append(funcs, namedFunc{ts.Name, ft})
  		}
 -		close(ch)
 -	}()
 -	return ch
+-}
 +	}
 +	return
- }
++ }
  
  // isVariadic returns whether the function is variadic.
+ func isVariadic(f *ast.FuncType) bool {
 diff --git mockgen/reflect.go mockgen/reflect.go
 index 55c2450..567c45a 100644
 --- mockgen/reflect.go

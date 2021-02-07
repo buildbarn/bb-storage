@@ -1,12 +1,8 @@
 diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
-index 5ea7ea5..124753a 100644
+index 5cbf4d2..2c7e185 100644
 --- build/bazel/remote/execution/v2/BUILD
 +++ build/bazel/remote/execution/v2/BUILD
-@@ -10,13 +10,13 @@ proto_library(
-     srcs = ["remote_execution.proto"],
-     deps = [
-         "//build/bazel/semver:semver_proto",
-+        "@com_google_protobuf//:any_proto",
+@@ -14,10 +14,9 @@ proto_library(
          "@com_google_protobuf//:duration_proto",
          "@com_google_protobuf//:timestamp_proto",
          "@com_google_protobuf//:wrappers_proto",
@@ -20,7 +16,7 @@ index 5ea7ea5..124753a 100644
      ],
  )
  
-@@ -46,7 +46,7 @@ go_proto_library(
+@@ -47,7 +46,7 @@ go_proto_library(
      importpath = "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2",
      proto = ":remote_execution_proto",
      deps = [
@@ -29,7 +25,7 @@ index 5ea7ea5..124753a 100644
          "@go_googleapis//google/api:annotations_go_proto",
          "@go_googleapis//google/longrunning:longrunning_go_proto",
          "@go_googleapis//google/rpc:status_go_proto",
-@@ -54,7 +54,7 @@ go_proto_library(
+@@ -55,7 +54,7 @@ go_proto_library(
  )
  
  go_library(
