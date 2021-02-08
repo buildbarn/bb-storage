@@ -9,9 +9,6 @@ import (
 
 // ConstantRateTraceSampler uses a token bucket algorithm to sample traces. This is useful as an alternative
 // to probability-based sampling when the service has a low number of requests per second.
-//
-// Inspired in part by https://github.com/jaegertracing/jaeger-client-go/blob/master/utils/rate_limiter.go
-
 type ConstantRateTraceSampler struct {
 	lock sync.Mutex
 
@@ -43,8 +40,9 @@ func max(a, b int64) int64 {
 	}
 }
 
-// trace.Sampler is ufortunately a function not an interface. This `Sample` function should be provided
-// to the tracing library as the `DefaultSampler`.
+// Sample decides whether to sample a trace. The trace.Sampler type is unfortunately a function and
+// not an interface. This `Sample` function should be provided to the OpenCensus tracing library as
+// the `DefaultSampler`, and not the ConstantRateTraceSampler struct.
 func (s *ConstantRateTraceSampler) Sample(params trace.SamplingParameters) trace.SamplingDecision {
 	if params.ParentContext.IsSampled() {
 		return trace.SamplingDecision{Sample: true}
@@ -77,7 +75,8 @@ func (s *ConstantRateTraceSampler) Sample(params trace.SamplingParameters) trace
 	return trace.SamplingDecision{Sample: false}
 }
 
-// Return a new constant rate trace sampler. The period exposed to callers is to one second.
+// NewConstantRateTraceSampler returns a new constant rate trace sampler.
+// The period exposed to callers is to one second.
 func NewConstantRateTraceSampler(tokensPerSecond, maxTokens, tokensPerSample int64) *ConstantRateTraceSampler {
 	now := time.Now()
 
