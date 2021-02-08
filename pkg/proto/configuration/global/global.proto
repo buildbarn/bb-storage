@@ -57,6 +57,18 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 }
 
+// Parameters for a "token bucket" for deciding when to sample.
+message ConstantRateSamplingPolicy {
+  // Number of tokens to put in the bucket per second.
+  int32 tokens_per_second = 1;
+
+  // Maximum number of tokens that may be held in the bucket.
+  int32 max_tokens = 2;
+
+  // Number of tokens required to consume from the bucket to sample a trace.
+  int32 tokens_per_sample = 3;
+}
+
 message TracingConfiguration {
   // Jaeger configuration for tracing.
   JaegerConfiguration jaeger = 1;
@@ -78,6 +90,9 @@ message TracingConfiguration {
     // Probability in range [0, 1.0] with which to sample a trace.
     // (Traces with a parent trace will also be sampled.)
     double sample_probability = 7;
+
+    // Constant rate sampling policy.
+    ConstantRateSamplingPolicy sample_constant_rate = 8;
   }
 }
 

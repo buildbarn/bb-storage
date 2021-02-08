@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
@@ -141,6 +142,13 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 
 			case *pb.TracingConfiguration_SampleProbability:
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability)})
+
+			case *pb.TracingConfiguration_SampleConstantRate:
+				s := util.NewConstantRateTraceSampler(
+					int64(policy.SampleConstantRate.TokensPerSecond),
+					int64(policy.SampleConstantRate.MaxTokens),
+					int64(policy.SampleConstantRate.TokensPerSample))
+				trace.ApplyConfig(trace.Config{DefaultSampler: s.Sample})
 
 			default:
 				return nil, status.Error(codes.InvalidArgument, "Failed to decode sampling policy from configuration")
