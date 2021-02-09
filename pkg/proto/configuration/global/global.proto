@@ -101,4 +101,8 @@ message Configuration {
   //               start successfully.
   // - /debug/pprof/*: Endpoints for Go's pprof debug tool.
   string diagnostics_http_listen_address = 4;
+
+  // Pathnames where, in addition to stderr, application logs are
+  // written. Parent directories of the specified paths must exist.
+  repeated string log_paths = 5;
 }

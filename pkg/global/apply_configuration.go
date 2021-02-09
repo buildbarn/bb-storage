@@ -1,8 +1,10 @@
 package global
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"os"
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
@@ -58,6 +60,18 @@ func (ls *LifecycleState) MarkReadyAndWait() {
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
 func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error) {
+	// Logging.
+	logPaths := configuration.GetLogPaths()
+	logWriters := append(make([]io.Writer, 0, len(logPaths)+1), os.Stderr)
+	for _, logPath := range logPaths {
+		w, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			return nil, util.StatusWrapf(err, "Failed to open log path %#v", logPath)
+		}
+		logWriters = append(logWriters, w)
+	}
+	log.SetOutput(io.MultiWriter(logWriters...))
+
 	// Push traces to Jaeger.
 	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
 		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
