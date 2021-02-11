@@ -31,7 +31,7 @@ func (bq *forwardingBuildQueue) GetCapabilities(ctx context.Context, in *remotee
 	return bq.capabilitiesClient.GetCapabilities(ctx, in)
 }
 
-func forwardOperations(client remoteexecution.Execution_ExecuteClient, server remoteexecution.Execution_ExecuteServer) error {
+func forwardOperations(cancel context.CancelFunc, client remoteexecution.Execution_ExecuteClient, server remoteexecution.Execution_ExecuteServer) error {
 	for {
 		operation, err := client.Recv()
 		if err != nil {
@@ -41,23 +41,36 @@ func forwardOperations(client remoteexecution.Execution_ExecuteClient, server re
 			return err
 		}
 		if err := server.Send(operation); err != nil {
+			// Failed to forward response to the caller.
+			// Cancel the operation and drain any pending
+			// responses.
+			cancel()
+			for {
+				if _, err := client.Recv(); err != nil {
+					break
+				}
+			}
 			return err
 		}
 	}
 }
 
 func (bq *forwardingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
-	client, err := bq.executionClient.Execute(out.Context(), in)
+	ctx, cancel := context.WithCancel(out.Context())
+	defer cancel()
+	client, err := bq.executionClient.Execute(ctx, in)
 	if err != nil {
 		return err
 	}
-	return forwardOperations(client, out)
+	return forwardOperations(cancel, client, out)
 }
 
 func (bq *forwardingBuildQueue) WaitExecution(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
-	client, err := bq.executionClient.WaitExecution(out.Context(), in)
+	ctx, cancel := context.WithCancel(out.Context())
+	defer cancel()
+	client, err := bq.executionClient.WaitExecution(ctx, in)
 	if err != nil {
 		return err
 	}
-	return forwardOperations(client, out)
+	return forwardOperations(cancel, client, out)
 }
