@@ -65,7 +65,7 @@
         },
         {
           name: 'Gofmt',
-          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -s -w -extra $(pwd)',
+          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.15 -s -w -extra $(pwd)',
         },
         {
           name: 'Clang format',
@@ -73,7 +73,7 @@
         },
         {
           name: 'GitHub workflows',
-          run: 'bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/* .github/workflows',
+          run: 'bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows',
         },
         {
           name: 'Test style conformance',
