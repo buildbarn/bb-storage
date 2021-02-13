@@ -71,7 +71,7 @@ func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {
 	// contents. These contents should be accessible when the block
 	// device is created without the zeroInitialize option set.
 	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
-	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0o666)
 	require.NoError(t, err)
 	_, err = f.Write([]byte("Hello"))
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
 	// This means that the original contents of the file that backs
 	// the block device are gone.
 	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
-	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(blockDevicePath, os.O_CREATE|os.O_WRONLY, 0o666)
 	require.NoError(t, err)
 	_, err = f.Write([]byte("Hello"))
 	require.NoError(t, err)

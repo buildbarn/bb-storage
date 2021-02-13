@@ -81,7 +81,7 @@ func (pss directoryBackedPersistentStateStore) WritePersistentState(persistentSt
 	if err := pss.directory.Remove(componentStateNew); err != nil && !os.IsNotExist(err) {
 		return util.StatusWrapWithCode(err, codes.Internal, "Failed to remove previous temporary file")
 	}
-	f, err := pss.directory.OpenAppend(componentStateNew, filesystem.CreateExcl(0666))
+	f, err := pss.directory.OpenAppend(componentStateNew, filesystem.CreateExcl(0o666))
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Internal, "Failed to create temporary file")
 	}

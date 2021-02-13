@@ -36,7 +36,7 @@ func TestLocalDirectoryEnterNonExistent(t *testing.T) {
 
 func TestLocalDirectoryEnterFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	_, err = d.EnterDirectory(path.MustNewComponent("file"))
@@ -54,7 +54,7 @@ func TestLocalDirectoryEnterSymlink(t *testing.T) {
 
 func TestLocalDirectoryEnterSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("subdir"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("subdir"), 0o777))
 	sub, err := d.EnterDirectory(path.MustNewComponent("subdir"))
 	require.NoError(t, err)
 	require.NoError(t, sub.Close())
@@ -69,17 +69,17 @@ func TestLocalDirectoryLinkNotFound(t *testing.T) {
 
 func TestLocalDirectoryLinkDirectory(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("source"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("source"), 0o777))
 	require.True(t, os.IsPermission(d.Link(path.MustNewComponent("source"), d, path.MustNewComponent("target"))))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = d.OpenWrite(path.MustNewComponent("target"), filesystem.CreateExcl(0666))
+	f, err = d.OpenWrite(path.MustNewComponent("target"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.True(t, os.IsExist(d.Link(path.MustNewComponent("source"), d, path.MustNewComponent("target"))))
@@ -88,7 +88,7 @@ func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 
 func TestLocalDirectoryLinkSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Link(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
@@ -104,7 +104,7 @@ func TestLocalDirectoryLstatNonExistent(t *testing.T) {
 
 func TestLocalDirectoryLstatFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0644))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o644))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	fi, err := d.Lstat(path.MustNewComponent("file"))
@@ -126,7 +126,7 @@ func TestLocalDirectoryLstatSymlink(t *testing.T) {
 
 func TestLocalDirectoryLstatDirectory(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0700))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o700))
 	fi, err := d.Lstat(path.MustNewComponent("directory"))
 	require.NoError(t, err)
 	require.Equal(t, path.MustNewComponent("directory"), fi.Name())
@@ -137,22 +137,22 @@ func TestLocalDirectoryLstatDirectory(t *testing.T) {
 func TestLocalDirectoryMkdirExisting(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
-	require.True(t, os.IsExist(d.Mkdir(path.MustNewComponent("symlink"), 0777)))
+	require.True(t, os.IsExist(d.Mkdir(path.MustNewComponent("symlink"), 0o777)))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryMkdirSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryOpenWriteExistent(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	_, err = d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	_, err = d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.True(t, os.IsExist(err))
 	require.NoError(t, d.Close())
 }
@@ -174,7 +174,7 @@ func TestLocalDirectoryOpenReadSymlink(t *testing.T) {
 
 func TestLocalDirectoryOpenWriteSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Close())
@@ -184,10 +184,10 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	d := openTmpDir(t)
 
 	// Prepare file system.
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
 
 	// Validate directory listing.
@@ -213,7 +213,7 @@ func TestLocalDirectoryReadlinkNonExistent(t *testing.T) {
 
 func TestLocalDirectoryReadlinkDirectory(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	_, err := d.Readlink(path.MustNewComponent("directory"))
 	require.Equal(t, syscall.EINVAL, err)
 	require.NoError(t, d.Close())
@@ -221,7 +221,7 @@ func TestLocalDirectoryReadlinkDirectory(t *testing.T) {
 
 func TestLocalDirectoryReadlinkFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	_, err = d.Readlink(path.MustNewComponent("file"))
@@ -246,14 +246,14 @@ func TestLocalDirectoryRemoveNonExistent(t *testing.T) {
 
 func TestLocalDirectoryRemoveDirectory(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.NoError(t, d.Remove(path.MustNewComponent("directory")))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectoryRemoveFile(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Remove(path.MustNewComponent("file")))
@@ -275,7 +275,7 @@ func TestLocalDirectoryRenameNotFound(t *testing.T) {
 
 func TestLocalDirectoryRenameSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0666))
+	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Rename(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
@@ -284,7 +284,7 @@ func TestLocalDirectoryRenameSuccess(t *testing.T) {
 
 func TestLocalDirectorySymlinkExistent(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.True(t, os.IsExist(d.Symlink("/", path.MustNewComponent("directory"))))
 	require.NoError(t, d.Close())
 }
@@ -304,7 +304,7 @@ func TestLocalDirectorySync(t *testing.T) {
 func TestLocalDirectoryChtimes(t *testing.T) {
 	d := openTmpDir(t)
 	time := filesystem.DeterministicFileModificationTimestamp
-	f, err := d.OpenAppend(path.MustNewComponent("file"), filesystem.CreateExcl(0444))
+	f, err := d.OpenAppend(path.MustNewComponent("file"), filesystem.CreateExcl(0o444))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Chtimes(path.MustNewComponent("file"), time, time))

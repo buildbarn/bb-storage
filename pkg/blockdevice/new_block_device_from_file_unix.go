@@ -20,7 +20,7 @@ func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bo
 	if zeroInitialize {
 		flags |= unix.O_TRUNC
 	}
-	fd, err := unix.Open(path, flags, 0666)
+	fd, err := unix.Open(path, flags, 0o666)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to open file %#v", path)
 	}

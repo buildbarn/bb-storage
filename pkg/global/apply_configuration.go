@@ -64,7 +64,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 	logPaths := configuration.GetLogPaths()
 	logWriters := append(make([]io.Writer, 0, len(logPaths)+1), os.Stderr)
 	for _, logPath := range logPaths {
-		w, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		w, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 		if err != nil {
 			return nil, util.StatusWrapf(err, "Failed to open log path %#v", logPath)
 		}

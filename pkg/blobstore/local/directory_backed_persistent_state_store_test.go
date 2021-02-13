@@ -95,7 +95,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 
 	t.Run("WriteTemporaryFileCreationFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(nil, syscall.EIO)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(nil, syscall.EIO)
 
 		require.Equal(
 			t,
@@ -106,7 +106,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteTemporaryFileWriteFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(0, syscall.ENOSPC)
 		f.EXPECT().Close()
 
@@ -119,7 +119,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteTemporaryFileSyncFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync().Return(syscall.EIO)
 		f.EXPECT().Close()
@@ -133,7 +133,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteTemporaryFileCloseFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close().Return(syscall.EIO)
@@ -147,7 +147,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteDirectoryRenameFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()
@@ -162,7 +162,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteDirectorySyncFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()
@@ -178,7 +178,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteSuccess", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new"))
 		f := mock.NewMockFileAppender(ctrl)
-		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0666)).Return(f, nil)
+		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(f, nil)
 		f.EXPECT().Write(examplePersistentStateBytes).Return(len(examplePersistentStateBytes), nil)
 		f.EXPECT().Sync()
 		f.EXPECT().Close()

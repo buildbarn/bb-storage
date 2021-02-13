@@ -120,7 +120,7 @@ func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, err
 	case syscall.S_IFLNK:
 		fileType = FileTypeSymlink
 	case syscall.S_IFREG:
-		if stat.Mode&0111 != 0 {
+		if stat.Mode&0o111 != 0 {
 			fileType = FileTypeExecutableFile
 		} else {
 			fileType = FileTypeRegularFile
@@ -274,7 +274,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 			// TODO(edsch): This could use AT_SYMLINK_NOFOLLOW.
 			// Unfortunately, this is broken on Linux.
 			// Details: https://github.com/golang/go/issues/20130
-			unix.Fchmodat(d.fd, name, 0700, 0)
+			unix.Fchmodat(d.fd, name, 0o700, 0)
 			subdirectory, err := d.enter(component)
 			if err != nil {
 				return err
