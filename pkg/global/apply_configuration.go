@@ -4,12 +4,12 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
 	// traffic to that mux instead.
 	_ "net/http/pprof"
+	"os"
 	"runtime"
 	"time"
 
@@ -36,7 +36,7 @@ import (
 // the caller to report whether the application has started up
 // successfully.
 type LifecycleState struct {
-	diagnosticsHTTPListenAddress string
+	config *pb.DiagnosticsHTTPServerConfiguration
 }
 
 // MarkReadyAndWait can be called to report that the program has started
@@ -45,14 +45,19 @@ type LifecycleState struct {
 func (ls *LifecycleState) MarkReadyAndWait() {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
-	if ls.diagnosticsHTTPListenAddress == "" {
+	if ls.config == nil {
 		select {}
 	} else {
 		router := mux.NewRouter()
-		router.Handle("/metrics", promhttp.Handler())
 		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
-		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-		log.Fatal(http.ListenAndServe(ls.diagnosticsHTTPListenAddress, router))
+		if ls.config.EnablePrometheus {
+			router.Handle("/metrics", promhttp.Handler())
+		}
+		if ls.config.EnablePprof {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		log.Fatal(http.ListenAndServe(ls.config.ListenAddress, router))
 	}
 }
 
@@ -166,6 +171,6 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 	}
 
 	return &LifecycleState{
-		diagnosticsHTTPListenAddress: configuration.GetDiagnosticsHttpListenAddress(),
+		config: configuration.GetDiagnosticsHttpServer(),
 	}, nil
 }

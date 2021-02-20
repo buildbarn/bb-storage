@@ -93,16 +93,29 @@ message Configuration {
   // to letting the Prometheus server scrape the metrics.
   PrometheusPushgatewayConfiguration prometheus_pushgateway = 3;
 
-  // When set, enables a HTTP server that provides the following URL
-  // endpoints:
-  //
-  // - /metrics: Metrics that can be scraped by Prometheus.
-  // - /-/healthy: Returns HTTP 200 OK if the application managed to
-  //               start successfully.
-  // - /debug/pprof/*: Endpoints for Go's pprof debug tool.
-  string diagnostics_http_listen_address = 4;
+  // Was diagnostics_http_listen_address, which has been replaced with
+  // diagnostics_http_server.
+  reserved 4;
 
   // Pathnames where, in addition to stderr, application logs are
   // written. Parent directories of the specified paths must exist.
   repeated string log_paths = 5;
+
+  // When set, enables a HTTP server that provides diagnostic information.
+  DiagnosticsHTTPServerConfiguration diagnostics_http_server = 6;
+}
+
+message DiagnosticsHTTPServerConfiguration {
+  // Default endpoints:
+  // - /-/healthy: Returns HTTP 200 OK if the application managed to
+  //               start successfully.
+  string listen_address = 1;
+
+  // Enables endpoints:
+  // - /debug/pprof/*: Endpoints for Go's pprof debug tool.
+  bool enable_pprof = 2;
+
+  // Enables endpoints:
+  // - /metrics: Metrics that can be scraped by Prometheus.
+  bool enable_prometheus = 3;
 }
