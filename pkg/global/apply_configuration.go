@@ -65,6 +65,13 @@ func (ls *LifecycleState) MarkReadyAndWait() {
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
 func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error) {
+	// Set the umask, if requested.
+	if setUmaskConfiguration := configuration.GetSetUmask(); setUmaskConfiguration != nil {
+		if err := setUmask(setUmaskConfiguration.Umask); err != nil {
+			return nil, util.StatusWrap(err, "Failed to set umask")
+		}
+	}
+
 	// Logging.
 	logPaths := configuration.GetLogPaths()
 	logWriters := append(make([]io.Writer, 0, len(logPaths)+1), os.Stderr)

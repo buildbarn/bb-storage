@@ -81,6 +81,11 @@ message TracingConfiguration {
   }
 }
 
+message SetUmaskConfiguration {
+  // The value of the file creation mode mask to be passed to umask().
+  uint32 umask = 1;
+}
+
 message Configuration {
   // Configuration for sending tracing data to various services.
   TracingConfiguration tracing = 1;
@@ -103,6 +108,14 @@ message Configuration {
 
   // When set, enables a HTTP server that provides diagnostic information.
   DiagnosticsHTTPServerConfiguration diagnostics_http_server = 6;
+
+  // Call umask() on startup to set the file creation mode mask. It may
+  // be necessary to set this option in multi-user environments to
+  // ensure that files and UNIX sockets that are created are accessible
+  // by other processes.
+  //
+  // This option may only be set on POSIX-like systems.
+  SetUmaskConfiguration set_umask = 7;
 }
 
 message DiagnosticsHTTPServerConfiguration {

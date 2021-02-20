@@ -2,7 +2,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "global",
-    srcs = ["apply_configuration.go"],
+    srcs = [
+        "apply_configuration.go",
+        "umask_nonunix.go",
+        "umask_unix.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/global",
     visibility = ["//visibility:public"],
     deps = [
