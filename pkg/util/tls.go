@@ -50,6 +50,7 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig.ServerName = configuration.ServerName
 
 	if configuration.ClientCertificate != "" && configuration.ClientPrivateKey != "" {
 		// Serve a client certificate when provided.

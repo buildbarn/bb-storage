@@ -191,6 +191,18 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 			})
 		require.Equal(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
 	})
+
+	t.Run("ServerName", func(t *testing.T) {
+		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+			&configuration.ClientConfiguration{
+				ServerName: "example.com",
+			})
+		require.NoError(t, err)
+		require.Equal(t, &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: "example.com",
+		}, tlsConfig)
+	})
 }
 
 func TestTLSConfigFromServerConfiguration(t *testing.T) {

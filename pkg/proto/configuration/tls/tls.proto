@@ -25,6 +25,17 @@ message ClientConfiguration {
   // Valid cipher suite names may be found here:
   // https://golang.org/pkg/crypto/tls/#pkg-constants
   repeated string cipher_suites = 4;
+
+  // The value of the Server Name Indication (SNI) extension sent by the
+  // client to the server. This value is also used when validating the
+  // handshake response sent by the server. When not set, the server
+  // name is automatically extracted from the endpoint address.
+  //
+  // This option may be useful in case the use of DNS needs to be
+  // avoided. The endpoints may be specified in the form of IPv4/IPv6
+  // addresses. This field can be used to specify the expected DNS name
+  // of the server certificate.
+  string server_name = 5;
 }
 
 message ServerConfiguration {
