@@ -76,7 +76,7 @@ func (s *ConstantRateTraceSampler) Sample(params trace.SamplingParameters) trace
 }
 
 // NewConstantRateTraceSampler returns a new constant rate trace sampler.
-// The period exposed to callers is to one second.
+// The period exposed to callers is one second.
 func NewConstantRateTraceSampler(tokensPerSecond, maxTokens, tokensPerSample int64) *ConstantRateTraceSampler {
 	now := time.Now()
 
