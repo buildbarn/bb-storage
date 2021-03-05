@@ -2,6 +2,8 @@ package grpc_test
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/pem"
 	"testing"
 	"time"
@@ -60,18 +62,20 @@ vwIDAQAB
 -----END PUBLIC KEY-----
 `
 
+func getSymmetricKey() []byte {
+	return []byte("0123456789ABCDEF")
+}
+
 func TestJWTAuthenticator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	defer ctrl.Finish()
 	clock := mock.NewMockClock(ctrl)
 
-	symmetricKey := []byte("0123456789ABCDEF")
+	symmetricKey := getSymmetricKey()
 
 	jwtKey := bb_grpc.JWTKeyConfig{
 		Key: symmetricKey,
 	}
-
-	signer := mustMakeSigner(jose.HS256, symmetricKey)
 
 	authenticator := bb_grpc.NewJWTAuthenticator(jwtKey, clock)
 
@@ -109,14 +113,8 @@ func TestJWTAuthenticator(t *testing.T) {
 	t.Run("ParsesAndValidateValidJWS", func(t *testing.T) {
 		// Should parse and validate a valid JWS.
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		tok, err := jwt.Signed(signer).
-			Claims(&jwt.Claims{
-				Issuer:  "buildbarn",
-				Subject: "subject",
-			}).CompactSerialize()
-		require.NoError(t, err, "Error creating JWT.")
-
-		md := metadata.Pairs("authorization", "Bearer "+tok)
+		token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJidWlsZGJhcm4iLCJzdWIiOiJzdWJqZWN0In0.X_Q51pR4gJ-NqVBbDTHUWt7poeCpX4ClFsRWE3sNfXg"
+		md := metadata.Pairs("authorization", "Bearer "+token)
 		require.NoError(
 			t,
 			authenticator.Authenticate(metadata.NewIncomingContext(ctx, md)),
@@ -137,15 +135,8 @@ func TestJWTAuthenticator(t *testing.T) {
 	t.Run("RejectsExpiredJWS", func(t *testing.T) {
 		// Should reject an expired JWS.
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		tok, err := jwt.Signed(signer).
-			Claims(&jwt.Claims{
-				Issuer:  "buildbarn",
-				Subject: "subject",
-				Expiry:  jwt.NewNumericDate(time.Unix(1599996400, 0)),
-			}).CompactSerialize()
-		require.NoError(t, err, "Error creating JWT.")
-
-		md := metadata.Pairs("authorization", "Bearer "+tok)
+		token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1OTk5OTY0MDAsImlzcyI6ImJ1aWxkYmFybiIsInN1YiI6InN1YmplY3QifQ.tLxc6KRzPI7qL5wCl7eL-iLguinJzKnO11ejBqxsrE4"
+		md := metadata.Pairs("authorization", "Bearer "+token)
 		require.Equal(
 			t,
 			status.Error(codes.Unauthenticated, "Authorization required: square/go-jose/jwt: validation failed, token is expired (exp)"),
@@ -154,28 +145,25 @@ func TestJWTAuthenticator(t *testing.T) {
 	})
 
 	t.Run("ParsesAndValidateValidJWSWithPublicKey", func(t *testing.T) {
-		privateKeyInput := rsaPrivateKey
-		block, _ := pem.Decode([]byte(`
-`))
-		privateKey := block.Bytes
-
-		jwtKey := bb_grpc.JWTKeyConfig{
-			Key: rsaPublicKey,
+		input := []byte(rsaPublicKey)
+		block, _ := pem.Decode(input)
+		if block != nil {
+			input = block.Bytes
 		}
 
-		signer := mustMakeSigner(jose.PS256, privateKey)
+		rsaPubKey, err := x509.ParsePKIXPublicKey(input)
+		require.NoError(t, err)
+
+		jwtKey := bb_grpc.JWTKeyConfig{
+			Key: rsaPubKey,
+		}
 
 		authenticator := bb_grpc.NewJWTAuthenticator(jwtKey, clock)
 
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		tok, err := jwt.Signed(signer).
-			Claims(&jwt.Claims{
-				Issuer:  "buildbarn",
-				Subject: "subject",
-			}).CompactSerialize()
-		require.NoError(t, err, "Error creating JWT.")
+		token := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJidWlsZGJhcm4iLCJzdWIiOiJzdWJqZWN0In0.JZgfFQW47GWEeN6Esn40gnM4XA4QiWXq8ejAWkPIup5b7K8PGeVjnNfGGZhQsI6xmkKDFO4qbRbnJByhtDCYcPNfNAVz3iA_zXnBXKucY5jFpkhM7mvkr55NVDDkVSkyW5tjz3vTXTUMko5UgPJ5RLlZFrTGRYNRu5h8dxGc5MD5O46bKmQbn9JjV8fT6ngSXjJjC06KMjDLDutYyyTLj2hIeFbeQgIfKClYqmrH47XMSeyOHH1-bCmdWmZVwQhwsjYaGBHy2-SxkwocKOBB9Wo_8lpl301PogX1sqIlIE1bt_aylHZbT27l8gTov51r8qSJzhZ30CSgAWFysH8rHg"
 
-		md := metadata.Pairs("authorization", "Bearer "+tok)
+		md := metadata.Pairs("authorization", "Bearer "+token)
 		require.NoError(
 			t,
 			authenticator.Authenticate(metadata.NewIncomingContext(ctx, md)),
@@ -183,11 +171,64 @@ func TestJWTAuthenticator(t *testing.T) {
 	})
 }
 
-func mustMakeSigner(alg jose.SignatureAlgorithm, k interface{}) jose.Signer {
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: k}, (&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		panic("failed to create signer:" + err.Error())
+func decodeRsaPrivateKey(privateKeyData string) *rsa.PrivateKey {
+	block, _ := pem.Decode([]byte(privateKeyData))
+	if block == nil {
+		panic("failed to decode PEM data")
 	}
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		panic("failed to parse RSA key: " + err.Error())
+	}
+	return key
+}
 
-	return sig
+// Generates the JWT test fixtures used in other tests in this file. Uncomment the
+// `t.Skip` call in the test, run the test, and then copy the test output to the
+// appropriate tests above.
+func TestGenerateJWTAuthenticatorFixtures(t *testing.T) {
+	// Un-skip this test to generate the JWT fixtures.
+	t.Skip()
+
+	symmetricKey := getSymmetricKey()
+
+	symmetricKeySigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: symmetricKey}, (&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	// ParsesAndValidateValidJWS
+	token, err := jwt.Signed(symmetricKeySigner).
+		Claims(&jwt.Claims{
+			Issuer:  "buildbarn",
+			Subject: "subject",
+		}).CompactSerialize()
+	require.NoError(t, err, "Error creating JWT.")
+	t.Logf("ParsesAndValidateValidJWS: %s\n", token)
+
+	// RejectsExpiredJWS
+	token, err = jwt.Signed(symmetricKeySigner).
+		Claims(&jwt.Claims{
+			Issuer:  "buildbarn",
+			Subject: "subject",
+			Expiry:  jwt.NewNumericDate(time.Unix(1599996400, 0)),
+		}).CompactSerialize()
+	require.NoError(t, err, "Error creating JWT.")
+	t.Logf("RejectsExpiredJWS: %s\n", token)
+
+	// ParsesAndValidateValidJWSWithPublicKey
+	rsaKey := decodeRsaPrivateKey(rsaPrivateKey)
+	rsaSigner, err := jose.NewSigner(jose.SigningKey{
+		Algorithm: jose.RS256,
+		Key:       rsaKey,
+	}, (&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	token, err = jwt.Signed(rsaSigner).
+		Claims(&jwt.Claims{
+			Issuer:  "buildbarn",
+			Subject: "subject",
+		}).CompactSerialize()
+	require.NoError(t, err, "Error creating JWT.")
+	t.Logf("ParsesAndValidateValidJWSWithPublicKey: %s\n", token)
+
+	t.Fail()
 }
