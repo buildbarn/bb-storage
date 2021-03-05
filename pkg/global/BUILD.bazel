@@ -4,9 +4,9 @@ go_library(
     name = "global",
     srcs = [
         "apply_configuration.go",
+        "constant_rate_trace_sampler.go",
         "umask_nonunix.go",
         "umask_unix.go",
-        "constant_rate_trace_sampler.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/global",
     visibility = ["//visibility:public"],

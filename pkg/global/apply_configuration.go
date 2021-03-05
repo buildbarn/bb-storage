@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
