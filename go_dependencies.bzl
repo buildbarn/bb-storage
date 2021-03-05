@@ -20,6 +20,7 @@ def go_dependencies():
         sum = "h1:rFw4nCn9iMW+Vajsk51NtYIcwSTkXr+JGrMd36kTDJw=",
         version = "v0.0.0-20180502004556-fa1af6a1f4f5",
     )
+
     go_repository(
         name = "com_github_alecthomas_template",
         importpath = "github.com/alecthomas/template",
