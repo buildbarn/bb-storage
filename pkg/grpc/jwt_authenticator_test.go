@@ -184,8 +184,11 @@ func decodeRsaPrivateKey(privateKeyData string) *rsa.PrivateKey {
 }
 
 // Generates the JWT test fixtures used in other tests in this file. Uncomment the
-// `t.Skip` call in the test, run the test, and then copy the test output to the
-// appropriate tests above.
+// `t.Skip` call in the test and run the test. It will fail by design. Once it does,
+// read the test log and copy the JWT fixtures to the appropriate tests above.
+//
+// Note: The test is only skipped and not commented out so it will still be compiled
+// to avoid bit rot.
 func TestGenerateJWTAuthenticatorFixtures(t *testing.T) {
 	// Un-skip this test to generate the JWT fixtures.
 	t.Skip()
