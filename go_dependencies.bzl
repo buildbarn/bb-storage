@@ -1353,6 +1353,13 @@ def go_dependencies():
     )
 
     go_repository(
+        name = "in_gopkg_square_go_jose_v2",
+        importpath = "gopkg.in/square/go-jose.v2",
+        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_square_go_jose/fix-valid-for-symmetric-key.diff"],
+        sum = "h1:7odma5RETjNHWJnR32wx8t+Io4djHE1PqxCFx3iiZ2w=",
+        version = "v2.5.1",
+    )
+    go_repository(
         name = "in_gopkg_tomb_v1",
         importpath = "gopkg.in/tomb.v1",
         sum = "h1:uRGJdciOHaEIrze2W8Q3AKkepLTh2hOroT7a+7czfdQ=",
@@ -1587,11 +1594,4 @@ def go_dependencies():
         importpath = "go.uber.org/zap",
         sum = "h1:nR6NoDBgAf67s68NhaXbsojM+2gxp3S1hWkHDl27pVU=",
         version = "v1.13.0",
-    )
-    go_repository(
-        name = "in_gopkg_square_go_jose_v2",
-        importpath = "gopkg.in/square/go-jose.v2",
-        sum = "h1:7odma5RETjNHWJnR32wx8t+Io4djHE1PqxCFx3iiZ2w=",
-        version = "v2.5.1",
-        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_square_go_jose/fix-valid-for-symmetric-key.diff"]
     )

@@ -192,8 +192,8 @@ message TLSClientCertificateAuthenticationPolicy {
 }
 
 message JWTAuthenticationPolicy {
-  // Key to use to authenticate the JWTs. The key may be provided in either JSON Web Key ("JWK")
-  // format (for asymmetric and symmetric keys) or in either X509 or PEM format (for asymmetric
-  // keys).
+  // Key to use to authenticate the JWTs. The key may be provided in either JSON
+  // Web Key ("JWK") format (for asymmetric and symmetric keys) or in either
+  // X509 or PEM format (for asymmetric keys).
   string key = 1;
 }
