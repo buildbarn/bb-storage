@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/golang/protobuf/ptypes"
@@ -144,11 +145,12 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability)})
 
 			case *pb.TracingConfiguration_SampleConstantRate:
-				s := util.NewConstantRateTraceSampler(
+				sampler := NewConstantRateTraceSampler(
 					int64(policy.SampleConstantRate.TokensPerSecond),
 					int64(policy.SampleConstantRate.MaxTokens),
-					int64(policy.SampleConstantRate.TokensPerSample))
-				trace.ApplyConfig(trace.Config{DefaultSampler: s.Sample})
+					int64(policy.SampleConstantRate.TokensPerSample),
+					clock.SystemClock)
+				trace.ApplyConfig(trace.Config{DefaultSampler: sampler})
 
 			default:
 				return nil, status.Error(codes.InvalidArgument, "Failed to decode sampling policy from configuration")
