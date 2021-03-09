@@ -154,3 +154,18 @@ found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-
 There is a [#buildbarn channel on buildteamworld.slack.com](https://bit.ly/2SG1amT)
 that you can join to get in touch with other people who use and hack on
 Buildbarn.
+
+# Commercial Support
+
+Buildbarn has an active and enthusiastic community. Though we try to help and
+support those who have issues or questions, sometimes organisations need more
+dedicated support. The following is a list of community members who you can
+contact if you require commercial support. Please submit a PR if you wish to
+have your name listed here. Having a name listed is not necessarily an
+endorsement. 
+
+[Finn Ball](mailto:finn.ball@codificasolutions.com) - Freelance Consultant
+
+Buildbarn does not encourage commercial forks and is willing to engage with
+organisations to merge changes upstream in order to be maintained by the
+community.
