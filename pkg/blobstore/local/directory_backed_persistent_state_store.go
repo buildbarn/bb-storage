@@ -12,9 +12,9 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 )
 
 var (

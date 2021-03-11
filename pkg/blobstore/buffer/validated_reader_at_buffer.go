@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 
 	"github.com/buildbarn/bb-storage/pkg/atomic"
-	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // ReadAtCloser is the stream type that is accepted by

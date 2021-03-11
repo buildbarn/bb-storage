@@ -7,13 +7,13 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
@@ -23,8 +23,8 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 
 	testUnaryClientCall := func(ctx context.Context, expectedMD map[string]string, err error) {
 		invoker := mock.NewMockUnaryInvoker(ctrl)
-		req := &empty.Empty{}
-		resp := &empty.Empty{}
+		req := &emptypb.Empty{}
+		resp := &emptypb.Empty{}
 		invoker.EXPECT().Call(gomock.Any(), "SomeMethod", req, resp, nil).DoAndReturn(
 			func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
 				actualMD, ok := metadata.FromOutgoingContext(ctx)

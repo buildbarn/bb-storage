@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 type validatedByteSliceBuffer struct {

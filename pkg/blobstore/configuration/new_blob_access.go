@@ -21,7 +21,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
-	"github.com/golang/protobuf/ptypes"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -75,34 +74,34 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 
 		var replicationTimeout time.Duration
 		if backend.Redis.ReplicationTimeout != nil {
-			replicationTimeout, err = ptypes.Duration(backend.Redis.ReplicationTimeout)
-			if err != nil {
+			if err := backend.Redis.ReplicationTimeout.CheckValid(); err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain replication timeout")
 			}
+			replicationTimeout = backend.Redis.ReplicationTimeout.AsDuration()
 		}
 
 		var dialTimeout time.Duration
 		if backend.Redis.DialTimeout != nil {
-			dialTimeout, err = ptypes.Duration(backend.Redis.DialTimeout)
-			if err != nil {
+			if err := backend.Redis.DialTimeout.CheckValid(); err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain dial timeout configuration")
 			}
+			dialTimeout = backend.Redis.DialTimeout.AsDuration()
 		}
 
 		var readTimeout time.Duration
 		if backend.Redis.ReadTimeout != nil {
-			readTimeout, err = ptypes.Duration(backend.Redis.ReadTimeout)
-			if err != nil {
+			if err := backend.Redis.ReadTimeout.CheckValid(); err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain read timeout configuration")
 			}
+			readTimeout = backend.Redis.ReadTimeout.AsDuration()
 		}
 
 		var writeTimeout time.Duration
 		if backend.Redis.WriteTimeout != nil {
-			writeTimeout, err = ptypes.Duration(backend.Redis.WriteTimeout)
-			if err != nil {
+			if err := backend.Redis.WriteTimeout.CheckValid(); err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain write timeout configuration")
 			}
+			writeTimeout = backend.Redis.WriteTimeout.AsDuration()
 		}
 
 		var redisClient blobstore.RedisClient
@@ -111,18 +110,18 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			// Gather retry configuration (min/max delay and overall retry attempts)
 			minRetryDur := time.Millisecond * 32
 			if mode.Clustered.MinimumRetryBackoff != nil {
-				minRetryDur, err = ptypes.Duration(mode.Clustered.MinimumRetryBackoff)
-				if err != nil {
+				if err := mode.Clustered.MinimumRetryBackoff.CheckValid(); err != nil {
 					return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain minimum retry back off configuration")
 				}
+				minRetryDur = mode.Clustered.MinimumRetryBackoff.AsDuration()
 			}
 
 			maxRetryDur := time.Millisecond * 2048
 			if mode.Clustered.MaximumRetryBackoff != nil {
-				maxRetryDur, err = ptypes.Duration(mode.Clustered.MaximumRetryBackoff)
-				if err != nil {
+				if err := mode.Clustered.MaximumRetryBackoff.CheckValid(); err != nil {
 					return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain maximum retry back off")
 				}
+				maxRetryDur = mode.Clustered.MaximumRetryBackoff.AsDuration()
 			}
 
 			maxRetries := 16 // Default will be 16
@@ -351,10 +350,10 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			// Start goroutines that update the persistent
 			// state file when writes and block releases
 			// occur.
-			minimumEpochInterval, err := ptypes.Duration(persistent.MinimumEpochInterval)
-			if err != nil {
+			if err := persistent.MinimumEpochInterval.CheckValid(); err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain minimum epoch duration")
 			}
+			minimumEpochInterval := persistent.MinimumEpochInterval.AsDuration()
 			periodicSyncer := local.NewPeriodicSyncer(
 				persistentBlockList,
 				&globalLock,

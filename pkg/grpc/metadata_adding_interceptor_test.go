@@ -7,11 +7,11 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {
@@ -21,8 +21,8 @@ func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {
 	headerValues.Add("header", []string{"value"})
 	interceptor := bb_grpc.NewMetadataAddingUnaryClientInterceptor(headerValues)
 	invoker := mock.NewMockUnaryInvoker(ctrl)
-	req := &empty.Empty{}
-	resp := &empty.Empty{}
+	req := &emptypb.Empty{}
+	resp := &emptypb.Empty{}
 
 	t.Run("AddHeader", func(t *testing.T) {
 		// Outgoing request metadata should be extended

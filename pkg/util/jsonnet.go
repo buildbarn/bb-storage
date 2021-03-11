@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/go-jsonnet"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // UnmarshalConfigurationFromFile reads a Jsonnet file, evaluates it and
@@ -44,7 +44,7 @@ func UnmarshalConfigurationFromFile(path string, configuration proto.Message) er
 		return StatusWrapf(err, "Failed to evaluate configuration")
 	}
 
-	if err := jsonpb.UnmarshalString(jsonnetOutput, configuration); err != nil {
+	if err := protojson.Unmarshal([]byte(jsonnetOutput), configuration); err != nil {
 		return StatusWrap(err, "Failed to unmarshal configuration")
 	}
 	return nil

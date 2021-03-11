@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // RequireEqualProto asserts that the two passed protocol buffer messages are
@@ -90,10 +90,9 @@ func (s *statusMatches) String() string {
 }
 
 func mustMarshalToString(t *testing.T, proto proto.Message) string {
-	marshaler := &jsonpb.Marshaler{}
-	s, err := marshaler.MarshalToString(proto)
+	s, err := protojson.Marshal(proto)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return s
+	return string(s)
 }

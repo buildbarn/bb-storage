@@ -15,7 +15,6 @@ import (
 
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -162,17 +161,18 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 		for key, value := range pushgateway.Grouping {
 			pusher.Grouping(key, value)
 		}
-		pushInterval, err := ptypes.Duration(pushgateway.PushInterval)
-		if err != nil {
+		pushInterval := pushgateway.PushInterval
+		if err := pushInterval.CheckValid(); err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse push interval")
 		}
+		pushIntervalDuration := pushInterval.AsDuration()
 
 		go func() {
 			for {
 				if err := pusher.Push(); err != nil {
 					log.Print("Failed to push metrics to Prometheus Pushgateway: ", err)
 				}
-				time.Sleep(pushInterval)
+				time.Sleep(pushIntervalDuration)
 			}
 		}()
 	}

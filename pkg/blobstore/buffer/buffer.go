@@ -3,7 +3,7 @@ package buffer
 import (
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Buffer of data to be read from/written to the Action Cache (AC) or

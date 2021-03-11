@@ -5,7 +5,6 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
@@ -83,17 +82,17 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 
 	// Optional: Keepalive.
 	if config.Keepalive != nil {
-		time, err := ptypes.Duration(config.Keepalive.Time)
-		if err != nil {
+		time := config.Keepalive.Time
+		if err := time.CheckValid(); err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive time")
 		}
-		timeout, err := ptypes.Duration(config.Keepalive.Timeout)
-		if err != nil {
+		timeout := config.Keepalive.Timeout
+		if err := timeout.CheckValid(); err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive timeout")
 		}
 		dialOptions = append(dialOptions, grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                time,
-			Timeout:             timeout,
+			Time:                time.AsDuration(),
+			Timeout:             timeout.AsDuration(),
 			PermitWithoutStream: config.Keepalive.PermitWithoutStream,
 		}))
 	}

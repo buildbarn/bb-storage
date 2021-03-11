@@ -4,9 +4,9 @@ import (
 	"sync"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
-	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 type deduplicatingClientFactory struct {
@@ -28,7 +28,7 @@ func NewDeduplicatingClientFactory(base ClientFactory) ClientFactory {
 }
 
 func (cf *deduplicatingClientFactory) NewClientFromConfiguration(configuration *configuration.ClientConfiguration) (grpc.ClientConnInterface, error) {
-	key := proto.MarshalTextString(configuration)
+	key := prototext.Format(configuration)
 	cf.lock.Lock()
 	defer cf.lock.Unlock()
 

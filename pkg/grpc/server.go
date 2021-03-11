@@ -6,7 +6,6 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
@@ -66,12 +65,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Optional: Keepalive enforcement policy.
 		if policy := configuration.KeepaliveEnforcementPolicy; policy != nil {
-			minTime, err := ptypes.Duration(policy.MinTime)
-			if err != nil {
+			minTime := policy.MinTime
+			if err := minTime.CheckValid(); err != nil {
 				return util.StatusWrap(err, "Failed to parse keepalive enforcement policy minimum time")
 			}
 			serverOptions = append(serverOptions, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-				MinTime:             minTime,
+				MinTime:             minTime.AsDuration(),
 				PermitWithoutStream: policy.PermitWithoutStream,
 			}))
 		}

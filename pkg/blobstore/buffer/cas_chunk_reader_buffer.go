@@ -4,7 +4,8 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/golang/protobuf/proto"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type casChunkReaderBuffer struct {

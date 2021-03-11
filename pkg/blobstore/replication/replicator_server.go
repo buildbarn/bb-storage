@@ -6,7 +6,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	replicator_pb "github.com/buildbarn/bb-storage/pkg/proto/replicator"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/golang/protobuf/ptypes/empty"
+
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type replicatorServer struct {
@@ -21,7 +22,7 @@ func NewReplicatorServer(replicator BlobReplicator) replicator_pb.ReplicatorServ
 	}
 }
 
-func (rs replicatorServer) ReplicateBlobs(ctx context.Context, request *replicator_pb.ReplicateBlobsRequest) (*empty.Empty, error) {
+func (rs replicatorServer) ReplicateBlobs(ctx context.Context, request *replicator_pb.ReplicateBlobsRequest) (*emptypb.Empty, error) {
 	instanceName, err := digest.NewInstanceName(request.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", request.InstanceName)
@@ -35,5 +36,5 @@ func (rs replicatorServer) ReplicateBlobs(ctx context.Context, request *replicat
 		}
 		digests.Add(d)
 	}
-	return &empty.Empty{}, rs.replicator.ReplicateMultiple(ctx, digests.Build())
+	return &emptypb.Empty{}, rs.replicator.ReplicateMultiple(ctx, digests.Build())
 }

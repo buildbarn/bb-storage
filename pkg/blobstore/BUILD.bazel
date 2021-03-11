@@ -33,10 +33,10 @@ go_library(
         "@com_github_aws_aws_sdk_go//service/s3",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_go_redis_redis_v8//:redis",
-        "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
         "@org_golang_x_net//context/ctxhttp",
     ],
 )
