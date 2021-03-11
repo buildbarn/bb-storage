@@ -66,7 +66,7 @@ $ cat config/bb_storage.jsonnet
         },
         persistent: {
           stateDirectoryPath: '/storage-cas/persistent_state',
-          minimumEpochInterval: '5m',
+          minimumEpochInterval: '300s',
         },
       },
     },
@@ -95,7 +95,7 @@ $ cat config/bb_storage.jsonnet
           },
           persistent: {
             stateDirectoryPath: '/storage-ac/persistent_state',
-            minimumEpochInterval: '5m',
+            minimumEpochInterval: '300s',
           },
         },
       },
