@@ -89,26 +89,26 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 	for {
 		if data, err := r.Read(); err == nil {
 			// Non-terminating chunk.
-			if err := client.Send(&bytestream.WriteRequest{
+			if client.Send(&bytestream.WriteRequest{
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
 				Data:         data,
-			}); err != nil {
+			}) != nil {
 				cancel()
-				client.CloseAndRecv()
+				_, err := client.CloseAndRecv()
 				return err
 			}
 			writeOffset += int64(len(data))
 			resourceName = ""
 		} else if err == io.EOF {
 			// Terminating chunk.
-			if err := client.Send(&bytestream.WriteRequest{
+			if client.Send(&bytestream.WriteRequest{
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
 				FinishWrite:  true,
-			}); err != nil {
+			}) != nil {
 				cancel()
-				client.CloseAndRecv()
+				_, err := client.CloseAndRecv()
 				return err
 			}
 			_, err := client.CloseAndRecv()
