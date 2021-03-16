@@ -322,7 +322,7 @@ message MirroredBlobAccessConfiguration {
 // to the "old" group. The oldest block in the "old" group is discarded.
 //
 // The difference between the "current" group and the "old" group is
-// that data is refreshed when accessed.  Data in the "old" group is at
+// that data is refreshed when accessed. Data in the "old" group is at
 // risk of being removed in the nearby future, which is why it needs to
 // be copied into the "new" group when requested to be retained. Data
 // in the "current" group is assumed to remain present for the time
