@@ -308,6 +308,70 @@ message MirroredBlobAccessConfiguration {
   BlobReplicatorConfiguration replicator_b_to_a = 4;
 }
 
+// LocalBlobAccess stores all data onto disk in block sizes. A block
+// cannot span multiple blocks, meaning that blocks generally need to
+// be large in size (gigabytes). The number of blocks may be relatively
+// low. For example, for a 512 GiB cache, it is acceptable to create 32
+// blocks of 16 GiB in size.
+//
+// Blocks are partitioned into three groups based on their creation
+// time, named "old", "current" and "new". Blobs provided to Put() will
+// always be stored in a block in the "new" group. When the oldest block
+// in the "new" group becomes full, it is moved to the "current" group.
+// This causes the oldest block in the "current" group to be displaced
+// to the "old" group. The oldest block in the "old" group is discarded.
+//
+// The difference between the "current" group and the "old" group is
+// that the needRefresh value returned by Get() differs.
+// Data in the "old" group is at risk of being removed in the nearby
+// future, which is why it needs to be copied into the "new" group when
+// requested to be retained. Data in the "current" group is assumed to
+// remain present for the time being, which is why it is left in place.
+// This copying is performed by KeyBlobMapBackedBlobAccess.
+//
+// Below is an illustration of how the blocks of data may be laid out at
+// a given point in time. Every column of █ characters corresponds to a
+// single block. The number of characters indicates the amount of data
+// stored within.
+//
+//     ← Over time, blocks move from "new" to "current" to "old" ←
+//
+//                   Old         Current        New
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █
+//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █ █
+//                 ↓ ↓ ↓ ↓                     ↑ ↑ ↑ ↑
+//                 └─┴─┴─┴─────────────────────┴─┴─┴─┘
+//        Data gets copied from "old" to "new" when requested.
+//
+// Blobs get stored in blocks in the "new" group with an inverse
+// exponential probability. This is done to reduce the probability of
+// multiple block rotations close after each other, as this might put
+// excessive pressure on the garbage collector. Because the placement
+// distribution decreases rapidly, having more than three or four "new"
+// blocks would be wasteful. Having fewer is also not recommended, as
+// that increases the chance of placing objects that are used together
+// inside the same block. This may cause 'tidal waves' of I/O whenever
+// such data ends up in the "old" group at once.
+//
+// After initialization, there will be fewer blocks in the "current"
+// group than configured, due to there simply being no data. This is
+// compensated by adding more blocks to the "new" group. Unlike the
+// regular blocks in this group, these will have a uniform placement
+// distribution that is twice as high as normal. This is done to ensure
+// the "current" blocks are randomly seeded to reduce 'tidal waves'
+// later on.
+//
+// The number of blocks in the "old" group should not be too low, as
+// this would cause this storage backend to become a FIFO instead of
+// being LRU-like. Setting it too high is also not recommended, as this
+// would increase redundancy in the data stored. The "current" group
+// should likely be two or three times as large as the "old" group.
 message LocalBlobAccessConfiguration {
   // Was 'digest_location_map_size'. This option has been moved to
   // 'key_location_map_in_memory.entries'.
