@@ -85,3 +85,17 @@ func TestInstanceNameGetDigestFunction(t *testing.T) {
 		require.False(t, digest.MustNewDigest("hello", "1f69e2d170a0ada2b853fe2adc6d1c47", 789).UsesDigestFunction(digestFunction))
 	})
 }
+
+func TestInstanceNameGetComponents(t *testing.T) {
+	require.Empty(t, digest.EmptyInstanceName.GetComponents())
+
+	require.Equal(
+		t,
+		[]string{"hello"},
+		digest.MustNewInstanceName("hello").GetComponents())
+
+	require.Equal(
+		t,
+		[]string{"hello", "world"},
+		digest.MustNewInstanceName("hello/world").GetComponents())
+}

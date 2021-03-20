@@ -135,6 +135,12 @@ func (in InstanceName) String() string {
 	return in.value
 }
 
+// GetComponents splits the instance name by '/' and returns each of the
+// components. It is the inverse of NewInstanceNameFromComponents().
+func (in InstanceName) GetComponents() []string {
+	return strings.FieldsFunc(in.value, func(r rune) bool { return r == '/' })
+}
+
 // GetDigestFunction creates a digest function object that is based on
 // an instance name object and an REv2 digest function enumeration
 // value.
