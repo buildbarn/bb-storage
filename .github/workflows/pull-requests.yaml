@@ -22,7 +22,7 @@
             },
             {
                "name": "Buildifier",
-               "run": "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl &&  bazel run @com_github_bazelbuild_buildtools//:buildifier"
+               "run": "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl && bazel run @com_github_bazelbuild_buildtools//:buildifier"
             },
             {
                "name": "Gofmt",
@@ -67,6 +67,10 @@
             {
                "name": "darwin_amd64: build and test",
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
+            },
+            {
+               "name": "darwin_arm64: build and test",
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //..."
             },
             {
                "name": "freebsd_amd64: build and test",

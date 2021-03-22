@@ -31,6 +31,12 @@
       extension: '',
     },
     {
+      name: 'darwin_arm64',
+      buildAndTestCommand: 'build',
+      buildJustBinaries: false,
+      extension: '',
+    },
+    {
       name: 'freebsd_amd64',
       buildAndTestCommand: 'build',
       // Building '//...' is broken for FreeBSD, because rules_docker
@@ -66,7 +72,7 @@
         },
         {
           name: 'Buildifier',
-          run: "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl &&  bazel run @com_github_bazelbuild_buildtools//:buildifier",
+          run: "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl && bazel run @com_github_bazelbuild_buildtools//:buildifier",
         },
         {
           name: 'Gofmt',
