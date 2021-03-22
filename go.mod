@@ -1,6 +1,6 @@
 module github.com/buildbarn/bb-storage
 
-go 1.15
+go 1.16
 
 replace github.com/golang/mock => github.com/golang/mock v1.4.4-0.20201026142858-99aa9272d551
 
