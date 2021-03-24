@@ -13,11 +13,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// RequireEqualProto asserts that the two passed protocol buffer messages are
-// equal.
+// RequireEqualProto asserts that the two passed protocol buffer
+// messages are equal.
+//
+// Because maps in protocol buffers aren't serialized deterministically
+// (and can be embedded into google.protobuf.Any values), this function
+// falls back to doing a string comparison upon failure.
 func RequireEqualProto(t *testing.T, want, got proto.Message) {
 	if !proto.Equal(want, got) {
-		t.Fatalf("Not equal: want: %v, got: %v", mustMarshalToString(t, want), mustMarshalToString(t, got))
+		wantStr := mustMarshalToString(t, want)
+		gotStr := mustMarshalToString(t, got)
+		if wantStr != gotStr {
+			t.Fatalf("Not equal: want: %#v, got: %#v", wantStr, gotStr)
+		}
 	}
 }
 
