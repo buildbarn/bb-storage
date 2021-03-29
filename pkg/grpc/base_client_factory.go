@@ -62,6 +62,13 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
 
+	if windowSize := config.InitialWindowSizeBytes; windowSize != 0 {
+		dialOptions = append(dialOptions, grpc.WithInitialWindowSize(windowSize))
+	}
+	if connWindowSize := config.InitialConnWindowSizeBytes; connWindowSize != 0 {
+		dialOptions = append(dialOptions, grpc.WithInitialConnWindowSize(connWindowSize))
+	}
+
 	// Optional: OAuth authentication.
 	if oauthConfig := config.Oauth; oauthConfig != nil {
 		var perRPC credentials.PerRPCCredentials

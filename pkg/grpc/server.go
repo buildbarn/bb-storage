@@ -63,6 +63,14 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			serverOptions = append(serverOptions, grpc.MaxRecvMsgSize(int(maxRecvMsgSize)))
 		}
 
+		if windowSize := configuration.InitialWindowSizeBytes; windowSize != 0 {
+			serverOptions = append(serverOptions, grpc.InitialWindowSize(windowSize))
+		}
+		if connWindowSize := configuration.InitialConnWindowSizeBytes; connWindowSize != 0 {
+			serverOptions = append(serverOptions, grpc.InitialConnWindowSize(connWindowSize))
+		}
+
+
 		// Optional: Keepalive enforcement policy.
 		if policy := configuration.KeepaliveEnforcementPolicy; policy != nil {
 			minTime := policy.MinTime
