@@ -75,6 +75,14 @@ message ClientConfiguration {
   // strongly discouraged, as it allows users to hijack each other's
   // credentials.
   repeated string forward_and_reuse_metadata = 7;
+
+  // The gRPC connection's initial stream window size.  See grpc-go
+  // WithInitialWindowSize
+  int32 initial_window_size_bytes = 8;
+
+  // The gRPC connection's initial connection window size.  See grpc-go
+  // WithInitialConnWindowSize
+  int32 initial_conn_window_size_bytes = 9;
 }
 
 message ClientKeepaliveConfiguration {
@@ -143,6 +151,14 @@ message ServerConfiguration {
   // report itself healthy for this service via the grpc.health.v1
   // protocol.
   string health_check_service = 7;
+
+  // The gRPC connection's initial stream window size.  See grpc-go
+  // InitialWindowSize
+  int32 initial_window_size_bytes = 8;
+
+  // The gRPC connection's initial connection window size.  See grpc-go
+  // InitialConnWindowSize
+  int32 initial_conn_window_size_bytes = 9;
 }
 
 message ServerKeepaliveEnforcementPolicy {
