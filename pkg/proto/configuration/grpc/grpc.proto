@@ -76,10 +76,12 @@ message ClientConfiguration {
   // credentials.
   repeated string forward_and_reuse_metadata = 7;
 
-  // The gRPC connection's initial stream window size.  See grpc-go WithInitialWindowSize
+  // The gRPC connection's initial stream window size.  See grpc-go
+  // WithInitialWindowSize
   int32 initial_window_size_bytes = 8;
 
-  // The gRPC connection's initial connection window size.  See grpc-go WithInitialConnWindowSize
+  // The gRPC connection's initial connection window size.  See grpc-go
+  // WithInitialConnWindowSize
   int32 initial_conn_window_size_bytes = 9;
 }
 
