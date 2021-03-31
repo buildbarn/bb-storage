@@ -106,6 +106,15 @@ func (d *localDirectory) Link(oldName path.Component, newDirectory Directory, ne
 	})
 }
 
+func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Directory, newName path.Component) error {
+	defer runtime.KeepAlive(d)
+	return newDirectory.Apply(localDirectoryClonefile{
+		oldFD:   d.fd,
+		oldName: oldName,
+		newName: newName,
+	})
+}
+
 func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, error) {
 	defer runtime.KeepAlive(d)
 
@@ -403,6 +412,12 @@ type localDirectoryRename struct {
 	newName path.Component
 }
 
+type localDirectoryClonefile struct {
+	oldFD   int
+	oldName path.Component
+	newName path.Component
+}
+
 func (d *localDirectory) Apply(arg interface{}) error {
 	switch a := arg.(type) {
 	case localDirectoryLink:
@@ -411,6 +426,9 @@ func (d *localDirectory) Apply(arg interface{}) error {
 	case localDirectoryRename:
 		defer runtime.KeepAlive(d)
 		return unix.Renameat(a.oldFD, a.oldName.String(), d.fd, a.newName.String())
+	case localDirectoryClonefile:
+		defer runtime.KeepAlive(d)
+		return clonefileImpl(a.oldFD, a.oldName.String(), d.fd, a.newName.String())
 	default:
 		return syscall.EXDEV
 	}

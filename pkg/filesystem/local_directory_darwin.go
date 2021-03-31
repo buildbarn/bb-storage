@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
+	"golang.org/x/sys/unix"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,4 +17,8 @@ type deviceNumber = int32
 
 func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Darwin")
+}
+
+func clonefileImpl(oldFd int, oldName string, newFd int, newName string) error {
+	return unix.Clonefileat(oldFd, oldName, newFd, newName, 0)
 }
