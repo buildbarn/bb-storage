@@ -74,7 +74,7 @@ type Directory interface {
 
 	// Link is the equivalent of os.Link().
 	Link(oldName path.Component, newDirectory Directory, newName path.Component) error
-	// Clonefile is the equivalent of unix.CloneFile on macOS
+	// Clonefile is the equivalent of unix.Clonefile on macOS.
 	Clonefile(oldName path.Component, newDirectory Directory, newName path.Component) error
 	// Lstat is the equivalent of os.Lstat().
 	Lstat(name path.Component) (FileInfo, error)

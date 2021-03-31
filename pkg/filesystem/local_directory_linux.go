@@ -30,6 +30,6 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) e
 	return unix.Mknodat(d.fd, name.String(), unixPerm, dev)
 }
 
-func clonefileImpl(oldFd int, oldName string, newFd int, newName string) error {
+func clonefileImpl(oldFD int, oldName string, newFD int, newName string) error {
 	return status.Error(codes.Unimplemented, "Clonefile is only supported on Darwin")
 }
