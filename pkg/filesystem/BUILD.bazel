@@ -57,7 +57,10 @@ go_library(
 
 go_test(
     name = "filesystem_test",
-    srcs = ["local_directory_test.go"],
+    srcs = [
+        "local_directory_darwin_test.go",
+        "local_directory_test.go",
+    ],
     embed = [":filesystem"],
     deps = [
         "//pkg/filesystem/path",

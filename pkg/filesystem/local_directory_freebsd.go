@@ -19,3 +19,7 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) e
 	// outside of devfs are non-functional.
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on FreeBSD")
 }
+
+func clonefileImpl(oldFD int, oldName string, newFD int, newName string) error {
+	return status.Error(codes.Unimplemented, "Clonefile is only supported on Darwin")
+}
