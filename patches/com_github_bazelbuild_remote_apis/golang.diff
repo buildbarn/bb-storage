@@ -12,7 +12,7 @@ index aadc6e4..2c9a179 100644
          "@go_googleapis//google/rpc:status_go_proto",
      ],
 diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
-index 5cbf4d2..124753a 100644
+index 5cbf4d2..2c7e185 100644
 --- build/bazel/remote/execution/v2/BUILD
 +++ build/bazel/remote/execution/v2/BUILD
 @@ -14,10 +14,9 @@ proto_library(
