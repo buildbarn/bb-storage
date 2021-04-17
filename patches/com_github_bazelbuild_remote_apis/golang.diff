@@ -1,3 +1,16 @@
+diff --git build/bazel/remote/asset/v1/BUILD build/bazel/remote/asset/v1/BUILD
+index aadc6e4..2c9a179 100644
+--- build/bazel/remote/asset/v1/BUILD
++++ build/bazel/remote/asset/v1/BUILD
+@@ -43,7 +43,7 @@ go_proto_library(
+     importpath = "github.com/bazelbuild/remote-apis/build/bazel/remote/asset/v1",
+     proto = ":remote_asset_proto",
+     deps = [
+-        "//build/bazel/remote/execution/v2:go_default_library",
++        "//build/bazel/remote/execution/v2:execution",
+         "@go_googleapis//google/api:annotations_go_proto",
+         "@go_googleapis//google/rpc:status_go_proto",
+     ],
 diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
 index 5cbf4d2..2c7e185 100644
 --- build/bazel/remote/execution/v2/BUILD
