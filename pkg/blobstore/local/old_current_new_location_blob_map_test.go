@@ -21,11 +21,13 @@ func TestOldCurrentNewLocationBlobMapAllocationPattern(t *testing.T) {
 	errorLogger := mock.NewMockErrorLogger(ctrl)
 	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
 		blockList,
+		local.NewImmutableBlockListGrowthPolicy(
+			/* currentBlocksCount = */ 4,
+			/* newBlocksCount = */ 4),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 2,
-		/* currentBlocksCount = */ 4,
 		/* newBlocksCount = */ 4,
 		/* initialBlocksCount = */ 10)
 
@@ -80,11 +82,13 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	errorLogger := mock.NewMockErrorLogger(ctrl)
 	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
 		blockList,
+		local.NewImmutableBlockListGrowthPolicy(
+			/* currentBlocksCount = */ 4,
+			/* newBlocksCount = */ 4),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 2,
-		/* currentBlocksCount = */ 4,
 		/* newBlocksCount = */ 4,
 		/* initialBlocksCount = */ 10)
 

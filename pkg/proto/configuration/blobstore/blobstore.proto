@@ -452,7 +452,13 @@ message LocalBlobAccessConfiguration {
   // times be somewhere between 50% and 100% full, the fourth new block
   // will only be between 6.25% and 12.5% full, which is wasteful.
   //
-  // Recommended value: 3
+  // Setting this to any value other than 1 is only supported for the
+  // Content Addressable Storage (CAS). Other storage types such as the
+  // Action Cache (AC) need to support updates to existing objects,
+  // which can only be done reliably if new objects are written into a
+  // single block.
+  //
+  // Recommended value: 3 for the CAS, 1 for other storage types.
   int32 new_blocks = 7;
 
   // Was 'instances'. This field no longer needs to be provided, as this

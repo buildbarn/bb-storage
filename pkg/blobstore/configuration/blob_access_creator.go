@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
@@ -27,6 +28,9 @@ type BlobAccessCreator interface {
 	// GetStorageTypeName() returns a short string that identifies
 	// the purpose of this storage (e.g., "ac", "cas").
 	GetStorageTypeName() string
+	// NewBlockListGrowthPolicy() creates a BlockListGrowthPolicy
+	// for LocalBlobAccess that is recommended for this storage type.
+	NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error)
 	// NewCustomBlobAccess() can be used as a fallback to create
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only

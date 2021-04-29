@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -46,6 +47,10 @@ func (bac *casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFact
 
 func (bac *casBlobAccessCreator) GetStorageTypeName() string {
 	return "cas"
+}
+
+func (bac *casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
+	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
 func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {

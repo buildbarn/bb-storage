@@ -97,12 +97,12 @@ type oldBlockState struct {
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
 type OldCurrentNewLocationBlobMap struct {
-	blockList                       BlockList
-	errorLogger                     util.ErrorLogger
-	blockSizeBytes                  int64
-	desiredOldBlocksCount           int
-	desiredCurrentAndNewBlocksCount int
-	desiredNewBlocksCount           int
+	blockList             BlockList
+	blockListGrowthPolicy BlockListGrowthPolicy
+	errorLogger           util.ErrorLogger
+	blockSizeBytes        int64
+	desiredOldBlocksCount int
+	desiredNewBlocksCount int
 
 	// The number of blocks present in the underlying BlockList,
 	// partitioned into "old", "current" and "new".
@@ -129,18 +129,18 @@ func unixTime() float64 {
 
 // NewOldCurrentNewLocationBlobMap creates a new instance of
 // OldCurrentNewLocationBlobMap.
-func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount, currentBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
+func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy BlockListGrowthPolicy, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
 	oldCurrentNewLocationBlobMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime)
 	})
 
 	lbm := &OldCurrentNewLocationBlobMap{
-		blockList:                       blockList,
-		errorLogger:                     errorLogger,
-		blockSizeBytes:                  blockSizeBytes,
-		desiredOldBlocksCount:           oldBlocksCount,
-		desiredCurrentAndNewBlocksCount: currentBlocksCount + newBlocksCount,
-		desiredNewBlocksCount:           newBlocksCount,
+		blockList:             blockList,
+		blockListGrowthPolicy: blockListGrowthPolicy,
+		errorLogger:           errorLogger,
+		blockSizeBytes:        blockSizeBytes,
+		desiredOldBlocksCount: oldBlocksCount,
+		desiredNewBlocksCount: newBlocksCount,
 
 		allocationBlockIndex: -1,
 
@@ -150,24 +150,27 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, errorLogger util.Error
 	lbm.lastRemovedOldBlockInsertionTime.Set(now)
 
 	// Configure the layout based on the number of blocks that were
-	// persisted and restored.
-	if initialBlocksCount <= lbm.desiredCurrentAndNewBlocksCount {
-		// Only a small number of blocks were restored. Place
-		// them all in "new" and "current".
-		lbm.newBlocks = initialBlocksCount
-	} else {
-		// A large number of blocks were restored. Also place
-		// them in "old". If far too many blocks were restored,
-		// we should release some of them immediately.
-		lbm.newBlocks = lbm.desiredCurrentAndNewBlocksCount
-		for i := lbm.desiredCurrentAndNewBlocksCount; i < initialBlocksCount; i++ {
-			lbm.oldBlocks = append(lbm.oldBlocks, oldBlockState{
-				insertionTime: now,
-			})
-		}
-		if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
-			lbm.totalBlocksToBeReleased.Initialize(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
-		}
+	// persisted and restored. Promote as many blocks as possible
+	// from "old" to "new". Once that option is exhausted, promote
+	// additional blocks from "old" to "current". It may be the case
+	// that we're left with too many "old" blocks afterwards. Force
+	// those to be released during the next Put() operation.
+	initialOldBlocksCount := initialBlocksCount
+	for initialOldBlocksCount > 0 && blockListGrowthPolicy.ShouldGrowNewBlocks(0, lbm.newBlocks) {
+		initialOldBlocksCount--
+		lbm.newBlocks++
+	}
+	for initialOldBlocksCount > 0 && blockListGrowthPolicy.ShouldGrowCurrentBlocks(lbm.currentBlocks) {
+		initialOldBlocksCount--
+		lbm.currentBlocks++
+	}
+	for i := 0; i < initialOldBlocksCount; i++ {
+		lbm.oldBlocks = append(lbm.oldBlocks, oldBlockState{
+			insertionTime: now,
+		})
+	}
+	if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
+		lbm.totalBlocksToBeReleased.Initialize(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
 	}
 	return lbm
 }
@@ -304,7 +307,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 	// data corruption, we should ensure that we still have a
 	// sufficient number of "new" blocks from which we can allocate
 	// data.
-	for lbm.currentBlocks+lbm.newBlocks < lbm.desiredCurrentAndNewBlocksCount {
+	for lbm.blockListGrowthPolicy.ShouldGrowNewBlocks(lbm.currentBlocks, lbm.newBlocks) {
 		if err := lbm.blockList.PushBack(); err != nil {
 			return 0, err
 		}

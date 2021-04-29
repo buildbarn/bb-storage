@@ -7,6 +7,7 @@ go_library(
         "block_device_backed_block_allocator.go",
         "block_device_backed_location_record_array.go",
         "block_list.go",
+        "block_list_growth_policy.go",
         "block_reference.go",
         "directory_backed_persistent_state_store.go",
         "hashing_key_location_map.go",

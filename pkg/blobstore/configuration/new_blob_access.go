@@ -376,13 +376,20 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			}()
 		}
 
+		blockListGrowthPolicy, err := creator.NewBlockListGrowthPolicy(
+			int(backend.Local.CurrentBlocks),
+			int(backend.Local.NewBlocks))
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+
 		locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
 			blockList,
+			blockListGrowthPolicy,
 			util.DefaultErrorLogger,
 			storageTypeName,
 			int64(sectorSizeBytes)*blockSectorCount,
 			int(backend.Local.OldBlocks),
-			int(backend.Local.CurrentBlocks),
 			int(backend.Local.NewBlocks),
 			initialBlockCount)
 
