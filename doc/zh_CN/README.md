@@ -64,7 +64,7 @@ $ cat config/bb_storage.jsonnet
           keyLocationMapMaximumPutAttempts: 32,
           oldBlocks: 8,
           currentBlocks: 24,
-          newBlocks: 3,
+          newBlocks: 1,
           blocksOnBlockDevice: {
             source: {
               file: {
