@@ -34,5 +34,6 @@ type FileWriter interface {
 	io.Closer
 	io.WriterAt
 
+	Sync() error
 	Truncate(size int64) error
 }
