@@ -72,7 +72,5 @@ func (l FileInfoList) Less(i, j int) bool {
 }
 
 func (l FileInfoList) Swap(i, j int) {
-	t := l[i]
-	l[i] = l[j]
-	l[j] = t
+	l[i], l[j] = l[j], l[i]
 }
