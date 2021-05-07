@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -195,7 +196,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					},
 					OffsetBytes:  100,
 					SizeBytes:    11,
-					Decompressor: icas.Reference_DEFLATE,
+					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
@@ -221,7 +222,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					},
 					OffsetBytes:  100,
 					SizeBytes:    11,
-					Decompressor: icas.Reference_DEFLATE,
+					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
@@ -255,7 +256,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					},
 					OffsetBytes:  100,
 					SizeBytes:    11,
-					Decompressor: icas.Reference_DEFLATE,
+					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)

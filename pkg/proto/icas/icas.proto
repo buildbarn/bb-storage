@@ -63,18 +63,12 @@ message Reference {
   // to the size stored in the Digest that identifies this reference.
   int64 size_bytes = 4;
 
-  enum Decompressor {
-    // The object has not been compressed.
-    NONE = 0;
-
-    // The object has been compressed using the RFC 1951 DEFLATE
-    // algorithm (used by ZIP, zlib, etc.).
-    DEFLATE = 1;
-  }
+  // Was 'decompressor', using its own enum type.
+  reserved 5;
 
   // When set, assume the object is stored in compressed form. Perform
   // decompression to restore the object to its original form.
-  Decompressor decompressor = 5;
+  build.bazel.remote.execution.v2.Compressor.Value decompressor = 6;
 }
 
 // Request message of BatchUpdateReferences(). This message is similar

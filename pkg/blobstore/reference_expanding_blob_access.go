@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -97,9 +98,10 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 	}
 
 	// Apply a decompressor if needed.
+	// TODO: Add support for Zstandard.
 	switch reference.Decompressor {
-	case icas.Reference_NONE:
-	case icas.Reference_DEFLATE:
+	case remoteexecution.Compressor_IDENTITY:
+	case remoteexecution.Compressor_DEFLATE:
 		r = struct {
 			io.Reader
 			io.Closer
