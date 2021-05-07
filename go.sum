@@ -77,6 +77,8 @@ github.com/aws/aws-sdk-go-v2 v0.18.0 h1:qZ+woO4SamnH/eEbjM2IDLhRNwIwND/RQyVlBLp3
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/bazelbuild/remote-apis v0.0.0-20210309154856-0943dc4e70e1 h1:uo4qhIV+4gbJ3NY6/4nRCE4AS70xy/wgknQ2bPZS4+k=
 github.com/bazelbuild/remote-apis v0.0.0-20210309154856-0943dc4e70e1/go.mod h1:9Y+1FnaNUGVV6wKE0Jdh+mguqDUsyd9uUqokalrC7DQ=
+github.com/bazelbuild/remote-apis v0.0.0-20210505181611-ce7036ef5417 h1:5BTb1xvdd0Lbe4Y2/Ib5J5kYV9Btp02hkmB4QZrKnjo=
+github.com/bazelbuild/remote-apis v0.0.0-20210505181611-ce7036ef5417/go.mod h1:9Y+1FnaNUGVV6wKE0Jdh+mguqDUsyd9uUqokalrC7DQ=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=

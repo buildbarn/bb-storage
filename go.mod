@@ -12,7 +12,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.5
 	dmitri.shuralyov.com/go/generated v0.0.0-20170818220700-b1254a446363 // indirect
 	github.com/aws/aws-sdk-go v1.37.28
-	github.com/bazelbuild/remote-apis v0.0.0-20210309154856-0943dc4e70e1
+	github.com/bazelbuild/remote-apis v0.0.0-20210505181611-ce7036ef5417
 	github.com/go-redis/redis/extra/redisotel v0.3.0
 	github.com/go-redis/redis/v8 v8.7.1
 	github.com/golang/mock v1.4.3
