@@ -11,6 +11,12 @@ type fastThreadSafeGenerator struct {
 
 func (g *fastThreadSafeGenerator) IsThreadSafe() {}
 
+func (g *fastThreadSafeGenerator) Float64() float64 {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+	return g.generator.Float64()
+}
+
 func (g *fastThreadSafeGenerator) Intn(n int) int {
 	g.lock.Lock()
 	defer g.lock.Unlock()

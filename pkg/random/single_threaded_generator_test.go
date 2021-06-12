@@ -14,6 +14,14 @@ func TestSingleThreadedGenerator(t *testing.T) {
 		"CryptoThreadSafe":   random.CryptoThreadSafeGenerator,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Run("Float64", func(t *testing.T) {
+				for i := 0; i < 100; i++ {
+					v := generator.Float64()
+					require.LessOrEqual(t, 0.0, v)
+					require.Greater(t, 1.0, v)
+				}
+			})
+
 			t.Run("Intn", func(t *testing.T) {
 				for i := 0; i < 100; i++ {
 					v := generator.Intn(42)

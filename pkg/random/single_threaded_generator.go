@@ -8,6 +8,8 @@ import (
 // cannot be used concurrently. This interface is a subset of Go's
 // rand.Rand.
 type SingleThreadedGenerator interface {
+	// Generates a number in range [0.0, 1.0).
+	Float64() float64
 	// Generates a number in range [0, n).
 	Intn(n int) int
 	// Generates arbitrary bytes of data. This method is guaranteed
