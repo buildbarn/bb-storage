@@ -55,8 +55,13 @@ message ApplicationConfiguration {
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 9;
 
-  // Blobstore configuration for the Indirect Content Addressable
-  // Storage (ICAS).
+  // Optional: Blobstore configuration for the Indirect Content
+  // Addressable Storage (ICAS).
   buildbarn.configuration.blobstore.BlobAccessConfiguration
       indirect_content_addressable_storage = 10;
+
+  // Optional: Blobstore configuration for the Initial Size Class Cache
+  // (ISCC).
+  buildbarn.configuration.blobstore.BlobAccessConfiguration
+      initial_size_class_cache = 11;
 }

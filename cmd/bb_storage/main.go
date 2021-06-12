@@ -14,6 +14,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
+	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -55,6 +56,20 @@ func main() {
 			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
 		}
 		indirectContentAddressableStorage = info.BlobAccess
+	}
+
+	// Buildbarn extension: Initial Size Class Cache (ISCC).
+	var initialSizeClassCache blobstore.BlobAccess
+	if configuration.InitialSizeClassCache != nil {
+		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+			configuration.InitialSizeClassCache,
+			blobstore_configuration.NewISCCBlobAccessCreator(
+				bb_grpc.DefaultClientFactory,
+				int(configuration.MaximumMessageSizeBytes)))
+		if err != nil {
+			log.Fatal("Failed to create Initial Size Class Cache: ", err)
+		}
+		initialSizeClassCache = info.BlobAccess
 	}
 
 	// Create a trie for which instance names provide a writable
@@ -113,6 +128,13 @@ func main() {
 							s,
 							grpcservers.NewIndirectContentAddressableStorageServer(
 								indirectContentAddressableStorage,
+								int(configuration.MaximumMessageSizeBytes)))
+					}
+					if initialSizeClassCache != nil {
+						iscc.RegisterInitialSizeClassCacheServer(
+							s,
+							grpcservers.NewInitialSizeClassCacheServer(
+								initialSizeClassCache,
 								int(configuration.MaximumMessageSizeBytes)))
 					}
 					remoteexecution.RegisterCapabilitiesServer(s, buildQueue)

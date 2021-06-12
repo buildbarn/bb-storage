@@ -14,7 +14,7 @@ import (
 )
 
 type acBlobAccessCreator struct {
-	acBlobReplicatorCreator
+	protoBlobReplicatorCreator
 
 	contentAddressableStorage BlobAccessInfo
 	grpcClientFactory         grpc.ClientFactory
