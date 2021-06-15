@@ -1478,8 +1478,9 @@ def go_dependencies():
     go_repository(
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
-        sum = "h1:46ULzRKLh1CwgRq2dC5SlBzEqqNCi8rreOZnNrbqcIY=",
-        version = "v0.0.0-20210309074719-68d13333faf2",
+        patches = ["@com_github_buildbarn_bb_storage//:patches/org_golang_x_sys/pr-112-seek.diff"],
+        sum = "h1:faDu4veV+8pcThn4fewv6TVlNCezafGoC1gM/mxQLbQ=",
+        version = "v0.0.0-20210611083646-a4fc73990273",
     )
     go_repository(
         name = "org_golang_x_term",
