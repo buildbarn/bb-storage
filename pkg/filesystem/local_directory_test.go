@@ -1,6 +1,7 @@
 package filesystem_test
 
 import (
+	"io"
 	"os"
 	"runtime"
 	"syscall"
@@ -312,6 +313,92 @@ func TestLocalDirectoryChtimes(t *testing.T) {
 }
 
 // TODO(edsch): Add testing coverage for RemoveAll().
+
+func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
+	// Test the behavior on empty files.
+	d := openTmpDir(t)
+	f, err := d.OpenReadWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o444))
+	require.NoError(t, err)
+
+	_, err = f.GetNextRegionOffset(0, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(0, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	_, err = f.GetNextRegionOffset(1, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(1, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	// Test the behavior on a sparse file that starts with a hole
+	// and ends with data.
+	n, err := f.WriteAt([]byte("Hello"), 1024*1024)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+
+	nextOffset, err := f.GetNextRegionOffset(0, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(0, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024-1, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024-1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024-1), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+5), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024+4, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+4), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024+4, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+5), nextOffset)
+
+	_, err = f.GetNextRegionOffset(1024*1024+5, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(1024*1024+5, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	// Test the behavior on a sparse file that ends with a hole.
+	require.NoError(t, f.Truncate(3072*1024))
+
+	_, err = f.GetNextRegionOffset(2048*1024, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	nextOffset, err = f.GetNextRegionOffset(2048*1024, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(2048*1024), nextOffset)
+
+	_, err = f.GetNextRegionOffset(3072*1024-1, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	nextOffset, err = f.GetNextRegionOffset(3072*1024-1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(3072*1024-1), nextOffset)
+
+	_, err = f.GetNextRegionOffset(3072*1024, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(3072*1024, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Close())
+}
 
 func TestLocalDirectoryIsWritable(t *testing.T) {
 	// TODO: This test is broken when run on GitHub Actions, due to

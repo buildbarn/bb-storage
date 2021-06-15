@@ -3,6 +3,7 @@
 package filesystem
 
 import (
+	"io"
 	"os"
 	"runtime"
 	"sort"
@@ -85,16 +86,51 @@ func (d *localDirectory) OpenAppend(name path.Component, creationMode CreationMo
 	return d.open(name, creationMode, os.O_APPEND|os.O_WRONLY)
 }
 
+type localFileReadWriter struct {
+	*os.File
+}
+
+func (f localFileReadWriter) GetNextRegionOffset(offset int64, regionType RegionType) (int64, error) {
+	defer runtime.KeepAlive(f)
+
+	var whence int
+	switch regionType {
+	case Data:
+		whence = unix.SEEK_DATA
+	case Hole:
+		whence = unix.SEEK_HOLE
+	default:
+		panic("Unknown region type")
+	}
+	nextOffset, err := unix.Seek(int(f.Fd()), offset, whence)
+	if err == syscall.ENXIO {
+		return 0, io.EOF
+	}
+	return nextOffset, err
+}
+
 func (d *localDirectory) OpenRead(name path.Component) (FileReader, error) {
-	return d.open(name, DontCreate, os.O_RDONLY)
+	f, err := d.open(name, DontCreate, os.O_RDONLY)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) OpenReadWrite(name path.Component, creationMode CreationMode) (FileReadWriter, error) {
-	return d.open(name, creationMode, os.O_RDWR)
+	f, err := d.open(name, creationMode, os.O_RDWR)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) OpenWrite(name path.Component, creationMode CreationMode) (FileWriter, error) {
-	return d.open(name, creationMode, os.O_WRONLY)
+	f, err := d.open(name, creationMode, os.O_WRONLY)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) Link(oldName path.Component, newDirectory Directory, newName path.Component) error {
