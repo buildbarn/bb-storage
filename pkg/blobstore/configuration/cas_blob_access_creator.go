@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -51,6 +52,10 @@ func (bac *casBlobAccessCreator) GetStorageTypeName() string {
 
 func (bac *casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
+}
+
+func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
+	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock), nil
 }
 
 func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {

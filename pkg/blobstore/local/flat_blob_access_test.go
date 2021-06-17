@@ -16,11 +16,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestKeyBlobMapBackedBlobAccessGet(t *testing.T) {
+func TestFlatBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewKeyBlobMapBackedBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 
@@ -153,11 +153,11 @@ func TestKeyBlobMapBackedBlobAccessGet(t *testing.T) {
 	})
 }
 
-func TestKeyBlobMapBackedBlobAccessPut(t *testing.T) {
+func TestFlatBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewKeyBlobMapBackedBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 
@@ -220,11 +220,11 @@ func TestKeyBlobMapBackedBlobAccessPut(t *testing.T) {
 	})
 }
 
-func TestKeyBlobMapBackedBlobAccessFindMissing(t *testing.T) {
+func TestFlatBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewKeyBlobMapBackedBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 

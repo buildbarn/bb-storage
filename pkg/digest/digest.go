@@ -312,3 +312,48 @@ func (d Digest) UsesDigestFunction(f Function) bool {
 	hashEnd, _, sizeBytesEnd := d.unpack()
 	return hashEnd == f.hashLength && d.value[sizeBytesEnd+1:] == f.instanceName.value
 }
+
+// GetDigestsWithParentInstanceNames returns a list of Digest objects
+// that contain the same hash and size in bytes, but have the instance
+// name truncated to an increasing number of components.
+//
+// For example, if a digest with instance name
+// "this/is/an/instance/name" is provided, this function will return a
+// list of six digests, having instance names "", "this", "this/is",
+// "this/is/an", "this/is/an/instance" and "this/is/an/instance/name".
+func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
+	_, _, sizeBytesEnd := d.unpack()
+	instanceNameStart := sizeBytesEnd + 1
+	digestWithoutInstanceName := Digest{
+		value: d.value[:instanceNameStart],
+	}
+	if instanceNameStart == len(d.value) {
+		// Corner case: The digest uses the empty instance name.
+		// Return a singleton list.
+		return []Digest{digestWithoutInstanceName}
+	}
+
+	// Count the number of components.
+	components := 1
+	for i := instanceNameStart + 1; i < len(d.value)-1; i++ {
+		if d.value[i] == '/' {
+			components++
+		}
+	}
+
+	// Create all of the digests in reverse order.
+	digests := make([]Digest, components+1)
+	digests[0] = digestWithoutInstanceName
+	for {
+		digests[components] = d
+		components--
+		if components == 0 {
+			return digests
+		}
+		end := len(d.value) - 1
+		for d.value[end-1] != '/' {
+			end--
+		}
+		d.value = d.value[:end-1]
+	}
+}

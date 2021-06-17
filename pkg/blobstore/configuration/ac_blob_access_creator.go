@@ -4,7 +4,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
@@ -14,7 +13,7 @@ import (
 )
 
 type acBlobAccessCreator struct {
-	protoBlobReplicatorCreator
+	protoBlobAccessCreator
 
 	contentAddressableStorage BlobAccessInfo
 	grpcClientFactory         grpc.ClientFactory
@@ -32,23 +31,12 @@ func NewACBlobAccessCreator(contentAddressableStorage BlobAccessInfo, grpcClient
 	}
 }
 
-func (bac *acBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
-	return digest.KeyWithInstance
-}
-
 func (bac *acBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.ACReadBufferFactory
 }
 
 func (bac *acBlobAccessCreator) GetStorageTypeName() string {
 	return "ac"
-}
-
-func (bac *acBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
-	if newBlocks != 1 {
-		return nil, status.Error(codes.InvalidArgument, "The number of \"new\" blocks must be set to 1 for this storage type, as objects cannot be updated reliably otherwise")
-	}
-	return local.NewMutableBlockListGrowthPolicy(currentBlocks), nil
 }
 
 func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
@@ -78,8 +66,4 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 	default:
 		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}
-}
-
-func (bac *acBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
-	return blobAccess
 }

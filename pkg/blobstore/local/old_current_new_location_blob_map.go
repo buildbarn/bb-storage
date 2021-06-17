@@ -51,7 +51,7 @@ type oldBlockState struct {
 // future, which is why it needs to be copied into the "new" group when
 // requested to be retained. Data in the "current" group is assumed to
 // remain present for the time being, which is why it is left in place.
-// This copying is performed by KeyBlobMapBackedBlobAccess.
+// This copying is performed by FlatBlobAccess.
 //
 // Below is an illustration of how the blocks of data may be laid out at
 // a given point in time. Every column of █ characters corresponds to a

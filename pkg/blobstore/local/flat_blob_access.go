@@ -15,20 +15,20 @@ import (
 )
 
 var (
-	keyBlobMapBackedBlobAccessPrometheusMetrics sync.Once
+	flatBlobAccessPrometheusMetrics sync.Once
 
-	keyBlobMapBackedBlobAccessRefreshes = prometheus.NewHistogramVec(
+	flatBlobAccessRefreshes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "key_blob_map_backed_blob_access_refreshes",
+			Name:      "flat_blob_access_refreshes",
 			Help:      "The number of blobs that were refreshed when requested",
 			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
 		},
 		[]string{"name", "operation"})
 )
 
-type keyBlobMapBackedBlobAccess struct {
+type flatBlobAccess struct {
 	keyBlobMap      KeyBlobMap
 	digestKeyFormat digest.KeyFormat
 
@@ -39,28 +39,31 @@ type keyBlobMapBackedBlobAccess struct {
 	refreshesFindMissing prometheus.Observer
 }
 
-// NewKeyBlobMapBackedBlobAccess creates a BlobAccess that forwards all
-// calls to a KeyBlobMap backend.
-func NewKeyBlobMapBackedBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, name string) blobstore.BlobAccess {
-	keyBlobMapBackedBlobAccessPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(keyBlobMapBackedBlobAccessRefreshes)
+// NewFlatBlobAccess creates a BlobAccess that forwards all calls to a
+// KeyBlobMap backend. It's called 'flat', because it assumes all
+// objects are stored in a flat namespace. It either ignores the REv2
+// instance name in digests entirely, or it strongly partitions objects
+// by instance name. It does not introduce any hierarchy.
+func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, name string) blobstore.BlobAccess {
+	flatBlobAccessPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(flatBlobAccessRefreshes)
 	})
 
-	return &keyBlobMapBackedBlobAccess{
+	return &flatBlobAccess{
 		keyBlobMap:      keyBlobMap,
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,
 
-		refreshesGet:         keyBlobMapBackedBlobAccessRefreshes.WithLabelValues(name, "Get"),
-		refreshesFindMissing: keyBlobMapBackedBlobAccessRefreshes.WithLabelValues(name, "FindMissing"),
+		refreshesGet:         flatBlobAccessRefreshes.WithLabelValues(name, "Get"),
+		refreshesFindMissing: flatBlobAccessRefreshes.WithLabelValues(name, "FindMissing"),
 	}
 }
 
-func (ba *keyBlobMapBackedBlobAccess) getKey(digest digest.Digest) Key {
+func (ba *flatBlobAccess) getKey(digest digest.Digest) Key {
 	return NewKeyFromString(digest.GetKey(ba.digestKeyFormat))
 }
 
-func (ba *keyBlobMapBackedBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
 	key := ba.getKey(blobDigest)
 
 	// Look up the blob in storage while holding a read lock.
@@ -129,7 +132,7 @@ func (ba *keyBlobMapBackedBlobAccess) Get(ctx context.Context, blobDigest digest
 	return b1
 }
 
-func (ba *keyBlobMapBackedBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
+func (ba *flatBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -156,7 +159,7 @@ func (ba *keyBlobMapBackedBlobAccess) Put(ctx context.Context, blobDigest digest
 	return err
 }
 
-func (ba *keyBlobMapBackedBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Convert all digests to Keys.
 	keys := make([]Key, 0, digests.Length())
 	for _, blobDigest := range digests.Items() {

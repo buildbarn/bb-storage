@@ -276,3 +276,39 @@ func TestKeyFormatCombine(t *testing.T) {
 	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithoutInstance))
 	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithInstance))
 }
+
+func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world/cup", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello/world/cup", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+}

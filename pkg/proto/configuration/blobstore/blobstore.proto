@@ -561,6 +561,47 @@ message LocalBlobAccessConfiguration {
   // key-location map and data in blocks will be ignored, even if their
   // contents are valid.
   Persistent persistent = 13;
+
+  // For all data stores except for the Content Addressable Storage
+  // (CAS), this storage backend always fully respects the REv2 instance
+  // name. This means that every instance name may store a separate copy
+  // of an object. Reads and writes are fully isolated.
+  //
+  // For the Content Addressable Storage, this option determines to what
+  // extent the instance name should be respected. When set to false,
+  // the instance name is completely ignored, meaning that all instance
+  // names share all objects. This is great from a performance point of
+  // view, as it means that users of multi-tenant setups need to upload
+  // objects less frequently, and that storage space usage is minimised.
+  // Unfortunately, it does mean that all tenants can access each
+  // other's objects once they get their hands on their digests.
+  //
+  // When this option is set to true, the instance name is respected in
+  // a hierarchical fashion. This means that if an object is written
+  // using instance name "foo/bar", it will be possible to read it using
+  // instance names "foo/bar", "foo/bar/baz", "foo/bar/baz/qux", but not
+  // instance names "", "foo", "foo/xyzzy". In other words, non-empty
+  // instance names will have Content Addressable Storage contents
+  // inherited from their parent instance names.
+  //
+  // This feature is implemented in such a way that object contents are
+  // still shared across all instance names. Enabling this option does
+  // not cause more data to be written into blocks, as uploads for
+  // objects that already exist under another instance name are treated
+  // as no-ops. It does cause at least a twofold increase in
+  // key-location map usage to track which instance name prefixes may
+  // access an object, proportional to the number of instance names
+  // used.
+  //
+  // This option is only supported for the Content Addressable Storage,
+  // as only for this data store it is safe to provide such behaviour at
+  // the individual storage node level. For the Action Cache, you may
+  // only want to do hierarchical instance name matching at a higher
+  // level, e.g., on top of CompletenessCheckingBlobAccess.
+  //
+  // TODO: Provide a HierarchicalInstanceNamesBlobAccess that implements
+  // similar logic for other data stores.
+  bool hierarchical_instance_names = 14;
 }
 
 message ExistenceCachingBlobAccessConfiguration {

@@ -246,7 +246,10 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
 		}, "mirrored", nil
 	case *pb.BlobAccessConfiguration_Local:
-		digestKeyFormat := creator.GetBaseDigestKeyFormat()
+		digestKeyFormat := digest.KeyWithInstance
+		if !backend.Local.HierarchicalInstanceNames {
+			digestKeyFormat = creator.GetBaseDigestKeyFormat()
+		}
 		persistent := backend.Local.Persistent
 
 		// Create the backing store for blocks of data.
@@ -416,9 +419,25 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Key-location map backend not specified")
 		}
+		keyLocationMap := local.NewHashingKeyLocationMap(
+			locationRecordArray,
+			locationRecordArraySize,
+			keyLocationMapHashInitialization,
+			backend.Local.KeyLocationMapMaximumGetAttempts,
+			int(backend.Local.KeyLocationMapMaximumPutAttempts),
+			storageTypeName)
 
-		return BlobAccessInfo{
-			BlobAccess: local.NewKeyBlobMapBackedBlobAccess(
+		var localBlobAccess blobstore.BlobAccess
+		if backend.Local.HierarchicalInstanceNames {
+			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
+				keyLocationMap,
+				locationBlobMap,
+				&globalLock)
+			if err != nil {
+				return BlobAccessInfo{}, "", err
+			}
+		} else {
+			localBlobAccess = local.NewFlatBlobAccess(
 				local.NewLocationBasedKeyBlobMap(
 					local.NewHashingKeyLocationMap(
 						locationRecordArray,
@@ -430,7 +449,10 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					locationBlobMap),
 				digestKeyFormat,
 				&globalLock,
-				storageTypeName),
+				storageTypeName)
+		}
+		return BlobAccessInfo{
+			BlobAccess:      localBlobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_ReadFallback:

@@ -1,6 +1,8 @@
 package configuration
 
 import (
+	"sync"
+
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -31,6 +33,10 @@ type BlobAccessCreator interface {
 	// NewBlockListGrowthPolicy() creates a BlockListGrowthPolicy
 	// for LocalBlobAccess that is recommended for this storage type.
 	NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error)
+	// NewHierarchicalInstanceNamesLocalBlobAccess() creates a
+	// BlobAccess suitable for storing data on the local system that
+	// uses hierarchical instance names.
+	NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error)
 	// NewCustomBlobAccess() can be used as a fallback to create
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
