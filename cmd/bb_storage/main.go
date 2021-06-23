@@ -90,17 +90,17 @@ func main() {
 	buildQueue, err := builder.NewDemultiplexingBuildQueueFromConfiguration(
 		configuration.Schedulers,
 		bb_grpc.DefaultClientFactory,
-		allowActionCacheUpdatesTrie.Contains)
+		allowActionCacheUpdatesTrie.ContainsPrefix)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	actionCache = blobstore.NewInstanceNameAccessCheckingBlobAccess(
 		actionCache,
-		allowActionCacheUpdatesTrie.Contains)
+		allowActionCacheUpdatesTrie.ContainsPrefix)
 	buildQueue = builder.NewUpdateEnabledTogglingBuildQueue(
 		buildQueue,
-		allowActionCacheUpdatesTrie.Contains)
+		allowActionCacheUpdatesTrie.ContainsPrefix)
 
 	go func() {
 		log.Fatal(

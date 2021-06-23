@@ -505,7 +505,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewDemultiplexingBlobAccess(
 				func(i digest.InstanceName) (blobstore.BlobAccess, string, digest.InstanceNamePatcher, error) {
-					idx := backendsTrie.Get(i)
+					idx := backendsTrie.GetLongestPrefix(i)
 					if idx < 0 {
 						return nil, "", digest.NoopInstanceNamePatcher, status.Errorf(codes.InvalidArgument, "Unknown instance name: %#v", i.String())
 					}

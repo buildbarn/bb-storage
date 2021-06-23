@@ -45,7 +45,7 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 	}
 
 	return NewDemultiplexingBuildQueue(func(instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error) {
-		if idx := buildQueuesTrie.Get(instanceName); idx >= 0 {
+		if idx := buildQueuesTrie.GetLongestPrefix(instanceName); idx >= 0 {
 			// The instance name corresponds to a scheduler
 			// to which we can forward requests.
 			return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
