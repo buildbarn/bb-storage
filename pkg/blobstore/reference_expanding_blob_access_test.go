@@ -1,6 +1,7 @@
 package blobstore_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -277,6 +278,48 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
+	})
+
+	t.Run("S3SuccessZstandard", func(t *testing.T) {
+		// The S3 service returns valid data compressed using
+		// the Zstandard algorithm.
+		aaaDigest := digest.MustNewDigest("foo", "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
+		baseBlobAccess.EXPECT().Get(ctx, aaaDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  0,
+					SizeBytes:    21,
+					Decompressor: remoteexecution.Compressor_ZSTD,
+				},
+				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
+		body := mock.NewMockReadCloser(ctrl)
+		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("bytes=0-20"),
+		}).Return(&s3.GetObjectOutput{
+			Body: body,
+		}, nil)
+		body.EXPECT().Read(gomock.Any()).
+			DoAndReturn(bytes.NewBuffer([]byte{
+				// 21 bytes of Zstandard compressed data
+				// that decompress to fifty 'a' bytes.
+				0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x45,
+				0x00, 0x00, 0x10, 0x61, 0x61, 0x01, 0x00,
+				0x45, 0x00, 0x0b, 0x23, 0x9f, 0x0f, 0x9a,
+			}).Read).
+			AnyTimes()
+		body.EXPECT().Close()
+
+		data, err := blobAccess.Get(ctx, aaaDigest).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
 	})
 }
 

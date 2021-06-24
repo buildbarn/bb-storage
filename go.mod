@@ -21,6 +21,7 @@ require (
 	github.com/gordonklaus/ineffassign v0.0.0-20210225214923-2e10b2664254 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/lazybeaver/xorshift v0.0.0-20170702203709-ce511d4823dd
 	github.com/prometheus/client_golang v1.9.0
 	github.com/stretchr/testify v1.7.0

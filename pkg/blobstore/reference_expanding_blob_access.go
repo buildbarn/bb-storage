@@ -15,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -98,9 +99,22 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 	}
 
 	// Apply a decompressor if needed.
-	// TODO: Add support for Zstandard.
 	switch reference.Decompressor {
 	case remoteexecution.Compressor_IDENTITY:
+	case remoteexecution.Compressor_ZSTD:
+		// Disable concurrency, as the default is to use
+		// GOMAXPROCS. We should just use a single thread,
+		// because many BlobAccess operations may run in
+		// parallel.
+		decoder, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
+		if err != nil {
+			r.Close()
+			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))
+		}
+		r = &zstdReader{
+			Decoder:          decoder,
+			underlyingReader: r,
+		}
 	case remoteexecution.Compressor_DEFLATE:
 		r = struct {
 			io.Reader
@@ -130,4 +144,16 @@ func (ba *referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.D
 
 func (ba *referenceExpandingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return ba.blobAccess.FindMissing(ctx, digests)
+}
+
+// zstdReader is a decorator for zstd.Decoder that ensures both the
+// decoder and the underlying stream are closed upon completion.
+type zstdReader struct {
+	*zstd.Decoder
+	underlyingReader io.Closer
+}
+
+func (r *zstdReader) Close() error {
+	r.Decoder.Close()
+	return r.underlyingReader.Close()
 }
