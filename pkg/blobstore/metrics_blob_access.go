@@ -86,11 +86,12 @@ func (ba *metricsBlobAccess) updateDurationSeconds(vec prometheus.ObserverVec, c
 }
 
 func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	timeStart := ba.clock.Now()
 	b := buffer.WithErrorHandler(
 		ba.blobAccess.Get(ctx, digest),
 		&metricsErrorHandler{
 			blobAccess: ba,
-			timeStart:  ba.clock.Now(),
+			timeStart:  timeStart,
 			errorCode:  codes.OK,
 		})
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
