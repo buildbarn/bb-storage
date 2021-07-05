@@ -114,6 +114,34 @@ message BlobAccessConfiguration {
     // 'schedulers' configuration option. Please refer to that
     // configuration option for more details.
     DemultiplexingBlobAccessConfiguration demultiplexing = 20;
+
+    // Read objects using instance names in a hierarchical fashion. This
+    // means that if an object is written using instance name "foo/bar",
+    // it will be possible to read it using instance names "foo/bar",
+    // "foo/bar/baz", "foo/bar/baz/qux", but not instance names "",
+    // "foo", "foo/xyzzy". In other words, non-empty instance names will
+    // have contents inherited from their parent instance names. In case
+    // multiple instance names contain an object of a given digest, the
+    // one with the longest instance name is preferred.
+    //
+    // For the Action Cache (AC), it is recommended that this decorator
+    // is placed above CompletenessCheckingBlobAccess. This ensures that
+    // resolution continues, even if one or more instance names store an
+    // incomplete ActionResult.
+    //
+    // For every read operation, this decorator may generate a linear
+    // number of operations against the backend, based on the number of
+    // components in the instance name. This is acceptable for
+    // low-throughput data stores such as the Action Cache (AC) and
+    // Initial Size Class Cache (ISCC). For the Content Addressable
+    // Storage (CAS), this approach tends to be too inefficient. For the
+    // CAS, it would also be better to prefer the object with the
+    // shortest instance name, so that sharing of data between instance
+    // names is maximised. This is why this implementation does not
+    // allow enabling this option for the CAS. It is recommended that
+    // the LocalBlobAccessConfiguration.hierarchical_instance_names
+    // option is used instead.
+    BlobAccessConfiguration hierarchical_instance_names = 21;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -597,10 +625,8 @@ message LocalBlobAccessConfiguration {
   // as only for this data store it is safe to provide such behaviour at
   // the individual storage node level. For the Action Cache, you may
   // only want to do hierarchical instance name matching at a higher
-  // level, e.g., on top of CompletenessCheckingBlobAccess.
-  //
-  // TODO: Provide a HierarchicalInstanceNamesBlobAccess that implements
-  // similar logic for other data stores.
+  // level, e.g., on top of CompletenessCheckingBlobAccess. This can be
+  // achieved by using HierarchicalInstanceNamesBlobAccess.
   bool hierarchical_instance_names = 14;
 }
 

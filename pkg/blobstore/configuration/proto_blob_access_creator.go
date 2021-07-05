@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,4 +33,23 @@ func (bac *protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(k
 
 func (bac *protoBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	return blobAccess
+}
+
+// newProtoCustomBlobAccess is a common implementation of
+// BlobAccessCreator.NewCustomBlobAccess() for all types derived from
+// protoBlobAccessCreator.
+func newProtoCustomBlobAccess(bac BlobAccessCreator, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+	switch backend := configuration.Backend.(type) {
+	case *pb.BlobAccessConfiguration_HierarchicalInstanceNames:
+		base, err := NewNestedBlobAccess(backend.HierarchicalInstanceNames, bac)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		return BlobAccessInfo{
+			BlobAccess:      blobstore.NewHierarchicalInstanceNamesBlobAccess(base.BlobAccess),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "hierarchical_instance_names", nil
+	default:
+		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+	}
 }

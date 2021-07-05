@@ -6,9 +6,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type icasBlobAccessCreator struct {
@@ -51,6 +48,6 @@ func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcce
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:
-		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+		return newProtoCustomBlobAccess(bac, configuration)
 	}
 }
