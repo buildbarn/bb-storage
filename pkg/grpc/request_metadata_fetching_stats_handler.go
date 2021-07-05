@@ -56,6 +56,8 @@ func (rmfsh requestMetadataFetchingStatsHandler) TagRPC(ctx context.Context, rti
 		trace.StringAttribute("action_id", rmd.ActionId),
 		trace.StringAttribute("tool_invocation_id", rmd.ToolInvocationId),
 		trace.StringAttribute("correlated_invocations_id", rmd.CorrelatedInvocationsId),
+		trace.StringAttribute("target_id", rmd.TargetId),
+		trace.StringAttribute("configuration_id", rmd.ConfigurationId),
 	)
 
 	if rmd.ToolDetails != nil {
