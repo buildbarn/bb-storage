@@ -57,7 +57,7 @@ func main() {
 			"gRPC server failure: ",
 			bb_grpc.NewServersFromConfigurationAndServe(
 				configuration.GrpcServers,
-				func(s *grpc.Server) {
+				func(s grpc.ServiceRegistrar) {
 					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
 				}))
 	}()

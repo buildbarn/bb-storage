@@ -107,7 +107,7 @@ func main() {
 			"gRPC server failure: ",
 			bb_grpc.NewServersFromConfigurationAndServe(
 				configuration.GrpcServers,
-				func(s *grpc.Server) {
+				func(s grpc.ServiceRegistrar) {
 					remoteexecution.RegisterActionCacheServer(
 						s,
 						grpcservers.NewActionCacheServer(
