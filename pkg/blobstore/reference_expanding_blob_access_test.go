@@ -256,7 +256,6 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 						},
 					},
 					OffsetBytes:  100,
-					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
@@ -264,7 +263,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
-			Range:  aws.String("bytes=100-110"),
+			Range:  aws.String("bytes=100-"),
 		}).Return(&s3.GetObjectOutput{
 			Body: body,
 		}, nil)
