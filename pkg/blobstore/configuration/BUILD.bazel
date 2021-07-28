@@ -33,6 +33,7 @@ go_library(
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/grpc",
+        "//pkg/http",
         "//pkg/proto/configuration/blobstore",
         "//pkg/random",
         "//pkg/util",

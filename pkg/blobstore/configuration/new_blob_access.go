@@ -16,6 +16,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -169,8 +170,13 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: digestKeyFormat,
 		}, "redis", nil
 	case *pb.BlobAccessConfiguration_Remote:
+		// TODO: Add TLS client options to configuration schema.
+		httpClient, err := http.NewClient(nil)
+		if err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
+		}
 		return BlobAccessInfo{
-			BlobAccess:      blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageTypeName, readBufferFactory),
+			BlobAccess:      blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageTypeName, readBufferFactory, httpClient),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:

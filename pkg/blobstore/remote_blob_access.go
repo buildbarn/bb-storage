@@ -7,11 +7,8 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-
-	// TODO: Migrate this code away from ctxhttp. Use the HTTPClient
-	// interface that's in this package instead. This allows us to
-	// add unit testing coverage.
-	"golang.org/x/net/context/ctxhttp"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,6 +18,7 @@ type remoteBlobAccess struct {
 	address           string
 	prefix            string
 	readBufferFactory ReadBufferFactory
+	httpClient        bb_http.Client
 }
 
 func convertHTTPUnexpectedStatus(resp *http.Response) error {
@@ -30,7 +28,7 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewRemoteBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewRemoteBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory) BlobAccess {
+func NewRemoteBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient bb_http.Client) BlobAccess {
 	return &remoteBlobAccess{
 		address:           address,
 		prefix:            prefix,
@@ -40,7 +38,11 @@ func NewRemoteBlobAccess(address, prefix string, readBufferFactory ReadBufferFac
 
 func (ba *remoteBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
-	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return buffer.NewBufferFromError(err)
+	}
+	resp, err := ba.httpClient.Do(req)
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	}
@@ -65,13 +67,13 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest digest.Digest, b buf
 	}
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
 	r := b.ToReader()
-	req, err := http.NewRequest(http.MethodPut, url, r)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, r)
 	if err != nil {
 		r.Close()
 		return err
 	}
 	req.ContentLength = sizeBytes
-	resp, err := ctxhttp.Do(ctx, http.DefaultClient, req)
+	resp, err := ba.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -85,10 +87,15 @@ func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests digest.Set)
 	missing := digest.NewSetBuilder()
 	for _, blobDigest := range digests.Items() {
 		url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, blobDigest.GetHashString())
-		resp, err := ctxhttp.Head(ctx, http.DefaultClient, url)
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+		if err != nil {
+			return digest.EmptySet, util.StatusWrapWithCode(err, codes.Internal, "Failed to create HTTP request")
+		}
+		resp, err := ba.httpClient.Do(req)
 		if err != nil {
 			return digest.EmptySet, err
 		}
+		resp.Body.Close()
 
 		switch resp.StatusCode {
 		case http.StatusNotFound:
