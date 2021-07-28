@@ -17,6 +17,12 @@ func (g *fastThreadSafeGenerator) Float64() float64 {
 	return g.generator.Float64()
 }
 
+func (g *fastThreadSafeGenerator) Int63n(n int64) int64 {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+	return g.generator.Int63n(n)
+}
+
 func (g *fastThreadSafeGenerator) Intn(n int) int {
 	g.lock.Lock()
 	defer g.lock.Unlock()

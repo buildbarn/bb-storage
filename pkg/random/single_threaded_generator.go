@@ -10,7 +10,9 @@ import (
 type SingleThreadedGenerator interface {
 	// Generates a number in range [0.0, 1.0).
 	Float64() float64
-	// Generates a number in range [0, n).
+	// Generates a number in range [0, n), where n is of type int64.
+	Int63n(n int64) int64
+	// Generates a number in range [0, n), where n is of type int.
 	Intn(n int) int
 	// Generates arbitrary bytes of data. This method is guaranteed
 	// to succeed.
