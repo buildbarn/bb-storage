@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 
-	"go.opencensus.io/plugin/ocgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 func init() {
@@ -41,14 +41,14 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
-	dialOptions := []grpc.DialOption{
-		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}),
-	}
+	var dialOptions []grpc.DialOption
 	unaryInterceptors := []grpc.UnaryClientInterceptor{
 		grpc_prometheus.UnaryClientInterceptor,
+		otelgrpc.UnaryClientInterceptor(),
 	}
 	streamInterceptors := []grpc.StreamClientInterceptor{
 		grpc_prometheus.StreamClientInterceptor,
+		otelgrpc.StreamClientInterceptor(),
 	}
 
 	// Optional: TLS.
