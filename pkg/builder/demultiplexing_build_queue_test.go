@@ -69,7 +69,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			InstanceName: "rhel7",
 		}).Return(&remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil)
 
@@ -79,7 +79,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, response)
 	})

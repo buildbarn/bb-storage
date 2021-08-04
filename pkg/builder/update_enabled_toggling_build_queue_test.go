@@ -62,7 +62,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 			InstanceName: "hello",
 		}).Return(&remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil)
 		instanceNameMatcher.EXPECT().Call(digest.MustNewInstanceName("hello")).Return(true)
@@ -73,7 +73,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 				ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
 					UpdateEnabled: true,
 				},
@@ -88,7 +88,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 			InstanceName: "hello",
 		}).Return(&remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil)
 		instanceNameMatcher.EXPECT().Call(digest.MustNewInstanceName("hello")).Return(false)
@@ -99,7 +99,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 				ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
 					UpdateEnabled: false,
 				},
