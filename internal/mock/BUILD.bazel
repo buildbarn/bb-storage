@@ -171,6 +171,8 @@ gomock(
     interfaces = [
         "ClientConnInterface",
         "ClientStream",
+        "ServerStream",
+        "StreamHandler",
         "Streamer",
         "UnaryHandler",
         "UnaryInvoker",

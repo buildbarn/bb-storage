@@ -7,7 +7,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -16,7 +15,7 @@ import (
 // Implementations may grant access based on TLS connection state,
 // provided headers, source IP address ranges, etc. etc. etc.
 type Authenticator interface {
-	Authenticate(ctx context.Context) error
+	Authenticate(ctx context.Context) (context.Context, error)
 }
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
@@ -50,30 +49,5 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			clock.SystemClock), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
-	}
-}
-
-// NewAuthenticatingUnaryInterceptor creates a gRPC request interceptor
-// for unary calls that passes all requests through an Authenticator.
-// This may be used to enable authentication support on a gRPC server.
-func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		if err := a.Authenticate(ctx); err != nil {
-			return nil, err
-		}
-		return handler(ctx, req)
-	}
-}
-
-// NewAuthenticatingStreamInterceptor creates a gRPC request interceptor
-// for streaming calls that passes all requests through an
-// Authenticator. This may be used to enable authentication support on a
-// gRPC server.
-func NewAuthenticatingStreamInterceptor(a Authenticator) grpc.StreamServerInterceptor {
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := a.Authenticate(ss.Context()); err != nil {
-			return err
-		}
-		return handler(srv, ss)
 	}
 }

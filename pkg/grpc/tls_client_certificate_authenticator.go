@@ -29,19 +29,19 @@ func NewTLSClientCertificateAuthenticator(clientCAs *x509.CertPool, clock clock.
 	}
 }
 
-func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) error {
+func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
 	// Extract client certificate chain from the connection.
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		return status.Error(codes.Unauthenticated, "Connection was not established using gRPC")
+		return nil, status.Error(codes.Unauthenticated, "Connection was not established using gRPC")
 	}
 	tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
 	if !ok {
-		return status.Error(codes.Unauthenticated, "Connection was not established using TLS")
+		return nil, status.Error(codes.Unauthenticated, "Connection was not established using TLS")
 	}
 	certs := tlsInfo.State.PeerCertificates
 	if len(certs) == 0 {
-		return status.Error(codes.Unauthenticated, "Client provided no TLS client certificate")
+		return nil, status.Error(codes.Unauthenticated, "Client provided no TLS client certificate")
 	}
 
 	// Perform certificate verification.
@@ -56,7 +56,7 @@ func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) er
 		opts.Intermediates.AddCert(cert)
 	}
 	if _, err := certs[0].Verify(opts); err != nil {
-		return util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot validate TLS client certificate")
+		return nil, util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot validate TLS client certificate")
 	}
-	return nil
+	return ctx, nil
 }

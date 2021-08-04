@@ -9,5 +9,7 @@ import (
 )
 
 func TestAllowAuthenticator(t *testing.T) {
-	require.NoError(t, bb_grpc.AllowAuthenticator.Authenticate(context.Background()))
+	newCtx, err := bb_grpc.AllowAuthenticator.Authenticate(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, context.Background(), newCtx)
 }

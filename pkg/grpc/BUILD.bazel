@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "allow_authenticator.go",
         "any_authenticator.go",
+        "authenticating_interceptor.go",
         "authenticator.go",
         "base_client_factory.go",
         "client_dialer.go",
@@ -28,6 +29,7 @@ go_library(
         "//pkg/proto/configuration/grpc",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_grpc_ecosystem_go_grpc_middleware//:go-grpc-middleware",
         "@com_github_grpc_ecosystem_go_grpc_prometheus//:go-grpc-prometheus",
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
         "@io_opentelemetry_go_otel//attribute",
@@ -53,6 +55,7 @@ go_test(
     srcs = [
         "allow_authenticator_test.go",
         "any_authenticator_test.go",
+        "authenticating_interceptor_test.go",
         "deduplicating_client_factory_test.go",
         "deny_authenticator_test.go",
         "lazy_client_dialer_test.go",

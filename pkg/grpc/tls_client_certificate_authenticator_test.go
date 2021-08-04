@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -97,92 +98,96 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	t.Run("NoGRPC", func(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot
 		// extract peer state information.
+		_, err := authenticator.Authenticate(ctx)
 		require.Equal(
 			t,
 			status.Error(codes.Unauthenticated, "Connection was not established using gRPC"),
-			authenticator.Authenticate(ctx))
+			err)
 	})
 
 	t.Run("NoTLS", func(t *testing.T) {
 		// Non-TLS connection.
+		_, err := authenticator.Authenticate(peer.NewContext(ctx, &peer.Peer{}))
 		require.Equal(
 			t,
 			status.Error(codes.Unauthenticated, "Connection was not established using TLS"),
-			authenticator.Authenticate(peer.NewContext(ctx, &peer.Peer{})))
+			err)
 	})
 
 	t.Run("NoCertificateProvided", func(t *testing.T) {
 		// Connection with no certificate provided by the client.
+		_, err := authenticator.Authenticate(
+			peer.NewContext(
+				ctx,
+				&peer.Peer{
+					AuthInfo: credentials.TLSInfo{
+						State: tls.ConnectionState{},
+					},
+				}))
 		require.Equal(
 			t,
 			status.Error(codes.Unauthenticated, "Client provided no TLS client certificate"),
-			authenticator.Authenticate(
-				peer.NewContext(
-					ctx,
-					&peer.Peer{
-						AuthInfo: credentials.TLSInfo{
-							State: tls.ConnectionState{},
-						},
-					})))
+			err)
 	})
 
 	t.Run("NoCAMatch", func(t *testing.T) {
 		// Connection with a certificate that doesn't match the CA.
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		require.Equal(
-			t,
-			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate signed by unknown authority"),
-			authenticator.Authenticate(
-				peer.NewContext(
-					ctx,
-					&peer.Peer{
-						AuthInfo: credentials.TLSInfo{
-							State: tls.ConnectionState{
-								PeerCertificates: []*x509.Certificate{
-									certificateUnrelated,
-								},
+		_, err := authenticator.Authenticate(
+			peer.NewContext(
+				ctx,
+				&peer.Peer{
+					AuthInfo: credentials.TLSInfo{
+						State: tls.ConnectionState{
+							PeerCertificates: []*x509.Certificate{
+								certificateUnrelated,
 							},
 						},
-					})))
+					},
+				}))
+		testutil.RequireEqualStatus(
+			t,
+			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate signed by unknown authority"),
+			err)
 	})
 
 	t.Run("Expired", func(t *testing.T) {
 		// Connection with a certificate that is signed by the
 		// right CA, but expired.
 		clock.EXPECT().Now().Return(time.Unix(1700000000, 0))
+		_, err := authenticator.Authenticate(
+			peer.NewContext(
+				ctx,
+				&peer.Peer{
+					AuthInfo: credentials.TLSInfo{
+						State: tls.ConnectionState{
+							PeerCertificates: []*x509.Certificate{
+								certificateValid,
+							},
+						},
+					},
+				}))
 		require.Equal(
 			t,
 			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid: current time 2023-11-14T22:13:20Z is after 2020-11-17T09:03:34Z"),
-			authenticator.Authenticate(
-				peer.NewContext(
-					ctx,
-					&peer.Peer{
-						AuthInfo: credentials.TLSInfo{
-							State: tls.ConnectionState{
-								PeerCertificates: []*x509.Certificate{
-									certificateValid,
-								},
-							},
-						},
-					})))
+			err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		// Connection with at least one verified chain.
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		require.NoError(
-			t,
-			authenticator.Authenticate(
-				peer.NewContext(
-					ctx,
-					&peer.Peer{
-						AuthInfo: credentials.TLSInfo{
-							State: tls.ConnectionState{
-								PeerCertificates: []*x509.Certificate{
-									certificateValid,
-								},
+		_, err := authenticator.Authenticate(
+			peer.NewContext(
+				ctx,
+				&peer.Peer{
+					AuthInfo: credentials.TLSInfo{
+						State: tls.ConnectionState{
+							PeerCertificates: []*x509.Certificate{
+								certificateValid,
 							},
 						},
-					})))
+					},
+				}))
+		require.NoError(t, err)
 	})
 }

@@ -24,13 +24,13 @@ func NewAnyAuthenticator(authenticators []Authenticator) Authenticator {
 	}
 }
 
-func (a *anyAuthenticator) Authenticate(ctx context.Context) error {
+func (a *anyAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
 	var unauthenticatedErrs []string
 	var otherErr error
 	for _, authenticator := range a.authenticators {
-		err := authenticator.Authenticate(ctx)
+		newCtx, err := authenticator.Authenticate(ctx)
 		if err == nil {
-			return nil
+			return newCtx, nil
 		}
 		if s := status.Convert(err); s.Code() == codes.Unauthenticated {
 			unauthenticatedErrs = append(unauthenticatedErrs, s.Message())
@@ -39,7 +39,7 @@ func (a *anyAuthenticator) Authenticate(ctx context.Context) error {
 		}
 	}
 	if otherErr != nil {
-		return otherErr
+		return nil, otherErr
 	}
-	return status.Error(codes.Unauthenticated, strings.Join(unauthenticatedErrs, ", "))
+	return nil, status.Error(codes.Unauthenticated, strings.Join(unauthenticatedErrs, ", "))
 }
