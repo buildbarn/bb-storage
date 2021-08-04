@@ -9,6 +9,7 @@ go_library(
         "status.go",
         "tls.go",
         "uuid.go",
+        "w3c_trace_context.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/util",
     visibility = ["//visibility:public"],
@@ -16,6 +17,7 @@ go_library(
         "//pkg/proto/configuration/tls",
         "@com_github_google_go_jsonnet//:go-jsonnet",
         "@com_github_google_uuid//:uuid",
+        "@io_opentelemetry_go_otel//propagation",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",
@@ -28,6 +30,7 @@ go_test(
     srcs = [
         "buckets_test.go",
         "tls_test.go",
+        "w3c_trace_context_test.go",
     ],
     embed = [":util"],
     deps = [
