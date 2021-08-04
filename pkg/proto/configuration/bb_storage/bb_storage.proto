@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.bb_storage;
 
+import "pkg/proto/configuration/auth/auth.proto";
 import "pkg/proto/configuration/blobstore/blobstore.proto";
 import "pkg/proto/configuration/builder/builder.proto";
 import "pkg/proto/configuration/global/global.proto";
@@ -40,10 +41,9 @@ message ApplicationConfiguration {
   map<string, buildbarn.configuration.builder.SchedulerConfiguration>
       schedulers = 5;
 
-  // List of instance name prefixes for which uploads to the Action
-  // Cache are permitted. The empty string can be used to match all
-  // instance names, thereby permitting uploads for all instance names.
-  repeated string allow_ac_updates_for_instance_name_prefixes = 6;
+  // Was 'allow_ac_updates_for_instance_name_prefixes' which is now more
+  // flexibly supported by action_cache_authorizers.put.
+  reserved 6;
 
   // Was 'verify_action_result_completeness'. This can now be enabled by
   // using BlobAccessConfiguration.completeness_checking.
@@ -64,4 +64,48 @@ message ApplicationConfiguration {
   // (ISCC).
   buildbarn.configuration.blobstore.BlobAccessConfiguration
       initial_size_class_cache = 11;
+
+  // Authorization requirements applied to content addressable storage.
+  ScannableAuthorizersConfiguration content_addressable_storage_authorizers =
+      12;
+
+  // Authorization requirements applied to indirect content addressable storage.
+  ScannableAuthorizersConfiguration
+      indirect_content_addressable_storage_authorizers = 13;
+
+  // Authorization requirements applied to the action cache.
+  NonScannableAuthorizersConfiguration action_cache_authorizers = 14;
+
+  // Authorization requirements applied to the initial size class cache.
+  NonScannableAuthorizersConfiguration initial_size_class_cache_authorizers =
+      15;
+}
+
+// Authorizer configuration for interfaces which don't allow
+// batch digest scanning.
+message NonScannableAuthorizersConfiguration {
+  // The authorizer for determining whether a client may read from storage.
+  buildbarn.configuration.auth.AuthorizerConfiguration get = 1;
+
+  // The authorizer for determining whether a client may write to storage.
+  // For example, in case of the Content Addressable Storage (CAS),
+  // it pertains to ByteStream.Write() and BatchUpdateBlobs() operations,
+  // while for the Action Cache (AC) it pertains to UpdateActionResult().
+  buildbarn.configuration.auth.AuthorizerConfiguration put = 2;
+}
+
+// Authorizer configuration for interfaces which allow batch digest scanning.
+message ScannableAuthorizersConfiguration {
+  // The authorizer for determining whether a client may read from storage.
+  buildbarn.configuration.auth.AuthorizerConfiguration get = 1;
+
+  // The authorizer for determining whether a client may write to storage.
+  // For example, in case of the Content Addressable Storage (CAS),
+  // it pertains to ByteStream.Write() and BatchUpdateBlobs() operations,
+  // while for the Action Cache (AC) it pertains to UpdateActionResult().
+  buildbarn.configuration.auth.AuthorizerConfiguration put = 2;
+
+  // The authorizer for determining whether a client may scan storage
+  // for the existence of a batch of digests.
+  buildbarn.configuration.auth.AuthorizerConfiguration find_missing = 3;
 }

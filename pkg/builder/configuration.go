@@ -1,19 +1,19 @@
 package builder
 
 import (
+	"context"
+
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // NewDemultiplexingBuildQueueFromConfiguration creates a
 // DemultiplexingBuildQueue that forwards traffic to schedulers
 // specified in the configuration file.
-func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, grpcClientFactory grpc.ClientFactory, nonExecutableInstanceNames digest.InstanceNameMatcher) (BuildQueue, error) {
+func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, grpcClientFactory grpc.ClientFactory, nonExecutableInstanceNameAuthorizer auth.Authorizer) (BuildQueue, error) {
 	buildQueuesTrie := digest.NewInstanceNameTrie()
 	type buildQueueInfo struct {
 		backend             BuildQueue
@@ -50,17 +50,17 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 			// to which we can forward requests.
 			return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
 		}
-		if nonExecutableInstanceNames(instanceName) {
-			// The instance name does not correspond to a
-			// scheduler, but we should at least announce
-			// its existence.
-			//
-			// This is used when bb_storage is set up to do
-			// plain remote caching. Because we don't have a
-			// scheduler, we need to handle GetCapabilities()
-			// requests ourselves.
-			return NonExecutableBuildQueue, instanceName, instanceName, nil
+		if err := auth.AuthorizeSingleInstanceName(context.Background(), nonExecutableInstanceNameAuthorizer, instanceName); err != nil {
+			return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, util.StatusWrapf(err, "This instance name does not provide remote execution, nor can the caller be authorized to do remote caching")
 		}
-		return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, status.Errorf(codes.InvalidArgument, "Unknown instance name")
+		// The instance name does not correspond to a
+		// scheduler, but we should at least announce
+		// its existence.
+		//
+		// This is used when bb_storage is set up to do
+		// plain remote caching. Because we don't have a
+		// scheduler, we need to handle GetCapabilities()
+		// requests ourselves.
+		return NonExecutableBuildQueue, instanceName, instanceName, nil
 	}), nil
 }

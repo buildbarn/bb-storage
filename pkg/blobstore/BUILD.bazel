@@ -4,6 +4,7 @@ go_library(
     name = "blobstore",
     srcs = [
         "ac_read_buffer_factory.go",
+        "authorizing_blob_access.go",
         "blob_access.go",
         "cas_read_buffer_factory.go",
         "demultiplexing_blob_access.go",
@@ -12,7 +13,6 @@ go_library(
         "existence_caching_blob_access.go",
         "hierarchical_instance_names_blob_access.go",
         "icas_read_buffer_factory.go",
-        "instance_name_access_checking_blob_access.go",
         "iscc_read_buffer_factory.go",
         "metrics_blob_access.go",
         "read_buffer_factory.go",
@@ -25,6 +25,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/auth",
         "//pkg/blobstore/buffer",
         "//pkg/clock",
         "//pkg/cloud/aws",
@@ -48,11 +49,11 @@ go_library(
 go_test(
     name = "blobstore_test",
     srcs = [
+        "authorizing_blob_access_test.go",
         "demultiplexing_blob_access_test.go",
         "empty_blob_injecting_blob_access_test.go",
         "existence_caching_blob_access_test.go",
         "hierarchical_instance_names_blob_access_test.go",
-        "instance_name_access_checking_blob_access_test.go",
         "redis_blob_access_test.go",
         "reference_expanding_blob_access_test.go",
         "validation_caching_read_buffer_factory_test.go",

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package buildbarn.configuration.auth;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth";
+
+message AuthorizerConfiguration {
+  oneof policy {
+    // Allow all requests by all users, subject to whatever
+    // authentication policy is in place.
+    google.protobuf.Empty allow = 1;
+
+    // Allows requests whose instance names are prefixed by one of these values.
+    // Note that prefix-matching is performed on a per-component basis,
+    // not a string-prefix basis.
+    InstanceNameAuthorizer instance_name_prefix = 2;
+
+    // Deny all requests.
+    google.protobuf.Empty deny = 3;
+  }
+}
+
+message InstanceNameAuthorizer {
+  // Instance name prefixes to which access is allowed.
+  // The empty string may be used to indicate all instance names.
+  repeated string allowed_instance_name_prefixes = 1;
+}

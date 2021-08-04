@@ -8,11 +8,11 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/cmd/bb_storage",
     visibility = ["//visibility:private"],
     deps = [
+        "//pkg/auth",
         "//pkg/blobstore",
         "//pkg/blobstore/configuration",
         "//pkg/blobstore/grpcservers",
         "//pkg/builder",
-        "//pkg/digest",
         "//pkg/global",
         "//pkg/grpc",
         "//pkg/proto/configuration/bb_storage",

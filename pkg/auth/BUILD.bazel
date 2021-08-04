@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "auth",
+    srcs = [
+        "authorizer.go",
+        "authorizer_factory.go",
+        "static_authorizer.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/auth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/digest",
+        "//pkg/proto/configuration/auth",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)
+
+go_test(
+    name = "auth_test",
+    srcs = ["static_authorizer_test.go"],
+    embed = [":auth"],
+    deps = [
+        "//pkg/digest",
+        "//pkg/testutil",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

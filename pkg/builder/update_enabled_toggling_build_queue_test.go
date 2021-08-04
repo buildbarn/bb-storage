@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -19,17 +20,19 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBuildQueue := mock.NewMockBuildQueue(ctrl)
-	instanceNameMatcher := mock.NewMockInstanceNameMatcher(ctrl)
-	buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, instanceNameMatcher.Call)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
+		authorizer := mock.NewMockAuthorizer(ctrl)
+		buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, authorizer)
 		_, err := buildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello/blobs/world",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
+		authorizer := mock.NewMockAuthorizer(ctrl)
+		buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, authorizer)
 		baseBuildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello",
 		}).Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
@@ -37,10 +40,12 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 		_, err := buildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello",
 		})
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("NoCacheCapabilities", func(t *testing.T) {
+		authorizer := mock.NewMockAuthorizer(ctrl)
+		buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, authorizer)
 		// If the backend server provides no cache capabilities,
 		// simply leave the response alone.
 		baseBuildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
@@ -55,6 +60,8 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("SuccessTrue", func(t *testing.T) {
+		authorizer := mock.NewMockAuthorizer(ctrl)
+		buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, authorizer)
 		// If the backend server provides cache capabilities, we
 		// set the ActionCacheUpdateCapabilities field with the
 		// appropriate value of UpdateEnabled.
@@ -65,7 +72,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil)
-		instanceNameMatcher.EXPECT().Call(digest.MustNewInstanceName("hello")).Return(true)
+		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{digest.MustNewInstanceName("hello")}).Return([]error{nil})
 
 		response, err := buildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello",
@@ -82,6 +89,8 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("SuccessFalse", func(t *testing.T) {
+		authorizer := mock.NewMockAuthorizer(ctrl)
+		buildQueue := builder.NewUpdateEnabledTogglingBuildQueue(baseBuildQueue, authorizer)
 		// Same as the test above, except to check that the
 		// value 'false' is filled in.
 		baseBuildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
@@ -91,7 +100,7 @@ func TestUpdateEnabledTogglingBuildQueueGetCapabilities(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil)
-		instanceNameMatcher.EXPECT().Call(digest.MustNewInstanceName("hello")).Return(false)
+		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{digest.MustNewInstanceName("hello")}).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
 
 		response, err := buildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello",

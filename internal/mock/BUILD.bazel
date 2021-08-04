@@ -15,6 +15,16 @@ gomock(
 )
 
 gomock(
+    name = "auth",
+    out = "auth.go",
+    interfaces = [
+        "Authorizer",
+    ],
+    library = "//pkg/auth",
+    package = "mock",
+)
+
+gomock(
     name = "blobstore",
     out = "blobstore.go",
     interfaces = [
@@ -236,6 +246,7 @@ go_library(
     name = "mock",
     srcs = [
         ":aliases.go",
+        ":auth.go",
         ":blobstore.go",
         ":blobstore_local.go",
         ":blobstore_replication.go",
