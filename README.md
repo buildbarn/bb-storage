@@ -113,7 +113,17 @@ $ cat config/bb_storage.jsonnet
   schedulers: {
     bar: { endpoint: { address: 'bar-scheduler:8981' } },
   },
-  allowAcUpdatesForInstanceNamePrefixes: ['foo'],
+  contentAddressableStorageAuthorizers: {
+    get: { allow: {} },
+    put: { allow: {} },
+    findMissing: { allow: {} },
+  },
+  actionCacheAuthorizers: {
+    get: { allow: {} },
+    put: { instanceNamePrefix: {
+      allowedInstanceNamePrefixes: ['foo'],
+    } },
+  },
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 $ mkdir -p storage-{ac,cas}/persistent_state
@@ -130,7 +140,7 @@ $ docker run \
 In the example above, the daemon is configured to store a single on-disk
 CAS. Two ACs are made, corresponding with instance names `foo` and
 `bar`. The former is intended just for remote caching, which is why it's
-made client-writable by adding `allowAcUpdatesForInstances` in the
+made client-writable through `actionCacheAuthorizers` in the
 configuration file. The latter is intended for remote execution, which
 is why `schedulers` is used to forward build action execution requests
 to a separate scheduler service at address `bar-scheduler:8981`.
