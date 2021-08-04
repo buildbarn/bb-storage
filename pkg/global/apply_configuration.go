@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/clock"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
@@ -23,12 +25,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"contrib.go.opencensus.io/exporter/jaeger"
-	prometheus_exporter "contrib.go.opencensus.io/exporter/prometheus"
-	"contrib.go.opencensus.io/exporter/stackdriver"
-	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 // LifecycleState is returned by ApplyConfiguration. It can be used by
@@ -83,68 +86,117 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 	}
 	log.SetOutput(io.MultiWriter(logWriters...))
 
-	// Push traces to Jaeger.
+	// Perform tracing using OpenTelemetry.
 	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
-		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-			return nil, util.StatusWrap(err, "Failed to register ocgrpc server views")
-		}
+		var tracerProviderOptions []trace.TracerProviderOption
+		for _, backend := range tracingConfiguration.Backends {
+			// Construct a SpanExporter.
+			var spanExporter trace.SpanExporter
+			switch spanExporterConfiguration := backend.SpanExporter.(type) {
+			case *pb.TracingConfiguration_Backend_JaegerCollectorSpanExporter_:
+				// Convert Jaeger collector configuration
+				// message to a list of options.
+				jaegerConfiguration := spanExporterConfiguration.JaegerCollectorSpanExporter
+				var collectorEndpointOptions []jaeger.CollectorEndpointOption
+				if endpoint := jaegerConfiguration.Endpoint; endpoint != "" {
+					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithEndpoint(endpoint))
+				}
+				httpClient, err := bb_http.NewClient(jaegerConfiguration.Tls)
+				if err != nil {
+					return nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
+				}
+				collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(httpClient))
+				if password := jaegerConfiguration.Password; password != "" {
+					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
+				}
+				if username := jaegerConfiguration.Password; username != "" {
+					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithUsername(username))
+				}
 
-		if jaegerConfiguration := tracingConfiguration.Jaeger; jaegerConfiguration != nil {
-			je, err := jaeger.NewExporter(jaeger.Options{
-				AgentEndpoint:     jaegerConfiguration.AgentEndpoint,
-				CollectorEndpoint: jaegerConfiguration.CollectorEndpoint,
-				Process: jaeger.Process{
-					ServiceName: jaegerConfiguration.ServiceName,
-				},
-			})
-			if err != nil {
-				return nil, util.StatusWrap(err, "Failed to create the Jaeger exporter")
-			}
-			trace.RegisterExporter(je)
-		}
-
-		if stackdriverConfiguration := tracingConfiguration.Stackdriver; stackdriverConfiguration != nil {
-			defaultTraceAttributes := map[string]interface{}{}
-			for k, v := range stackdriverConfiguration.DefaultTraceAttributes {
-				defaultTraceAttributes[k] = v
-			}
-			se, err := stackdriver.NewExporter(stackdriver.Options{
-				ProjectID:              stackdriverConfiguration.ProjectId,
-				Location:               stackdriverConfiguration.Location,
-				DefaultTraceAttributes: defaultTraceAttributes,
-			})
-			if err != nil {
-				return nil, util.StatusWrap(err, "Failed to create the Stackdriver exporter")
-			}
-			trace.RegisterExporter(se)
-		}
-
-		if tracingConfiguration.EnablePrometheus {
-			pe, err := prometheus_exporter.NewExporter(prometheus_exporter.Options{
-				Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
-				Namespace: "bb_storage",
-			})
-			if err != nil {
-				return nil, util.StatusWrap(err, "Failed to create the Prometheus stats exporter")
-			}
-			view.RegisterExporter(pe)
-		}
-
-		if samplingPolicy := tracingConfiguration.SamplingPolicy; samplingPolicy != nil {
-			switch policy := samplingPolicy.(type) {
-			case *pb.TracingConfiguration_SampleAlways:
-				trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-
-			case *pb.TracingConfiguration_SampleNever:
-				trace.ApplyConfig(trace.Config{DefaultSampler: trace.NeverSample()})
-
-			case *pb.TracingConfiguration_SampleProbability:
-				trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(policy.SampleProbability)})
-
+				// Construct a Jaeger span exporter.
+				exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(collectorEndpointOptions...))
+				if err != nil {
+					return nil, util.StatusWrap(err, "Failed to create Jaeger collector span exporter")
+				}
+				spanExporter = exporter
 			default:
-				return nil, status.Error(codes.InvalidArgument, "Failed to decode sampling policy from configuration")
+				return nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span exporter")
+			}
+
+			// Wrap it in a SpanProcessor.
+			var spanProcessor trace.SpanProcessor
+			switch spanProcessorConfiguration := backend.SpanProcessor.(type) {
+			case *pb.TracingConfiguration_Backend_SimpleSpanProcessor:
+				spanProcessor = trace.NewSimpleSpanProcessor(spanExporter)
+			case *pb.TracingConfiguration_Backend_BatchSpanProcessor_:
+				var batchSpanProcessorOptions []trace.BatchSpanProcessorOption
+				if d := spanProcessorConfiguration.BatchSpanProcessor.BatchTimeout; d != nil {
+					if err := d.CheckValid(); err != nil {
+						return nil, util.StatusWrap(err, "Invalid batch span processor batch timeout")
+					}
+					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithBatchTimeout(d.AsDuration()))
+				}
+				if spanProcessorConfiguration.BatchSpanProcessor.Blocking {
+					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithBlocking())
+				}
+				if d := spanProcessorConfiguration.BatchSpanProcessor.ExportTimeout; d != nil {
+					if err := d.CheckValid(); err != nil {
+						return nil, util.StatusWrap(err, "Invalid batch span processor export timeout")
+					}
+					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithExportTimeout(d.AsDuration()))
+				}
+				if size := spanProcessorConfiguration.BatchSpanProcessor.MaxExportBatchSize; size != 0 {
+					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithMaxExportBatchSize(int(size)))
+				}
+				if size := spanProcessorConfiguration.BatchSpanProcessor.MaxQueueSize; size != 0 {
+					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithMaxQueueSize(int(size)))
+				}
+				spanProcessor = trace.NewBatchSpanProcessor(spanExporter, batchSpanProcessorOptions...)
+			default:
+				return nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span processor")
+			}
+			tracerProviderOptions = append(tracerProviderOptions, trace.WithSpanProcessor(spanProcessor))
+		}
+
+		// Set resource attributes, so that this process can be
+		// identified uniquely.
+		fields := tracingConfiguration.ResourceAttributes
+		resourceAttributes := make([]attribute.KeyValue, 0, len(fields))
+		for key, value := range fields {
+			switch kind := value.Kind.(type) {
+			case *pb.TracingConfiguration_ResourceAttributeValue_Bool:
+				resourceAttributes = append(resourceAttributes, attribute.Bool(key, kind.Bool))
+			case *pb.TracingConfiguration_ResourceAttributeValue_Int64:
+				resourceAttributes = append(resourceAttributes, attribute.Int64(key, kind.Int64))
+			case *pb.TracingConfiguration_ResourceAttributeValue_Float64:
+				resourceAttributes = append(resourceAttributes, attribute.Float64(key, kind.Float64))
+			case *pb.TracingConfiguration_ResourceAttributeValue_String_:
+				resourceAttributes = append(resourceAttributes, attribute.String(key, kind.String_))
+			case *pb.TracingConfiguration_ResourceAttributeValue_BoolArray_:
+				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.BoolArray.Values))
+			case *pb.TracingConfiguration_ResourceAttributeValue_Int64Array_:
+				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Int64Array.Values))
+			case *pb.TracingConfiguration_ResourceAttributeValue_Float64Array_:
+				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Float64Array.Values))
+			case *pb.TracingConfiguration_ResourceAttributeValue_StringArray_:
+				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.StringArray.Values))
+			default:
+				return nil, status.Error(codes.InvalidArgument, "Resource attribute is of an unknown type")
 			}
 		}
+		tracerProviderOptions = append(
+			tracerProviderOptions,
+			trace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes...)))
+
+		// Create a Sampler, acting as a policy for when to sample.
+		sampler, err := newSamplerFromConfiguration(tracingConfiguration.Sampler)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create sampler")
+		}
+		tracerProviderOptions = append(tracerProviderOptions, trace.WithSampler(sampler))
+
+		otel.SetTracerProvider(trace.NewTracerProvider(tracerProviderOptions...))
+		otel.SetTextMapPropagator(propagation.TraceContext{})
 	}
 
 	// Enable mutex profiling.
@@ -180,4 +232,58 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, error
 	return &LifecycleState{
 		config: configuration.GetDiagnosticsHttpServer(),
 	}, nil
+}
+
+// NewSamplerFromConfiguration creates a OpenTelemetry Sampler based on
+// a configuration file.
+func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler) (trace.Sampler, error) {
+	if configuration == nil {
+		return nil, status.Error(codes.InvalidArgument, "No configuration provided")
+	}
+	switch policy := configuration.Policy.(type) {
+	case *pb.TracingConfiguration_Sampler_Always:
+		return trace.AlwaysSample(), nil
+	case *pb.TracingConfiguration_Sampler_Never:
+		return trace.NeverSample(), nil
+	case *pb.TracingConfiguration_Sampler_ParentBased_:
+		noParent, err := newSamplerFromConfiguration(policy.ParentBased.NoParent)
+		if err != nil {
+			return nil, util.StatusWrap(err, "No parent")
+		}
+		localParentNotSampled, err := newSamplerFromConfiguration(policy.ParentBased.LocalParentNotSampled)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Local parent not sampled")
+		}
+		localParentSampled, err := newSamplerFromConfiguration(policy.ParentBased.LocalParentSampled)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Local parent sampled")
+		}
+		remoteParentNotSampled, err := newSamplerFromConfiguration(policy.ParentBased.RemoteParentNotSampled)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Remote parent not sampled")
+		}
+		remoteParentSampled, err := newSamplerFromConfiguration(policy.ParentBased.RemoteParentSampled)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Remote parent sampled")
+		}
+		return trace.ParentBased(
+			noParent,
+			trace.WithLocalParentNotSampled(localParentNotSampled),
+			trace.WithLocalParentSampled(localParentSampled),
+			trace.WithRemoteParentNotSampled(remoteParentNotSampled),
+			trace.WithRemoteParentSampled(remoteParentSampled)), nil
+	case *pb.TracingConfiguration_Sampler_TraceIdRatioBased:
+		return trace.TraceIDRatioBased(policy.TraceIdRatioBased), nil
+	case *pb.TracingConfiguration_Sampler_MaximumRate_:
+		epochDuration := policy.MaximumRate.EpochDuration
+		if err := epochDuration.CheckValid(); err != nil {
+			return nil, util.StatusWrap(err, "Invalid maximum rate sampler epoch duration")
+		}
+		return NewMaximumRateSampler(
+			clock.SystemClock,
+			int(policy.MaximumRate.SamplesPerEpoch),
+			epochDuration.AsDuration()), nil
+	default:
+		return nil, status.Error(codes.InvalidArgument, "Unknown sampling policy")
+	}
 }

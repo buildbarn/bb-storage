@@ -14,6 +14,7 @@ proto_library(
     srcs = ["global.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/tls:tls_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
     ],
@@ -24,4 +25,5 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global",
     proto = ":global_proto",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/tls"],
 )

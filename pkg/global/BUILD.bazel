@@ -1,28 +1,45 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "global",
     srcs = [
         "apply_configuration.go",
+        "maximum_rate_sampler.go",
         "umask_nonunix.go",
         "umask_unix.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/global",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/clock",
+        "//pkg/http",
         "//pkg/proto/configuration/global",
         "//pkg/util",
         "@com_github_gorilla_mux//:mux",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@com_github_prometheus_client_golang//prometheus/push",
-        "@io_opencensus_go//plugin/ocgrpc",
-        "@io_opencensus_go//stats/view",
-        "@io_opencensus_go//trace",
-        "@io_opencensus_go_contrib_exporter_jaeger//:jaeger",
-        "@io_opencensus_go_contrib_exporter_prometheus//:prometheus",
-        "@io_opencensus_go_contrib_exporter_stackdriver//:stackdriver",
+        "@io_opentelemetry_go_otel//:otel",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//propagation",
+        "@io_opentelemetry_go_otel//semconv/v1.4.0:v1_4_0",
+        "@io_opentelemetry_go_otel_exporters_jaeger//:jaeger",
+        "@io_opentelemetry_go_otel_sdk//resource",
+        "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "global_test",
+    srcs = ["maximum_rate_sampler_test.go"],
+    embed = [":global"],
+    deps = [
+        "//internal/mock",
+        "@com_github_golang_mock//gomock",
+        "@com_github_stretchr_testify//require",
+        "@io_opentelemetry_go_otel_sdk//trace",
     ],
 )
