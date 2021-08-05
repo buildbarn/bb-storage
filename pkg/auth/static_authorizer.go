@@ -20,7 +20,7 @@ type staticAuthorizer struct {
 }
 
 // Avoid allocating for speed.
-var err = status.Error(codes.PermissionDenied, "Permission denied")
+var errPermissionDenied = status.Error(codes.PermissionDenied, "Permission denied")
 
 func (a *staticAuthorizer) Authorize(ctx context.Context, instanceNames []digest.InstanceName) []error {
 	errs := make([]error, 0, len(instanceNames))
@@ -28,7 +28,7 @@ func (a *staticAuthorizer) Authorize(ctx context.Context, instanceNames []digest
 		if a.matcher(instanceName) {
 			errs = append(errs, nil)
 		} else {
-			errs = append(errs, err)
+			errs = append(errs, errPermissionDenied)
 		}
 	}
 	return errs
