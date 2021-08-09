@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "otel",
+    srcs = [
+        "grpc_otlp_trace_client.go",
+        "maximum_rate_sampler.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/otel",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/clock",
+        "@io_opentelemetry_go_otel_exporters_otlp_otlptrace//:otlptrace",
+        "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@io_opentelemetry_go_proto_otlp//collector/trace/v1:trace",
+        "@io_opentelemetry_go_proto_otlp//trace/v1:trace",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "otel_test",
+    srcs = ["maximum_rate_sampler_test.go"],
+    deps = [
+        ":otel",
+        "//internal/mock",
+        "@com_github_golang_mock//gomock",
+        "@com_github_stretchr_testify//require",
+        "@io_opentelemetry_go_otel_sdk//trace",
+    ],
+)

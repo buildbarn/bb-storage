@@ -4,6 +4,7 @@ package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
@@ -71,6 +72,9 @@ message TracingConfiguration {
       // Export spans to a Jaeger collector using jaeger.thrift over
       // HTTP.
       JaegerCollectorSpanExporter jaeger_collector_span_exporter = 1;
+
+      // Export spans over gRPC using the OpenTelemetry protocol.
+      buildbarn.configuration.grpc.ClientConfiguration otlp_span_exporter = 4;
     }
 
     message BatchSpanProcessor {

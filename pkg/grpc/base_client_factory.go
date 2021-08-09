@@ -5,7 +5,6 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -13,26 +12,23 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
-
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
-func init() {
-	// Add Prometheus timing metrics.
-	grpc_prometheus.EnableClientHandlingTimeHistogram(
-		grpc_prometheus.WithHistogramBuckets(
-			util.DecimalExponentialBuckets(-3, 6, 2)))
-}
-
 type baseClientFactory struct {
-	dialer ClientDialer
+	dialer             ClientDialer
+	unaryInterceptors  []grpc.UnaryClientInterceptor
+	streamInterceptors []grpc.StreamClientInterceptor
 }
 
 // NewBaseClientFactory creates factory for gRPC clients that calls into
 // ClientDialer to construct the actual client.
-func NewBaseClientFactory(dialer ClientDialer) ClientFactory {
+func NewBaseClientFactory(dialer ClientDialer, unaryInterceptors []grpc.UnaryClientInterceptor, streamInterceptors []grpc.StreamClientInterceptor) ClientFactory {
+	// Limit slice capacity to length, so that any appending
+	// additional interceptors always triggers a copy.
 	return baseClientFactory{
-		dialer: dialer,
+		dialer:             dialer,
+		unaryInterceptors:  unaryInterceptors[:len(unaryInterceptors):len(unaryInterceptors)],
+		streamInterceptors: streamInterceptors[:len(streamInterceptors):len(streamInterceptors)],
 	}
 }
 
@@ -42,14 +38,8 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	var dialOptions []grpc.DialOption
-	unaryInterceptors := []grpc.UnaryClientInterceptor{
-		grpc_prometheus.UnaryClientInterceptor,
-		otelgrpc.UnaryClientInterceptor(),
-	}
-	streamInterceptors := []grpc.StreamClientInterceptor{
-		grpc_prometheus.StreamClientInterceptor,
-		otelgrpc.StreamClientInterceptor(),
-	}
+	unaryInterceptors := cf.unaryInterceptors
+	streamInterceptors := cf.streamInterceptors
 
 	// Optional: TLS.
 	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)

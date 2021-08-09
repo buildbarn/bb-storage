@@ -1,4 +1,4 @@
-package global
+package otel
 
 import (
 	"sync"

@@ -29,7 +29,7 @@ func main() {
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-	lifecycleState, err := global.ApplyConfiguration(configuration.Global)
+	lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
@@ -37,7 +37,7 @@ func main() {
 	// Storage access.
 	contentAddressableStorage, actionCache, err := blobstore_configuration.NewCASAndACBlobAccessFromConfiguration(
 		configuration.Blobstore,
-		bb_grpc.DefaultClientFactory,
+		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	if err != nil {
 		log.Fatal(err)
@@ -60,7 +60,7 @@ func main() {
 		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
-				bb_grpc.DefaultClientFactory,
+				grpcClientFactory,
 				int(configuration.MaximumMessageSizeBytes)))
 		if err != nil {
 			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
@@ -77,7 +77,7 @@ func main() {
 		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			configuration.InitialSizeClassCache,
 			blobstore_configuration.NewISCCBlobAccessCreator(
-				bb_grpc.DefaultClientFactory,
+				grpcClientFactory,
 				int(configuration.MaximumMessageSizeBytes)))
 		if err != nil {
 			log.Fatal("Failed to create Initial Size Class Cache: ", err)
@@ -92,7 +92,7 @@ func main() {
 	// one or more schedulers specified in the configuration file.
 	buildQueue, err := builder.NewDemultiplexingBuildQueueFromConfiguration(
 		configuration.Schedulers,
-		bb_grpc.DefaultClientFactory,
+		grpcClientFactory,
 		acPutAuthorizer)
 	if err != nil {
 		log.Fatal(err)

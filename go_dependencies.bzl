@@ -57,6 +57,12 @@ def go_dependencies():
         version = "v0.3.1",
     )
     go_repository(
+        name = "com_github_cenkalti_backoff_v4",
+        importpath = "github.com/cenkalti/backoff/v4",
+        sum = "h1:G2HAfAmvm/GcKan2oOQpBXOd2tT2G57ZnZGWa1PxPBQ=",
+        version = "v4.1.1",
+    )
+    go_repository(
         name = "com_github_census_instrumentation_opencensus_proto",
         build_extra_args = ["-exclude=src"],
         importpath = "github.com/census-instrumentation/opencensus-proto",
@@ -570,10 +576,16 @@ def go_dependencies():
         version = "v1.0.0-RC2",
     )
     go_repository(
+        name = "io_opentelemetry_go_otel_exporters_otlp_otlptrace",
+        importpath = "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
+        sum = "h1:Z/91DSYkOqnVuECrd+hxCU9lzeo5Fihjp28uq0Izfpw=",
+        version = "v1.0.0-RC2",
+    )
+    go_repository(
         name = "io_opentelemetry_go_otel_metric",
         importpath = "go.opentelemetry.io/otel/metric",
-        sum = "h1:4kzhXFP+btKm4jwxpjIqjs41A7MakRFUS86bqLHTIw8=",
-        version = "v0.20.0",
+        sum = "h1:t+5EioN8YFXQ2EH+1j6FHCKMUj+57zIDSnSGr/mWuug=",
+        version = "v0.17.0",
     )
     go_repository(
         name = "io_opentelemetry_go_otel_oteltest",
@@ -596,8 +608,8 @@ def go_dependencies():
     go_repository(
         name = "io_opentelemetry_go_proto_otlp",
         importpath = "go.opentelemetry.io/proto/otlp",
-        sum = "h1:rwOQPCuKAKmwGKq2aVNnYIibI6wnV7EvzgfTCzcdGg8=",
-        version = "v0.7.0",
+        sum = "h1:C0g6TWmQYvjKRnljRULLWUVJGy8Uvu0NEL/5frY2/t4=",
+        version = "v0.9.0",
     )
     go_repository(
         name = "org_golang_google_appengine",

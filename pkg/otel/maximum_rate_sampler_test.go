@@ -1,11 +1,11 @@
-package global_test
+package otel_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/global"
+	"github.com/buildbarn/bb-storage/pkg/otel"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +16,7 @@ func TestMaximumRateSampler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	clock := mock.NewMockClock(ctrl)
-	sampler := global.NewMaximumRateSampler(clock, 2, time.Second)
+	sampler := otel.NewMaximumRateSampler(clock, 2, time.Second)
 
 	// Initial epoch should start at t = 1000. It should be
 	// permitted to start two traces with it. Further sample
