@@ -46,8 +46,8 @@ go_library(
 go_test(
     name = "blockdevice_test",
     srcs = ["new_block_device_from_file_test.go"],
-    embed = [":blockdevice"],
     deps = [
+        ":blockdevice",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

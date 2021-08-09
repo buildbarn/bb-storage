@@ -69,8 +69,8 @@ go_test(
         "persistent_block_list_test.go",
         "volatile_block_list_test.go",
     ],
-    embed = [":local"],
     deps = [
+        ":local",
         "//internal/mock",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",

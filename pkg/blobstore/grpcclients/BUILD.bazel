@@ -29,8 +29,8 @@ go_library(
 go_test(
     name = "grpcclients_test",
     srcs = ["cas_blob_access_test.go"],
-    embed = [":grpcclients"],
     deps = [
+        ":grpcclients",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

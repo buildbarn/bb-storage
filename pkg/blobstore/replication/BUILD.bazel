@@ -32,8 +32,8 @@ go_test(
         "local_blob_replicator_test.go",
         "queued_blob_replicator_test.go",
     ],
-    embed = [":replication"],
     deps = [
+        ":replication",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

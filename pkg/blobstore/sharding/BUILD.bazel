@@ -25,8 +25,8 @@ go_test(
         "sharding_blob_access_test.go",
         "weighted_shard_permuter_test.go",
     ],
-    embed = [":sharding"],
     deps = [
+        ":sharding",
         "//internal/mock",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",

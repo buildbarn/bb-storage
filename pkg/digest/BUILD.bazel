@@ -38,8 +38,8 @@ go_test(
         "set_builder_test.go",
         "set_test.go",
     ],
-    embed = [":digest"],
     deps = [
+        ":digest",
         "//internal/mock",
         "//pkg/eviction",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",

@@ -19,8 +19,8 @@ go_library(
 go_test(
     name = "completenesschecking_test",
     srcs = ["completeness_checking_blob_access_test.go"],
-    embed = [":completenesschecking"],
     deps = [
+        ":completenesschecking",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

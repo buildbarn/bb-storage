@@ -65,8 +65,8 @@ go_test(
         "request_metadata_tracing_interceptor_test.go",
         "tls_client_certificate_authenticator_test.go",
     ],
-    embed = [":grpc"],
     deps = [
+        ":grpc",
         "//internal/mock",
         "//pkg/proto/configuration/grpc",
         "//pkg/testutil",

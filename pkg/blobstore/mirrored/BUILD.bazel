@@ -21,8 +21,8 @@ go_library(
 go_test(
     name = "mirrored_test",
     srcs = ["mirrored_blob_access_test.go"],
-    embed = [":mirrored"],
     deps = [
+        ":mirrored",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

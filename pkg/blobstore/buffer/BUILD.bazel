@@ -58,8 +58,8 @@ go_test(
         "with_background_task_test.go",
         "with_error_handler_test.go",
     ],
-    embed = [":buffer"],
     deps = [
+        ":buffer",
         "//internal/mock",
         "//pkg/digest",
         "//pkg/testutil",
