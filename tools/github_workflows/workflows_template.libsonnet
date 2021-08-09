@@ -55,8 +55,14 @@
   local getJobs(binaries, containers, doUpload) = {
     build_and_test: {
       'runs-on': 'ubuntu-latest',
-      container: 'docker://l.gcr.io/google/bazel:3.5.0',
       steps: [
+        // TODO: Switch back to l.gcr.io/google/bazel once updated
+        // container images get published once again.
+        // https://github.com/GoogleCloudPlatform/container-definitions/issues/12037
+        {
+          name: 'Installing Bazel',
+          run: 'curl -L https://github.com/bazelbuild/bazel/releases/download/4.1.0/bazel-4.1.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
+        },
         {
           name: 'Check out source code',
           uses: 'actions/checkout@v1',
