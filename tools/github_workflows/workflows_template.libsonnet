@@ -131,7 +131,8 @@
             [
               {
                 name: '%s: copy %s' % [platform.name, binary],
-                run: 'bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s%s' % [platform.name, binary, binary, platform.extension],
+                local executable = binary + platform.extension,
+                run: 'rm -f %s && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],

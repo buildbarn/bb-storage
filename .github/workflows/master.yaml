@@ -61,7 +61,7 @@
             },
             {
                "name": "linux_amd64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "linux_amd64: upload bb_replicator",
@@ -73,7 +73,7 @@
             },
             {
                "name": "linux_amd64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "linux_amd64: upload bb_storage",
@@ -89,7 +89,7 @@
             },
             {
                "name": "linux_386: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "linux_386: upload bb_replicator",
@@ -101,7 +101,7 @@
             },
             {
                "name": "linux_386: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "linux_386: upload bb_storage",
@@ -117,7 +117,7 @@
             },
             {
                "name": "linux_arm: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "linux_arm: upload bb_replicator",
@@ -129,7 +129,7 @@
             },
             {
                "name": "linux_arm: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "linux_arm: upload bb_storage",
@@ -145,7 +145,7 @@
             },
             {
                "name": "linux_arm64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "linux_arm64: upload bb_replicator",
@@ -157,7 +157,7 @@
             },
             {
                "name": "linux_arm64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "linux_arm64: upload bb_storage",
@@ -173,7 +173,7 @@
             },
             {
                "name": "darwin_amd64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "darwin_amd64: upload bb_replicator",
@@ -185,7 +185,7 @@
             },
             {
                "name": "darwin_amd64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "darwin_amd64: upload bb_storage",
@@ -201,7 +201,7 @@
             },
             {
                "name": "darwin_arm64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "darwin_arm64: upload bb_replicator",
@@ -213,7 +213,7 @@
             },
             {
                "name": "darwin_arm64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "darwin_arm64: upload bb_storage",
@@ -229,7 +229,7 @@
             },
             {
                "name": "freebsd_amd64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "name": "freebsd_amd64: upload bb_replicator",
@@ -241,7 +241,7 @@
             },
             {
                "name": "freebsd_amd64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "name": "freebsd_amd64: upload bb_storage",
@@ -257,7 +257,7 @@
             },
             {
                "name": "windows_amd64: copy bb_replicator",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/bb_replicator $(pwd)/bb_replicator.exe"
+               "run": "rm -f bb_replicator.exe && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/bb_replicator $(pwd)/bb_replicator.exe"
             },
             {
                "name": "windows_amd64: upload bb_replicator",
@@ -269,7 +269,7 @@
             },
             {
                "name": "windows_amd64: copy bb_storage",
-               "run": "bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/bb_storage $(pwd)/bb_storage.exe"
+               "run": "rm -f bb_storage.exe && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/bb_storage $(pwd)/bb_storage.exe"
             },
             {
                "name": "windows_amd64: upload bb_storage",
