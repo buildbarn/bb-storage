@@ -61,7 +61,7 @@ func (r *byteStreamChunkReader) Close() {
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	client, err := ba.byteStreamClient.Read(ctxWithCancel, &bytestream.ReadRequest{
-		ResourceName: digest.GetByteStreamReadPath(),
+		ResourceName: digest.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
 	})
 	if err != nil {
 		cancel()
@@ -84,7 +84,7 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 		return err
 	}
 
-	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()))
+	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()), remoteexecution.Compressor_IDENTITY)
 	writeOffset := int64(0)
 	for {
 		if data, err := r.Read(); err == nil {

@@ -19,6 +19,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Automatically register all compression algorithms that are part of
+// the protocol.
+var (
+	compressorEnumToMidfix = map[remoteexecution.Compressor_Value]string{
+		remoteexecution.Compressor_IDENTITY: "blobs",
+	}
+	compressorNameToEnum = map[string]remoteexecution.Compressor_Value{}
+)
+
+func init() {
+	for value, name := range remoteexecution.Compressor_Value_name {
+		enum := remoteexecution.Compressor_Value(value)
+		if enum != remoteexecution.Compressor_IDENTITY {
+			lowerName := strings.ToLower(name)
+			compressorEnumToMidfix[enum] = "compressed-blobs/" + lowerName
+			compressorNameToEnum[lowerName] = enum
+		}
+	}
+}
+
 // Digest holds the identification of an object stored in the Content
 // Addressable Storage (CAS) or Action Cache (AC). The use of this
 // object is preferred over remoteexecution.Digest for a couple of
@@ -94,25 +114,39 @@ func MustNewDigest(instanceName, hash string, sizeBytes int64) Digest {
 }
 
 // NewDigestFromByteStreamReadPath creates a Digest from a string having
-// the following format: ${instanceName}/blobs/${hash}/${size}. This
-// notation is used to read files through the ByteStream service.
-func NewDigestFromByteStreamReadPath(path string) (Digest, error) {
+// one of the following formats:
+//
+// - ${instanceName}/blobs/${hash}/${size}
+// - ${instanceName}/compressed-blobs/${compressor}/${hash}/${size}
+//
+// This notation is used to read files through the ByteStream service.
+func NewDigestFromByteStreamReadPath(path string) (Digest, remoteexecution.Compressor_Value, error) {
 	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
 	if len(fields) < 3 {
-		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	split := len(fields) - 3
+	if fields[split] != "blobs" {
+		// Second from last component may be a compression method.
+		if len(fields) < 4 {
+			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+		}
+		split = len(fields) - 4
+	}
 	return newDigestFromByteStreamPathCommon(fields[:split], fields[split:])
 }
 
 // NewDigestFromByteStreamWritePath creates a Digest from a string
-// having the following format:
-// ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}. This
-// notation is used to write files through the ByteStream service.
-func NewDigestFromByteStreamWritePath(path string) (Digest, error) {
+// having one of the following formats:
+//
+// - ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}
+// - ${instanceName}/uploads/${uuid}/compressed-blobs/${compressor}/${hash}/${size}/${path}
+//
+// This notation is used to write files through the ByteStream service.
+func NewDigestFromByteStreamWritePath(path string) (Digest, remoteexecution.Compressor_Value, error) {
 	fields := strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
 	if len(fields) < 5 {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
 	// Determine the end of the instance name. Because both the
 	// leading instance name and the trailing path have a variable
@@ -122,50 +156,73 @@ func NewDigestFromByteStreamWritePath(path string) (Digest, error) {
 	for fields[split] != "uploads" {
 		split++
 		if split > len(fields)-5 {
-			return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid resource naming scheme")
+			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 		}
 	}
 	return newDigestFromByteStreamPathCommon(fields[:split], fields[split+2:])
 }
 
-func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, error) {
-	if trailer[0] != "blobs" {
-		return BadDigest, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, remoteexecution.Compressor_Value, error) {
+	// Remove the leading compression scheme name.
+	var compressor remoteexecution.Compressor_Value
+	switch trailer[0] {
+	case "blobs":
+		compressor = remoteexecution.Compressor_IDENTITY
+		trailer = trailer[1:]
+	case "compressed-blobs":
+		var ok bool
+		compressor, ok = compressorNameToEnum[trailer[1]]
+		if !ok {
+			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Errorf(codes.Unimplemented, "Unsupported compression scheme %#v", trailer[1])
+		}
+		trailer = trailer[2:]
+		if len(trailer) < 2 {
+			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+		}
 	}
-	sizeBytes, err := strconv.ParseInt(trailer[2], 10, 64)
+
+	sizeBytes, err := strconv.ParseInt(trailer[1], 10, 64)
 	if err != nil {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid blob size %#v", trailer[2])
+		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Errorf(codes.InvalidArgument, "Invalid blob size %#v", trailer[1])
 	}
 	instanceName, err := NewInstanceNameFromComponents(header)
 	if err != nil {
-		return BadDigest, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
+		return BadDigest, remoteexecution.Compressor_IDENTITY, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
 	}
-	return instanceName.NewDigest(trailer[1], sizeBytes)
+	d, err := instanceName.NewDigest(trailer[0], sizeBytes)
+	return d, compressor, err
 }
 
 // GetByteStreamReadPath converts the Digest to a string having
-// the following format: ${instanceName}/blobs/${hash}/${size}. This
-// notation is used to read files through the ByteStream service.
-func (d Digest) GetByteStreamReadPath() string {
+// one of the following formats:
+//
+// - ${instanceName}/blobs/${hash}/${size}
+// - ${instanceName}/compressed-blobs/${compressor}/${hash}/${size}
+//
+// This notation is used to read files through the ByteStream service.
+func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Value) string {
 	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
-		"blobs",
+		compressorEnumToMidfix[compressor],
 		d.value[:hashEnd],
 		strconv.FormatInt(sizeBytes, 10))
 }
 
-// GetByteStreamWritePath converts the Digest to a string having the
-// following format:
-// ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}. This
-// notation is used to write files through the ByteStream service.
-func (d Digest) GetByteStreamWritePath(uuid uuid.UUID) string {
+// GetByteStreamWritePath converts the Digest to a string having one of
+// the following formats:
+//
+// - ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}
+// - ${instanceName}/uploads/${uuid}/compressed-blobs/${compressor}/${hash}/${size}
+//
+// This notation is used to write files through the ByteStream service.
+func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecution.Compressor_Value) string {
 	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
 		"uploads",
 		uuid.String(),
-		"blobs",
+		compressorEnumToMidfix[compressor],
 		d.value[:hashEnd],
 		strconv.FormatInt(sizeBytes, 10))
 }

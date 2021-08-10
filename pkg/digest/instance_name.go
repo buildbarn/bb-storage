@@ -19,12 +19,13 @@ import (
 // the REv2 protocol. Permitting these would make parsing of URLs, such
 // as the ones provided to the ByteStream service, ambiguous.
 var reservedInstanceNameKeywords = map[string]bool{
-	"blobs":         true,
-	"uploads":       true,
-	"actions":       true,
-	"actionResults": true,
-	"operations":    true,
-	"capabilities":  true,
+	"blobs":            true,
+	"uploads":          true,
+	"actions":          true,
+	"actionResults":    true,
+	"operations":       true,
+	"capabilities":     true,
+	"compressed-blobs": true,
 }
 
 // InstanceName is a simple container around REv2 instance name strings.

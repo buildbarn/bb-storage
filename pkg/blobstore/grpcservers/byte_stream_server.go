@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -32,9 +33,12 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
-	digest, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
+	digest, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
 	if err != nil {
 		return err
+	}
+	if compressor != remoteexecution.Compressor_IDENTITY {
+		return status.Error(codes.Unimplemented, "This service does not support downloading compressed files")
 	}
 
 	r := s.blobAccess.Get(out.Context(), digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
@@ -102,10 +106,14 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return err
 	}
-	digest, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
+	digest, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
 	if err != nil {
 		return err
 	}
+	if compressor != remoteexecution.Compressor_IDENTITY {
+		return status.Error(codes.Unimplemented, "This service does not support uploading compressed files")
+	}
+
 	r := &byteStreamWriteServerChunkReader{stream: stream}
 	if err := r.setRequest(request); err != nil {
 		return err
