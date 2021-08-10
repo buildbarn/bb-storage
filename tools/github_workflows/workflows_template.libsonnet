@@ -154,7 +154,7 @@
           [
             {
               name: 'Install Docker credentials',
-              run: 'mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json',
+              run: 'mkdir -p ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json',
               env: {
                 DOCKER_CONFIG_JSON: '${{ secrets.DOCKER_CONFIG_JSON }}',
               },
