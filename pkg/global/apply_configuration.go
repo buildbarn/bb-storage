@@ -37,15 +37,17 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // LifecycleState is returned by ApplyConfiguration. It can be used by
 // the caller to report whether the application has started up
 // successfully.
 type LifecycleState struct {
-	config *pb.DiagnosticsHTTPServerConfiguration
+	config                          *pb.DiagnosticsHTTPServerConfiguration
+	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
 }
 
 // MarkReadyAndWait can be called to report that the program has started
@@ -64,6 +66,9 @@ func (ls *LifecycleState) MarkReadyAndWait() {
 		}
 		if ls.config.EnablePprof {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+		if httpHandler := ls.activeSpansReportingHTTPHandler; httpHandler != nil {
+			router.Handle("/active_spans", httpHandler)
 		}
 
 		log.Fatal(http.ListenAndServe(ls.config.ListenAddress, router))
@@ -108,133 +113,143 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	}
 
 	// Perform tracing using OpenTelemetry.
-	if tracingConfiguration := configuration.GetTracing(); tracingConfiguration != nil {
-		// Special gRPC client factory that doesn't have tracing
-		// enabled. This must be used by the OTLP span exporter
-		// to prevent infinitely recursive traces.
-		nonTracingGRPCClientFactory := bb_grpc.NewDeduplicatingClientFactory(
-			bb_grpc.NewBaseClientFactory(
-				grpcClientDialer,
-				grpcUnaryInterceptors,
-				grpcStreamInterceptors))
+	var activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
+	if tracingConfiguration, enableActiveSpans := configuration.GetTracing(), configuration.GetDiagnosticsHttpServer().GetEnableActiveSpans(); tracingConfiguration != nil || enableActiveSpans {
+		tracerProvider := trace.NewNoopTracerProvider()
+		if tracingConfiguration != nil {
+			// Special gRPC client factory that doesn't have tracing
+			// enabled. This must be used by the OTLP span exporter
+			// to prevent infinitely recursive traces.
+			nonTracingGRPCClientFactory := bb_grpc.NewDeduplicatingClientFactory(
+				bb_grpc.NewBaseClientFactory(
+					grpcClientDialer,
+					grpcUnaryInterceptors,
+					grpcStreamInterceptors))
 
-		var tracerProviderOptions []trace.TracerProviderOption
-		for _, backend := range tracingConfiguration.Backends {
-			// Construct a SpanExporter.
-			var spanExporter trace.SpanExporter
-			switch spanExporterConfiguration := backend.SpanExporter.(type) {
-			case *pb.TracingConfiguration_Backend_JaegerCollectorSpanExporter_:
-				// Convert Jaeger collector configuration
-				// message to a list of options.
-				jaegerConfiguration := spanExporterConfiguration.JaegerCollectorSpanExporter
-				var collectorEndpointOptions []jaeger.CollectorEndpointOption
-				if endpoint := jaegerConfiguration.Endpoint; endpoint != "" {
-					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithEndpoint(endpoint))
-				}
-				httpClient, err := bb_http.NewClient(jaegerConfiguration.Tls)
-				if err != nil {
-					return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
-				}
-				collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(httpClient))
-				if password := jaegerConfiguration.Password; password != "" {
-					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
-				}
-				if username := jaegerConfiguration.Password; username != "" {
-					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithUsername(username))
-				}
-
-				// Construct a Jaeger span exporter.
-				exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(collectorEndpointOptions...))
-				if err != nil {
-					return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector span exporter")
-				}
-				spanExporter = exporter
-			case *pb.TracingConfiguration_Backend_OtlpSpanExporter:
-				client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter)
-				if err != nil {
-					return nil, nil, util.StatusWrap(err, "Failed to create OTLP gRPC client")
-				}
-				spanExporter, err = otlptrace.New(context.Background(), bb_otel.NewGRPCOTLPTraceClient(client))
-				if err != nil {
-					return nil, nil, util.StatusWrap(err, "Failed to create OTLP span exporter")
-				}
-			default:
-				return nil, nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span exporter")
-			}
-
-			// Wrap it in a SpanProcessor.
-			var spanProcessor trace.SpanProcessor
-			switch spanProcessorConfiguration := backend.SpanProcessor.(type) {
-			case *pb.TracingConfiguration_Backend_SimpleSpanProcessor:
-				spanProcessor = trace.NewSimpleSpanProcessor(spanExporter)
-			case *pb.TracingConfiguration_Backend_BatchSpanProcessor_:
-				var batchSpanProcessorOptions []trace.BatchSpanProcessorOption
-				if d := spanProcessorConfiguration.BatchSpanProcessor.BatchTimeout; d != nil {
-					if err := d.CheckValid(); err != nil {
-						return nil, nil, util.StatusWrap(err, "Invalid batch span processor batch timeout")
+			var tracerProviderOptions []sdktrace.TracerProviderOption
+			for _, backend := range tracingConfiguration.Backends {
+				// Construct a SpanExporter.
+				var spanExporter sdktrace.SpanExporter
+				switch spanExporterConfiguration := backend.SpanExporter.(type) {
+				case *pb.TracingConfiguration_Backend_JaegerCollectorSpanExporter_:
+					// Convert Jaeger collector configuration
+					// message to a list of options.
+					jaegerConfiguration := spanExporterConfiguration.JaegerCollectorSpanExporter
+					var collectorEndpointOptions []jaeger.CollectorEndpointOption
+					if endpoint := jaegerConfiguration.Endpoint; endpoint != "" {
+						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithEndpoint(endpoint))
 					}
-					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithBatchTimeout(d.AsDuration()))
-				}
-				if spanProcessorConfiguration.BatchSpanProcessor.Blocking {
-					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithBlocking())
-				}
-				if d := spanProcessorConfiguration.BatchSpanProcessor.ExportTimeout; d != nil {
-					if err := d.CheckValid(); err != nil {
-						return nil, nil, util.StatusWrap(err, "Invalid batch span processor export timeout")
+					httpClient, err := bb_http.NewClient(jaegerConfiguration.Tls)
+					if err != nil {
+						return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
 					}
-					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithExportTimeout(d.AsDuration()))
+					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(httpClient))
+					if password := jaegerConfiguration.Password; password != "" {
+						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
+					}
+					if username := jaegerConfiguration.Password; username != "" {
+						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithUsername(username))
+					}
+
+					// Construct a Jaeger span exporter.
+					exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(collectorEndpointOptions...))
+					if err != nil {
+						return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector span exporter")
+					}
+					spanExporter = exporter
+				case *pb.TracingConfiguration_Backend_OtlpSpanExporter:
+					client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter)
+					if err != nil {
+						return nil, nil, util.StatusWrap(err, "Failed to create OTLP gRPC client")
+					}
+					spanExporter, err = otlptrace.New(context.Background(), bb_otel.NewGRPCOTLPTraceClient(client))
+					if err != nil {
+						return nil, nil, util.StatusWrap(err, "Failed to create OTLP span exporter")
+					}
+				default:
+					return nil, nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span exporter")
 				}
-				if size := spanProcessorConfiguration.BatchSpanProcessor.MaxExportBatchSize; size != 0 {
-					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithMaxExportBatchSize(int(size)))
+
+				// Wrap it in a SpanProcessor.
+				var spanProcessor sdktrace.SpanProcessor
+				switch spanProcessorConfiguration := backend.SpanProcessor.(type) {
+				case *pb.TracingConfiguration_Backend_SimpleSpanProcessor:
+					spanProcessor = sdktrace.NewSimpleSpanProcessor(spanExporter)
+				case *pb.TracingConfiguration_Backend_BatchSpanProcessor_:
+					var batchSpanProcessorOptions []sdktrace.BatchSpanProcessorOption
+					if d := spanProcessorConfiguration.BatchSpanProcessor.BatchTimeout; d != nil {
+						if err := d.CheckValid(); err != nil {
+							return nil, nil, util.StatusWrap(err, "Invalid batch span processor batch timeout")
+						}
+						batchSpanProcessorOptions = append(batchSpanProcessorOptions, sdktrace.WithBatchTimeout(d.AsDuration()))
+					}
+					if spanProcessorConfiguration.BatchSpanProcessor.Blocking {
+						batchSpanProcessorOptions = append(batchSpanProcessorOptions, sdktrace.WithBlocking())
+					}
+					if d := spanProcessorConfiguration.BatchSpanProcessor.ExportTimeout; d != nil {
+						if err := d.CheckValid(); err != nil {
+							return nil, nil, util.StatusWrap(err, "Invalid batch span processor export timeout")
+						}
+						batchSpanProcessorOptions = append(batchSpanProcessorOptions, sdktrace.WithExportTimeout(d.AsDuration()))
+					}
+					if size := spanProcessorConfiguration.BatchSpanProcessor.MaxExportBatchSize; size != 0 {
+						batchSpanProcessorOptions = append(batchSpanProcessorOptions, sdktrace.WithMaxExportBatchSize(int(size)))
+					}
+					if size := spanProcessorConfiguration.BatchSpanProcessor.MaxQueueSize; size != 0 {
+						batchSpanProcessorOptions = append(batchSpanProcessorOptions, sdktrace.WithMaxQueueSize(int(size)))
+					}
+					spanProcessor = sdktrace.NewBatchSpanProcessor(spanExporter, batchSpanProcessorOptions...)
+				default:
+					return nil, nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span processor")
 				}
-				if size := spanProcessorConfiguration.BatchSpanProcessor.MaxQueueSize; size != 0 {
-					batchSpanProcessorOptions = append(batchSpanProcessorOptions, trace.WithMaxQueueSize(int(size)))
-				}
-				spanProcessor = trace.NewBatchSpanProcessor(spanExporter, batchSpanProcessorOptions...)
-			default:
-				return nil, nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span processor")
+				tracerProviderOptions = append(tracerProviderOptions, sdktrace.WithSpanProcessor(spanProcessor))
 			}
-			tracerProviderOptions = append(tracerProviderOptions, trace.WithSpanProcessor(spanProcessor))
-		}
 
-		// Set resource attributes, so that this process can be
-		// identified uniquely.
-		fields := tracingConfiguration.ResourceAttributes
-		resourceAttributes := make([]attribute.KeyValue, 0, len(fields))
-		for key, value := range fields {
-			switch kind := value.Kind.(type) {
-			case *pb.TracingConfiguration_ResourceAttributeValue_Bool:
-				resourceAttributes = append(resourceAttributes, attribute.Bool(key, kind.Bool))
-			case *pb.TracingConfiguration_ResourceAttributeValue_Int64:
-				resourceAttributes = append(resourceAttributes, attribute.Int64(key, kind.Int64))
-			case *pb.TracingConfiguration_ResourceAttributeValue_Float64:
-				resourceAttributes = append(resourceAttributes, attribute.Float64(key, kind.Float64))
-			case *pb.TracingConfiguration_ResourceAttributeValue_String_:
-				resourceAttributes = append(resourceAttributes, attribute.String(key, kind.String_))
-			case *pb.TracingConfiguration_ResourceAttributeValue_BoolArray_:
-				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.BoolArray.Values))
-			case *pb.TracingConfiguration_ResourceAttributeValue_Int64Array_:
-				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Int64Array.Values))
-			case *pb.TracingConfiguration_ResourceAttributeValue_Float64Array_:
-				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Float64Array.Values))
-			case *pb.TracingConfiguration_ResourceAttributeValue_StringArray_:
-				resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.StringArray.Values))
-			default:
-				return nil, nil, status.Error(codes.InvalidArgument, "Resource attribute is of an unknown type")
+			// Set resource attributes, so that this process can be
+			// identified uniquely.
+			fields := tracingConfiguration.ResourceAttributes
+			resourceAttributes := make([]attribute.KeyValue, 0, len(fields))
+			for key, value := range fields {
+				switch kind := value.Kind.(type) {
+				case *pb.TracingConfiguration_ResourceAttributeValue_Bool:
+					resourceAttributes = append(resourceAttributes, attribute.Bool(key, kind.Bool))
+				case *pb.TracingConfiguration_ResourceAttributeValue_Int64:
+					resourceAttributes = append(resourceAttributes, attribute.Int64(key, kind.Int64))
+				case *pb.TracingConfiguration_ResourceAttributeValue_Float64:
+					resourceAttributes = append(resourceAttributes, attribute.Float64(key, kind.Float64))
+				case *pb.TracingConfiguration_ResourceAttributeValue_String_:
+					resourceAttributes = append(resourceAttributes, attribute.String(key, kind.String_))
+				case *pb.TracingConfiguration_ResourceAttributeValue_BoolArray_:
+					resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.BoolArray.Values))
+				case *pb.TracingConfiguration_ResourceAttributeValue_Int64Array_:
+					resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Int64Array.Values))
+				case *pb.TracingConfiguration_ResourceAttributeValue_Float64Array_:
+					resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.Float64Array.Values))
+				case *pb.TracingConfiguration_ResourceAttributeValue_StringArray_:
+					resourceAttributes = append(resourceAttributes, attribute.Array(key, kind.StringArray.Values))
+				default:
+					return nil, nil, status.Error(codes.InvalidArgument, "Resource attribute is of an unknown type")
+				}
 			}
-		}
-		tracerProviderOptions = append(
-			tracerProviderOptions,
-			trace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes...)))
+			tracerProviderOptions = append(
+				tracerProviderOptions,
+				sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes...)))
 
-		// Create a Sampler, acting as a policy for when to sample.
-		sampler, err := newSamplerFromConfiguration(tracingConfiguration.Sampler)
-		if err != nil {
-			return nil, nil, util.StatusWrap(err, "Failed to create sampler")
+			// Create a Sampler, acting as a policy for when to sample.
+			sampler, err := newSamplerFromConfiguration(tracingConfiguration.Sampler)
+			if err != nil {
+				return nil, nil, util.StatusWrap(err, "Failed to create sampler")
+			}
+			tracerProviderOptions = append(tracerProviderOptions, sdktrace.WithSampler(sampler))
+			tracerProvider = sdktrace.NewTracerProvider(tracerProviderOptions...)
 		}
-		tracerProviderOptions = append(tracerProviderOptions, trace.WithSampler(sampler))
 
-		otel.SetTracerProvider(trace.NewTracerProvider(tracerProviderOptions...))
+		if enableActiveSpans {
+			activeSpansReportingHTTPHandler = bb_otel.NewActiveSpansReportingHTTPHandler(clock.SystemClock)
+			tracerProvider = activeSpansReportingHTTPHandler.NewTracerProvider(tracerProvider)
+		}
+
+		otel.SetTracerProvider(tracerProvider)
 		otel.SetTextMapPropagator(propagation.TraceContext{})
 
 		grpcUnaryInterceptors = append(grpcUnaryInterceptors, otelgrpc.UnaryClientInterceptor())
@@ -272,7 +287,8 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	}
 
 	return &LifecycleState{
-			config: configuration.GetDiagnosticsHttpServer(),
+			config:                          configuration.GetDiagnosticsHttpServer(),
+			activeSpansReportingHTTPHandler: activeSpansReportingHTTPHandler,
 		},
 		bb_grpc.NewDeduplicatingClientFactory(
 			bb_grpc.NewBaseClientFactory(
@@ -284,15 +300,15 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 
 // NewSamplerFromConfiguration creates a OpenTelemetry Sampler based on
 // a configuration file.
-func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler) (trace.Sampler, error) {
+func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler) (sdktrace.Sampler, error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "No configuration provided")
 	}
 	switch policy := configuration.Policy.(type) {
 	case *pb.TracingConfiguration_Sampler_Always:
-		return trace.AlwaysSample(), nil
+		return sdktrace.AlwaysSample(), nil
 	case *pb.TracingConfiguration_Sampler_Never:
-		return trace.NeverSample(), nil
+		return sdktrace.NeverSample(), nil
 	case *pb.TracingConfiguration_Sampler_ParentBased_:
 		noParent, err := newSamplerFromConfiguration(policy.ParentBased.NoParent)
 		if err != nil {
@@ -314,14 +330,14 @@ func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Remote parent sampled")
 		}
-		return trace.ParentBased(
+		return sdktrace.ParentBased(
 			noParent,
-			trace.WithLocalParentNotSampled(localParentNotSampled),
-			trace.WithLocalParentSampled(localParentSampled),
-			trace.WithRemoteParentNotSampled(remoteParentNotSampled),
-			trace.WithRemoteParentSampled(remoteParentSampled)), nil
+			sdktrace.WithLocalParentNotSampled(localParentNotSampled),
+			sdktrace.WithLocalParentSampled(localParentSampled),
+			sdktrace.WithRemoteParentNotSampled(remoteParentNotSampled),
+			sdktrace.WithRemoteParentSampled(remoteParentSampled)), nil
 	case *pb.TracingConfiguration_Sampler_TraceIdRatioBased:
-		return trace.TraceIDRatioBased(policy.TraceIdRatioBased), nil
+		return sdktrace.TraceIDRatioBased(policy.TraceIdRatioBased), nil
 	case *pb.TracingConfiguration_Sampler_MaximumRate_:
 		epochDuration := policy.MaximumRate.EpochDuration
 		if err := epochDuration.CheckValid(); err != nil {

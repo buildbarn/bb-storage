@@ -226,7 +226,11 @@ gomock(
 gomock(
     name = "trace",
     out = "trace.go",
-    interfaces = ["Span"],
+    interfaces = [
+        "Span",
+        "Tracer",
+        "TracerProvider",
+    ],
     library = "@io_opentelemetry_go_otel_trace//:trace",
     package = "mock",
 )

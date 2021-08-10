@@ -29,7 +29,10 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_go",
-    patches = ["//:patches/io_bazel_rules_go/service-registrar.diff"],
+    patches = [
+        "//:patches/io_bazel_rules_go/service-registrar.diff",
+        "//:patches/io_bazel_rules_go/upstream-pr-2936.diff",
+    ],
     sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
     urls = [
         "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip",
@@ -145,3 +148,26 @@ jsonnet_go_repositories()
 load("@jsonnet_go//bazel:deps.bzl", "jsonnet_go_dependencies")
 
 jsonnet_go_dependencies()
+
+http_archive(
+    name = "com_github_twbs_bootstrap",
+    build_file_content = """exports_files(["css/bootstrap.min.css", "js/bootstrap.min.js"])""",
+    sha256 = "395342b2974e3350560e65752d36aab6573652b11cc6cb5ef79a2e5e83ad64b1",
+    strip_prefix = "bootstrap-5.1.0-dist",
+    urls = ["https://github.com/twbs/bootstrap/releases/download/v5.1.0/bootstrap-5.1.0-dist.zip"],
+)
+
+http_archive(
+    name = "build_bazel_rules_nodejs",
+    sha256 = "8f5f192ba02319254aaf2cdcca00ec12eaafeb979a80a1e946773c520ae0a2c9",
+    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/3.7.0/rules_nodejs-3.7.0.tar.gz"],
+)
+
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_install")
+
+npm_install(
+    name = "npm",
+    package_json = "//:package.json",
+    package_lock_json = "//:package-lock.json",
+    symlink_node_modules = False,
+)

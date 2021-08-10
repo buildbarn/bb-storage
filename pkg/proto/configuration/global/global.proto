@@ -266,4 +266,10 @@ message DiagnosticsHTTPServerConfiguration {
   // Enables endpoints:
   // - /metrics: Metrics that can be scraped by Prometheus.
   bool enable_prometheus = 3;
+
+  // Enables endpoints:
+  // - /active_spans: List of active OpenTelemetry spans. This endpoint
+  //                  can be used independent of whether Configuration's
+  //                  'tracing' option is enabled.
+  bool enable_active_spans = 4;
 }

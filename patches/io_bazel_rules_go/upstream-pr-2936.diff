@@ -1,0 +1,53 @@
+commit e57d1ca8fb1e36ee90254cd7c86c49d5a5cf3f31
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Tue Aug 10 11:36:24 2021 +0200
+
+    Make go_test() with embedsrcs work
+    
+    Even though there already is testing coverage for go_test() with
+    embedsrcs using generated files and such, I can't seem to get one of the
+    most trivial cases to work. The file to be embedded doesn't get placed
+    in the sandbox during GoCompilePkg.
+    
+    This change addresses this by explicitly copying the embedsrcs from the
+    internal source to the external, which seems to make things work
+    properly.
+
+diff --git go/private/rules/test.bzl go/private/rules/test.bzl
+index a7936ca9..9c5b4a63 100644
+--- go/private/rules/test.bzl
++++ go/private/rules/test.bzl
+@@ -76,6 +76,7 @@ def _go_test_impl(ctx):
+     )
+     external_source = go.library_to_source(go, struct(
+         srcs = [struct(files = go_srcs)],
++        embedsrcs = [struct(files = internal_source.embedsrcs)],
+         deps = internal_archive.direct + [internal_archive],
+         x_defs = ctx.attr.x_defs,
+     ), external_library, ctx.coverage_instrumented())
+diff --git tests/core/go_library/BUILD.bazel tests/core/go_library/BUILD.bazel
+index 88c27dd8..13a3956c 100644
+--- tests/core/go_library/BUILD.bazel
++++ tests/core/go_library/BUILD.bazel
+@@ -140,3 +140,9 @@ go_bazel_test(
+     size = "medium",
+     srcs = ["embedsrcs_error_test.go"],
+ )
++
++go_test(
++    name = "embedsrcs_simple_test",
++    srcs = ["embedsrcs_simple_test.go"],
++    embedsrcs = ["embedsrcs_static/no"],
++)
+diff --git tests/core/go_library/embedsrcs_simple_test.go tests/core/go_library/embedsrcs_simple_test.go
+new file mode 100644
+index 00000000..32b3fdee
+--- /dev/null
++++ tests/core/go_library/embedsrcs_simple_test.go
+@@ -0,0 +1,6 @@
++package embedsrcs_simple_test
++
++import _ "embed"
++
++//go:embed embedsrcs_static/no
++var no []byte
