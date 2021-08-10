@@ -5,11 +5,13 @@ go_library(
     srcs = [
         "grpc_otlp_trace_client.go",
         "maximum_rate_sampler.go",
+        "w3c_trace_context.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/otel",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/clock",
+        "@io_opentelemetry_go_otel//propagation",
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace//:otlptrace",
         "@io_opentelemetry_go_otel_sdk//trace",
         "@io_opentelemetry_go_otel_trace//:trace",
@@ -21,7 +23,10 @@ go_library(
 
 go_test(
     name = "otel_test",
-    srcs = ["maximum_rate_sampler_test.go"],
+    srcs = [
+        "maximum_rate_sampler_test.go",
+        "w3c_trace_context_test.go",
+    ],
     deps = [
         ":otel",
         "//internal/mock",

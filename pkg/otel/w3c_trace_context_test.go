@@ -1,10 +1,10 @@
-package util_test
+package otel_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/otel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,18 +14,18 @@ func TestW3CTraceContext(t *testing.T) {
 		// W3C Trace Context being present in the current
 		// Context, it should just return an empty map.
 		ctx := context.Background()
-		require.Empty(t, util.W3CTraceContextFromContext(ctx))
+		require.Empty(t, otel.W3CTraceContextFromContext(ctx))
 	})
 
 	t.Run("NonStandardHeaders", func(t *testing.T) {
 		// Headers that are not part of the W3C Trace Context
 		// specification should simply be ignored.
-		ctx := util.NewContextWithW3CTraceContext(
+		ctx := otel.NewContextWithW3CTraceContext(
 			context.Background(),
 			map[string]string{
 				"hello": "world",
 			})
-		require.Empty(t, util.W3CTraceContextFromContext(ctx))
+		require.Empty(t, otel.W3CTraceContextFromContext(ctx))
 	})
 
 	t.Run("GarbageTraceparent", func(t *testing.T) {
@@ -34,19 +34,19 @@ func TestW3CTraceContext(t *testing.T) {
 		// specification. Invalid values should be discarded.
 		// More details:
 		// https://www.w3.org/TR/trace-context/#version-format
-		ctx := util.NewContextWithW3CTraceContext(
+		ctx := otel.NewContextWithW3CTraceContext(
 			context.Background(),
 			map[string]string{
 				"traceparent": "This is a garbage value",
 			})
-		require.Empty(t, util.W3CTraceContextFromContext(ctx))
+		require.Empty(t, otel.W3CTraceContextFromContext(ctx))
 	})
 
 	t.Run("ValidTraceparent", func(t *testing.T) {
 		// If the traceparent header is valid, its value should
 		// be forwarded when the Context is converted to a W3C
 		// Trace Context once again.
-		ctx := util.NewContextWithW3CTraceContext(
+		ctx := otel.NewContextWithW3CTraceContext(
 			context.Background(),
 			map[string]string{
 				"traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
@@ -56,6 +56,6 @@ func TestW3CTraceContext(t *testing.T) {
 			map[string]string{
 				"traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
 			},
-			util.W3CTraceContextFromContext(ctx))
+			otel.W3CTraceContextFromContext(ctx))
 	})
 }
