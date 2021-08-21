@@ -169,14 +169,13 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				replicationTimeout),
 			DigestKeyFormat: digestKeyFormat,
 		}, "redis", nil
-	case *pb.BlobAccessConfiguration_Remote:
-		// TODO: Add TLS client options to configuration schema.
-		httpClient, err := http.NewClient(nil)
+	case *pb.BlobAccessConfiguration_Http:
+		httpClient, err := http.NewClient(backend.Http.Tls)
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
 		return BlobAccessInfo{
-			BlobAccess:      blobstore.NewRemoteBlobAccess(backend.Remote.Address, storageTypeName, readBufferFactory, httpClient),
+			BlobAccess:      blobstore.NewHTTPBlobAccess(backend.Http.Address, storageTypeName, readBufferFactory, httpClient),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:

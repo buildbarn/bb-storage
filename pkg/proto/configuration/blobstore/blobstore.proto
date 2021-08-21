@@ -27,8 +27,9 @@ message BlobAccessConfiguration {
     // Read objects from/write objects to a Redis server.
     RedisBlobAccessConfiguration redis = 2;
 
-    // Read objects from/write objects to a Bazel remote build cache server.
-    RemoteBlobAccessConfiguration remote = 3;
+    // Read objects from/write objects to a server that supports
+    // Bazel's HTTP caching protocol.
+    HTTPBlobAccessConfiguration http = 3;
 
     // Cache reads from a slow remote storage backend into a fast
     // local storage backend.
@@ -266,9 +267,14 @@ message RedisBlobAccessConfiguration {
   google.protobuf.Duration write_timeout = 12;
 }
 
-message RemoteBlobAccessConfiguration {
+message HTTPBlobAccessConfiguration {
   // URL of the remote build cache (e.g., "http://localhost:8080/").
   string address = 1;
+
+  // TLS configuration for the HTTP connection, in case a client
+  // certificate needs to be provided or the server certificate needs to
+  // be validated against a custom certificate authority.
+  buildbarn.configuration.tls.ClientConfiguration tls = 2;
 }
 
 message ShardingBlobAccessConfiguration {

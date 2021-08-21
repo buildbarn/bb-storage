@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type remoteBlobAccess struct {
+type httpBlobAccess struct {
 	address           string
 	prefix            string
 	readBufferFactory ReadBufferFactory
@@ -25,18 +25,18 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 	return status.Errorf(codes.Unknown, "Unexpected status code from remote cache: %d - %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 }
 
-// NewRemoteBlobAccess for use of HTTP/1.1 cache backend.
+// NewHTTPBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewRemoteBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient bb_http.Client) BlobAccess {
-	return &remoteBlobAccess{
+func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient bb_http.Client) BlobAccess {
+	return &httpBlobAccess{
 		address:           address,
 		prefix:            prefix,
 		readBufferFactory: readBufferFactory,
 	}
 }
 
-func (ba *remoteBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (ba *httpBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, digest.GetHashString())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -59,7 +59,7 @@ func (ba *remoteBlobAccess) Get(ctx context.Context, digest digest.Digest) buffe
 	}
 }
 
-func (ba *remoteBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (ba *httpBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
 		b.Discard()
@@ -83,7 +83,7 @@ func (ba *remoteBlobAccess) Put(ctx context.Context, digest digest.Digest, b buf
 	return nil
 }
 
-func (ba *remoteBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *httpBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	missing := digest.NewSetBuilder()
 	for _, blobDigest := range digests.Items() {
 		url := fmt.Sprintf("%s/%s/%s", ba.address, ba.prefix, blobDigest.GetHashString())
