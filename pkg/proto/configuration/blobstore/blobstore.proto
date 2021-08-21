@@ -27,7 +27,8 @@ message BlobAccessConfiguration {
     // Read objects from/write objects to a Redis server.
     RedisBlobAccessConfiguration redis = 2;
 
-    // Read objects from/write objects to a Bazel remote build cache server.
+    // Read objects from/write objects to a server that supports
+    // Bazel's HTTP caching protocol.
     RemoteBlobAccessConfiguration remote = 3;
 
     // Cache reads from a slow remote storage backend into a fast
