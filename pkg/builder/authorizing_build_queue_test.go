@@ -1,0 +1,153 @@
+package builder_test
+
+import (
+	"context"
+	"testing"
+
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/builder"
+	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
+	"google.golang.org/genproto/googleapis/longrunning"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func TestAuthorizingBuildQueueGetCapabilities(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	buildQueue := mock.NewMockBuildQueue(ctrl)
+	authorizer := mock.NewMockAuthorizer(ctrl)
+	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
+
+	t.Run("InvalidInstanceName", func(t *testing.T) {
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/blobs/world",
+		})
+		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+	})
+
+	t.Run("NotAuthorized", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		}).Return(&remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+				ExecEnabled: true,
+			},
+		}, nil)
+		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		})
+		require.NoError(t, err)
+		require.False(t, caps.ExecutionCapabilities.ExecEnabled)
+	})
+
+	t.Run("AuthError", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.Internal, "Something went wrong")})
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		}).Return(&remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+				ExecEnabled: true,
+			},
+		}, nil)
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		})
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Something went wrong"), err)
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		wantErr := status.Error(codes.Internal, "Something went wrong")
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		}).Return(nil, wantErr)
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		})
+		testutil.RequireEqualStatus(t, wantErr, err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{nil})
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		}).Return(&remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+				ExecEnabled: true,
+			},
+		}, nil)
+		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		})
+		require.NoError(t, err)
+		require.True(t, caps.ExecutionCapabilities.ExecEnabled)
+	})
+}
+
+func TestAuthorizingBuildQueueExecute(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	buildQueue := mock.NewMockBuildQueue(ctrl)
+	executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+	executeServer.EXPECT().Context().Return(ctx).AnyTimes()
+	authorizer := mock.NewMockAuthorizer(ctrl)
+	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
+
+	t.Run("InvalidInstanceName", func(t *testing.T) {
+		err := authorizingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
+			InstanceName: "hello/blobs/world",
+			ActionDigest: &remoteexecution.Digest{
+				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				SizeBytes: 0,
+			},
+		}, executeServer)
+		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+	})
+
+	t.Run("Denied", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
+		err := authorizingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
+			InstanceName: "hello/world",
+			ActionDigest: &remoteexecution.Digest{
+				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				SizeBytes: 0,
+			},
+		}, executeServer)
+		require.Equal(t, status.Error(codes.PermissionDenied, "Failed to authorize to Execute() against instance name \"hello/world\": Permission denied"), err)
+	})
+
+	t.Run("Allowed", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{nil})
+		buildQueue.EXPECT().Execute(&remoteexecution.ExecuteRequest{
+			InstanceName: "hello/world",
+			ActionDigest: &remoteexecution.Digest{
+				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				SizeBytes: 0,
+			},
+		}, gomock.Any()).DoAndReturn(
+			func(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
+				require.NoError(t, out.Send(&longrunning.Operation{
+					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
+					Done: true,
+				}))
+				return nil
+			})
+		executeServer.EXPECT().Send(&longrunning.Operation{
+			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
+			Done: true,
+		})
+
+		err := authorizingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
+			InstanceName: "hello/world",
+			ActionDigest: &remoteexecution.Digest{
+				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				SizeBytes: 0,
+			},
+		}, executeServer)
+		require.NoError(t, err)
+	})
+}

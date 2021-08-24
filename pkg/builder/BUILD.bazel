@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "builder",
     srcs = [
+        "authorizing_build_queue.go",
         "build_queue.go",
         "configuration.go",
         "demultiplexing_build_queue.go",
@@ -30,6 +31,7 @@ go_library(
 go_test(
     name = "builder_test",
     srcs = [
+        "authorizing_build_queue_test.go",
         "demultiplexing_build_queue_test.go",
         "forwarding_build_queue_test.go",
         "update_enabled_toggling_build_queue_test.go",

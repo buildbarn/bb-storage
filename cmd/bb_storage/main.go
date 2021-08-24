@@ -100,6 +100,13 @@ func main() {
 
 	buildQueue = builder.NewUpdateEnabledTogglingBuildQueue(buildQueue, acPutAuthorizer)
 
+	executeAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetExecuteAuthorizer())
+	if err != nil {
+		log.Fatal("Failed to create execute authorizer: ", err)
+	}
+
+	buildQueue = builder.NewAuthorizingBuildQueue(buildQueue, executeAuthorizer)
+
 	go func() {
 		log.Fatal(
 			"gRPC server failure: ",

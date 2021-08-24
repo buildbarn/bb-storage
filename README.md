@@ -124,6 +124,7 @@ $ cat config/bb_storage.jsonnet
       allowedInstanceNamePrefixes: ['foo'],
     } },
   },
+  executeAuthorizer: { allow: {} },
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 $ mkdir -p storage-{ac,cas}/persistent_state

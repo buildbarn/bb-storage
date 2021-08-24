@@ -79,6 +79,15 @@ message ApplicationConfiguration {
   // Authorization requirements applied to the initial size class cache.
   NonScannableAuthorizersConfiguration initial_size_class_cache_authorizers =
       15;
+
+  // Authorization requirements applied to Execute() requests via schedulers.
+  //
+  // Note that this does not apply any authorization to WaitExecution() -
+  // any scheduler is expected to perform authorization on WaitExecution(),
+  // but in bb_storage we can't reliably know the instance name from an
+  // operation. This is hopefully safe, as operation names are hard to guess,
+  // and the forwarded-to scheduler should perform its own authorization.
+  buildbarn.configuration.auth.AuthorizerConfiguration execute_authorizer = 16;
 }
 
 // Authorizer configuration for interfaces which don't allow
