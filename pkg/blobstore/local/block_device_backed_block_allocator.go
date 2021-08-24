@@ -111,7 +111,7 @@ func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation,
 	defer pa.lock.Unlock()
 
 	if len(pa.freeOffsets) == 0 {
-		return nil, nil, status.Error(codes.ResourceExhausted, "No unused blocks available")
+		return nil, nil, status.Error(codes.Unavailable, "No unused blocks available")
 	}
 	offset := pa.freeOffsets[0]
 	pa.freeOffsets = pa.freeOffsets[1:]
