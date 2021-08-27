@@ -62,5 +62,5 @@ func (bq *authorizingBuildQueue) Execute(request *remoteexecution.ExecuteRequest
 }
 
 func (bq *authorizingBuildQueue) WaitExecution(request *remoteexecution.WaitExecutionRequest, server remoteexecution.Execution_WaitExecutionServer) error {
-	return bq.WaitExecution(request, server)
+	return bq.backend.WaitExecution(request, server)
 }
