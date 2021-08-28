@@ -151,3 +151,46 @@ func TestAuthorizingBuildQueueExecute(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestAuthorizingBuildQueueWaitExecution(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	buildQueue := mock.NewMockBuildQueue(ctrl)
+	executeServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+	executeServer.EXPECT().Context().Return(ctx).AnyTimes()
+	authorizer := mock.NewMockAuthorizer(ctrl)
+	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
+
+	t.Run("Success", func(t *testing.T) {
+		buildQueue.EXPECT().WaitExecution(&remoteexecution.WaitExecutionRequest{
+			Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
+		}, gomock.Any()).DoAndReturn(
+			func(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
+				require.NoError(t, out.Send(&longrunning.Operation{
+					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
+					Done: true,
+				}))
+				return nil
+			})
+		executeServer.EXPECT().Send(&longrunning.Operation{
+			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
+			Done: true,
+		})
+
+		require.NoError(t, authorizingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
+			Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
+		}, executeServer))
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		buildQueue.EXPECT().WaitExecution(&remoteexecution.WaitExecutionRequest{
+			Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
+		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not available"))
+
+		testutil.RequireEqualStatus(
+			t,
+			status.Error(codes.Unavailable, "Server not available"),
+			authorizingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
+				Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
+			}, executeServer))
+	})
+}
