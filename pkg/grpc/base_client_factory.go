@@ -4,6 +4,8 @@ import (
 	"context"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"crypto/tls"
+	"github.com/buildbarn/bb-storage/pkg/spire"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"
@@ -42,8 +44,13 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	streamInterceptors := cf.streamInterceptors
 
 	// Optional: TLS.
-	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)
-	if err != nil {
+	var tlsConfig *tls.Config
+	var err error
+	if spire.HasSpireEndpoint() {  // temporary approach
+		// I'd rather not have this stuck in a "FromConfiguration" function, as this has nothing to do with the configuration.
+		// But this is the most expedient place for it, so here we are.
+		tlsConfig, err = spire.GetTlsClientConfig()
+	} else if tlsConfig, err = util.NewTLSConfigFromClientConfiguration(config.Tls); err != nil {
 		return nil, util.StatusWrap(err, "Failed to create TLS configuration")
 	}
 	if tlsConfig != nil {
@@ -62,7 +69,6 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	// Optional: OAuth authentication.
 	if oauthConfig := config.Oauth; oauthConfig != nil {
 		var perRPC credentials.PerRPCCredentials
-		var err error
 		switch credentials := oauthConfig.Credentials.(type) {
 		case *configuration.ClientOAuthConfiguration_GoogleDefaultCredentials:
 			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
@@ -80,11 +86,11 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	// Optional: Keepalive.
 	if config.Keepalive != nil {
 		time := config.Keepalive.Time
-		if err := time.CheckValid(); err != nil {
+		if err = time.CheckValid(); err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive time")
 		}
 		timeout := config.Keepalive.Timeout
-		if err := timeout.CheckValid(); err != nil {
+		if err = timeout.CheckValid(); err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse keepalive timeout")
 		}
 		dialOptions = append(dialOptions, grpc.WithKeepaliveParams(keepalive.ClientParameters{

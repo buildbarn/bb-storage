@@ -27,6 +27,7 @@ go_library(
         "//pkg/atomic",
         "//pkg/clock",
         "//pkg/proto/configuration/grpc",
+        "//pkg/spire",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_grpc_ecosystem_go_grpc_middleware//:go-grpc-middleware",

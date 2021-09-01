@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "spire",
+    srcs = ["spire_gke.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/spire",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_spiffe_go_spiffe_v2//spiffetls/tlsconfig",
+        "@com_github_spiffe_go_spiffe_v2//workloadapi",
+    ],
+)

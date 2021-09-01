@@ -1,10 +1,12 @@
 package grpc
 
 import (
+	"crypto/tls"
 	"net"
 	"os"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"github.com/buildbarn/bb-storage/pkg/spire"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
@@ -56,9 +58,13 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// Enable TLS if provided.
-		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
+		var tlsConfig *tls.Config
+		if spire.HasSpireEndpoint() {  // temporary approach
+			tlsConfig, err = spire.GetTlsServerConfig()
+		} else if tlsConfig, err = util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
 			return err
-		} else if tlsConfig != nil {
+		}
+		if tlsConfig != nil {
 			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		}
 

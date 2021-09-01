@@ -478,6 +478,13 @@ def go_dependencies():
         version = "v1.6.0",
     )
     go_repository(
+        name = "com_github_spiffe_go_spiffe_v2",
+        importpath = "github.com/spiffe/go-spiffe/v2",
+        sum = "h1:ou8ywBGFdYdG4BXjB/EBk2ND3OhtAwiMxLEbYcUS+ts=",
+        version = "v2.0.0-beta.8",
+    )
+
+    go_repository(
         name = "com_github_stretchr_objx",
         importpath = "github.com/stretchr/objx",
         sum = "h1:2vfRuCMp5sSVIDSqO8oNnWJq7mPa6KVP3iPIwFBuy8A=",
@@ -495,6 +502,13 @@ def go_dependencies():
         sum = "h1:dPmz1Snjq0kmkz159iL7S6WzdahUTHnHB5M56WFVifs=",
         version = "v1.3.5",
     )
+    go_repository(
+        name = "com_github_zeebo_errs",
+        importpath = "github.com/zeebo/errs",
+        sum = "h1:5NFypMTuSdoySVTqlNs1dEoU21QVamMQJxW/Fii5O7g=",
+        version = "v1.2.2",
+    )
+
     go_repository(
         name = "com_google_cloud_go",
         importpath = "cloud.google.com/go",
@@ -531,6 +545,13 @@ def go_dependencies():
         sum = "h1:xOHLXZwVvI9hhs+cLKq5+I5onOuwQLhQwiu63xxlHs4=",
         version = "v1.4.7",
     )
+    go_repository(
+        name = "in_gopkg_square_go_jose_v2",
+        importpath = "gopkg.in/square/go-jose.v2",
+        sum = "h1:H0TmLt7/KmzlrDOpa1F+zr0Tk90PbJYBfsVUmRLrf9Y=",
+        version = "v2.4.1",
+    )
+
     go_repository(
         name = "in_gopkg_tomb_v1",
         importpath = "gopkg.in/tomb.v1",
@@ -630,6 +651,13 @@ def go_dependencies():
         sum = "h1:Klz8I9kdtkIN6EpHHUOMLCYhTn/2WAe5a0s1hcBkdTI=",
         version = "v1.39.0",
     )
+    go_repository(
+        name = "org_golang_google_grpc_examples",
+        importpath = "google.golang.org/grpc/examples",
+        sum = "h1:DtMmDAGd9z5SCiq4HyyAM6cmMDNT1Od8qIpUmjVEf8A=",
+        version = "v0.0.0-20201130180447-c456688b1860",
+    )
+
     go_repository(
         name = "org_golang_google_protobuf",
         importpath = "google.golang.org/protobuf",
