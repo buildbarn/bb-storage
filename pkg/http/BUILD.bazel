@@ -2,11 +2,15 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "http",
-    srcs = ["client.go"],
+    srcs = [
+        "client.go",
+        "status_code.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/tls",
         "//pkg/util",
+        "@org_golang_google_grpc//codes",
     ],
 )
