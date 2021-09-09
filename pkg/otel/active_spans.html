@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Active OpenTelemetry spans</title>
-		<style>{{.Stylesheet}}</style>
+		<style>{{stylesheet}}</style>
 	</head>
 	<body>
 		<nav class="navbar navbar-dark bg-primary">
@@ -34,7 +34,7 @@
 					</table>
 				</div>
 			{{end}}
-			{{block "list_spans" .Spans}}
+			{{block "list_spans" .}}
 				{{range .}}
 					<div class="card my-3">
 						<h5 class="bg-dark card-header text-white">Span "{{.Name}}"</h5>

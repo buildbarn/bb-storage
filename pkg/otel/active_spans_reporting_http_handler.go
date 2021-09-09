@@ -20,13 +20,14 @@ var (
 	//go:embed active_spans.html
 	activeSpansTemplateBody string
 	activeSpansTemplate     = template.Must(template.New("ActiveSpans").Funcs(template.FuncMap{
+		"stylesheet": func() template.CSS { return stylesheet },
 		"timestamp_rfc3339": func(t time.Time) string {
 			// Converts a timestamp to RFC3339 format.
 			return t.Format("2006-01-02T15:04:05.999Z07:00")
 		},
 	}).Parse(activeSpansTemplateBody))
-	//go:embed bootstrap.css
-	bootstrapCSS template.CSS
+	//go:embed stylesheet.css
+	stylesheet template.CSS
 )
 
 // ActiveSpansReportingHTTPHandler is a HTTP handler that can generate a
@@ -98,13 +99,7 @@ func (hh *ActiveSpansReportingHTTPHandler) ServeHTTP(w http.ResponseWriter, r *h
 	hh.lock.Lock()
 	spans := hh.spans.getInfos()
 	hh.lock.Unlock()
-	if err := activeSpansTemplate.Execute(w, struct {
-		Stylesheet template.CSS
-		Spans      []spanInfo
-	}{
-		Stylesheet: bootstrapCSS,
-		Spans:      spans,
-	}); err != nil {
+	if err := activeSpansTemplate.Execute(w, spans); err != nil {
 		log.Print("Failed to report active spans: ", err)
 	}
 }

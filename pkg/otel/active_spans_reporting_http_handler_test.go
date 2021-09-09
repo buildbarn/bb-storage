@@ -21,8 +21,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-//go:embed bootstrap.css
-var bootstrapCSS string
+//go:embed stylesheet.css
+var stylesheet string
 
 func requireEqualBody(t *testing.T, expectedBody string, hh http.Handler) {
 	//  Perform a HTTP request.
@@ -38,7 +38,7 @@ func requireEqualBody(t *testing.T, expectedBody string, hh http.Handler) {
 		<html>
 			<head>
 				<title>Active OpenTelemetry spans</title>
-				<style>` + bootstrapCSS + `</style>
+				<style>` + stylesheet + `</style>
 			</head>
 			<body>
 				<nav class="navbar navbar-dark bg-primary">
