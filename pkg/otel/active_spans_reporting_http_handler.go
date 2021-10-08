@@ -82,12 +82,12 @@ type storedSpanInfo struct {
 
 type eventInfo struct {
 	Name        string
-	EventConfig *trace.EventConfig
+	EventConfig trace.EventConfig
 }
 
 type errorInfo struct {
 	Err         error
-	EventConfig *trace.EventConfig
+	EventConfig trace.EventConfig
 }
 
 type statusInfo struct {
@@ -245,7 +245,8 @@ func (s *activeSpan) End(options ...trace.SpanEndOption) {
 	// SpanEndOption interface. Just extract that field, instead of
 	// storing the entire SpanConfig.
 	hh := s.tracer.tracerProvider.httpHandler
-	endTimestamp := trace.NewSpanEndConfig(options...).Timestamp()
+	spanEndConfig := trace.NewSpanEndConfig(options...)
+	endTimestamp := spanEndConfig.Timestamp()
 	if endTimestamp.IsZero() {
 		endTimestamp = hh.clock.Now()
 	}

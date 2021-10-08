@@ -140,13 +140,13 @@ func TestActiveSpansReportingHTTPHandler(t *testing.T) {
 		baseSpan.EXPECT().AddEvent(
 			"SomeEvent",
 			trace.WithAttributes(
-				attribute.Array("array", []int64{1, 2, 3, 4}),
+				attribute.Int64Slice("array", []int64{1, 2, 3, 4}),
 				attribute.Bool("bool", true)),
 			trace.WithTimestamp(time.Unix(1628497200, 100000000)))
 		span.AddEvent(
 			"SomeEvent",
 			trace.WithAttributes(
-				attribute.Array("array", []int64{1, 2, 3, 4}),
+				attribute.Int64Slice("array", []int64{1, 2, 3, 4}),
 				attribute.Bool("bool", true)),
 			trace.WithTimestamp(time.Unix(1628497200, 100000000)))
 
