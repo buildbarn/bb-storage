@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
@@ -25,7 +25,7 @@ import (
 type referenceExpandingBlobAccess struct {
 	blobAccess              BlobAccess
 	httpClient              bb_http.Client
-	s3                      cloud_aws.S3
+	s3Client                cloud_aws.S3Client
 	maximumMessageSizeBytes int
 }
 
@@ -43,11 +43,11 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient bb_http.Client, s3 cloud_aws.S3, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient bb_http.Client, s3Client cloud_aws.S3Client, maximumMessageSizeBytes int) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		blobAccess:              blobAccess,
 		httpClient:              httpClient,
-		s3:                      s3,
+		s3Client:                s3Client,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
@@ -81,7 +81,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 		r = resp.Body
 	case *icas.Reference_S3_:
 		// Download the object from S3.
-		getObjectOutput, err := ba.s3.GetObjectWithContext(ctx, &s3.GetObjectInput{
+		getObjectOutput, err := ba.s3Client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(medium.S3.Bucket),
 			Key:    aws.String(medium.S3.Key),
 			Range:  aws.String(getHTTPRangeHeader(reference)),

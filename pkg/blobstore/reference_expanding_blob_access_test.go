@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -30,8 +30,12 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		httpClient,
+		s3Client,
+		100)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("BackendError", func(t *testing.T) {
@@ -200,11 +204,13 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=100-110"),
-		}).Return(nil, awserr.New("NoSuchKey", "The specified key does not exist. status code: 404, request id: ..., host id: ...", nil))
+		}).Return(nil, &types.NoSuchKey{
+			Message: aws.String("The specified key does not exist. status code: 404, request id: ..., host id: ..."),
+		})
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		require.Equal(t, status.Error(codes.Internal, "S3 request failed: NoSuchKey: The specified key does not exist. status code: 404, request id: ..., host id: ..."), err)
@@ -227,7 +233,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=100-110"),
@@ -260,7 +266,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=100-"),
@@ -298,7 +304,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=0-20"),
@@ -327,8 +333,12 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		httpClient,
+		s3Client,
+		100)
 
 	t.Run("Failure", func(t *testing.T) {
 		// It is not possible to write objects using
@@ -352,8 +362,12 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		httpClient,
+		s3Client,
+		100)
 
 	digests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)).

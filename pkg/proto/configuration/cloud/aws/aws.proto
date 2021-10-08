@@ -13,18 +13,17 @@ message StaticCredentials {
 }
 
 message SessionConfiguration {
-  // URL of the API endpoint (e.g., "http://localhost:9000" when using Minio).
-  string endpoint = 1;
+  // Was 'endpoint'.
+  reserved 1;
 
   // AWS region (e.g., "eu-west-1").
   string region = 2;
 
-  // Whether SSL should be disabled.
-  bool disable_ssl = 3;
+  // Was 'disable_ssl'.
+  reserved 3;
 
-  // Whether S3 should be accessed using old path-style URLs. More details:
-  // https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/
-  bool s3_force_path_style = 4;
+  // Was 's3_force_path_style'.
+  reserved 4;
 
   // Static credentials to use for all requests. If unspecified, AWS
   // will search the default credential provider chain (e.g.,

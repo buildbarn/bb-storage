@@ -3,7 +3,7 @@ package configuration
 import (
 	"sync"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -99,9 +99,9 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		sess, err := aws.NewSessionFromConfiguration(backend.ReferenceExpanding.AwsSession)
+		cfg, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession)
 		if err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS session")
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
 		// TODO: Add TLS client options to configuration schema.
 		httpClient, err := http.NewClient(nil)
@@ -112,7 +112,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
 				httpClient,
-				s3.New(sess),
+				s3.NewFromConfig(cfg),
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "reference_expanding", nil
