@@ -26,7 +26,7 @@ var (
 			Help:      "Size of blobs being inserted/retrieved, in bytes.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
-		[]string{"name", "operation"})
+		[]string{"storage_type", "backend_type", "operation"})
 	blobAccessOperationsFindMissingBatchSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -35,7 +35,7 @@ var (
 			Help:      "Number of digests provided to FindMissing().",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
 		},
-		[]string{"name"})
+		[]string{"storage_type", "backend_type"})
 	blobAccessOperationsDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -44,7 +44,7 @@ var (
 			Help:      "Amount of time spent per operation on blob access objects, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"name", "operation", "grpc_code"})
+		[]string{"storage_type", "backend_type", "operation", "grpc_code"})
 )
 
 type metricsBlobAccess struct {
@@ -61,7 +61,7 @@ type metricsBlobAccess struct {
 
 // NewMetricsBlobAccess creates an adapter for BlobAccess that adds
 // basic instrumentation in the form of Prometheus metrics.
-func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, name string) BlobAccess {
+func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, storageType, backendType string) BlobAccess {
 	blobAccessOperationsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(blobAccessOperationsBlobSizeBytes)
 		prometheus.MustRegister(blobAccessOperationsFindMissingBatchSize)
@@ -72,12 +72,12 @@ func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, name string)
 		blobAccess: blobAccess,
 		clock:      clock,
 
-		getBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(name, "Get"),
-		getDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "Get"}),
-		putBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(name, "Put"),
-		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "Put"}),
-		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(name),
-		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"name": name, "operation": "FindMissing"}),
+		getBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Get"),
+		getDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Get"}),
+		putBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Put"),
+		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Put"}),
+		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(storageType, backendType),
+		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "FindMissing"}),
 	}
 }
 

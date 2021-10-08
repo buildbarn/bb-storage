@@ -24,7 +24,7 @@ var (
 			Name:      "old_new_current_location_blob_map_last_removed_old_block_insertion_time_seconds",
 			Help:      "Time at which the last removed block was inserted into the \"old\" queue, which is an indicator for the worst-case blob retention time",
 		},
-		[]string{"name"})
+		[]string{"storage_type"})
 )
 
 type oldBlockState struct {
@@ -129,7 +129,7 @@ func unixTime() float64 {
 
 // NewOldCurrentNewLocationBlobMap creates a new instance of
 // OldCurrentNewLocationBlobMap.
-func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy BlockListGrowthPolicy, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
+func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy BlockListGrowthPolicy, errorLogger util.ErrorLogger, storageType string, blockSizeBytes int64, oldBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
 	oldCurrentNewLocationBlobMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime)
 	})
@@ -144,7 +144,7 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy 
 
 		allocationBlockIndex: -1,
 
-		lastRemovedOldBlockInsertionTime: oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime.WithLabelValues(name),
+		lastRemovedOldBlockInsertionTime: oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime.WithLabelValues(storageType),
 	}
 	now := unixTime()
 	lbm.lastRemovedOldBlockInsertionTime.Set(now)

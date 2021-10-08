@@ -1,7 +1,6 @@
 package configuration
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -535,7 +534,7 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 		return BlobAccessInfo{}, err
 	}
 	return BlobAccessInfo{
-		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, fmt.Sprintf("%s_%s", creator.GetStorageTypeName(), backendType)),
+		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, creator.GetStorageTypeName(), backendType),
 		DigestKeyFormat: backend.DigestKeyFormat,
 	}, nil
 }

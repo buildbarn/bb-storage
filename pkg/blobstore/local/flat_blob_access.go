@@ -25,7 +25,7 @@ var (
 			Help:      "The number of blobs that were refreshed when requested",
 			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
 		},
-		[]string{"name", "operation"})
+		[]string{"storage_type", "operation"})
 )
 
 type flatBlobAccess struct {
@@ -44,7 +44,7 @@ type flatBlobAccess struct {
 // objects are stored in a flat namespace. It either ignores the REv2
 // instance name in digests entirely, or it strongly partitions objects
 // by instance name. It does not introduce any hierarchy.
-func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, name string) blobstore.BlobAccess {
+func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshes)
 	})
@@ -54,8 +54,8 @@ func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, 
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,
 
-		refreshesGet:         flatBlobAccessRefreshes.WithLabelValues(name, "Get"),
-		refreshesFindMissing: flatBlobAccessRefreshes.WithLabelValues(name, "FindMissing"),
+		refreshesGet:         flatBlobAccessRefreshes.WithLabelValues(storageType, "Get"),
+		refreshesFindMissing: flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
 	}
 }
 
