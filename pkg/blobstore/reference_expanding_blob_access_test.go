@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -29,11 +28,11 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
-		httpClient,
+		&http.Client{Transport: roundTripper},
 		s3Client,
 		100)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -89,11 +88,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:   5,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
-		httpClient.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
-			Op:  "Get",
-			URL: "http://example.com/file.txt",
-			Err: errors.New("dial tcp 1.2.3.4:80: connect: connection refused"),
-		})
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(nil, errors.New("dial tcp 1.2.3.4:80: connect: connection refused"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		require.Equal(t, status.Error(codes.Internal, "HTTP request failed: Get \"http://example.com/file.txt\": dial tcp 1.2.3.4:80: connect: connection refused"), err)
@@ -113,7 +108,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "404 Not Found",
 			StatusCode: 404,
 			Body:       body,
@@ -138,7 +133,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "206 Partial Content",
 			StatusCode: 206,
 			Body:       body,
@@ -166,7 +161,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).DoAndReturn(
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(
 			func(req *http.Request) (*http.Response, error) {
 				require.Equal(t, "GET", req.Method)
 				require.Equal(t, "http://example.com/file.txt", req.URL.String())
@@ -332,11 +327,11 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
-		httpClient,
+		&http.Client{Transport: roundTripper},
 		s3Client,
 		100)
 
@@ -361,11 +356,11 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
-		httpClient,
+		&http.Client{Transport: roundTripper},
 		s3Client,
 		100)
 

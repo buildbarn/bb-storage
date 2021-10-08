@@ -30,7 +30,6 @@ go_library(
         "//pkg/clock",
         "//pkg/cloud/aws",
         "//pkg/digest",
-        "//pkg/http",
         "//pkg/proto/icas",
         "//pkg/proto/iscc",
         "//pkg/util",

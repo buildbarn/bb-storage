@@ -8,6 +8,7 @@ gomock(
     out = "aliases.go",
     interfaces = [
         "ReadCloser",
+        "RoundTripper",
         "Writer",
     ],
     library = "//internal/mock/aliases",
@@ -192,19 +193,6 @@ gomock(
 )
 
 gomock(
-    name = "http",
-    out = "http.go",
-    interfaces = [
-        "Client",
-    ],
-    library = "//pkg/http",
-    mock_names = {
-        "Client": "MockHTTPClient",
-    },
-    package = "mock",
-)
-
-gomock(
     name = "redis",
     out = "redis.go",
     interfaces = ["RedisClient"],
@@ -265,7 +253,6 @@ go_library(
         ":filesystem_path.go",
         ":grpc.go",
         ":grpc_go.go",
-        ":http.go",
         ":redis.go",
         ":remoteexecution.go",
         ":trace.go",

@@ -9,6 +9,7 @@ import "pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "pkg/proto/configuration/cloud/aws/aws.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
+import "pkg/proto/configuration/http/http.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
@@ -271,10 +272,8 @@ message HTTPBlobAccessConfiguration {
   // URL of the remote build cache (e.g., "http://localhost:8080/").
   string address = 1;
 
-  // TLS configuration for the HTTP connection, in case a client
-  // certificate needs to be provided or the server certificate needs to
-  // be validated against a custom certificate authority.
-  buildbarn.configuration.tls.ClientConfiguration tls = 2;
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration client = 2;
 }
 
 message ShardingBlobAccessConfiguration {
@@ -670,6 +669,9 @@ message ReferenceExpandingBlobAccessConfiguration {
   // Optional: AWS access options and credentials for objects loaded
   // from S3.
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 2;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 3;
 }
 
 message BlobReplicatorConfiguration {

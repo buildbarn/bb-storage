@@ -15,7 +15,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/grpc:grpc_proto",
-        "//pkg/proto/configuration/tls:tls_proto",
+        "//pkg/proto/configuration/http:http_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
     ],
@@ -28,6 +28,6 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/grpc",
-        "//pkg/proto/configuration/tls",
+        "//pkg/proto/configuration/http",
     ],
 )

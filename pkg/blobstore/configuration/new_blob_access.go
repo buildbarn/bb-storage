@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"net/http"
 	"sync"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -169,12 +170,16 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: digestKeyFormat,
 		}, "redis", nil
 	case *pb.BlobAccessConfiguration_Http:
-		httpClient, err := http.NewClient(backend.Http.Tls)
+		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.Http.Client)
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
 		return BlobAccessInfo{
-			BlobAccess:      blobstore.NewHTTPBlobAccess(backend.Http.Address, storageTypeName, readBufferFactory, httpClient),
+			BlobAccess: blobstore.NewHTTPBlobAccess(
+				backend.Http.Address,
+				storageTypeName,
+				readBufferFactory,
+				&http.Client{Transport: roundTripper}),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:

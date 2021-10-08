@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"net/http"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -10,7 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
@@ -103,15 +104,14 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
-		// TODO: Add TLS client options to configuration schema.
-		httpClient, err := http.NewClient(nil)
+		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
-				httpClient,
+				&http.Client{Transport: roundTripper},
 				s3.NewFromConfig(cfg),
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,

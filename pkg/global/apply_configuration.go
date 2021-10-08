@@ -139,11 +139,13 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 					if endpoint := jaegerConfiguration.Endpoint; endpoint != "" {
 						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithEndpoint(endpoint))
 					}
-					httpClient, err := bb_http.NewClient(jaegerConfiguration.Tls)
+					roundTripper, err := bb_http.NewRoundTripperFromConfiguration(jaegerConfiguration.HttpClient)
 					if err != nil {
 						return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
 					}
-					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(httpClient))
+					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(&http.Client{
+						Transport: roundTripper,
+					}))
 					if password := jaegerConfiguration.Password; password != "" {
 						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
 					}
@@ -264,12 +266,22 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	if pushgateway := configuration.GetPrometheusPushgateway(); pushgateway != nil {
 		pusher := push.New(pushgateway.Url, pushgateway.Job)
 		pusher.Gatherer(prometheus.DefaultGatherer)
+		// TODO: Move this functionality into
+		// NewRoundTripperFromConfiguration, so that every HTTP
+		// client has support for specifying basic
+		// authentication credentials.
 		if basicAuthentication := pushgateway.BasicAuthentication; basicAuthentication != nil {
 			pusher.BasicAuth(basicAuthentication.Username, basicAuthentication.Password)
 		}
 		for key, value := range pushgateway.Grouping {
 			pusher.Grouping(key, value)
 		}
+		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(pushgateway.HttpClient)
+		if err != nil {
+			return nil, nil, util.StatusWrap(err, "Failed to create Prometheus Pushgateway HTTP client")
+		}
+		pusher.Client(&http.Client{Transport: roundTripper})
+
 		pushInterval := pushgateway.PushInterval
 		if err := pushInterval.CheckValid(); err != nil {
 			return nil, nil, util.StatusWrap(err, "Failed to parse push interval")

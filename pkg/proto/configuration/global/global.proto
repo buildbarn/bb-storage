@@ -5,7 +5,7 @@ package buildbarn.configuration.global;
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/tls/tls.proto";
+import "pkg/proto/configuration/http/http.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
@@ -33,6 +33,9 @@ message PrometheusPushgatewayConfiguration {
 
   // Interval between metrics pushes.
   google.protobuf.Duration push_interval = 5;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 6;
 }
 
 message TracingConfiguration {
@@ -46,8 +49,8 @@ message TracingConfiguration {
       // "http://localhost:14268/api/traces" will be used by default.
       string endpoint = 1;
 
-      // TLS options to be used by the HTTP client.
-      buildbarn.configuration.tls.ClientConfiguration tls = 2;
+      // Optional: Options to be used by the HTTP client.
+      buildbarn.configuration.http.ClientConfiguration http_client = 2;
 
       // The password to be used in the authorization header sent for
       // all requests to the collector.

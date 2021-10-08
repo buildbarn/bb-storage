@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package buildbarn.configuration.http;
+
+import "pkg/proto/configuration/tls/tls.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http";
+
+message ClientConfiguration {
+  // TLS client configuration, in case resources are requested through
+  // https://. The system-wide certificate authorities and no client
+  // certificate will be used when left unset.
+  buildbarn.configuration.tls.ClientConfiguration tls = 1;
+}

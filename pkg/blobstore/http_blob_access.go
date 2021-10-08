@@ -7,7 +7,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -18,7 +17,7 @@ type httpBlobAccess struct {
 	address           string
 	prefix            string
 	readBufferFactory ReadBufferFactory
-	httpClient        bb_http.Client
+	httpClient        *http.Client
 }
 
 func convertHTTPUnexpectedStatus(resp *http.Response) error {
@@ -28,7 +27,7 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewHTTPBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient bb_http.Client) BlobAccess {
+func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient *http.Client) BlobAccess {
 	return &httpBlobAccess{
 		address:           address,
 		prefix:            prefix,

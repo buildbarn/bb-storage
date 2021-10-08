@@ -13,7 +13,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/klauspost/compress/zstd"
@@ -24,7 +23,7 @@ import (
 
 type referenceExpandingBlobAccess struct {
 	blobAccess              BlobAccess
-	httpClient              bb_http.Client
+	httpClient              *http.Client
 	s3Client                cloud_aws.S3Client
 	maximumMessageSizeBytes int
 }
@@ -43,7 +42,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient bb_http.Client, s3Client cloud_aws.S3Client, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, maximumMessageSizeBytes int) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		blobAccess:              blobAccess,
 		httpClient:              httpClient,
