@@ -3,7 +3,6 @@ package filesystem_test
 import (
 	"io"
 	"os"
-	"runtime"
 	"syscall"
 	"testing"
 
@@ -401,12 +400,6 @@ func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
 }
 
 func TestLocalDirectoryIsWritable(t *testing.T) {
-	// TODO: This test is broken when run on GitHub Actions, due to
-	// it not implementing file permissions.
-	if runtime.GOOS == "linux" {
-		return
-	}
-
 	d := openTmpDir(t)
 	{
 		isWritable, err := d.IsWritable()
@@ -427,12 +420,6 @@ func TestLocalDirectoryIsWritable(t *testing.T) {
 }
 
 func TestLocalDirectoryIsWritableChild(t *testing.T) {
-	// TODO: This test is broken when run on GitHub Actions, due to
-	// it not implementing file permissions.
-	if runtime.GOOS == "linux" {
-		return
-	}
-
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir(path.MustNewComponent("subdir"), 0o555))
 	{
