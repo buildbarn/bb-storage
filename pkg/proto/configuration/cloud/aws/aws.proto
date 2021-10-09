@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.cloud.aws;
 
+import "pkg/proto/configuration/http/http.proto";
+
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws";
 
 message StaticCredentials {
@@ -29,4 +31,7 @@ message SessionConfiguration {
   // will search the default credential provider chain (e.g.,
   // environment variables, EC2 instance IAM roles).
   StaticCredentials static_credentials = 5;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 6;
 }

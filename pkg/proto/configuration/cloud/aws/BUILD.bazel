@@ -6,6 +6,7 @@ proto_library(
     name = "aws_proto",
     srcs = ["aws.proto"],
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/http:http_proto"],
 )
 
 go_proto_library(
@@ -13,6 +14,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws",
     proto = ":aws_proto",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/http"],
 )
 
 go_library(
