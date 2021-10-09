@@ -11,4 +11,7 @@ message ClientConfiguration {
   // https://. The system-wide certificate authorities and no client
   // certificate will be used when left unset.
   buildbarn.configuration.tls.ClientConfiguration tls = 1;
+
+  // If set, forward all traffic through a proxy with a given URL.
+  string proxy_url = 2;
 }

@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"net/url"
 
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -14,5 +15,16 @@ func NewRoundTripperFromConfiguration(configuration *pb.ClientConfiguration) (ht
 	if err != nil {
 		return nil, err
 	}
-	return &http.Transport{TLSClientConfig: tlsConfig}, nil
+	defaultTransport := http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	if proxyURL := configuration.GetProxyUrl(); proxyURL != "" {
+		parsedProxyURL, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse proxy URL")
+		}
+		defaultTransport.Proxy = http.ProxyURL(parsedProxyURL)
+	}
+	var roundTripper http.RoundTripper = &defaultTransport
+	return roundTripper, nil
 }
