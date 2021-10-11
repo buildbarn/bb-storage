@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.auth;
 
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/spiffe/spiffe.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth";
 
@@ -19,6 +20,9 @@ message AuthorizerConfiguration {
 
     // Deny all requests.
     google.protobuf.Empty deny = 3;
+
+    // Spiffee
+    SpiffeAuthorizer spiffe = 4;
   }
 }
 
@@ -26,4 +30,9 @@ message InstanceNameAuthorizer {
   // Instance name prefixes to which access is allowed.
   // The empty string may be used to indicate all instance names.
   repeated string allowed_instance_name_prefixes = 1;
+}
+
+message SpiffeAuthorizer {
+  map<string, buildbarn.configuration.spiffe.SubjectMatcher>
+      instance_name_subject_map = 2;
 }

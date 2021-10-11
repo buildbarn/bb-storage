@@ -46,7 +46,9 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		}
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
-			clock.SystemClock), nil
+			clock.SystemClock,
+			policyKind.TlsClientCertificate.Spiffe,
+		), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

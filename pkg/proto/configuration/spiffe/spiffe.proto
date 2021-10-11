@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package buildbarn.configuration.spiffe;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/spiffe";
+
+message Configuration {
+  string svid = 1;
+  string key = 2;
+  map<string, string> ca_certificates = 3;
+}
+
+message SubjectMatcher {
+  // Spiffe id's are URIs where the  the host and path components are used.
+  // spiffe://trust-domain-name/path
+  //  https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE.md
+  // to map trust domains and path to path patterns use the following syntax
+  // pattern:
+  // 	{ term }
+  // term:
+  // 	'*'         matches any sequence of non-/ characters
+  // 	'?'         matches any single non-/ character
+  // 	'[' [ '^' ] { character-range } ']'
+  // 	            character class (must be non-empty)
+  // 	c           matches character c (c != '*', '?', '\\', '[')
+  // 	'\\' c      matches character c
+  // character-range:
+  // 	c           matches character c (c != '\\', '-', ']')
+  // 	'\\' c      matches character c
+  // 	lo '-' hi   matches character c for lo <= c <= hi
+  // see https://pkg.go.dev/path#Match
+  map<string, string> allowed_spiffe_ids = 10;
+}

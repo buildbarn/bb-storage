@@ -5,6 +5,7 @@ package buildbarn.configuration.grpc;
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/configuration/tls/tls.proto";
+import "pkg/proto/configuration/spiffe/spiffe.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
 
@@ -201,4 +202,6 @@ message TLSClientCertificateAuthenticationPolicy {
   // PEM data for the certificate authorities that should be used to
   // validate the remote TLS client.
   string client_certificate_authorities = 1;
+    // Spiffe
+    buildbarn.configuration.spiffe.SubjectMatcher spiffe = 10;
 }

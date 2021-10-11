@@ -97,6 +97,28 @@ dLujWlL67wszLw0SC588jU7i9sHqtzOrThn4LAybbxmf4kBiExj5V/JghFPnstBG
 ecgKVpPvVNRL4/3RQYXPEdErkwCshVk=
 -----END PRIVATE KEY-----
 `
+	// https://github.com/spiffe/go-spiffe/blob/v2.0.0-beta.8/v2/svid/x509svid/testdata/good-key-and-cert.pem
+	spiffeKey = `
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgdCYVeDmdr1H8Fzpn
+MSfBa0zAAy+fnp2z84R4v9Ff7nGhRANCAATxJPQ7ahtD1VgTIURuLIgwvudpm0C0
+D0NT11/NgJ4Dh8emWuCTRkv4wFc4yMISjR8tf6PGoyku4/LvAZ/CWpFo
+-----END PRIVATE KEY-----`
+	spiffeCert = `
+-----BEGIN CERTIFICATE-----
+MIICBjCCAYygAwIBAgIQNj0chc2GkwvkNG0vVbWuADAKBggqhkjOPQQDAzAeMQsw
+CQYDVQQGEwJVUzEPMA0GA1UEChMGU1BJRkZFMB4XDTIwMDMyNDE0MTM0MVoXDTIw
+MDMyNDE1MTM1MVowHTELMAkGA1UEBhMCVVMxDjAMBgNVBAoTBVNQSVJFMFkwEwYH
+KoZIzj0CAQYIKoZIzj0DAQcDQgAE8ST0O2obQ9VYEyFEbiyIML7naZtAtA9DU9df
+zYCeA4fHplrgk0ZL+MBXOMjCEo0fLX+jxqMpLuPy7wGfwlqRaKOBrDCBqTAOBgNV
+HQ8BAf8EBAMCA6gwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1Ud
+EwEB/wQCMAAwHQYDVR0OBBYEFB3UYIIkxjMf9rh9tvwj86Y24+6gMB8GA1UdIwQY
+MBaAFNM1QzCBy3PuB2d3zJi6GSEqqVF5MCoGA1UdEQQjMCGGH3NwaWZmZTovL2V4
+YW1wbGUub3JnL3dvcmtsb2FkLTEwCgYIKoZIzj0EAwMDaAAwZQIwKhlIltKg+K/3
+W05Snv56s7X9NuUDKHjaCQsutyIiYxbxQz5jZgjafMusAwr+lMQkAjEAsY4Omqtj
+MT7lix7GtnRkvgmaWRTyooxyR1C2w8PYS6lSo6FJCIV6e1EBvryj6Vm1
+-----END CERTIFICATE-----
+`
 )
 
 func TestTLSConfigFromClientConfiguration(t *testing.T) {
@@ -203,6 +225,20 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 			ServerName: "example.com",
 		}, tlsConfig)
 	})
+
+	t.Run("SpiffeClientCertificate", func(t *testing.T) {
+		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+			&configuration.ClientConfiguration{
+				ClientCertificate: spiffeCert,
+				ClientPrivateKey:  spiffeKey,
+			})
+		cert, _ := tls.X509KeyPair([]byte(spiffeCert), []byte(spiffeKey))
+		require.NoError(t, err)
+		require.Equal(t, &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+		}, tlsConfig)
+	})
 }
 
 func TestTLSConfigFromServerConfiguration(t *testing.T) {
@@ -278,5 +314,20 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 				},
 			})
 		require.Equal(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
+	})
+
+	t.Run("SpiffeServerCertificate", func(t *testing.T) {
+		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+			&configuration.ServerConfiguration{
+				ServerCertificate: spiffeCert,
+				ServerPrivateKey:  spiffeKey,
+			})
+		cert, _ := tls.X509KeyPair([]byte(spiffeCert), []byte(spiffeKey))
+		require.NoError(t, err)
+		require.Equal(t, &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+			ClientAuth:   tls.RequestClientCert,
+		}, tlsConfig)
 	})
 }

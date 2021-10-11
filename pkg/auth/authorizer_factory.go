@@ -46,6 +46,8 @@ func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.Authori
 			trie.Set(instanceNamePrefix, 0)
 		}
 		return NewStaticAuthorizer(trie.ContainsPrefix), nil
+	case *pb.AuthorizerConfiguration_Spiffe:
+		return NewSpiffeAuthorizer(config), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Unknown authorizer configuration")
 	}
