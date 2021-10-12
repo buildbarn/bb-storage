@@ -21,7 +21,7 @@ message AuthorizerConfiguration {
     // Deny all requests.
     google.protobuf.Empty deny = 3;
 
-    // Spiffee
+    // Allow based on Spiffe-IDs
     SpiffeAuthorizer spiffe = 4;
   }
 }
@@ -32,6 +32,18 @@ message InstanceNameAuthorizer {
   repeated string allowed_instance_name_prefixes = 1;
 }
 
+// SpiffeAuthorizer  maps instance names to Spiffe-Subject matchers.
+//
+// An example configuration might look like
+//  {
+// 	spiffe:{
+// 		instanceNameSubjectMap:{
+// 			"foo":{
+// 				allowedSpiffeIds:{"example.com":"workload-1"}
+// 			}
+// 		}
+// 	}
+// }
 message SpiffeAuthorizer {
   map<string, buildbarn.configuration.spiffe.SubjectMatcher>
       instance_name_subject_map = 2;

@@ -27,13 +27,17 @@ go_test(
     name = "util_test",
     srcs = [
         "buckets_test.go",
+        "jsonnet_test.go",
         "tls_test.go",
     ],
+    embed = [":util"],
     deps = [
-        ":util",
+        "//pkg/proto/configuration/auth",
+        "//pkg/proto/configuration/bb_storage",
         "//pkg/proto/configuration/tls",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
     ],
 )

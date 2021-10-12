@@ -14,10 +14,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// SpiffeAuthorizer  authorizes based on Spiffe-IDs
+// https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md
+//
+// see spiffe.proto for configuration options
 type SpiffeAuthorizer struct {
 	*pb.SpiffeAuthorizer
 }
 
+// NewSpiffeAuthorizer creates a new SpiffeAuthorizer
 func NewSpiffeAuthorizer(config *pb.AuthorizerConfiguration) Authorizer {
 	spifAuth := config.GetSpiffe()
 	if spifAuth == nil {
@@ -26,6 +31,7 @@ func NewSpiffeAuthorizer(config *pb.AuthorizerConfiguration) Authorizer {
 	return &SpiffeAuthorizer{}
 }
 
+// Authorize implements the authorizer inferface
 func (s *SpiffeAuthorizer) Authorize(ctx context.Context, instanceNames []digest.InstanceName) []error {
 	errs := make([]error, len(instanceNames))
 	var err error
