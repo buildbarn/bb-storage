@@ -202,6 +202,6 @@ message TLSClientCertificateAuthenticationPolicy {
   // PEM data for the certificate authorities that should be used to
   // validate the remote TLS client.
   string client_certificate_authorities = 1;
-    // Spiffe
-    buildbarn.configuration.spiffe.SubjectMatcher spiffe = 10;
+  // Spiffe
+  buildbarn.configuration.spiffe.SubjectMatcher spiffe = 10;
 }
