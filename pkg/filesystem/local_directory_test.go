@@ -3,7 +3,6 @@ package filesystem_test
 import (
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"syscall"
 	"testing"
@@ -244,7 +243,7 @@ func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 	require.NoError(t, d.Symlink("/foo/bar/baz", path.MustNewComponent("symlink")))
 	target, err := d.Readlink(path.MustNewComponent("symlink"))
 	require.NoError(t, err)
-	require.Equal(t, filepath.FromSlash("/foo/bar/baz"), target)
+	require.Equal(t, "/foo/bar/baz", target)
 	require.NoError(t, d.Close())
 }
 

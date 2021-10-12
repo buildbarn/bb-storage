@@ -13,52 +13,11 @@ import (
 	"unsafe"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
+	"github.com/buildbarn/bb-storage/pkg/filesystem/windowsext"
 
 	"golang.org/x/sys/windows"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-var (
-	modntdll = windows.NewLazySystemDLL("ntdll.dll")
-
-	procNtSetInformationFile = modntdll.NewProc("NtSetInformationFile")
-)
-
-func ntSetInformationFile(handle windows.Handle, iosb *windows.IO_STATUS_BLOCK, fileInfo *byte, len, class uint32) error {
-	r0, _, _ := syscall.Syscall6(procNtSetInformationFile.Addr(), 5, uintptr(handle),
-		uintptr(unsafe.Pointer(iosb)), uintptr(unsafe.Pointer(fileInfo)), uintptr(len), uintptr(class), 0)
-	if r0 != 0 {
-		return windows.NTStatus(r0)
-	}
-	return nil
-}
-
-const (
-	// these constants are not present in x/sys/windows
-	FILE_READ_ATTRIBUTES  = 0x80
-	FILE_READ_DATA        = 1
-	FILE_READ_EA          = 8
-	FILE_WRITE_ATTRIBUTES = 0x100
-	FILE_WRITE_DATA       = 2
-	FILE_WRITE_EA         = 0x10
-	FILE_GENERIC_READ     = windows.STANDARD_RIGHTS_READ | windows.SYNCHRONIZE | FILE_READ_ATTRIBUTES | FILE_READ_DATA | FILE_READ_EA
-	FILE_GENERIC_WRITE    = windows.STANDARD_RIGHTS_WRITE | windows.SYNCHRONIZE | FILE_WRITE_ATTRIBUTES | FILE_WRITE_DATA | FILE_WRITE_EA
-
-	SYMLINK_FLAG_RELATIVE        = 1
-	FSCTL_SET_REPARSE_POINT      = 0x900A4
-	FSCTL_QUERY_ALLOCATED_RANGES = 0x940CF
-	FSCTL_SET_SPARSE             = 0x900C4
-
-	FILE_RENAME_REPLACE_IF_EXISTS = 1
-	FILE_RENAME_POSIX_SEMANTICS   = 2
-
-	FILE_DISPOSITION_DELETE          = 1
-	FILE_DISPOSITION_POSIX_SEMANTICS = 2
-
-	FileRenameInformation        = 10
-	FileLinkInformation          = 11
-	FileDispositionInformationEx = 64
 )
 
 func ntCreateFile(handle *windows.Handle, access uint32, root windows.Handle, path string, disposition, options uint32) error {
@@ -93,13 +52,8 @@ func ntCreateFile(handle *windows.Handle, access uint32, root windows.Handle, pa
 	return nil
 }
 
-type fileAttributeTagInfo struct {
-	FileAttributes uint32
-	ReparseTag     uint32
-}
-
 func isReparsePointByHandle(handle windows.Handle) (isReparsePoint bool, reparseTag uint32, err error) {
-	var fileAttrTagInfo fileAttributeTagInfo
+	var fileAttrTagInfo windowsext.FILE_ATTRIBUTE_TAG_INFO
 	err = windows.GetFileInformationByHandleEx(handle, windows.FileAttributeTagInfo,
 		(*byte)(unsafe.Pointer(&fileAttrTagInfo)), uint32(unsafe.Sizeof(fileAttrTagInfo)))
 	if err != nil {
@@ -128,7 +82,7 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 	if openReparsePoint {
 		options |= windows.FILE_OPEN_REPARSE_POINT
 	}
-	err := ntCreateFile(&handle, FILE_GENERIC_READ|FILE_GENERIC_WRITE|windows.DELETE,
+	err := ntCreateFile(&handle, windowsext.FILE_GENERIC_READ|windowsext.FILE_GENERIC_WRITE|windows.DELETE,
 		0, absPath, windows.FILE_OPEN, options)
 	if err != nil {
 		return nil, err
@@ -170,7 +124,7 @@ func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*loc
 	if openReparsePoint {
 		options |= windows.FILE_OPEN_REPARSE_POINT
 	}
-	err := ntCreateFile(&handle, FILE_GENERIC_READ|FILE_GENERIC_WRITE|windows.DELETE,
+	err := ntCreateFile(&handle, windowsext.FILE_GENERIC_READ|windowsext.FILE_GENERIC_WRITE|windows.DELETE,
 		d.handle, name.String(), windows.FILE_OPEN, options)
 	if err != nil {
 		return nil, err
@@ -254,11 +208,11 @@ func (d *localDirectory) open(name path.Component, creationMode CreationMode, fl
 	flags := creationMode.flags | flag
 	switch flags & (os.O_RDONLY | os.O_WRONLY | os.O_RDWR) {
 	case os.O_RDONLY:
-		access = FILE_GENERIC_READ
+		access = windowsext.FILE_GENERIC_READ
 	case os.O_WRONLY:
-		access = FILE_GENERIC_WRITE | FILE_READ_ATTRIBUTES
+		access = windowsext.FILE_GENERIC_WRITE | windowsext.FILE_READ_ATTRIBUTES
 	case os.O_RDWR:
-		access = FILE_GENERIC_READ | FILE_GENERIC_WRITE
+		access = windowsext.FILE_GENERIC_READ | windowsext.FILE_GENERIC_WRITE
 	}
 	access = access | windows.DELETE
 	var disposition uint32
@@ -282,7 +236,7 @@ func (d *localDirectory) open(name path.Component, creationMode CreationMode, fl
 		// on NTFS, you have to explicitly set a file to be sparse
 		handle := windows.Handle(file.Fd())
 		var returned uint32
-		err = windows.DeviceIoControl(handle, FSCTL_SET_SPARSE, nil, 0, nil, 0, &returned, nil)
+		err = windows.DeviceIoControl(handle, windowsext.FSCTL_SET_SPARSE, nil, 0, nil, 0, &returned, nil)
 		if err != nil {
 			windows.CloseHandle(handle)
 		}
@@ -308,13 +262,8 @@ func setFilePointer(handle windows.Handle, offset int64, whence uint32) (int64, 
 	return (int64(highOrder) << 32) | int64(newLowOrder), nil
 }
 
-type fileAllocatedRangeBuffer struct {
-	FileOffset int64
-	Length     int64
-}
-
 func getNextRegionOffsetSparse(handle windows.Handle, offset int64, regionType RegionType, fileSize uint64) (int64, error) {
-	inBuffer := fileAllocatedRangeBuffer{
+	inBuffer := windowsext.FILE_ALLOCATED_RANGE_BUFFER{
 		FileOffset: offset,
 		Length:     int64(fileSize) - offset,
 	}
@@ -322,8 +271,8 @@ func getNextRegionOffsetSparse(handle windows.Handle, offset int64, regionType R
 	initSize := uint32(512)
 	outBuffer := make([]byte, initSize)
 	var returned uint32
-	for true {
-		err := windows.DeviceIoControl(handle, FSCTL_QUERY_ALLOCATED_RANGES, (*byte)(unsafe.Pointer(&inBuffer)),
+	for {
+		err := windows.DeviceIoControl(handle, windowsext.FSCTL_QUERY_ALLOCATED_RANGES, (*byte)(unsafe.Pointer(&inBuffer)),
 			bufferSize, &outBuffer[0], initSize, &returned, nil)
 		if err == nil {
 			break
@@ -341,19 +290,19 @@ func getNextRegionOffsetSparse(handle windows.Handle, offset int64, regionType R
 		if numOutStruct == 0 {
 			return 0, io.EOF
 		} else {
-			offset = (*fileAllocatedRangeBuffer)(unsafe.Pointer(&outBuffer[0])).FileOffset
+			offset = (*windowsext.FILE_ALLOCATED_RANGE_BUFFER)(unsafe.Pointer(&outBuffer[0])).FileOffset
 		}
 	case Hole:
 		if numOutStruct != 0 {
 			lastOffset := offset
-			allocRangeBufferPtr := (*fileAllocatedRangeBuffer)(unsafe.Pointer(&outBuffer[0]))
+			allocRangeBufferPtr := (*windowsext.FILE_ALLOCATED_RANGE_BUFFER)(unsafe.Pointer(&outBuffer[0]))
 			for i := uint32(0); i < numOutStruct; i++ {
 				if allocRangeBufferPtr.FileOffset != lastOffset {
 					offset = lastOffset
 					break
 				}
 				lastOffset = allocRangeBufferPtr.FileOffset + allocRangeBufferPtr.Length
-				allocRangeBufferPtr = (*fileAllocatedRangeBuffer)(unsafe.Pointer(
+				allocRangeBufferPtr = (*windowsext.FILE_ALLOCATED_RANGE_BUFFER)(unsafe.Pointer(
 					uintptr(unsafe.Pointer(allocRangeBufferPtr)) + unsafe.Sizeof(bufferSize)))
 			}
 			offset = lastOffset
@@ -434,7 +383,7 @@ func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Director
 func (d *localDirectory) lstat(name path.Component) (FileType, error) {
 	var handle windows.Handle
 	fileName := name.String()
-	err := ntCreateFile(&handle, FILE_READ_ATTRIBUTES, d.handle, fileName, windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
+	err := ntCreateFile(&handle, windowsext.FILE_READ_ATTRIBUTES, d.handle, fileName, windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
 		return FileTypeOther, err
 	}
@@ -481,25 +430,10 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) e
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Windows")
 }
 
-type fileFullDirInfo struct {
-	NextEntryOffset uint32
-	FileIndex       uint32
-	CreationTime    int64
-	LastAccessTime  int64
-	LastWriteTime   int64
-	ChangeTime      int64
-	EndOfFile       int64
-	AllocationSize  int64
-	FileAttributes  uint32
-	FileNameLength  uint32
-	EaSize          uint32
-	FileName        [1]uint16
-}
-
 func readdirnames(handle windows.Handle) ([]string, error) {
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
-	for true {
+	for {
 		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
 			&outBuffer[0], outBufferSize)
 		if err == nil {
@@ -514,7 +448,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 	}
 	names := make([]string, 0)
 	offset := ^(uint32(0))
-	dirInfoPtr := (*fileFullDirInfo)(unsafe.Pointer(&outBuffer[0]))
+	dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
 	for offset != 0 {
 		offset = dirInfoPtr.NextEntryOffset
 		fileNameLen := int(dirInfoPtr.FileNameLength) / 2
@@ -524,7 +458,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 			fileNameUTF16[i] = *(*uint16)(targetPtr)
 			targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
 		}
-		dirInfoPtr = (*fileFullDirInfo)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
+		dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
 
 		fileName := windows.UTF16ToString(fileNameUTF16)
 		if fileName == "." || fileName == ".." {
@@ -556,30 +490,16 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	return list, nil
 }
 
-type symlinkReparseDataBuffer struct {
-	// REPARSE_DATA_BUFFER contains unions; the one for symlink happens to be the largest
-	// we only use symlink, this cannot be used as REPARSE_DATA_BUFFER for mount point
-	ReparseTag           uint32
-	ReparseDataLength    uint16
-	Reserved             uint16
-	SubstituteNameOffset uint16
-	SubstituteNameLength uint16
-	PrintNameOffset      uint16
-	PrintNameLength      uint16
-	Flags                uint32
-	PathBuffer           [1]uint16
-}
-
 func (d *localDirectory) Readlink(name path.Component) (string, error) {
 	var handle windows.Handle
-	err := ntCreateFile(&handle, FILE_GENERIC_READ, d.handle, name.String(), windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
+	err := ntCreateFile(&handle, windowsext.FILE_GENERIC_READ, d.handle, name.String(), windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
 		return "", err
 	}
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
 	var returned uint32
-	for true {
+	for {
 		err = windows.DeviceIoControl(handle, windows.FSCTL_GET_REPARSE_POINT, nil, 0,
 			&outBuffer[0], outBufferSize, &returned, nil)
 		if err == nil {
@@ -595,22 +515,19 @@ func (d *localDirectory) Readlink(name path.Component) (string, error) {
 			return "", err
 		}
 	}
-	typedBufferPtr := (*symlinkReparseDataBuffer)(unsafe.Pointer(&outBuffer[0]))
-	if typedBufferPtr.ReparseTag != windows.IO_REPARSE_TAG_SYMLINK {
+	reparseDataBufferPtr := (*windowsext.REPARSE_DATA_BUFFER)(unsafe.Pointer(&outBuffer[0]))
+	if reparseDataBufferPtr.ReparseTag != windows.IO_REPARSE_TAG_SYMLINK {
 		return "", syscall.EINVAL
 	}
-	contentPtr := unsafe.Pointer(uintptr(unsafe.Pointer(&typedBufferPtr.PathBuffer[0])) + uintptr(typedBufferPtr.SubstituteNameOffset))
-	contentLen := int(typedBufferPtr.SubstituteNameLength)
+	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME[0]))
+	contentPtr := unsafe.Pointer(uintptr(unsafe.Pointer(&symlinkReparseBufferPtr.PathBuffer[0])) + uintptr(symlinkReparseBufferPtr.SubstituteNameOffset))
+	contentLen := int(symlinkReparseBufferPtr.SubstituteNameLength)
 	contentUTF16 := make([]uint16, contentLen)
 	for i := 0; i < contentLen; i++ {
 		contentUTF16[i] = *(*uint16)(contentPtr)
 		contentPtr = unsafe.Pointer(uintptr(contentPtr) + uintptr(2))
 	}
-	return windows.UTF16ToString(contentUTF16), nil
-}
-
-type fileDispositionInformationEx struct {
-	Flags uint32
+	return filepath.ToSlash(windows.UTF16ToString(contentUTF16)), nil
 }
 
 func (d *localDirectory) Remove(name path.Component) error {
@@ -626,7 +543,7 @@ func (d *localDirectory) Remove(name path.Component) error {
 		}
 	}
 	if isDir {
-		err = ntCreateFile(&handle, FILE_GENERIC_READ|windows.DELETE, d.handle, name.String(),
+		err = ntCreateFile(&handle, windowsext.FILE_GENERIC_READ|windows.DELETE, d.handle, name.String(),
 			windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 		if err != nil {
 			return err
@@ -646,12 +563,12 @@ func (d *localDirectory) Remove(name path.Component) error {
 		}
 	}
 	defer windows.CloseHandle(handle)
-	fileDispInfo := fileDispositionInformationEx{
-		Flags: FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS,
+	fileDispInfo := windowsext.FILE_DISPOSITION_INFORMATION_EX{
+		Flags: windowsext.FILE_DISPOSITION_DELETE | windowsext.FILE_DISPOSITION_POSIX_SEMANTICS,
 	}
 	var iosb windows.IO_STATUS_BLOCK
-	err = ntSetInformationFile(handle, &iosb, (*byte)(unsafe.Pointer(&fileDispInfo)),
-		uint32(unsafe.Sizeof(fileDispInfo)), FileDispositionInformationEx)
+	err = windowsext.NtSetInformationFile(handle, &iosb, (*byte)(unsafe.Pointer(&fileDispInfo)),
+		uint32(unsafe.Sizeof(fileDispInfo)), windowsext.FileDispositionInformationEx)
 	return err
 }
 
@@ -721,22 +638,24 @@ func buildSymlinkBuffer(target, name []uint16, isRelative bool) ([]byte, uint32)
 	pathBufferSize := targetByteSize + nameByteSize + 4 + 12
 	bufferSize := pathBufferSize + 8
 	buffer := make([]byte, bufferSize)
-	typedBufferPtr := (*symlinkReparseDataBuffer)(unsafe.Pointer(&buffer[0]))
 
-	typedBufferPtr.ReparseTag = windows.IO_REPARSE_TAG_SYMLINK
-	typedBufferPtr.ReparseDataLength = uint16(pathBufferSize)
-	typedBufferPtr.Reserved = 0
-	typedBufferPtr.SubstituteNameOffset = 0
-	typedBufferPtr.SubstituteNameLength = uint16(targetByteSize)
-	typedBufferPtr.PrintNameOffset = uint16(targetByteSize + 2)
-	typedBufferPtr.PrintNameLength = uint16(nameByteSize)
+	reparseDataBufferPtr := (*windowsext.REPARSE_DATA_BUFFER)(unsafe.Pointer(&buffer[0]))
+	reparseDataBufferPtr.ReparseTag = windows.IO_REPARSE_TAG_SYMLINK
+	reparseDataBufferPtr.ReparseDataLength = uint16(pathBufferSize)
+	reparseDataBufferPtr.Reserved = 0
+
+	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME[0]))
+	symlinkReparseBufferPtr.SubstituteNameOffset = 0
+	symlinkReparseBufferPtr.SubstituteNameLength = uint16(targetByteSize)
+	symlinkReparseBufferPtr.PrintNameOffset = uint16(targetByteSize + 2)
+	symlinkReparseBufferPtr.PrintNameLength = uint16(nameByteSize)
 	var flags uint32 = 0
 	if isRelative {
-		flags = SYMLINK_FLAG_RELATIVE
+		flags = windowsext.SYMLINK_FLAG_RELATIVE
 	}
-	typedBufferPtr.Flags = flags
+	symlinkReparseBufferPtr.Flags = flags
 
-	targetPtr := unsafe.Pointer(&typedBufferPtr.PathBuffer[0])
+	targetPtr := unsafe.Pointer(&symlinkReparseBufferPtr.PathBuffer[0])
 	for i := 0; i < len(target); i++ {
 		*(*uint16)(targetPtr) = target[i]
 		targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
@@ -754,7 +673,7 @@ func (d *localDirectory) createNTFSSymlink(target, name string, isRelative, isDi
 	// this only works on NTFS, but this is safe to assume on windows;
 	// also, hard link only works on NTFS, so it makes no sense to support other file systems
 	var handle windows.Handle
-	var access uint32 = FILE_GENERIC_READ | FILE_GENERIC_WRITE
+	var access uint32 = windowsext.FILE_GENERIC_READ | windowsext.FILE_GENERIC_WRITE
 	var options uint32 = windows.FILE_OPEN_REPARSE_POINT
 	if isDir {
 		options |= windows.FILE_DIRECTORY_FILE
@@ -774,7 +693,7 @@ func (d *localDirectory) createNTFSSymlink(target, name string, isRelative, isDi
 	}
 	reparseDataBuffer, bufferSize := buildSymlinkBuffer(targetUTF16, nameUTF16, isRelative)
 	var returned uint32
-	err = windows.DeviceIoControl(handle, FSCTL_SET_REPARSE_POINT, &reparseDataBuffer[0],
+	err = windows.DeviceIoControl(handle, windowsext.FSCTL_SET_REPARSE_POINT, &reparseDataBuffer[0],
 		bufferSize, nil, 0, &returned, nil)
 	if err != nil {
 		return err
@@ -818,7 +737,7 @@ func (d *localDirectory) Symlink(oldName string, newName path.Component) error {
 		} else if len(cleanRelPath) < 2 || cleanRelPath[:2] != ".." {
 			quickReturn = true
 			var handle windows.Handle
-			err := ntCreateFile(&handle, FILE_READ_ATTRIBUTES, d.handle, cleanRelPath, windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE)
+			err := ntCreateFile(&handle, windowsext.FILE_READ_ATTRIBUTES, d.handle, cleanRelPath, windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE)
 			if err != nil {
 				if err == syscall.ENOTDIR || os.IsNotExist(err) {
 					isDir = false
@@ -858,7 +777,7 @@ func (d *localDirectory) Sync() error {
 
 func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) error {
 	var handle windows.Handle
-	err := ntCreateFile(&handle, FILE_GENERIC_READ|FILE_WRITE_ATTRIBUTES, d.handle, name.String(),
+	err := ntCreateFile(&handle, windowsext.FILE_GENERIC_READ|windowsext.FILE_WRITE_ATTRIBUTES, d.handle, name.String(),
 		windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
 		return err
@@ -900,20 +819,13 @@ func haveSameUnderlyingFile(left, right windows.Handle) (res bool, err error) {
 	return
 }
 
-type fileLinkInformation struct {
-	ReplaceIfExists uint8
-	RootDirectory   windows.Handle
-	FileNameLength  uint32
-	FileName        [1]uint16
-}
-
-var DummyFileLinkInfo fileLinkInformation
+var DummyFileLinkInfo windowsext.FILE_LINK_INFORMATION
 
 func buildFileLinkInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 	fileNameLen := len(name)*2 - 2
 	bufferSize := int(unsafe.Offsetof(DummyFileLinkInfo.FileName)) + fileNameLen + 2
 	buffer := make([]byte, bufferSize)
-	typedBufferPtr := (*fileLinkInformation)(unsafe.Pointer(&buffer[0]))
+	typedBufferPtr := (*windowsext.FILE_LINK_INFORMATION)(unsafe.Pointer(&buffer[0]))
 
 	typedBufferPtr.ReplaceIfExists = uint8(0)
 	typedBufferPtr.RootDirectory = root
@@ -950,7 +862,7 @@ func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle wind
 	}
 	fileLinkInfo, bufferSize := buildFileLinkInfo(linkRoot, newNameUTF16)
 	var iosb windows.IO_STATUS_BLOCK
-	ntstatus := ntSetInformationFile(handle, &iosb, &fileLinkInfo[0], bufferSize, FileLinkInformation)
+	ntstatus := windowsext.NtSetInformationFile(handle, &iosb, &fileLinkInfo[0], bufferSize, windowsext.FileLinkInformation)
 	if ntstatus != nil {
 		return ntstatus.(windows.NTStatus).Errno()
 	}
@@ -963,7 +875,7 @@ func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSa
 	//  2. if target exists and wither source or target is a directory, don't overwrite and report error
 	//  3. if neither is the case, move and, if necessary, replace
 	var targetHandle windows.Handle
-	err = ntCreateFile(&targetHandle, FILE_READ_ATTRIBUTES, newHandle, newName, windows.FILE_OPEN,
+	err = ntCreateFile(&targetHandle, windowsext.FILE_READ_ATTRIBUTES, newHandle, newName, windows.FILE_OPEN,
 		windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -993,22 +905,15 @@ func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSa
 	return
 }
 
-type fileRenameInformation struct {
-	ReplaceIfExists uint32
-	RootDirectory   windows.Handle
-	FileNameLength  uint32
-	FileName        [1]uint16
-}
-
-var DummyFileRenameInfo fileRenameInformation
+var DummyFileRenameInfo windowsext.FILE_RENAME_INFORMATION
 
 func buildFileRenameInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 	fileNameLen := len(name)*2 - 2
 	bufferSize := int(unsafe.Offsetof(DummyFileRenameInfo.FileName)) + fileNameLen
 	buffer := make([]byte, bufferSize)
-	typedBufferPtr := (*fileRenameInformation)(unsafe.Pointer(&buffer[0]))
+	typedBufferPtr := (*windowsext.FILE_RENAME_INFORMATION)(unsafe.Pointer(&buffer[0]))
 
-	typedBufferPtr.ReplaceIfExists = FILE_RENAME_REPLACE_IF_EXISTS | FILE_RENAME_POSIX_SEMANTICS
+	typedBufferPtr.ReplaceIfExists = windowsext.FILE_RENAME_REPLACE_IF_EXISTS | windowsext.FILE_RENAME_POSIX_SEMANTICS
 	typedBufferPtr.RootDirectory = root
 	typedBufferPtr.FileNameLength = uint32(fileNameLen)
 	fileNamePtr := unsafe.Pointer(&typedBufferPtr.FileName[0])
@@ -1022,7 +927,7 @@ func buildFileRenameInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 
 func rename(oldHandle windows.Handle, oldName string, newHandle windows.Handle, newName string) error {
 	var handle windows.Handle
-	err := ntCreateFile(&handle, FILE_GENERIC_WRITE|FILE_GENERIC_READ|windows.DELETE, oldHandle, oldName,
+	err := ntCreateFile(&handle, windowsext.FILE_GENERIC_WRITE|windowsext.FILE_GENERIC_READ|windows.DELETE, oldHandle, oldName,
 		windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
 		return err
@@ -1051,7 +956,7 @@ func rename(oldHandle windows.Handle, oldName string, newHandle windows.Handle, 
 	}
 	fileRenameInfo, bufferSize := buildFileRenameInfo(renameRoot, newNameUTF16)
 	var iosb windows.IO_STATUS_BLOCK
-	ntstatus := ntSetInformationFile(handle, &iosb, &fileRenameInfo[0], bufferSize, FileRenameInformation)
+	ntstatus := windowsext.NtSetInformationFile(handle, &iosb, &fileRenameInfo[0], bufferSize, windowsext.FileRenameInformation)
 	if ntstatus != nil {
 		return ntstatus.(windows.NTStatus).Errno()
 	}
