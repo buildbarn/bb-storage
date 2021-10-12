@@ -7,12 +7,11 @@
 package cas
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	v2 "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -117,15 +116,12 @@ func file_pkg_proto_cas_cas_proto_rawDescGZIP() []byte {
 	return file_pkg_proto_cas_cas_proto_rawDescData
 }
 
-var (
-	file_pkg_proto_cas_cas_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_pkg_proto_cas_cas_proto_goTypes  = []interface{}{
-		(*HistoricalExecuteResponse)(nil), // 0: buildbarn.cas.HistoricalExecuteResponse
-		(*v2.Digest)(nil),                 // 1: build.bazel.remote.execution.v2.Digest
-		(*v2.ExecuteResponse)(nil),        // 2: build.bazel.remote.execution.v2.ExecuteResponse
-	}
-)
-
+var file_pkg_proto_cas_cas_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_pkg_proto_cas_cas_proto_goTypes = []interface{}{
+	(*HistoricalExecuteResponse)(nil), // 0: buildbarn.cas.HistoricalExecuteResponse
+	(*v2.Digest)(nil),                 // 1: build.bazel.remote.execution.v2.Digest
+	(*v2.ExecuteResponse)(nil),        // 2: build.bazel.remote.execution.v2.ExecuteResponse
+}
 var file_pkg_proto_cas_cas_proto_depIdxs = []int32{
 	1, // 0: buildbarn.cas.HistoricalExecuteResponse.action_digest:type_name -> build.bazel.remote.execution.v2.Digest
 	2, // 1: buildbarn.cas.HistoricalExecuteResponse.execute_response:type_name -> build.bazel.remote.execution.v2.ExecuteResponse

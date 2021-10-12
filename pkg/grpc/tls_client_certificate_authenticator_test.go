@@ -93,7 +93,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)
 	clock := mock.NewMockClock(ctrl)
-	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock)
+	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, nil)
 
 	t.Run("NoGRPC", func(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot

@@ -13,7 +13,6 @@ go_library(
     deps = [
         "//pkg/digest",
         "//pkg/proto/configuration/auth",
-        "@com_github_spiffe_go_spiffe_v2//spiffeid",
         "@com_github_spiffe_go_spiffe_v2//svid/x509svid",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//credentials",

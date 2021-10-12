@@ -121,7 +121,7 @@ func TestUnmarshalConfigurationFromFile(t *testing.T) {
 		{
 			name: "readme",
 			args: args{
-				configuration: readme,
+				configuration: readmeConf,
 				confproto:     &bb_storage.ApplicationConfiguration{},
 			},
 			wantErr: false,

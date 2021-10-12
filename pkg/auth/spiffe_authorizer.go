@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"path"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth"
-	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -33,45 +33,48 @@ func NewSpiffeAuthorizer(config *pb.AuthorizerConfiguration) Authorizer {
 
 // Authorize implements the authorizer inferface
 func (s *SpiffeAuthorizer) Authorize(ctx context.Context, instanceNames []digest.InstanceName) []error {
-	errs := make([]error, len(instanceNames))
-	var err error
-FILLERRORS:
-	if err != nil {
-		for i := range errs {
-			errs[i] = err
+	fillErrors := func(err error) []error {
+		errs := make([]error, len(instanceNames))
+		if err != nil {
+			for i := range errs {
+				errs[i] = err
+			}
 		}
 		return errs
 	}
 	// Extract client certificate chain from the connection.
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		err = status.Error(codes.Unauthenticated, "Connection was not established using gRPC")
-		goto FILLERRORS
+		return fillErrors(status.Error(codes.Unauthenticated, "Connection was not established using gRPC"))
 	}
 	tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
 	if !ok {
-		err = status.Error(codes.Unauthenticated, "Connection was not established using TLS")
-		goto FILLERRORS
+		return fillErrors(status.Error(codes.Unauthenticated, "Connection was not established using TLS"))
 	}
 	certs := tlsInfo.State.PeerCertificates
 	if len(certs) == 0 {
-		err = status.Error(codes.Unauthenticated, "Client provided no TLS client certificate")
-		goto FILLERRORS
+		return fillErrors(status.Error(codes.Unauthenticated, "Client provided no TLS client certificate"))
 	}
-	var id spiffeid.ID
-	id, err = x509svid.IDFromCert(certs[len(certs)-1])
+	id, err := x509svid.IDFromCert(certs[len(certs)-1])
 	if err != nil {
-		goto FILLERRORS
+		return fillErrors(err)
 	}
+	errs := fillErrors(nil)
 	for i, instanceName := range instanceNames {
 		instanceMatcher, ok := s.InstanceNameSubjectMap[instanceName.String()]
 		if !ok {
-			errs[i] = status.Error(codes.PermissionDenied, "instance name is not a match")
+			errs[i] = status.Error(codes.PermissionDenied,
+				fmt.Sprintf("instance name is not a match. available instance names are %s", instanceNames))
 			continue
 		}
 		subjectMatchers, ok := instanceMatcher.AllowedSpiffeIds[id.TrustDomain().String()]
 		if !ok {
-			errs[i] = status.Error(codes.PermissionDenied, "trust domain not trusted")
+			allowedTrustDomains := []string{}
+			for k := range instanceMatcher.AllowedSpiffeIds {
+				allowedTrustDomains = append(allowedTrustDomains, k)
+			}
+			errs[i] = status.Error(codes.PermissionDenied,
+				fmt.Sprintf("trust domain not availavle. availabe trust domains are %s", allowedTrustDomains))
 			continue
 		}
 		match, err := path.Match(subjectMatchers, id.Path())
