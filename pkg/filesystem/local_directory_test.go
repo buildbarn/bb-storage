@@ -3,6 +3,7 @@ package filesystem_test
 import (
 	"io"
 	"os"
+	"runtime"
 	"syscall"
 	"testing"
 
@@ -110,7 +111,11 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 	fi, err := d.Lstat(path.MustNewComponent("file"))
 	require.NoError(t, err)
 	require.Equal(t, path.MustNewComponent("file"), fi.Name())
-	require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
+	if runtime.GOOS == "windows" {
+		require.Equal(t, filesystem.FileTypeExecutableFile, fi.Type())
+	} else {
+		require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
+	}
 	require.NoError(t, d.Close())
 }
 
@@ -197,7 +202,11 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	require.Equal(t, path.MustNewComponent("directory"), files[0].Name())
 	require.Equal(t, filesystem.FileTypeDirectory, files[0].Type())
 	require.Equal(t, path.MustNewComponent("file"), files[1].Name())
-	require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
+	if runtime.GOOS == "windows" {
+		require.Equal(t, filesystem.FileTypeExecutableFile, files[1].Type())
+	} else {
+		require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
+	}
 	require.Equal(t, path.MustNewComponent("symlink"), files[2].Name())
 	require.Equal(t, filesystem.FileTypeSymlink, files[2].Type())
 
@@ -248,6 +257,8 @@ func TestLocalDirectoryRemoveDirectory(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.NoError(t, d.Remove(path.MustNewComponent("directory")))
+	_, err := d.EnterDirectory(path.MustNewComponent("directory"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -257,6 +268,8 @@ func TestLocalDirectoryRemoveFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Remove(path.MustNewComponent("file")))
+	_, err = d.OpenRead(path.MustNewComponent("file"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -264,6 +277,8 @@ func TestLocalDirectoryRemoveSymlink(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
 	require.NoError(t, d.Remove(path.MustNewComponent("symlink")))
+	_, err := d.OpenRead(path.MustNewComponent("symlink"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -275,10 +290,13 @@ func TestLocalDirectoryRenameNotFound(t *testing.T) {
 
 func TestLocalDirectoryRenameSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
+	f1, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
-	require.NoError(t, f.Close())
+	require.NoError(t, f1.Close())
 	require.NoError(t, d.Rename(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
+	f2, err := d.OpenRead(path.MustNewComponent("target"))
+	require.NoError(t, err)
+	require.NoError(t, f2.Close())
 	require.NoError(t, d.Close())
 }
 
@@ -400,6 +418,10 @@ func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
 }
 
 func TestLocalDirectoryIsWritable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	d := openTmpDir(t)
 	{
 		isWritable, err := d.IsWritable()
@@ -420,6 +442,10 @@ func TestLocalDirectoryIsWritable(t *testing.T) {
 }
 
 func TestLocalDirectoryIsWritableChild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir(path.MustNewComponent("subdir"), 0o555))
 	{
