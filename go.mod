@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.8.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.4.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.7.1
 	github.com/bazelbuild/remote-apis v0.0.0-20211004185116-636121a32fa7
 	github.com/go-redis/redis/extra/redisotel v0.3.0
 	github.com/go-redis/redis/v8 v8.11.4

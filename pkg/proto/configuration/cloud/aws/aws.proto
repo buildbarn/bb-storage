@@ -14,6 +14,14 @@ message StaticCredentials {
   string secret_access_key = 2;
 }
 
+message WebIdentityRoleCredentials {
+  // IAM role ARN to assume.
+  string role_arn = 1;
+
+  // Path of a file containing an identity token.
+  string token_file = 2;
+}
+
 message SessionConfiguration {
   // Was 'endpoint'.
   reserved 1;
@@ -27,10 +35,24 @@ message SessionConfiguration {
   // Was 's3_force_path_style'.
   reserved 4;
 
-  // Static credentials to use for all requests. If unspecified, AWS
-  // will search the default credential provider chain (e.g.,
-  // environment variables, EC2 instance IAM roles).
-  StaticCredentials static_credentials = 5;
+  // Credentials to use for all requests. If unspecified, AWS will
+  // search the default credential provider chain (e.g., environment
+  // variables, EC2 instance IAM roles).
+  oneof credentials {
+    // Static credentials.
+    //
+    // More details:
+    // https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
+    StaticCredentials static_credentials = 5;
+
+    // Web identity role credentials. This mechanism is used when IAM
+    // roles are associated with a Kubernetes service account.
+    //
+    // More details:
+    // https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html
+    // https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+    WebIdentityRoleCredentials web_identity_role_credentials = 7;
+  }
 
   // Optional: Options to be used by the HTTP client.
   buildbarn.configuration.http.ClientConfiguration http_client = 6;
