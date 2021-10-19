@@ -714,6 +714,11 @@ message BlobReplicatorConfiguration {
     // of pressure placed on storage nodes is bounded. By letting a
     // dedicated bb_replicator instance use this strategy, replication
     // throughput is bounded globally.
+    //
+    // TODO: This backend shares some overlap with 'deduplicating' and
+    // 'concurrency_limiting'. Should it be removed in favor of those?
+    // Right now this backend is more efficient for remote sinks,
+    // because it doesn't decompose requests for multiple objects.
     QueuedBlobReplicatorConfiguration queued = 3;
 
     // No replication will be performed. This can be useful when one
@@ -740,6 +745,21 @@ message BlobReplicatorConfiguration {
     // LocalBlobAccess that is embedded into the same process, and blobs
     // are expected to be consumed locally.
     BlobReplicatorConfiguration deduplicating = 5;
+
+    // Ensure that the total number of concurrent replication requests
+    // remains bounded by a constant. By limiting the number of
+    // concurrent requests issues against a source, network starvation
+    // may be prevented.
+    //
+    // If this replicator is used in combination with 'deduplicating',
+    // it is recommended that 'deduplicating' is placed on the outside.
+    // More concretely:
+    //
+    //     { deduplicating: { concurrencyLimiting: { ... } }
+    //
+    // Otherwise, the concurrency limit will be applied against requests
+    // that haven't been deduplicated yet, leading to lower concurrency.
+    ConcurrencyLimitingBlobReplicatorConfiguration concurrency_limiting = 6;
   }
 }
 
@@ -751,6 +771,15 @@ message QueuedBlobReplicatorConfiguration {
   // deduplicate replication operations.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message ConcurrencyLimitingBlobReplicatorConfiguration {
+  // Base replication strategy to which calls should be forwarded.
+  BlobReplicatorConfiguration base = 1;
+
+  // The maximum number of concurrent replication requests that are
+  // forwarded to the base replication strategy.
+  int64 maximum_concurrency = 2;
 }
 
 message DemultiplexingBlobAccessConfiguration {

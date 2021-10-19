@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -17,6 +18,15 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
 	switch mode := configuration.Mode.(type) {
+	case *pb.BlobReplicatorConfiguration_ConcurrencyLimiting:
+		base, err := NewBlobReplicatorFromConfiguration(mode.ConcurrencyLimiting.Base, source, sink, creator)
+		if err != nil {
+			return nil, err
+		}
+		return replication.NewConcurrencyLimitingBlobReplicator(
+			base,
+			sink.BlobAccess,
+			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency)), nil
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
 		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, creator)
 		if err != nil {
