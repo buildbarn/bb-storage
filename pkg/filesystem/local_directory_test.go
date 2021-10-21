@@ -88,12 +88,18 @@ func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 }
 
 func TestLocalDirectoryLinkSuccess(t *testing.T) {
-	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
+	d1 := openTmpDir(t)
+	require.NoError(t, d1.Mkdir(path.MustNewComponent("subdir"), 0o777))
+	d2, err := d1.EnterDirectory(path.MustNewComponent("subdir"))
+	require.NoError(t, err)
+	require.NoError(t, d1.Close())
+	f, err := d2.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	require.NoError(t, d.Link(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
-	require.NoError(t, d.Close())
+	d3 := openTmpDir(t)
+	require.NoError(t, d2.Link(path.MustNewComponent("source"), d3, path.MustNewComponent("target")))
+	require.NoError(t, d2.Close())
+	require.NoError(t, d3.Close())
 }
 
 func TestLocalDirectoryLstatNonExistent(t *testing.T) {
