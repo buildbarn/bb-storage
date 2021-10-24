@@ -1,15 +1,8 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-# windowsext is an extension to x/sys/windows
-# TODO: create PRs to merge windowsext into x/sys/windows
-#  - https://go-review.googlesource.com/c/sys/+/355350
-#  - https://github.com/golang/go/issues/48933
 go_library(
     name = "windowsext",
-    srcs = [
-        "syscall.go",
-        "types.go",
-    ],
+    srcs = ["types.go"],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem/windowsext",
     visibility = ["//visibility:public"],
     deps = select({

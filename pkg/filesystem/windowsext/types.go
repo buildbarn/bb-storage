@@ -55,11 +55,6 @@ type FILE_DISPOSITION_INFORMATION_EX struct {
 	Flags uint32
 }
 
-const (
-	FILE_DISPOSITION_DELETE          = 1
-	FILE_DISPOSITION_POSIX_SEMANTICS = 2
-)
-
 type FILE_LINK_INFORMATION struct {
 	ReplaceIfExists uint8
 	RootDirectory   windows.Handle
@@ -73,8 +68,3 @@ type FILE_RENAME_INFORMATION struct {
 	FileNameLength  uint32
 	FileName        [1]uint16
 }
-
-const (
-	FILE_RENAME_REPLACE_IF_EXISTS = 1
-	FILE_RENAME_POSIX_SEMANTICS   = 2
-)

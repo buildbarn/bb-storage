@@ -49,16 +49,16 @@ http_archive(
     ],
 )
 
+# gazelle:repository_macro go_dependencies.bzl%go_dependencies
+load(":go_dependencies.bzl", "go_dependencies")
+
+go_dependencies()
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
 go_register_toolchains(version = "1.16")
-
-# gazelle:repository_macro go_dependencies.bzl%go_dependencies
-load(":go_dependencies.bzl", "go_dependencies")
-
-go_dependencies()
 
 load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
 
