@@ -33,7 +33,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.0.1
 	go.opentelemetry.io/proto/otlp v0.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac
+	golang.org/x/sys v0.0.0-20211023085530-d6a326fbbf70
 	google.golang.org/genproto v0.0.0-20211008145708-270636b82663
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1

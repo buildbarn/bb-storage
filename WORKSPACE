@@ -30,7 +30,6 @@ http_archive(
 http_archive(
     name = "io_bazel_rules_go",
     patches = [
-        "//:patches/io_bazel_rules_go/service-registrar.diff",
         "//:patches/io_bazel_rules_go/upstream-pr-2936.diff",
     ],
     sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
@@ -49,16 +48,16 @@ http_archive(
     ],
 )
 
+# gazelle:repository_macro go_dependencies.bzl%go_dependencies
+load(":go_dependencies.bzl", "go_dependencies")
+
+go_dependencies()
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
 go_register_toolchains(version = "1.16")
-
-# gazelle:repository_macro go_dependencies.bzl%go_dependencies
-load(":go_dependencies.bzl", "go_dependencies")
-
-go_dependencies()
 
 load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
 
