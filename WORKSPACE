@@ -30,7 +30,6 @@ http_archive(
 http_archive(
     name = "io_bazel_rules_go",
     patches = [
-        "//:patches/io_bazel_rules_go/service-registrar.diff",
         "//:patches/io_bazel_rules_go/upstream-pr-2936.diff",
     ],
     sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
