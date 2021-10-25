@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -41,6 +42,8 @@ func ntCreateFile(handle *windows.Handle, access uint32, root windows.Handle, pa
 			return syscall.ENOTDIR
 		case windows.STATUS_FILE_IS_A_DIRECTORY:
 			return syscall.EISDIR
+		case windows.STATUS_OBJECT_NAME_EXISTS:
+			return os.ErrExist
 		default:
 			return ntstatus.(windows.NTStatus).Errno()
 		}
@@ -433,6 +436,7 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) e
 func readdirnames(handle windows.Handle) ([]string, error) {
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
+	firstIteration := true
 	for {
 		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
 			&outBuffer[0], outBufferSize)
@@ -440,7 +444,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 			break
 		}
 		if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
-			if outBufferSize == 512 {
+			if firstIteration {
 				return []string{}, nil
 			}
 			break
@@ -451,6 +455,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 		} else {
 			return nil, err
 		}
+		firstIteration = false
 	}
 	names := make([]string, 0)
 	offset := ^(uint32(0))
@@ -732,7 +737,7 @@ func (d *localDirectory) Symlink(oldName string, newName path.Component) error {
 		if cleanRelPath == "." || cleanRelPath == ".." {
 			quickReturn = true
 			isDir = true
-		} else if len(cleanRelPath) < 3 || cleanRelPath[:3] != "..\\" {
+		} else if !strings.HasPrefix(cleanRelPath, "..\\") {
 			quickReturn = true
 			var handle windows.Handle
 			err := ntCreateFile(&handle, windows.FILE_READ_ATTRIBUTES, d.handle, cleanRelPath, windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE)
