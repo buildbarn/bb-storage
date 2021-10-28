@@ -83,6 +83,9 @@ message ClientConfiguration {
   // The gRPC connection's initial connection window size.  See grpc-go
   // WithInitialConnWindowSize
   int32 initial_conn_window_size_bytes = 9;
+
+  // If set, forward all traffic through a proxy with a given URL.
+  string proxy_url = 10;
 }
 
 message ClientKeepaliveConfiguration {

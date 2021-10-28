@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -123,6 +125,18 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		interceptor := NewMetadataForwardingAndReusingInterceptor(headers)
 		unaryInterceptors = append(unaryInterceptors, interceptor.InterceptUnaryClient)
 		streamInterceptors = append(streamInterceptors, interceptor.InterceptStreamClient)
+	}
+
+	// Optional: proxying.
+	if proxyURL := config.ProxyUrl; proxyURL != "" {
+		parsedProxyURL, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse proxy URL")
+		}
+		proxyDialer := proxyDialer{
+			httpProxy: http.ProxyURL(parsedProxyURL),
+		}
+		dialOptions = append(dialOptions, grpc.WithContextDialer(proxyDialer.proxyDial))
 	}
 
 	dialOptions = append(

@@ -17,6 +17,7 @@ go_library(
         "metadata_forwarding_and_reusing_interceptor.go",
         "metadata_forwarding_interceptor.go",
         "metadata_header_values.go",
+        "proxy_dialer.go",
         "request_metadata_tracing_interceptor.go",
         "server.go",
         "tls_client_certificate_authenticator.go",
