@@ -26,5 +26,10 @@ func NewRoundTripperFromConfiguration(configuration *pb.ClientConfiguration) (ht
 		defaultTransport.Proxy = http.ProxyURL(parsedProxyURL)
 	}
 	var roundTripper http.RoundTripper = &defaultTransport
+
+	if headerValues := configuration.GetAddHeaders(); len(headerValues) > 0 {
+		roundTripper = NewHeaderAddingRoundTripper(roundTripper, headerValues)
+	}
+
 	return roundTripper, nil
 }

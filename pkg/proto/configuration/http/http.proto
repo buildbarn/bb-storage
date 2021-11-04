@@ -14,4 +14,18 @@ message ClientConfiguration {
 
   // If set, forward all traffic through a proxy with a given URL.
   string proxy_url = 2;
+
+  message HeaderValues {
+    string header = 1;
+    repeated string values = 2;
+  }
+
+  // HTTP headers to attach to every outgoing request.
+  //
+  // This option can, amongst other things, be used to perform HTTP
+  // basic access authentication, by providing an "Authorization" header
+  // with value:
+  //
+  //         "Basic " + std.base64(username + ":" + password)
+  repeated HeaderValues add_headers = 5;
 }

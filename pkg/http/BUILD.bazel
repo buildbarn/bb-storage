@@ -4,6 +4,7 @@ go_library(
     name = "http",
     srcs = [
         "configuration.go",
+        "header_adding_round_tripper.go",
         "status_code.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http",

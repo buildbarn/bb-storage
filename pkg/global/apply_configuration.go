@@ -266,13 +266,6 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	if pushgateway := configuration.GetPrometheusPushgateway(); pushgateway != nil {
 		pusher := push.New(pushgateway.Url, pushgateway.Job)
 		pusher.Gatherer(prometheus.DefaultGatherer)
-		// TODO: Move this functionality into
-		// NewRoundTripperFromConfiguration, so that every HTTP
-		// client has support for specifying basic
-		// authentication credentials.
-		if basicAuthentication := pushgateway.BasicAuthentication; basicAuthentication != nil {
-			pusher.BasicAuth(basicAuthentication.Username, basicAuthentication.Password)
-		}
 		for key, value := range pushgateway.Grouping {
 			pusher.Grouping(key, value)
 		}

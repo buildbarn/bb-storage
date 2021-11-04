@@ -9,14 +9,6 @@ import "pkg/proto/configuration/http/http.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
-message BasicAuthenticationConfiguration {
-  // Username to store in the "Authorization: Basic" header.
-  string username = 1;
-
-  // Password to store in the "Authorization: Basic" header.
-  string password = 2;
-}
-
 message PrometheusPushgatewayConfiguration {
   // URL of the Prometheus Pushgateway server. Do not include the
   // "/metrics/jobs/..." part in the URL.
@@ -25,8 +17,9 @@ message PrometheusPushgatewayConfiguration {
   // Name of the job to announce to the Prometheus Pushgateway.
   string job = 2;
 
-  // If set, enable the use of HTTP basic authentication.
-  BasicAuthenticationConfiguration basic_authentication = 3;
+  // Was 'basic_authentication'. Credentials can now be provided in the
+  // form of a HTTP header through 'http_client.add_headers'.
+  reserved 3;
 
   // Label pairs to use as the grouping key.
   map<string, string> grouping = 4;
