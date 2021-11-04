@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package buildbarn.configuration.jwt;
+
+import "pkg/proto/configuration/eviction/eviction.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt";
+
+message AuthorizationHeaderParserConfiguration {
+  oneof key {
+    // Accept signatures using algorithms "HS256", "HS384" and "HS512".
+    //
+    // This field contains the shared key secret to validate the
+    // signature.
+    bytes hmac_key = 1;
+
+    // Accept signatures using algorithms "ES256", "ES384" or "ES512".
+    //
+    // This field contains the public key used to validate the
+    // signature. It should start with "-----BEGIN PUBLIC KEY-----".
+    // The size of the curve of the public key determines which exact
+    // algorithm is used.
+    //
+    // TODO: Do we want to provide support for RSA signatures?
+    string public_key = 2;
+  }
+
+  // Maximum number of validated tokens to cache in memory. This speeds
+  // up successive requests made with the same token.
+  int32 maximum_cache_size = 3;
+
+  // The cache replacement policy that should be applied to the token
+  // cache. It is advised that this is set to LEAST_RECENTLY_USED.
+  buildbarn.configuration.eviction.CacheReplacementPolicy
+      cache_replacement_policy = 4;
+}

@@ -4,6 +4,7 @@ package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
@@ -192,6 +193,10 @@ message AuthenticationPolicy {
     // Allow incoming requests in case they present a valid TLS
     // certificate.
     TLSClientCertificateAuthenticationPolicy tls_client_certificate = 4;
+
+    // Allow incoming requests in case they present an "Authorization"
+    // header containing a JWT bearer token.
+    buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration jwt = 5;
   }
 }
 

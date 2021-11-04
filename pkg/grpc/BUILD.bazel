@@ -12,6 +12,7 @@ go_library(
         "client_factory.go",
         "deduplicating_client_factory.go",
         "deny_authenticator.go",
+        "jwt_authenticator.go",
         "lazy_client_dialer.go",
         "metadata_adding_interceptor.go",
         "metadata_forwarding_and_reusing_interceptor.go",
@@ -27,6 +28,7 @@ go_library(
     deps = [
         "//pkg/atomic",
         "//pkg/clock",
+        "//pkg/jwt",
         "//pkg/proto/configuration/grpc",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",

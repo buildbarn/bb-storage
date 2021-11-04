@@ -5,7 +5,9 @@ import (
 	"crypto/x509"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/jwt"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,6 +49,12 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock), nil
+	case *configuration.AuthenticationPolicy_Jwt:
+		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
+		}
+		return NewJWTAuthenticator(authorizationHeaderParser), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

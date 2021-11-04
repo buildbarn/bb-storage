@@ -7,6 +7,7 @@ proto_library(
     srcs = ["grpc.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/jwt:jwt_proto",
         "//pkg/proto/configuration/tls:tls_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
@@ -18,7 +19,10 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc",
     proto = ":grpc_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/tls"],
+    deps = [
+        "//pkg/proto/configuration/jwt",
+        "//pkg/proto/configuration/tls",
+    ],
 )
 
 go_library(

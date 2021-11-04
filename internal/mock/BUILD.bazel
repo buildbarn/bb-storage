@@ -193,6 +193,17 @@ gomock(
 )
 
 gomock(
+    name = "jwt",
+    out = "jwt.go",
+    interfaces = [
+        "SignatureGenerator",
+        "SignatureValidator",
+    ],
+    library = "//pkg/jwt",
+    package = "mock",
+)
+
+gomock(
     name = "redis",
     out = "redis.go",
     interfaces = ["RedisClient"],
@@ -253,6 +264,7 @@ go_library(
         ":filesystem_path.go",
         ":grpc.go",
         ":grpc_go.go",
+        ":jwt.go",
         ":redis.go",
         ":remoteexecution.go",
         ":trace.go",
