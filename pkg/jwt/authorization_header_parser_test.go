@@ -104,16 +104,6 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		// Retry the same request as before, but now let the
 		// time be in bounds.
 		clock.EXPECT().Now().Return(time.Unix(1635781780, 0))
-		signatureValidator.EXPECT().ValidateSignature(
-			"HS256",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9",
-			[]byte{
-				0x9a, 0xf0, 0xa6, 0x11, 0xb2, 0x62, 0xcb, 0xec,
-				0x48, 0x43, 0x7c, 0xec, 0x21, 0x3a, 0x6a, 0x6e,
-				0xd8, 0x57, 0xad, 0x24, 0xe3, 0xb6, 0xea, 0x61,
-				0xd5, 0x27, 0x76, 0x28, 0x6b, 0xcc, 0x5e, 0x16,
-			},
-		).Return(true)
 
 		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
@@ -136,16 +126,14 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		// If the time exceeds the original expiration time, the
 		// token should no longer be valid.
 		clock.EXPECT().Now().Return(time.Unix(1635781792, 0))
-		signatureValidator.EXPECT().ValidateSignature(
-			"HS256",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9",
-			[]byte{
-				0x9a, 0xf0, 0xa6, 0x11, 0xb2, 0x62, 0xcb, 0xec,
-				0x48, 0x43, 0x7c, 0xec, 0x21, 0x3a, 0x6a, 0x6e,
-				0xd8, 0x57, 0xad, 0x24, 0xe3, 0xb6, 0xea, 0x61,
-				0xd5, 0x27, 0x76, 0x28, 0x6b, 0xcc, 0x5e, 0x16,
-			},
-		).Return(true)
+
+		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+		}))
+
+		// It is valid to cache the fact that a token has
+		// expired, as it can never become valid again.
+		clock.EXPECT().Now().Return(time.Unix(1635781793, 0))
 
 		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",

@@ -15,14 +15,25 @@ import (
 // Pattern of authorization headers from which to extract a JSON Web Token.
 var jwtHeaderPattern = regexp.MustCompile("^Bearer\\s+(([-_a-zA-Z0-9]+)\\.([-_a-zA-Z0-9]+))\\.([-_a-zA-Z0-9]+)$")
 
-// Some timestamp in the very far future, which we can use to indicate
-// that a response should be cached indefinitely.
-var farFuture = time.Unix(math.MaxInt64/2, 0)
-
 type response struct {
-	cacheUntil    time.Time
-	authenticated bool
+	notBefore      time.Time
+	expirationTime time.Time
 }
+
+func (r *response) isAuthenticated(now time.Time) bool {
+	return !now.Before(r.notBefore) && now.Before(r.expirationTime)
+}
+
+var (
+	farHistory = time.Unix(0, 0)
+	farFuture  = time.Unix(math.MaxInt64/2, 0)
+
+	// Authorization response we can use in case a token is invalid.
+	unauthenticated = response{
+		notBefore:      farFuture,
+		expirationTime: farHistory,
+	}
+)
 
 // AuthorizationHeaderParser is a helper type for parsing JSON Web
 // Tokens stored in HTTP "Authorization" headers of shape "Bearer ${jwt}".
@@ -67,7 +78,7 @@ func jsonNumberAsTimestamp(n *json.Number) (time.Time, error) {
 func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string, now time.Time) response {
 	match := jwtHeaderPattern.FindStringSubmatch(header)
 	if match == nil {
-		return response{cacheUntil: farFuture}
+		return unauthenticated
 	}
 
 	// Decode base64 for all three components of the token.
@@ -75,7 +86,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	for _, field := range match[2:] {
 		decodedField, err := base64.RawURLEncoding.DecodeString(field)
 		if err != nil {
-			return response{cacheUntil: farFuture}
+			return unauthenticated
 		}
 		decodedFields = append(decodedFields, decodedField)
 	}
@@ -85,42 +96,41 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 		Alg string `json:"alg"`
 	}{}
 	if json.Unmarshal(decodedFields[0], &headerMessage) != nil {
-		return response{cacheUntil: farFuture}
+		return unauthenticated
 	}
 	if !a.signatureValidator.ValidateSignature(headerMessage.Alg, match[1], decodedFields[2]) {
-		return response{cacheUntil: farFuture}
+		return unauthenticated
 	}
 
-	// Perform timestamp validation.
+	// Extract timestamps.
 	payloadMessage := struct {
 		Exp *json.Number `json:"exp"`
 		Nbf *json.Number `json:"nbf"`
 	}{}
 	if json.Unmarshal(decodedFields[1], &payloadMessage) != nil {
-		return response{cacheUntil: farFuture}
+		return unauthenticated
+	}
+	r := response{
+		notBefore:      farHistory,
+		expirationTime: farFuture,
 	}
 	if nbf := payloadMessage.Nbf; nbf != nil {
-		// Compare "nbf" (Not Before) claim.
+		// Extract "nbf" (Not Before) claim.
 		v, err := jsonNumberAsTimestamp(nbf)
 		if err != nil {
-			return response{cacheUntil: farFuture}
+			return unauthenticated
 		}
-		if v.After(now) {
-			return response{cacheUntil: v}
-		}
+		r.notBefore = v
 	}
 	if exp := payloadMessage.Exp; exp != nil {
-		// Compare "exp" (Expiration Time) claim.
+		// Extract "exp" (Expiration Time) claim.
 		v, err := jsonNumberAsTimestamp(exp)
 		if err != nil {
-			return response{cacheUntil: farFuture}
+			return unauthenticated
 		}
-		if !now.Before(v) {
-			return response{cacheUntil: v}
-		}
-		return response{cacheUntil: v, authenticated: true}
+		r.expirationTime = v
 	}
-	return response{cacheUntil: farFuture, authenticated: true}
+	return r
 }
 
 // ParseAuthorizationHeaders takes a set of HTTP "Authorization" headers
@@ -137,9 +147,9 @@ func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) 
 	// presented before. If so, skip token validation entirely.
 	headersToCheck := make([]string, 0, len(headers))
 	for _, header := range headers {
-		if response, ok := a.cachedAuthorizationHeaders[header]; ok && now.Before(response.cacheUntil) {
+		if response, ok := a.cachedAuthorizationHeaders[header]; ok {
 			a.evictionSet.Touch(header)
-			if response.authenticated {
+			if response.isAuthenticated(now) {
 				return true
 			}
 		} else {
@@ -160,7 +170,7 @@ func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) 
 			a.evictionSet.Insert(header)
 		}
 		a.cachedAuthorizationHeaders[header] = response
-		if response.authenticated {
+		if response.isAuthenticated(now) {
 			return true
 		}
 	}
