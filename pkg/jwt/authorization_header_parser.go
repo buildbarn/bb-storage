@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/jmespath/go-jmespath"
 )
 
 // Pattern of authorization headers from which to extract a JSON Web Token.
@@ -43,6 +44,7 @@ var (
 type AuthorizationHeaderParser struct {
 	clock              clock.Clock
 	signatureValidator SignatureValidator
+	claimsValidator    *jmespath.JMESPath
 	maximumCacheSize   int
 
 	lock                       sync.Mutex
@@ -52,10 +54,11 @@ type AuthorizationHeaderParser struct {
 
 // NewAuthorizationHeaderParser creates a new AuthorizationHeaderParser
 // that does not have any cached tokens.
-func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, maximumCacheSize int, evictionSet eviction.Set) *AuthorizationHeaderParser {
+func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set) *AuthorizationHeaderParser {
 	return &AuthorizationHeaderParser{
 		clock:              clock,
 		signatureValidator: signatureValidator,
+		claimsValidator:    claimsValidator,
 		maximumCacheSize:   maximumCacheSize,
 
 		cachedAuthorizationHeaders: map[string]response{},
@@ -99,6 +102,15 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 		return unauthenticated
 	}
 	if !a.signatureValidator.ValidateSignature(headerMessage.Alg, match[1], decodedFields[2]) {
+		return unauthenticated
+	}
+
+	// Perform validation of additional claims using JMESPath.
+	var fullPayloadMessage interface{}
+	if json.Unmarshal(decodedFields[1], &fullPayloadMessage) != nil {
+		return unauthenticated
+	}
+	if result, err := a.claimsValidator.Search(fullPayloadMessage); err != nil || result != true {
 		return unauthenticated
 	}
 

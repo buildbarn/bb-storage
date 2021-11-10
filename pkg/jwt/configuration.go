@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -50,9 +51,15 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		return nil, util.StatusWrap(err, "Failed to create eviction set")
 	}
 
+	claimsValidator, err := jmespath.Compile(config.ClaimsValidationJmespathExpression)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to compile claims validation JMESPath expression")
+	}
+
 	return NewAuthorizationHeaderParser(
 		clock.SystemClock,
 		signatureValidator,
+		claimsValidator,
 		int(config.MaximumCacheSize),
 		eviction.NewMetricsSet(evictionSet, "AuthorizationHeaderParser")), nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/golang/mock/gomock"
+	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,6 +20,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 	authenticator := jwt.NewAuthorizationHeaderParser(
 		clock,
 		signatureValidator,
+		jmespath.MustCompile("forbiddenField == null"),
 		1000,
 		eviction.NewLRUSet())
 
@@ -137,6 +139,27 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 
 		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+		}))
+	})
+
+	t.Run("ClaimValidation", func(t *testing.T) {
+		// A token that contains a claim named "forbiddenField"
+		// should get rejected, as the JMESPath that was used to
+		// construct the AuthorizationHeaderParser rejects it.
+		clock.EXPECT().Now().Return(time.Unix(1636144433, 0))
+		signatureValidator.EXPECT().ValidateSignature(
+			"HS256",
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ",
+			[]byte{
+				0xf1, 0x5c, 0xbc, 0x0c, 0x47, 0x71, 0x2d, 0x88,
+				0x42, 0x8a, 0xe3, 0x52, 0x32, 0x77, 0xee, 0xb7,
+				0x87, 0x3b, 0x50, 0x99, 0x87, 0x8c, 0x74, 0x16,
+				0x7a, 0x77, 0x0d, 0x85, 0xe3, 0xe7, 0x28, 0x7e,
+			},
+		).Return(true)
+
+		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ.8Vy8DEdxLYhCiuNSMnfut4c7UJmHjHQWencNhePnKH4",
 		}))
 	})
 }

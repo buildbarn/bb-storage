@@ -33,4 +33,30 @@ message AuthorizationHeaderParserConfiguration {
   // cache. It is advised that this is set to LEAST_RECENTLY_USED.
   buildbarn.configuration.eviction.CacheReplacementPolicy
       cache_replacement_policy = 4;
+
+  // This implementation requires that the current time lies between the
+  // "nbf" (Not Before) and "exp" (Expiration Time) claims stored in the
+  // token, if present.
+  //
+  // This option allows specifying a boolean JMESPath expression that
+  // can be used to place additional requirements on the presence of
+  // claims and their values. For example, it is possible to require
+  // that the "aud" (Audience) claim is equal to "MyBuildCluster" by
+  // using the following JMESPath expression:
+  //
+  //     aud == 'MyBuildCluster'
+  //
+  // In case no additional requirements against claims need to be made,
+  // it is possible to use the following JMESPath expression (including
+  // the backticks):
+  //
+  //     `true`
+  //
+  // More details about JMESPath can be found at https://jmespath.org/.
+  //
+  // It is recommended that this feature is only used for making
+  // authentication decisions; not authorization decisions. The reason
+  // being that validation failures will cause gRPC requests to fail
+  // with code UNAUTHENTICATED; not PERMISSION_DENIED.
+  string claims_validation_jmespath_expression = 5;
 }
