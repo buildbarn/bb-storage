@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -252,7 +253,13 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}
 
 		otel.SetTracerProvider(tracerProvider)
-		otel.SetTextMapPropagator(propagation.TraceContext{})
+
+		// Construct a propagator which supports both the context and Zipkin B3 propagation standards.
+		propagator := propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader)),
+		)
+		otel.SetTextMapPropagator(propagator)
 
 		grpcUnaryInterceptors = append(grpcUnaryInterceptors, otelgrpc.UnaryClientInterceptor())
 		grpcStreamInterceptors = append(grpcStreamInterceptors, otelgrpc.StreamClientInterceptor())
