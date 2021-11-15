@@ -576,12 +576,12 @@ message LocalBlobAccessConfiguration {
     // Care should be taken that this value is not set too low. Every
     // epoch that still references valid data consumes 16 bytes of
     // memory and increases the size of the state file by a similar
-    // amount. This means that if this option is set to 5m, epoch
+    // amount. This means that if this option is set to '300s', epoch
     // bookkeeping consumes up to 12*24*365*16 B = ~1.68 MB of space if
     // the system were to operate for a full year without blocks being
-    // released. Setting this to 1s would blow this up by a factor 300.
+    // released. Setting this to '1s' blows this up by a factor 300.
     //
-    // Recommended value: 5m
+    // Recommended value: '300s'
     google.protobuf.Duration minimum_epoch_interval = 2;
   }
 
