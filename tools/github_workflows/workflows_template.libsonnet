@@ -61,7 +61,7 @@
         // https://github.com/GoogleCloudPlatform/container-definitions/issues/12037
         {
           name: 'Installing Bazel',
-          run: 'curl -L https://github.com/bazelbuild/bazel/releases/download/4.1.0/bazel-4.1.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
+          run: 'curl -L https://github.com/bazelbuild/bazel/releases/download/4.2.1/bazel-4.2.1-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
         },
         {
           name: 'Check out source code',
