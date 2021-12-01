@@ -179,7 +179,9 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				backend.Http.Address,
 				storageTypeName,
 				readBufferFactory,
-				&http.Client{Transport: roundTripper}),
+				&http.Client{
+					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPBlobAccess"),
+				}),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:

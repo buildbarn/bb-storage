@@ -21,13 +21,15 @@ import (
 // on options specified in a session configuration message. The
 // resulting session object can be used to access AWS services such as
 // EC2, S3 and SQS.
-func NewConfigFromConfiguration(configuration *aws_pb.SessionConfiguration) (aws.Config, error) {
+func NewConfigFromConfiguration(configuration *aws_pb.SessionConfiguration, name string) (aws.Config, error) {
 	roundTripper, err := bb_http.NewRoundTripperFromConfiguration(configuration.GetHttpClient())
 	if err != nil {
 		return aws.Config{}, util.StatusWrap(err, "Failed to create HTTP client")
 	}
 	loadOptions := []func(*config.LoadOptions) error{
-		config.WithHTTPClient(&http.Client{Transport: roundTripper}),
+		config.WithHTTPClient(&http.Client{
+			Transport: bb_http.NewMetricsRoundTripper(roundTripper, name),
+		}),
 	}
 	if region := configuration.GetRegion(); region != "" {
 		loadOptions = append(loadOptions, config.WithRegion(region))

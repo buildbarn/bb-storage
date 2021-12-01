@@ -145,7 +145,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 						return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
 					}
 					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(&http.Client{
-						Transport: roundTripper,
+						Transport: bb_http.NewMetricsRoundTripper(roundTripper, "Jaeger"),
 					}))
 					if password := jaegerConfiguration.Password; password != "" {
 						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
@@ -280,7 +280,9 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		if err != nil {
 			return nil, nil, util.StatusWrap(err, "Failed to create Prometheus Pushgateway HTTP client")
 		}
-		pusher.Client(&http.Client{Transport: roundTripper})
+		pusher.Client(&http.Client{
+			Transport: bb_http.NewMetricsRoundTripper(roundTripper, "Pushgateway"),
+		})
 
 		pushInterval := pushgateway.PushInterval
 		if err := pushInterval.CheckValid(); err != nil {

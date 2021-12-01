@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "configuration.go",
         "header_adding_round_tripper.go",
+        "metrics_round_tripper.go",
         "status_code.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http",
@@ -12,6 +13,8 @@ go_library(
     deps = [
         "//pkg/proto/configuration/http",
         "//pkg/util",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@org_golang_google_grpc//codes",
     ],
 )

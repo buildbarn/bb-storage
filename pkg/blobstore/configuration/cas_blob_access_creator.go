@@ -100,7 +100,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		cfg, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession)
+		cfg, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
@@ -111,7 +111,9 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
-				&http.Client{Transport: roundTripper},
+				&http.Client{
+					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
+				},
 				s3.NewFromConfig(cfg),
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,
