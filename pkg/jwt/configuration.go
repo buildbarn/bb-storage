@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
 
@@ -36,6 +37,12 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		case *ecdsa.PublicKey:
 			var err error
 			signatureValidator, err = NewECDSASHASignatureValidator(convertedKey)
+			if err != nil {
+				return nil, err
+			}
+		case ed25519.PublicKey:
+			var err error
+			signatureValidator, err = NewEd25519SignatureValidator(convertedKey)
 			if err != nil {
 				return nil, err
 			}

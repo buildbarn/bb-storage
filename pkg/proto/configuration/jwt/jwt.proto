@@ -14,14 +14,13 @@ message AuthorizationHeaderParserConfiguration {
     // signature.
     bytes hmac_key = 1;
 
-    // Accept signatures using algorithms "ES256", "ES384" or "ES512".
+    // Accept signatures using algorithms "ES256", "ES384", "ES512" or
+    // "EdDSA".
     //
     // This field contains the public key used to validate the
     // signature. It should start with "-----BEGIN PUBLIC KEY-----".
-    // The size of the curve of the public key determines which exact
+    // The public key type and curve size determine which exact
     // algorithm is used.
-    //
-    // TODO: Do we want to provide support for RSA signatures?
     string public_key = 2;
   }
 
