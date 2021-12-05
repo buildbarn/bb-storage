@@ -5,6 +5,10 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // BlobReplicator provides the strategy that is used by
@@ -18,3 +22,19 @@ type BlobReplicator interface {
 	// Replicate a set of objects between backends.
 	ReplicateMultiple(ctx context.Context, digests digest.Set) error
 }
+
+// notFoundToInternalErrorHandler is a helper type that implementations
+// of BlobReplicator with simple implementations of ReplicateSingle()
+// can use to ensure that absence of an object in the sink does not
+// cause a request to fail with a NOT_FOUND error. Only NOT_FOUND errors
+// on the source may be propagated.
+type notFoundToInternalErrorHandler struct{}
+
+func (eh notFoundToInternalErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	if status.Code(err) == codes.NotFound {
+		return nil, util.StatusWrapWithCode(err, codes.Internal, "Blob absent from sink after replication")
+	}
+	return nil, err
+}
+
+func (eh notFoundToInternalErrorHandler) Done() {}

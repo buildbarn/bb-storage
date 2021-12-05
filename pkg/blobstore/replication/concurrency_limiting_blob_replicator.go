@@ -40,7 +40,9 @@ func (br *concurrencyLimitingBlobReplicator) ReplicateSingle(ctx context.Context
 	if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return br.sink.Get(ctx, blobDigest)
+	return buffer.WithErrorHandler(
+		br.sink.Get(ctx, blobDigest),
+		notFoundToInternalErrorHandler{})
 }
 
 func (br *concurrencyLimitingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

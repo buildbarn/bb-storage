@@ -72,6 +72,18 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		require.Equal(t, status.Error(codes.Internal, "Disk I/O failure"), err)
 	})
 
+	t.Run("GetNotFound", func(t *testing.T) {
+		// If the sink reports that the object is present, but a
+		// successive Get() call fails, the results from the
+		// sink are inconsistent. This should not cause
+		// NOT_FOUND errors to be returned to clients.
+		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, nil)
+		sink.EXPECT().Get(ctx, helloDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Key not found in bucket")))
+
+		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
+		require.Equal(t, status.Error(codes.Internal, "Blob absent from sink after replication: Key not found in bucket"), err)
+	})
+
 	t.Run("ParallelFailure", func(t *testing.T) {
 		// In case we send requests in parallel for the same
 		// blob, DeduplicatingBlobReplicator may attempt to

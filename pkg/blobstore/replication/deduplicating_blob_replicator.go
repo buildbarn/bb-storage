@@ -57,7 +57,9 @@ func (br *deduplicatingBlobReplicator) ReplicateSingle(ctx context.Context, blob
 	if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return br.sink.Get(ctx, blobDigest)
+	return buffer.WithErrorHandler(
+		br.sink.Get(ctx, blobDigest),
+		notFoundToInternalErrorHandler{})
 }
 
 func (br *deduplicatingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
