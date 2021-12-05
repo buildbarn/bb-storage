@@ -38,7 +38,7 @@ message PreviousExecution {
     // Execution failed due to a timeout. The timeout value is stored.
     google.protobuf.Duration timed_out = 2;
 
-    // Executioned succeded. The execution time is stored.
+    // Execution succeeded. The virtual execution duration is stored.
     google.protobuf.Duration succeeded = 3;
   }
 }
