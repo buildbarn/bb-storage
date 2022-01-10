@@ -194,6 +194,23 @@ func TestNewValidatedBufferFromByteSliceCloneStream(t *testing.T) {
 	<-done
 }
 
+func TestNewValidatedBufferFromByteSliceWithTask(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		data, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).
+			WithTask(func() error { return nil }).
+			ToByteSlice(123)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		_, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).
+			WithTask(func() error { return status.Error(codes.Internal, "I/O error") }).
+			ToByteSlice(123)
+		require.Equal(t, status.Error(codes.Internal, "I/O error"), err)
+	})
+}
+
 func TestNewValidatedBufferFromByteSliceDiscard(t *testing.T) {
 	buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).Discard()
 }

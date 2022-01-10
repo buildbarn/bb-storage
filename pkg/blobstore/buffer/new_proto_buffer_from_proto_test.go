@@ -194,6 +194,23 @@ func TestNewProtoBufferFromProtoCloneCopy(t *testing.T) {
 	require.Equal(t, exampleActionResultBytes, data2)
 }
 
+func TestNewProtoBufferFromProtoWithTask(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		data, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).
+			WithTask(func() error { return nil }).
+			ToByteSlice(len(exampleActionResultBytes))
+		require.NoError(t, err)
+		require.Equal(t, exampleActionResultBytes, data)
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		_, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).
+			WithTask(func() error { return status.Error(codes.Internal, "I/O error") }).
+			ToByteSlice(len(exampleActionResultBytes))
+		require.Equal(t, status.Error(codes.Internal, "I/O error"), err)
+	})
+}
+
 func TestNewProtoBufferFromProtoCloneStream(t *testing.T) {
 	b1, b2 := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).CloneStream()
 	done := make(chan struct{}, 2)

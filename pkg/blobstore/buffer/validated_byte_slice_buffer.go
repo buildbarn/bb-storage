@@ -98,6 +98,15 @@ func (b validatedByteSliceBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b validatedByteSliceBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
+}
+
 func (b validatedByteSliceBuffer) Discard() {}
 
 func (b validatedByteSliceBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {

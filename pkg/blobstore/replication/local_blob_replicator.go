@@ -33,15 +33,12 @@ func NewLocalBlobReplicator(source, sink blobstore.BlobAccess) BlobReplicator {
 
 func (br *localBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	b1, b2 := br.source.Get(ctx, digest).CloneStream()
-	b1, t := buffer.WithBackgroundTask(b1)
-	go func() {
-		err := br.sink.Put(ctx, digest, b2)
-		if err != nil {
-			err = util.StatusWrap(err, "Replication failed")
+	return b1.WithTask(func() error {
+		if err := br.sink.Put(ctx, digest, b2); err != nil {
+			return util.StatusWrap(err, "Replication failed")
 		}
-		t.Finish(err)
-	}()
-	return b1
+		return nil
+	})
 }
 
 func (br *localBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

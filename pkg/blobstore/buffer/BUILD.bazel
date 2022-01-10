@@ -4,6 +4,7 @@ go_library(
     name = "buffer",
     srcs = [
         "buffer.go",
+        "cas_buffer_with_background_task.go",
         "cas_chunk_reader_buffer.go",
         "cas_cloned_buffer.go",
         "cas_error_handling_buffer.go",
@@ -27,7 +28,6 @@ go_library(
         "source.go",
         "validated_byte_slice_buffer.go",
         "validated_reader_at_buffer.go",
-        "with_background_task.go",
         "with_error_handler.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/buffer",
@@ -45,6 +45,7 @@ go_library(
 go_test(
     name = "buffer_test",
     srcs = [
+        "cas_buffer_with_background_task_test.go",
         "error_handler_test.go",
         "example_test.go",
         "new_buffer_from_error_test.go",
@@ -55,7 +56,6 @@ go_test(
         "new_proto_buffer_from_proto_test.go",
         "new_validated_buffer_from_byte_slice_test.go",
         "new_validated_buffer_from_reader_at_test.go",
-        "with_background_task_test.go",
         "with_error_handler_test.go",
     ],
     deps = [

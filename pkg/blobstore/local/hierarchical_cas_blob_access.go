@@ -193,18 +193,16 @@ func (ba *hierarchicalCASBlobAccess) Get(ctx context.Context, blobDigest digest.
 	// Copy the object while it's been returned. Block until copying
 	// has finished to apply back-pressure.
 	b1, b2 := b.CloneStream()
-	b1, t := buffer.WithBackgroundTask(b1)
-	go func() {
+	return b1.WithTask(func() error {
 		putFinalizer := putWriter(b2)
 		ba.lock.Lock()
 		err := ba.finalizePut(putFinalizer, canonicalKey, lookupKey)
 		ba.lock.Unlock()
 		if err != nil {
-			err = util.StatusWrap(err, "Failed to refresh blob")
+			return util.StatusWrap(err, "Failed to refresh blob")
 		}
-		t.Finish(err)
-	}()
-	return b1
+		return nil
+	})
 }
 
 func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {

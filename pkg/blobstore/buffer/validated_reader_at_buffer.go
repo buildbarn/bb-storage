@@ -93,6 +93,15 @@ func (b *validatedReaderBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b *validatedReaderBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
+}
+
 func (b *validatedReaderBuffer) Discard() {
 	if b.cloneCount.Add(-1) < 0 {
 		// There are no more cloned instances of this buffer.

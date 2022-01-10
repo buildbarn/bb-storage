@@ -42,16 +42,12 @@ func (br *queuedBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest 
 	// This causes a duplicate read on the source, but this cannot
 	// be prevented reasonably. The client and the replication
 	// process may each run at a different pace.
-	b := br.source.Get(ctx, blobDigest)
-	b, t := buffer.WithBackgroundTask(b)
-	go func() {
-		err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet())
-		if err != nil {
-			err = util.StatusWrap(err, "Replication failed")
+	return br.source.Get(ctx, blobDigest).WithTask(func() error {
+		if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
+			return util.StatusWrap(err, "Replication failed")
 		}
-		t.Finish(err)
-	}()
-	return b
+		return nil
+	})
 }
 
 func (br *queuedBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

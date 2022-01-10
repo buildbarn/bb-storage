@@ -28,9 +28,7 @@ func NewRemoteBlobReplicator(source blobstore.BlobAccess, client grpc.ClientConn
 }
 
 func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	b := br.source.Get(ctx, digest)
-	b, t := buffer.WithBackgroundTask(b)
-	go func() {
+	return br.source.Get(ctx, digest).WithTask(func() error {
 		// Let the remote replication service perform the
 		// replication while we stream data back to the client.
 		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
@@ -39,9 +37,8 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 				digest.GetProto(),
 			},
 		})
-		t.Finish(err)
-	}()
-	return b
+		return err
+	})
 }
 
 func (br *remoteBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

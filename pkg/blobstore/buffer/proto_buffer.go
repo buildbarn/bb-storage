@@ -82,6 +82,15 @@ func (b *protoBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b *protoBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
+}
+
 func (b *protoBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {
 	// The buffer is in a known good state. Terminate the error
 	// handler directly. There is no need to return a wrapped buffer.

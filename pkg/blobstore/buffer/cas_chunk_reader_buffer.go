@@ -68,6 +68,10 @@ func (b *casChunkReaderBuffer) CloneStream() (Buffer, Buffer) {
 	return newCASClonedBuffer(b, b.digest, b.source).CloneStream()
 }
 
+func (b *casChunkReaderBuffer) WithTask(task func() error) Buffer {
+	return newCASBufferWithBackgroundTask(b, b.digest, b.source, task)
+}
+
 func (b *casChunkReaderBuffer) Discard() {
 	b.r.Close()
 }
