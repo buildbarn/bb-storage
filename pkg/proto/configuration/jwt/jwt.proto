@@ -58,4 +58,24 @@ message AuthorizationHeaderParserConfiguration {
   // being that validation failures will cause gRPC requests to fail
   // with code UNAUTHENTICATED; not PERMISSION_DENIED.
   string claims_validation_jmespath_expression = 5;
+
+  // JMESPath expression for converting claims to metadata. The
+  // resulting metadata can be used for purposes such as authorization.
+  //
+  // The following expression would cause all of the claims in the JSON
+  // Web Token's payload to become the metadata:
+  //
+  //     @
+  //
+  // The following expression demonstrates how given a JSON Web Token
+  // consisting of "given_name" and "family_name" fields can be
+  // transformed to metadata with a single "name" field.
+  //
+  //     {"name": join(' ', [given_name, family_name])}
+  //
+  // The following expression can be used if no metadata needs to be
+  // extracted from the token:
+  //
+  //     `null`
+  string metadata_extraction_jmespath_expression = 6;
 }

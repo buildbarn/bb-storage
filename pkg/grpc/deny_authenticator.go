@@ -21,6 +21,6 @@ func NewDenyAuthenticator(message string) Authenticator {
 	}
 }
 
-func (a denyAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
+func (a denyAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
 	return nil, a.err
 }

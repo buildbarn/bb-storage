@@ -4,6 +4,7 @@ package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -139,6 +140,11 @@ message ServerConfiguration {
   buildbarn.configuration.tls.ServerConfiguration tls = 3;
 
   // Policy for authenticating clients against the gRPC server.
+  //
+  // Each authentication policy yields a JSON-like authentication
+  // metadata object that is passed on to the authorization layer. The
+  // authentication metadata may be used to store the username or sets
+  // of permissions.
   AuthenticationPolicy authentication_policy = 4;
 
   // Maximum size of a Protobuf message that may be received by this
@@ -180,10 +186,15 @@ message ServerKeepaliveEnforcementPolicy {
 message AuthenticationPolicy {
   oneof policy {
     // Allow all incoming requests.
-    google.protobuf.Empty allow = 1;
+    //
+    // The value of this field is used as authentication metadata in
+    // literal form.
+    google.protobuf.Value allow = 1;
 
     // Allow incoming requests if one of multiple authentication
     // policies allows it, similar to Python's any() function.
+    //
+    // The authentication metadata of the first matching policy is used.
     AnyAuthenticationPolicy any = 2;
 
     // Deny all incoming requests, returning a fixed error message back
@@ -209,4 +220,10 @@ message TLSClientCertificateAuthenticationPolicy {
   // PEM data for the certificate authorities that should be used to
   // validate the remote TLS client.
   string client_certificate_authorities = 1;
+
+  // Authentication metadata to use.
+  //
+  // TODO: Provide a way to transform fields in the client certificate
+  // to authentication metadata.
+  google.protobuf.Value metadata = 2;
 }

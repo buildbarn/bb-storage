@@ -62,11 +62,16 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to compile claims validation JMESPath expression")
 	}
+	metadataExtractor, err := jmespath.Compile(config.MetadataExtractionJmespathExpression)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
+	}
 
 	return NewAuthorizationHeaderParser(
 		clock.SystemClock,
 		signatureValidator,
 		claimsValidator,
+		metadataExtractor,
 		int(config.MaximumCacheSize),
 		eviction.NewMetricsSet(evictionSet, "AuthorizationHeaderParser")), nil
 }

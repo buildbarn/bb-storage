@@ -19,6 +19,7 @@ var jwtHeaderPattern = regexp.MustCompile("^Bearer\\s+(([-_a-zA-Z0-9]+)\\.([-_a-
 type response struct {
 	notBefore      time.Time
 	expirationTime time.Time
+	metadata       interface{}
 }
 
 func (r *response) isAuthenticated(now time.Time) bool {
@@ -45,6 +46,7 @@ type AuthorizationHeaderParser struct {
 	clock              clock.Clock
 	signatureValidator SignatureValidator
 	claimsValidator    *jmespath.JMESPath
+	metadataExtractor  *jmespath.JMESPath
 	maximumCacheSize   int
 
 	lock                       sync.Mutex
@@ -54,11 +56,12 @@ type AuthorizationHeaderParser struct {
 
 // NewAuthorizationHeaderParser creates a new AuthorizationHeaderParser
 // that does not have any cached tokens.
-func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set) *AuthorizationHeaderParser {
+func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator, metadataExtractor *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set) *AuthorizationHeaderParser {
 	return &AuthorizationHeaderParser{
 		clock:              clock,
 		signatureValidator: signatureValidator,
 		claimsValidator:    claimsValidator,
+		metadataExtractor:  metadataExtractor,
 		maximumCacheSize:   maximumCacheSize,
 
 		cachedAuthorizationHeaders: map[string]response{},
@@ -114,6 +117,12 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 		return unauthenticated
 	}
 
+	// Convert payload to authentication metadata.
+	metadata, err := a.metadataExtractor.Search(fullPayloadMessage)
+	if err != nil {
+		return unauthenticated
+	}
+
 	// Extract timestamps.
 	payloadMessage := struct {
 		Exp *json.Number `json:"exp"`
@@ -125,6 +134,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	r := response{
 		notBefore:      farHistory,
 		expirationTime: farFuture,
+		metadata:       metadata,
 	}
 	if nbf := payloadMessage.Nbf; nbf != nil {
 		// Extract "nbf" (Not Before) claim.
@@ -149,7 +159,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 // and returned true if one or more headers contain a token whose
 // signature can be validated, and whose "exp" (Expiration Time) and
 // "nbf" (Not Before) claims are in bounds.
-func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) bool {
+func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) (interface{}, bool) {
 	now := a.clock.Now()
 
 	a.lock.Lock()
@@ -162,7 +172,7 @@ func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) 
 		if response, ok := a.cachedAuthorizationHeaders[header]; ok {
 			a.evictionSet.Touch(header)
 			if response.isAuthenticated(now) {
-				return true
+				return response.metadata, true
 			}
 		} else {
 			headersToCheck = append(headersToCheck, header)
@@ -183,8 +193,8 @@ func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) 
 		}
 		a.cachedAuthorizationHeaders[header] = response
 		if response.isAuthenticated(now) {
-			return true
+			return response.metadata, true
 		}
 	}
-	return false
+	return nil, false
 }

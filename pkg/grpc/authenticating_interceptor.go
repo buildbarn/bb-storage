@@ -3,7 +3,9 @@ package grpc
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+
 	"google.golang.org/grpc"
 )
 
@@ -12,11 +14,11 @@ import (
 // This may be used to enable authentication support on a gRPC server.
 func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		newCtx, err := a.Authenticate(ctx)
+		metadata, err := a.Authenticate(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return handler(newCtx, req)
+		return handler(context.WithValue(ctx, auth.AuthenticationMetadata{}, metadata), req)
 	}
 }
 
@@ -26,12 +28,13 @@ func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerIntercep
 // gRPC server.
 func NewAuthenticatingStreamInterceptor(a Authenticator) grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		newCtx, err := a.Authenticate(ss.Context())
+		ctx := ss.Context()
+		metadata, err := a.Authenticate(ctx)
 		if err != nil {
 			return err
 		}
 		wrappedServerStream := grpc_middleware.WrapServerStream(ss)
-		wrappedServerStream.WrappedContext = newCtx
+		wrappedServerStream.WrappedContext = context.WithValue(ctx, auth.AuthenticationMetadata{}, metadata)
 
 		return handler(srv, wrappedServerStream)
 	}

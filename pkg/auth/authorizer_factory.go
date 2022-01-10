@@ -3,6 +3,8 @@ package auth
 import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth"
+	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,6 +48,12 @@ func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.Authori
 			trie.Set(instanceNamePrefix, 0)
 		}
 		return NewStaticAuthorizer(trie.ContainsPrefix), nil
+	case *pb.AuthorizerConfiguration_JmespathExpression:
+		expression, err := jmespath.Compile(policy.JmespathExpression)
+		if err != nil {
+			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to compile JMESPath expression")
+		}
+		return NewJMESPathExpressionAuthorizer(expression), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Unknown authorizer configuration")
 	}

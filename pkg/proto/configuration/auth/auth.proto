@@ -19,6 +19,23 @@ message AuthorizerConfiguration {
 
     // Deny all requests.
     google.protobuf.Empty deny = 3;
+
+    // Allow requests if a JMESPath expression returns true. The
+    // JMESPath expression is called against a JSON object with the
+    // following structure:
+    //
+    //     {
+    //         "authenticationMetadata": value,
+    //         "instanceName": string
+    //     }
+    //
+    // "authenticationMetadata" corresponds to the metadata that was
+    // obtained by the authentication process (See grpc.proto's
+    // ServerConfiguration.authentication_policy).
+    //
+    // "instanceName" corresponds to the REv2 instance name that was
+    // part of the client request.
+    string jmespath_expression = 4;
   }
 }
 

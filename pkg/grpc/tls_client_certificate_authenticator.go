@@ -16,20 +16,22 @@ import (
 type tlsClientCertificateAuthenticator struct {
 	clientCAs *x509.CertPool
 	clock     clock.Clock
+	metadata  interface{}
 }
 
 // NewTLSClientCertificateAuthenticator creates an Authenticator that
 // only grants access in case the client connected to the gRPC server
 // using a TLS client certificate that can be validated against the
 // chain of CAs used by the server.
-func NewTLSClientCertificateAuthenticator(clientCAs *x509.CertPool, clock clock.Clock) Authenticator {
+func NewTLSClientCertificateAuthenticator(clientCAs *x509.CertPool, clock clock.Clock, metadata interface{}) Authenticator {
 	return &tlsClientCertificateAuthenticator{
 		clientCAs: clientCAs,
 		clock:     clock,
+		metadata:  metadata,
 	}
 }
 
-func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
+func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
 	// Extract client certificate chain from the connection.
 	p, ok := peer.FromContext(ctx)
 	if !ok {
@@ -58,5 +60,5 @@ func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) (c
 	if _, err := certs[0].Verify(opts); err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot validate TLS client certificate")
 	}
-	return ctx, nil
+	return a.metadata, nil
 }

@@ -3,8 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "auth",
     srcs = [
+        "authentication_metadata.go",
         "authorizer.go",
         "authorizer_factory.go",
+        "jmespath_expression_authorizer.go",
         "static_authorizer.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/auth",
@@ -12,6 +14,8 @@ go_library(
     deps = [
         "//pkg/digest",
         "//pkg/proto/configuration/auth",
+        "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",
@@ -20,11 +24,15 @@ go_library(
 
 go_test(
     name = "auth_test",
-    srcs = ["static_authorizer_test.go"],
+    srcs = [
+        "jmespath_expression_authorizer_test.go",
+        "static_authorizer_test.go",
+    ],
     deps = [
         ":auth",
         "//pkg/digest",
         "//pkg/testutil",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

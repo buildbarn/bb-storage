@@ -24,16 +24,21 @@ func NewAnyAuthenticator(authenticators []Authenticator) Authenticator {
 	}
 }
 
-func (a *anyAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
+func (a *anyAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
 	var unauthenticatedErrs []string
+	observedUnauthenticatedErrs := map[string]struct{}{}
 	var otherErr error
 	for _, authenticator := range a.authenticators {
-		newCtx, err := authenticator.Authenticate(ctx)
+		metadata, err := authenticator.Authenticate(ctx)
 		if err == nil {
-			return newCtx, nil
+			return metadata, nil
 		}
 		if s := status.Convert(err); s.Code() == codes.Unauthenticated {
-			unauthenticatedErrs = append(unauthenticatedErrs, s.Message())
+			message := s.Message()
+			if _, ok := observedUnauthenticatedErrs[message]; !ok {
+				unauthenticatedErrs = append(unauthenticatedErrs, message)
+				observedUnauthenticatedErrs[message] = struct{}{}
+			}
 		} else if otherErr == nil {
 			otherErr = err
 		}

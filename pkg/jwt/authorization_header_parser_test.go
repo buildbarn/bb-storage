@@ -21,13 +21,15 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock,
 		signatureValidator,
 		jmespath.MustCompile("forbiddenField == null"),
+		jmespath.MustCompile("@"),
 		1000,
 		eviction.NewLRUSet())
 
 	t.Run("NoAuthorizationHeadersProvided", func(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635747849, 0))
 
-		require.False(t, authenticator.ParseAuthorizationHeaders(nil))
+		_, ok := authenticator.ParseAuthorizationHeaders(nil)
+		require.False(t, ok)
 	})
 
 	t.Run("InvalidSignature", func(t *testing.T) {
@@ -43,9 +45,10 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			},
 		).Return(false)
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok := authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-		}))
+		})
+		require.False(t, ok)
 	})
 
 	t.Run("WithoutTimestamps", func(t *testing.T) {
@@ -65,16 +68,28 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			},
 		).Return(true)
 
-		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
+		metadata, ok := authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
-		}))
+		})
+		require.True(t, ok)
+		require.Equal(t, map[string]interface{}{
+			"sub":  "1234567890",
+			"name": "John Doe",
+			"iat":  1516239022.0,
+		}, metadata)
 
 		// Successive calls for the same token should have cache hits.
 		clock.EXPECT().Now().Return(time.Unix(1635781701, 0))
 
-		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
+		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
-		}))
+		})
+		require.True(t, ok)
+		require.Equal(t, map[string]interface{}{
+			"sub":  "1234567890",
+			"name": "John Doe",
+			"iat":  1516239022.0,
+		}, metadata)
 	})
 
 	t.Run("WithTimestamps", func(t *testing.T) {
@@ -92,54 +107,79 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			},
 		).Return(true)
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok := authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.False(t, ok)
 
 		// Successive calls for the same token should be cached.
 		clock.EXPECT().Now().Return(time.Unix(1635781779, 0))
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.False(t, ok)
 
 		// Retry the same request as before, but now let the
 		// time be in bounds.
 		clock.EXPECT().Now().Return(time.Unix(1635781780, 0))
 
-		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
+		metadata, ok := authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.True(t, ok)
+		require.Equal(t, map[string]interface{}{
+			"sub":  "1234567890",
+			"name": "John Doe",
+			"nbf":  1635781780.0,
+			"exp":  1635781792.0,
+		}, metadata)
 
 		// Future calls that occur before the expiration time
 		// should have cache hits.
 		clock.EXPECT().Now().Return(time.Unix(1635781786, 0))
 
-		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
+		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.True(t, ok)
+		require.Equal(t, map[string]interface{}{
+			"sub":  "1234567890",
+			"name": "John Doe",
+			"nbf":  1635781780.0,
+			"exp":  1635781792.0,
+		}, metadata)
 
 		clock.EXPECT().Now().Return(time.Unix(1635781791, 0))
 
-		require.True(t, authenticator.ParseAuthorizationHeaders([]string{
+		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.True(t, ok)
+		require.Equal(t, map[string]interface{}{
+			"sub":  "1234567890",
+			"name": "John Doe",
+			"nbf":  1635781780.0,
+			"exp":  1635781792.0,
+		}, metadata)
 
 		// If the time exceeds the original expiration time, the
 		// token should no longer be valid.
 		clock.EXPECT().Now().Return(time.Unix(1635781792, 0))
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.False(t, ok)
 
 		// It is valid to cache the fact that a token has
 		// expired, as it can never become valid again.
 		clock.EXPECT().Now().Return(time.Unix(1635781793, 0))
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok = authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
-		}))
+		})
+		require.False(t, ok)
 	})
 
 	t.Run("ClaimValidation", func(t *testing.T) {
@@ -158,8 +198,9 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			},
 		).Return(true)
 
-		require.False(t, authenticator.ParseAuthorizationHeaders([]string{
+		_, ok := authenticator.ParseAuthorizationHeaders([]string{
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ.8Vy8DEdxLYhCiuNSMnfut4c7UJmHjHQWencNhePnKH4",
-		}))
+		})
+		require.False(t, ok)
 	})
 }

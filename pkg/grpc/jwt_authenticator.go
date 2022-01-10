@@ -23,13 +23,14 @@ func NewJWTAuthenticator(authorizationHeaderParser *jwt.AuthorizationHeaderParse
 	}
 }
 
-func (a *jwtAuthenticator) Authenticate(ctx context.Context) (context.Context, error) {
-	metadata, ok := metadata.FromIncomingContext(ctx)
+func (a *jwtAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
+	grpcMetadata, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "Not called from within an incoming gRPC context")
 	}
-	if !a.authorizationHeaderParser.ParseAuthorizationHeaders(metadata.Get("authorization")) {
+	metadata, ok := a.authorizationHeaderParser.ParseAuthorizationHeaders(grpcMetadata.Get("authorization"))
+	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "No valid authorization header containing a bearer token provided")
 	}
-	return ctx, nil
+	return metadata, nil
 }

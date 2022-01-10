@@ -17,7 +17,7 @@ import (
 // Implementations may grant access based on TLS connection state,
 // provided headers, source IP address ranges, etc. etc. etc.
 type Authenticator interface {
-	Authenticate(ctx context.Context) (context.Context, error)
+	Authenticate(ctx context.Context) (interface{}, error)
 }
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
@@ -28,7 +28,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	}
 	switch policyKind := policy.Policy.(type) {
 	case *configuration.AuthenticationPolicy_Allow:
-		return AllowAuthenticator, nil
+		return NewAllowAuthenticator(policyKind.Allow.AsInterface()), nil
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
 		for _, childConfiguration := range policyKind.Any.Policies {
@@ -48,7 +48,9 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		}
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
-			clock.SystemClock), nil
+			clock.SystemClock,
+			policyKind.TlsClientCertificate.Metadata.AsInterface(),
+		), nil
 	case *configuration.AuthenticationPolicy_Jwt:
 		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)
 		if err != nil {

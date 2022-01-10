@@ -9,7 +9,9 @@ import (
 )
 
 func TestAllowAuthenticator(t *testing.T) {
-	newCtx, err := bb_grpc.AllowAuthenticator.Authenticate(context.Background())
+	expectedMetadata := map[string]interface{}{"username": "John Doe"}
+	a := bb_grpc.NewAllowAuthenticator(expectedMetadata)
+	actualMetadata, err := a.Authenticate(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, context.Background(), newCtx)
+	require.Equal(t, expectedMetadata, actualMetadata)
 }

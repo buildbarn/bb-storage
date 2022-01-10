@@ -93,7 +93,8 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)
 	clock := mock.NewMockClock(ctrl)
-	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock)
+	expectedMetadata := map[string]interface{}{"username": "John Doe"}
+	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, expectedMetadata)
 
 	t.Run("NoGRPC", func(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot
@@ -176,7 +177,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// Connection with at least one verified chain.
 		clock.EXPECT().Now().Return(time.Unix(1600000000, 0))
-		_, err := authenticator.Authenticate(
+		actualMetadata, err := authenticator.Authenticate(
 			peer.NewContext(
 				ctx,
 				&peer.Peer{
@@ -189,5 +190,6 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 					},
 				}))
 		require.NoError(t, err)
+		require.Equal(t, expectedMetadata, actualMetadata)
 	})
 }
