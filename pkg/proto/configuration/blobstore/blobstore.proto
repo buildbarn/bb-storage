@@ -144,6 +144,12 @@ message BlobAccessConfiguration {
     // the LocalBlobAccessConfiguration.hierarchical_instance_names
     // option is used instead.
     BlobAccessConfiguration hierarchical_instance_names = 21;
+
+    // Hide ActionResult messages in the Action Cache (AC) where the
+    // 'worker_completed_timestamp' field in the ExecutedActionMetadata
+    // is too far in the past. This decorator can be used to ensure that
+    // all targets are rebuilt periodically.
+    ActionResultExpiringBlobAccessConfiguration action_result_expiring = 22;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -794,4 +800,22 @@ message DemultiplexedBlobAccessConfiguration {
   // Add a prefix to the instance name of all requests forwarded to this
   // backend.
   string add_instance_name_prefix = 2;
+}
+
+message ActionResultExpiringBlobAccessConfiguration {
+  // The backend to which requests are forwarded.
+  BlobAccessConfiguration backend = 1;
+
+  // The minimum amount of time to pass before an ActionResult expires.
+  google.protobuf.Duration minimum_validity = 2;
+
+  // Maximum amount of jitter to be added to the expiration time. This
+  // ensures that actions that were built at around the same time don't
+  // also expire at around the same time, therefore amortizing the rate
+  // at which actions are rebuilt.
+  //
+  // The process for computing the jitter is deterministic, meaning that
+  // subsequent requests for the same ActionResult still yield the same
+  // expiration time.
+  google.protobuf.Duration maximum_validity_jitter = 3;
 }

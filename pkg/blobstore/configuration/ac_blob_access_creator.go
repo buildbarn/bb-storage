@@ -4,9 +4,13 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"google.golang.org/grpc/codes"
 )
 
 type acBlobAccessCreator struct {
@@ -38,6 +42,28 @@ func (bac *acBlobAccessCreator) GetStorageTypeName() string {
 
 func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
+	case *pb.BlobAccessConfiguration_ActionResultExpiring:
+		base, err := NewNestedBlobAccess(backend.ActionResultExpiring.Backend, bac)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		minimumValidity := backend.ActionResultExpiring.MinimumValidity
+		if err := minimumValidity.CheckValid(); err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum validity")
+		}
+		maximumValidityJitter := backend.ActionResultExpiring.MaximumValidityJitter
+		if err := maximumValidityJitter.CheckValid(); err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum validity jitter")
+		}
+		return BlobAccessInfo{
+			BlobAccess: blobstore.NewActionResultExpiringBlobAccess(
+				base.BlobAccess,
+				clock.SystemClock,
+				bac.maximumMessageSizeBytes,
+				minimumValidity.AsDuration(),
+				maximumValidityJitter.AsDuration()),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
 		base, err := NewNestedBlobAccess(backend.CompletenessChecking, bac)
 		if err != nil {
