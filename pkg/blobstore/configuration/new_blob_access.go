@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
@@ -524,6 +525,30 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				}),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "demultiplexing", nil
+	case *pb.BlobAccessConfiguration_ReadCanarying:
+		config := backend.ReadCanarying
+		source, err := NewNestedBlobAccess(config.Source, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		replica, err := NewNestedBlobAccess(config.Replica, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		maximumCacheDuration := config.MaximumCacheDuration
+		if err := maximumCacheDuration.CheckValid(); err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum cache duration")
+		}
+		return BlobAccessInfo{
+			BlobAccess: blobstore.NewReadCanaryingBlobAccess(
+				source.BlobAccess,
+				replica.BlobAccess,
+				clock.SystemClock,
+				eviction.NewMetricsSet(eviction.NewLRUSet(), "ReadCanaryingBlobAccess"),
+				int(config.MaximumCacheSize),
+				maximumCacheDuration.AsDuration()),
+			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),
+		}, "read_canarying", nil
 	}
 	return creator.NewCustomBlobAccess(configuration)
 }

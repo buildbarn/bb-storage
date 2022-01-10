@@ -86,6 +86,49 @@ func TestSetRemoveEmptyBlob(t *testing.T) {
 			RemoveEmptyBlob())
 }
 
+func TestPartitionByInstanceName(t *testing.T) {
+	require.Empty(t, digest.EmptySet.PartitionByInstanceName())
+
+	singleInstanceName := digest.NewSetBuilder().
+		Add(digest.MustNewDigest("foo", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 1)).
+		Add(digest.MustNewDigest("foo", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 2)).
+		Add(digest.MustNewDigest("foo", "cccccccccccccccccccccccccccccccc", 3)).
+		Add(digest.MustNewDigest("foo", "dddddddddddddddddddddddddddddddd", 4)).
+		Build()
+	require.Equal(t, []digest.Set{singleInstanceName}, singleInstanceName.PartitionByInstanceName())
+
+	require.Equal(
+		t, []digest.Set{
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("a", "11111111111111111111111111111111", 1)).
+				Add(digest.MustNewDigest("a", "22222222222222222222222222222222", 2)).
+				Build(),
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("b", "33333333333333333333333333333333", 3)).
+				Add(digest.MustNewDigest("b", "44444444444444444444444444444444", 4)).
+				Build(),
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("c", "55555555555555555555555555555555", 5)).
+				Add(digest.MustNewDigest("c", "66666666666666666666666666666666", 6)).
+				Build(),
+			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("d", "77777777777777777777777777777777", 7)).
+				Add(digest.MustNewDigest("d", "88888888888888888888888888888888", 8)).
+				Build(),
+		},
+		digest.NewSetBuilder().
+			Add(digest.MustNewDigest("a", "11111111111111111111111111111111", 1)).
+			Add(digest.MustNewDigest("a", "22222222222222222222222222222222", 2)).
+			Add(digest.MustNewDigest("b", "33333333333333333333333333333333", 3)).
+			Add(digest.MustNewDigest("b", "44444444444444444444444444444444", 4)).
+			Add(digest.MustNewDigest("c", "55555555555555555555555555555555", 5)).
+			Add(digest.MustNewDigest("c", "66666666666666666666666666666666", 6)).
+			Add(digest.MustNewDigest("d", "77777777777777777777777777777777", 7)).
+			Add(digest.MustNewDigest("d", "88888888888888888888888888888888", 8)).
+			Build().
+			PartitionByInstanceName())
+}
+
 func TestGetDifferenceAndIntersection(t *testing.T) {
 	onlyA, both, onlyB := digest.GetDifferenceAndIntersection(
 		digest.NewSetBuilder().

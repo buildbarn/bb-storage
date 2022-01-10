@@ -60,6 +60,59 @@ func (s Set) RemoveEmptyBlob() Set {
 	return s
 }
 
+// PartitionByInstanceName partitions the elements stored in a set into
+// a list of sets, each containing elements of a single REv2 instance
+// name.
+//
+// All resulting sets are guaranteed to be non-empty. The order in which
+// they are returned corresponds with the order in which their first
+// element was stored in the original set.
+func (s Set) PartitionByInstanceName() []Set {
+	if len(s.digests) == 0 {
+		return nil
+	}
+
+	firstInstanceName := s.digests[0].GetInstanceName()
+	for i := 1; i < len(s.digests); i++ {
+		if secondInstanceName := s.digests[i].GetInstanceName(); firstInstanceName != secondInstanceName {
+			// Elements in the set use at least two distinct
+			// REv2 instance names.
+			//
+			// Split up the entries processed thus far into
+			// two sets. Set capacities to the length, so
+			// that append() operations later on leave the
+			// original set intact.
+			digestsByInstanceName := []Set{
+				{digests: s.digests[:i:i]},
+				{digests: s.digests[i : i+1 : i+1]},
+			}
+			observedInstanceNames := map[InstanceName]int{
+				firstInstanceName:  0,
+				secondInstanceName: 1,
+			}
+			for j := i + 1; j < len(s.digests); j++ {
+				digest := s.digests[j]
+				instanceName := digest.GetInstanceName()
+				if index, ok := observedInstanceNames[instanceName]; ok {
+					digestsByInstanceName[index].digests = append(digestsByInstanceName[index].digests, digest)
+				} else {
+					// Elements in the set use three
+					// or more REv2 instance names.
+					observedInstanceNames[instanceName] = len(digestsByInstanceName)
+					digestsByInstanceName = append(digestsByInstanceName, Set{
+						digests: s.digests[j : j+1 : j+1],
+					})
+				}
+			}
+			return digestsByInstanceName
+		}
+	}
+
+	// Common case: all elements in the set use the same REv2
+	// instance name. Return the original set without copying it.
+	return []Set{s}
+}
+
 // GetDifferenceAndIntersection partitions the elements stored in sets A
 // and B across three resulting sets: one containing the elements
 // present only in A, one containing the elements present in both A and

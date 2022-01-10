@@ -150,6 +150,20 @@ message BlobAccessConfiguration {
     // is too far in the past. This decorator can be used to ensure that
     // all targets are rebuilt periodically.
     ActionResultExpiringBlobAccessConfiguration action_result_expiring = 22;
+
+    // Send read traffic to a read-only replica, while sending write
+    // traffic to a source of truth. Read traffic may be sent to the
+    // source of truth if the replica is unavailable.
+    //
+    // By default, all requests are sent to the source. For read
+    // requests, this backend periodically sends a single canary request
+    // to the replica. Upon success, all subsequent read requests are
+    // sent to the replica as well. Upon failure, all requests will
+    // continue to go to the source.
+    //
+    // Only infrastructure errors (RPCs failing with INTERNAL,
+    // UNAVAILABLE and UNKNOWN) are considered failures.
+    ReadCanaryingBlobAccessConfiguration read_canarying = 23;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -818,4 +832,27 @@ message ActionResultExpiringBlobAccessConfiguration {
   // subsequent requests for the same ActionResult still yield the same
   // expiration time.
   google.protobuf.Duration maximum_validity_jitter = 3;
+}
+
+message ReadCanaryingBlobAccessConfiguration {
+  // The backend that is the source of truth.
+  BlobAccessConfiguration source = 1;
+
+  // The backend that contains a read-only replica of the source.
+  BlobAccessConfiguration replica = 2;
+
+  // Size of the cache that is used to track the availability of the
+  // replica on a per REv2 instance name basis. This ensures that if the
+  // replica uses features authoriation and demultiplexing based on
+  // instance names, availability is tracked accurately.
+  //
+  // Recommended value: 256
+  int32 maximum_cache_size = 3;
+
+  // The validity duration of cache entries. This controls how much time
+  // may pass without any read traffic before the backend falls back to
+  // the default state.
+  //
+  // Recommended value: 300s
+  google.protobuf.Duration maximum_cache_duration = 4;
 }

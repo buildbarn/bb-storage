@@ -45,3 +45,14 @@ func StatusFromContext(ctx context.Context) error {
 	}
 	return nil
 }
+
+// IsInfrastructureError returns true if an error is caused by a failure
+// of the infrastructure, as opposed to it being caused by a parameter
+// provided by the caller.
+//
+// This function may, for example, be used to determine whether a call
+// should be retried.
+func IsInfrastructureError(err error) bool {
+	code := status.Code(err)
+	return code == codes.Internal || code == codes.Unavailable || code == codes.Unknown
+}

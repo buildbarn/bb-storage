@@ -31,6 +31,7 @@ go_library(
         "//pkg/clock",
         "//pkg/cloud/aws",
         "//pkg/digest",
+        "//pkg/eviction",
         "//pkg/filesystem",
         "//pkg/grpc",
         "//pkg/http",
