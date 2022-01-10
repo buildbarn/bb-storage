@@ -103,6 +103,13 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	var grpcUnaryInterceptors []grpc.UnaryClientInterceptor
 	var grpcStreamInterceptors []grpc.StreamClientInterceptor
 
+	// Optional: gRPC metadata forwarding with reuse.
+	if headers := configuration.GetGrpcForwardAndReuseMetadata(); len(headers) > 0 {
+		interceptor := bb_grpc.NewMetadataForwardingAndReusingInterceptor(headers)
+		grpcUnaryInterceptors = append(grpcUnaryInterceptors, interceptor.InterceptUnaryClient)
+		grpcStreamInterceptors = append(grpcStreamInterceptors, interceptor.InterceptStreamClient)
+	}
+
 	// Install Prometheus gRPC interceptors, only if the metrics
 	// endpoint or Pushgateway is enabled.
 	if configuration.GetDiagnosticsHttpServer().GetEnablePrometheus() || configuration.GetPrometheusPushgateway() != nil {

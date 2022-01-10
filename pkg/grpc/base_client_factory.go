@@ -120,13 +120,6 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 			NewMetadataAddingStreamClientInterceptor(headerValues))
 	}
 
-	// Optional: metadata forwarding with reuse.
-	if headers := config.ForwardAndReuseMetadata; len(headers) > 0 {
-		interceptor := NewMetadataForwardingAndReusingInterceptor(headers)
-		unaryInterceptors = append(unaryInterceptors, interceptor.InterceptUnaryClient)
-		streamInterceptors = append(streamInterceptors, interceptor.InterceptStreamClient)
-	}
-
 	// Optional: proxying.
 	if proxyURL := config.ProxyUrl; proxyURL != "" {
 		parsedProxyURL, err := url.Parse(proxyURL)

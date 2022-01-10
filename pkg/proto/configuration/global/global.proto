@@ -247,6 +247,19 @@ message Configuration {
   //
   // This option may only be set on POSIX-like systems.
   SetUmaskConfiguration set_umask = 7;
+
+  // List of gRPC metadata headers to forward from gRPC clients to gRPC
+  // servers, and to reuse in successive requests.
+  //
+  // This option is useful when bb_storage is used as a personal proxy.
+  // It allows clients (e.g., Bazel) to inject credentials into
+  // bb_storage, thereby allowing other clients to access backends
+  // without any further authentication.
+  //
+  // NOTE: Using this option in networked and multi-user environments is
+  // strongly discouraged, as it allows users to hijack each other's
+  // credentials.
+  repeated string grpc_forward_and_reuse_metadata = 8;
 }
 
 message DiagnosticsHTTPServerConfiguration {
