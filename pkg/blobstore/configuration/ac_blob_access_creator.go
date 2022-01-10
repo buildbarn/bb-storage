@@ -63,7 +63,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 				minimumValidity.AsDuration(),
 				maximumValidityJitter.AsDuration()),
 			DigestKeyFormat: base.DigestKeyFormat,
-		}, "completeness_checking", nil
+		}, "action_result_expiring", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
 		base, err := NewNestedBlobAccess(backend.CompletenessChecking, bac)
 		if err != nil {
