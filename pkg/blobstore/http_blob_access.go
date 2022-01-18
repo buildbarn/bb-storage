@@ -32,6 +32,7 @@ func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFacto
 		address:           address,
 		prefix:            prefix,
 		readBufferFactory: readBufferFactory,
+		httpClient:        httpClient,
 	}
 }
 
