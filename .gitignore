@@ -1,4 +1,5 @@
 /bazel-*
+/node_modules
 
 # Emacs
 *~
