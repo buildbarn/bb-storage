@@ -5,7 +5,7 @@
          "steps": [
             {
                "name": "Installing Bazel",
-               "run": "curl -L https://github.com/bazelbuild/bazel/releases/download/4.2.1/bazel-4.2.1-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
+               "run": "curl -L https://github.com/bazelbuild/bazel/releases/download/5.0.0/bazel-5.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
             },
             {
                "name": "Check out source code",
@@ -33,7 +33,7 @@
             },
             {
                "name": "Clang format",
-               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +"
+               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +"
             },
             {
                "name": "GitHub workflows",
