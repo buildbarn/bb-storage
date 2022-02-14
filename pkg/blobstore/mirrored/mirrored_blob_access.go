@@ -12,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -87,62 +88,73 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	// Store object in both storage backends.
 	b1, b2 := b.CloneStream()
-	errAChan := make(chan error, 1)
-	go func() {
-		errAChan <- ba.backendA.Put(ctx, digest, b1)
-	}()
-	errB := ba.backendB.Put(ctx, digest, b2)
-	if errA := <-errAChan; errA != nil {
-		return util.StatusWrap(errA, "Backend A")
-	}
-	if errB != nil {
-		return util.StatusWrap(errB, "Backend B")
-	}
-	return nil
-}
-
-type findMissingResults struct {
-	missing digest.Set
-	err     error
-}
-
-func callFindMissing(ctx context.Context, blobAccess blobstore.BlobAccess, digests digest.Set) findMissingResults {
-	missing, err := blobAccess.FindMissing(ctx, digests)
-	return findMissingResults{missing: missing, err: err}
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		if err := ba.backendA.Put(groupCtx, digest, b1); err != nil {
+			return util.StatusWrap(err, "Backend A")
+		}
+		return nil
+	})
+	group.Go(func() error {
+		if err := ba.backendB.Put(groupCtx, digest, b2); err != nil {
+			return util.StatusWrap(err, "Backend B")
+		}
+		return nil
+	})
+	return group.Wait()
 }
 
 func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Call FindMissing() on both backends.
-	resultsAChan := make(chan findMissingResults, 1)
-	go func() {
-		resultsAChan <- callFindMissing(ctx, ba.backendA, digests)
-	}()
-	resultsB := callFindMissing(ctx, ba.backendB, digests)
-	resultsA := <-resultsAChan
-	if resultsA.err != nil {
-		return digest.EmptySet, util.StatusWrap(resultsA.err, "Backend A")
-	}
-	if resultsB.err != nil {
-		return digest.EmptySet, util.StatusWrap(resultsB.err, "Backend B")
+	findMissingGroup, findMissingCtx := errgroup.WithContext(ctx)
+	var resultsA, resultsB digest.Set
+	findMissingGroup.Go(func() error {
+		var err error
+		resultsA, err = ba.backendA.FindMissing(findMissingCtx, digests)
+		if err != nil {
+			return util.StatusWrap(err, "Backend A")
+		}
+		return nil
+	})
+	findMissingGroup.Go(func() error {
+		var err error
+		resultsB, err = ba.backendB.FindMissing(findMissingCtx, digests)
+		if err != nil {
+			return util.StatusWrap(err, "Backend B")
+		}
+		return nil
+	})
+	if err := findMissingGroup.Wait(); err != nil {
+		return digest.EmptySet, err
 	}
 
 	// Determine inconsistencies between both backends.
-	missingFromA, missingFromBoth, missingFromB := digest.GetDifferenceAndIntersection(resultsA.missing, resultsB.missing)
+	missingFromA, missingFromBoth, missingFromB := digest.GetDifferenceAndIntersection(resultsA, resultsB)
 	mirroredBlobAccessFindMissingSynchronizationsFromAToB.Observe(float64(missingFromB.Length()))
 	mirroredBlobAccessFindMissingSynchronizationsFromBToA.Observe(float64(missingFromA.Length()))
 
 	// Exchange objects back and forth.
-	errAToBChan := make(chan error, 1)
-	go func() {
-		errAToBChan <- ba.replicatorAToB.ReplicateMultiple(ctx, missingFromB)
-	}()
-	errBToA := ba.replicatorBToA.ReplicateMultiple(ctx, missingFromA)
-	errAToB := <-errAToBChan
-	if errAToB != nil {
-		return digest.EmptySet, util.StatusWrap(errAToB, "Failed to synchronize from backend A to backend B")
-	}
-	if errBToA != nil {
-		return digest.EmptySet, util.StatusWrap(errBToA, "Failed to synchronize from backend B to backend A")
+	replicateGroup, replicateCtx := errgroup.WithContext(ctx)
+	replicateGroup.Go(func() error {
+		if err := ba.replicatorAToB.ReplicateMultiple(replicateCtx, missingFromB); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return util.StatusWrapWithCode(err, codes.Internal, "Backend A returned inconsistent results while synchronizing")
+			}
+			return util.StatusWrap(err, "Failed to synchronize from backend A to backend B")
+		}
+		return nil
+	})
+	replicateGroup.Go(func() error {
+		if err := ba.replicatorBToA.ReplicateMultiple(replicateCtx, missingFromA); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return util.StatusWrapWithCode(err, codes.Internal, "Backend B returned inconsistent results while synchronizing")
+			}
+			return util.StatusWrap(err, "Failed to synchronize from backend B to backend A")
+		}
+		return nil
+	})
+	if err := replicateGroup.Wait(); err != nil {
+		return digest.EmptySet, err
 	}
 	return missingFromBoth, nil
 }

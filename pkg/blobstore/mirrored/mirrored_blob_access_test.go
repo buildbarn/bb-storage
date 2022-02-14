@@ -172,13 +172,13 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// Listings of both backends should be requested.
-		backendA.EXPECT().FindMissing(ctx, allDigests).Return(missingFromA, nil)
-		backendB.EXPECT().FindMissing(ctx, allDigests).Return(missingFromB, nil)
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
 
 		// Blobs missing in one backend, but present in the
 		// other should be exchanged.
-		replicatorAToB.EXPECT().ReplicateMultiple(ctx, onlyOnA).Return(nil)
-		replicatorBToA.EXPECT().ReplicateMultiple(ctx, onlyOnB).Return(nil)
+		replicatorAToB.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnA).Return(nil)
+		replicatorBToA.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnB).Return(nil)
 
 		// The intersection of missing blobs in the backends
 		// should be returned.
@@ -188,40 +188,62 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("FindMissingErrorBackendA", func(t *testing.T) {
-		backendA.EXPECT().FindMissing(ctx, allDigests).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
-		backendB.EXPECT().FindMissing(ctx, allDigests).Return(missingFromB, nil)
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		require.Equal(t, status.Error(codes.Internal, "Backend A: Server on fire"), err)
 	})
 
 	t.Run("FindMissingErrorBackendB", func(t *testing.T) {
-		backendA.EXPECT().FindMissing(ctx, allDigests).Return(missingFromA, nil)
-		backendB.EXPECT().FindMissing(ctx, allDigests).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		require.Equal(t, status.Error(codes.Internal, "Backend B: Server on fire"), err)
 	})
 
 	t.Run("ReplicateErrorAToB", func(t *testing.T) {
-		backendA.EXPECT().FindMissing(ctx, allDigests).Return(missingFromA, nil)
-		backendB.EXPECT().FindMissing(ctx, allDigests).Return(missingFromB, nil)
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
 
-		replicatorAToB.EXPECT().ReplicateMultiple(ctx, onlyOnA).Return(status.Error(codes.Internal, "Server on fire"))
-		replicatorBToA.EXPECT().ReplicateMultiple(ctx, onlyOnB).Return(nil)
+		replicatorAToB.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnA).Return(status.Error(codes.Internal, "Server on fire"))
+		replicatorBToA.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnB).Return(nil)
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend A to backend B: Server on fire"), err)
 	})
 
 	t.Run("ReplicateErrorBToA", func(t *testing.T) {
-		backendA.EXPECT().FindMissing(ctx, allDigests).Return(missingFromA, nil)
-		backendB.EXPECT().FindMissing(ctx, allDigests).Return(missingFromB, nil)
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
 
-		replicatorAToB.EXPECT().ReplicateMultiple(ctx, onlyOnA).Return(nil)
-		replicatorBToA.EXPECT().ReplicateMultiple(ctx, onlyOnB).Return(status.Error(codes.Internal, "Server on fire"))
+		replicatorAToB.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnA).Return(nil)
+		replicatorBToA.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnB).Return(status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend B to backend A: Server on fire"), err)
+	})
+
+	t.Run("InconsistentBackendA", func(t *testing.T) {
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
+
+		replicatorAToB.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnA).Return(status.Error(codes.NotFound, "Object e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 not found"))
+		replicatorBToA.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnB)
+
+		_, err := blobAccess.FindMissing(ctx, allDigests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend A returned inconsistent results while synchronizing: Object e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 not found"), err)
+	})
+
+	t.Run("InconsistentBackendB", func(t *testing.T) {
+		backendA.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromA, nil)
+		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
+
+		replicatorAToB.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnA)
+		replicatorBToA.EXPECT().ReplicateMultiple(gomock.Any(), onlyOnB).Return(status.Error(codes.NotFound, "Object 522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2 not found"))
+
+		_, err := blobAccess.FindMissing(ctx, allDigests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend B returned inconsistent results while synchronizing: Object 522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2 not found"), err)
 	})
 }

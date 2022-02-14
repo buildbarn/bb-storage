@@ -5,6 +5,9 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type sizeDistinguishingBlobAccess struct {
@@ -42,16 +45,6 @@ func (ba *sizeDistinguishingBlobAccess) Put(ctx context.Context, digest digest.D
 	return ba.largeBlobAccess.Put(ctx, digest, b)
 }
 
-type findMissingResults struct {
-	missing digest.Set
-	err     error
-}
-
-func callFindMissing(ctx context.Context, blobAccess BlobAccess, digests digest.Set) findMissingResults {
-	missing, err := blobAccess.FindMissing(ctx, digests)
-	return findMissingResults{missing: missing, err: err}
-}
-
 func (ba *sizeDistinguishingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Split up digests by size.
 	smallDigests := digest.NewSetBuilder()
@@ -65,19 +58,28 @@ func (ba *sizeDistinguishingBlobAccess) FindMissing(ctx context.Context, digests
 	}
 
 	// Forward FindMissing() to both implementations.
-	smallResultsChan := make(chan findMissingResults, 1)
-	go func() {
-		smallResultsChan <- callFindMissing(ctx, ba.smallBlobAccess, smallDigests.Build())
-	}()
-	largeResults := callFindMissing(ctx, ba.largeBlobAccess, largeDigests.Build())
-	smallResults := <-smallResultsChan
+	group, groupCtx := errgroup.WithContext(ctx)
+	var smallResults, largeResults digest.Set
+	group.Go(func() error {
+		var err error
+		smallResults, err = ba.smallBlobAccess.FindMissing(groupCtx, smallDigests.Build())
+		if err != nil {
+			return util.StatusWrap(err, "Small backend")
+		}
+		return nil
+	})
+	group.Go(func() error {
+		var err error
+		largeResults, err = ba.largeBlobAccess.FindMissing(groupCtx, largeDigests.Build())
+		if err != nil {
+			return util.StatusWrap(err, "Large backend")
+		}
+		return nil
+	})
+	if err := group.Wait(); err != nil {
+		return digest.EmptySet, nil
+	}
 
 	// Recombine results.
-	if smallResults.err != nil {
-		return digest.EmptySet, smallResults.err
-	}
-	if largeResults.err != nil {
-		return digest.EmptySet, largeResults.err
-	}
-	return digest.GetUnion([]digest.Set{smallResults.missing, largeResults.missing}), nil
+	return digest.GetUnion([]digest.Set{smallResults, largeResults}), nil
 }
