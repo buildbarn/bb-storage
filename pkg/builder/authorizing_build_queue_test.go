@@ -24,10 +24,28 @@ func TestAuthorizingBuildQueueGetCapabilities(t *testing.T) {
 	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/blobs/world",
+		}).Return(&remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+				ExecEnabled: true,
+			},
+		}, nil)
 		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
 			InstanceName: "hello/blobs/world",
 		})
 		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+	})
+
+	t.Run("NoExecutionCapabilities", func(t *testing.T) {
+		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		}).Return(&remoteexecution.ServerCapabilities{}, nil)
+		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+			InstanceName: "hello/world",
+		})
+		require.NoError(t, err)
+		require.Nil(t, caps.ExecutionCapabilities)
 	})
 
 	t.Run("NotAuthorized", func(t *testing.T) {

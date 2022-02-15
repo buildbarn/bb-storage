@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // NewAuthorizingBuildQueue creates a BuildQueue which authorizes
@@ -29,23 +30,28 @@ type authorizingBuildQueue struct {
 }
 
 func (bq *authorizingBuildQueue) GetCapabilities(ctx context.Context, request *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
-	instanceName, err := digest.NewInstanceName(request.InstanceName)
-	if err != nil {
-		return nil, util.StatusWrapf(err, "Invalid instance name %#v", request.InstanceName)
-	}
-
 	caps, err := bq.backend.GetCapabilities(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 
-	switch authErr := auth.AuthorizeSingleInstanceName(ctx, bq.authorizer, instanceName); status.Code(authErr) {
-	case codes.OK:
-		// Nothing to do.
-	case codes.PermissionDenied:
-		caps.ExecutionCapabilities.ExecEnabled = false
-	default:
-		return nil, authErr
+	if caps.ExecutionCapabilities.GetExecEnabled() {
+		instanceName, err := digest.NewInstanceName(request.InstanceName)
+		if err != nil {
+			return nil, util.StatusWrapf(err, "Invalid instance name %#v", request.InstanceName)
+		}
+		switch authErr := auth.AuthorizeSingleInstanceName(ctx, bq.authorizer, instanceName); status.Code(authErr) {
+		case codes.OK:
+			// Nothing to do.
+		case codes.PermissionDenied:
+			// Clear ExecEnabled flag in response.
+			var capsCopy remoteexecution.ServerCapabilities
+			proto.Merge(&capsCopy, caps)
+			capsCopy.ExecutionCapabilities.ExecEnabled = false
+			return &capsCopy, nil
+		default:
+			return nil, authErr
+		}
 	}
 	return caps, nil
 }
