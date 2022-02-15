@@ -29,7 +29,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
@@ -43,7 +43,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
@@ -60,7 +60,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
@@ -86,12 +86,13 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 }
 
 func TestDemultiplexingBuildQueueExecute(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "hello/blobs/world",
@@ -104,12 +105,13 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "Nonexistent backend",
@@ -123,7 +125,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
@@ -136,6 +138,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			},
 		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "ubuntu1804",
@@ -149,7 +152,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("foo/ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("foo/ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("foo"),
 			digest.MustNewInstanceName("rhel7"),
@@ -169,6 +172,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				return nil
 			})
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 		executeServer.EXPECT().Send(&longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
@@ -191,12 +195,13 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 }
 
 func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "This is an operation name that doesn't contain slash-operations-slash, meaning we can't demultiplex",
@@ -205,12 +210,13 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "Nonexistent backend/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
@@ -220,7 +226,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
@@ -229,6 +235,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "ubuntu1804/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
@@ -238,7 +245,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
@@ -254,6 +261,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 				return nil
 			})
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 		waitExecutionServer.EXPECT().Send(&longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance

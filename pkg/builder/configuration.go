@@ -44,13 +44,13 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 		})
 	}
 
-	return NewDemultiplexingBuildQueue(func(instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error) {
+	return NewDemultiplexingBuildQueue(func(ctx context.Context, instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error) {
 		if idx := buildQueuesTrie.GetLongestPrefix(instanceName); idx >= 0 {
 			// The instance name corresponds to a scheduler
 			// to which we can forward requests.
 			return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
 		}
-		if err := auth.AuthorizeSingleInstanceName(context.Background(), nonExecutableInstanceNameAuthorizer, instanceName); err != nil {
+		if err := auth.AuthorizeSingleInstanceName(ctx, nonExecutableInstanceNameAuthorizer, instanceName); err != nil {
 			return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, util.StatusWrapf(err, "This instance name does not provide remote execution, nor can the caller be authorized to do remote caching")
 		}
 		// The instance name does not correspond to a
