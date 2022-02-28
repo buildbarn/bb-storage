@@ -13,6 +13,7 @@ go_library(
         "//pkg/blobstore/configuration",
         "//pkg/blobstore/grpcservers",
         "//pkg/builder",
+        "//pkg/capabilities",
         "//pkg/global",
         "//pkg/grpc",
         "//pkg/proto/configuration/bb_storage",

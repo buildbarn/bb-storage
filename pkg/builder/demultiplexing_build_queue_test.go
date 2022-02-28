@@ -21,13 +21,6 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
-	t.Run("InvalidInstanceName", func(t *testing.T) {
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/blobs/world",
-		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
-	})
-
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
 		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
@@ -35,9 +28,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "Nonexistent backend",
-		})
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("Nonexistent backend"))
 		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
@@ -48,13 +39,10 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "rhel7",
-		}).Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
+		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "ubuntu1804",
-		})
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
 		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
@@ -65,17 +53,14 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "rhel7",
-		}).Return(&remoteexecution.ServerCapabilities{
-			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunctions: digest.SupportedDigestFunctions,
-			},
-		}, nil)
+		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+			Return(&remoteexecution.ServerCapabilities{
+				CacheCapabilities: &remoteexecution.CacheCapabilities{
+					DigestFunctions: digest.SupportedDigestFunctions,
+				},
+			}, nil)
 
-		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "ubuntu1804",
-		})
+		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{

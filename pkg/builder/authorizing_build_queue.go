@@ -1,16 +1,11 @@
 package builder
 
 import (
-	"context"
-
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 // NewAuthorizingBuildQueue creates a BuildQueue which authorizes
@@ -19,41 +14,18 @@ import (
 // as their instance name is not known.
 func NewAuthorizingBuildQueue(backend BuildQueue, authorizer auth.Authorizer) BuildQueue {
 	return &authorizingBuildQueue{
+		Provider: capabilities.NewAuthorizingProvider(backend, authorizer),
+
 		backend:    backend,
 		authorizer: authorizer,
 	}
 }
 
 type authorizingBuildQueue struct {
+	capabilities.Provider
+
 	backend    BuildQueue
 	authorizer auth.Authorizer
-}
-
-func (bq *authorizingBuildQueue) GetCapabilities(ctx context.Context, request *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
-	caps, err := bq.backend.GetCapabilities(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	if caps.ExecutionCapabilities.GetExecEnabled() {
-		instanceName, err := digest.NewInstanceName(request.InstanceName)
-		if err != nil {
-			return nil, util.StatusWrapf(err, "Invalid instance name %#v", request.InstanceName)
-		}
-		switch authErr := auth.AuthorizeSingleInstanceName(ctx, bq.authorizer, instanceName); status.Code(authErr) {
-		case codes.OK:
-			// Nothing to do.
-		case codes.PermissionDenied:
-			// Clear ExecEnabled flag in response.
-			var capsCopy remoteexecution.ServerCapabilities
-			proto.Merge(&capsCopy, caps)
-			capsCopy.ExecutionCapabilities.ExecEnabled = false
-			return &capsCopy, nil
-		default:
-			return nil, authErr
-		}
-	}
-	return caps, nil
 }
 
 func (bq *authorizingBuildQueue) Execute(request *remoteexecution.ExecuteRequest, server remoteexecution.Execution_ExecuteServer) error {

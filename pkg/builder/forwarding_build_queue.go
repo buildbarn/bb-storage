@@ -5,8 +5,11 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type forwardingBuildQueue struct {
@@ -27,8 +30,19 @@ func NewForwardingBuildQueue(client grpc.ClientConnInterface) BuildQueue {
 	}
 }
 
-func (bq *forwardingBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
-	return bq.capabilitiesClient.GetCapabilities(ctx, in)
+func (bq *forwardingBuildQueue) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	serverCapabilities, err := bq.capabilitiesClient.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+		InstanceName: instanceName.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if executionCapabilities := serverCapabilities.ExecutionCapabilities; executionCapabilities != nil {
+		return &remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: executionCapabilities,
+		}, nil
+	}
+	return nil, status.Errorf(codes.InvalidArgument, "Instance name %#v does not support remote execution", instanceName.String())
 }
 
 func forwardOperations(cancel context.CancelFunc, client remoteexecution.Execution_ExecuteClient, server remoteexecution.Execution_ExecuteServer) error {

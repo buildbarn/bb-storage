@@ -17,93 +17,57 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestAuthorizingBuildQueueGetCapabilities(t *testing.T) {
+func TestAuthorizingBuildQueueGetExecutionCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	buildQueue := mock.NewMockBuildQueue(ctrl)
 	authorizer := mock.NewMockAuthorizer(ctrl)
 	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
 
-	t.Run("InvalidInstanceName", func(t *testing.T) {
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/blobs/world",
-		}).Return(&remoteexecution.ServerCapabilities{
-			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				ExecEnabled: true,
-			},
-		}, nil)
-		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/blobs/world",
-		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
-	})
+	instanceName := digest.MustNewInstanceName("hello/world")
 
 	t.Run("NoExecutionCapabilities", func(t *testing.T) {
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		}).Return(&remoteexecution.ServerCapabilities{}, nil)
-		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		})
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{nil})
+		buildQueue.EXPECT().GetCapabilities(ctx, instanceName).Return(&remoteexecution.ServerCapabilities{}, nil)
+
+		caps, err := authorizingBuildQueue.GetCapabilities(ctx, instanceName)
 		require.NoError(t, err)
 		require.Nil(t, caps.ExecutionCapabilities)
 	})
 
 	t.Run("NotAuthorized", func(t *testing.T) {
-		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		}).Return(&remoteexecution.ServerCapabilities{
-			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				ExecEnabled: true,
-			},
-		}, nil)
-		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		})
-		require.NoError(t, err)
-		require.False(t, caps.ExecutionCapabilities.ExecEnabled)
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
+
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, instanceName)
+		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: Permission denied"), err)
 	})
 
 	t.Run("AuthError", func(t *testing.T) {
-		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.Internal, "Something went wrong")})
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		}).Return(&remoteexecution.ServerCapabilities{
-			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				ExecEnabled: true,
-			},
-		}, nil)
-		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		})
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Something went wrong"), err)
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{status.Error(codes.Internal, "Something went wrong")})
+
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, instanceName)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Authorization: Something went wrong"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{nil})
 		wantErr := status.Error(codes.Internal, "Something went wrong")
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		}).Return(nil, wantErr)
-		_, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		})
+		buildQueue.EXPECT().GetCapabilities(ctx, instanceName).Return(nil, wantErr)
+
+		_, err := authorizingBuildQueue.GetCapabilities(ctx, instanceName)
 		testutil.RequireEqualStatus(t, wantErr, err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{nil})
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		}).Return(&remoteexecution.ServerCapabilities{
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{nil})
+		buildQueue.EXPECT().GetCapabilities(ctx, instanceName).Return(&remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
 				ExecEnabled: true,
 			},
 		}, nil)
-		caps, err := authorizingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/world",
-		})
+
+		caps, err := authorizingBuildQueue.GetCapabilities(ctx, instanceName)
 		require.NoError(t, err)
-		require.True(t, caps.ExecutionCapabilities.ExecEnabled)
+		require.True(t, caps.ExecutionCapabilities.GetExecEnabled())
 	})
 }
 
