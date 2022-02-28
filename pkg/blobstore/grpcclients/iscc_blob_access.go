@@ -44,7 +44,7 @@ func (ba *isccBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.
 }
 
 func (ba *isccBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	previousExecutionStats, err := b.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
+	previousExecutionStats, err := b.ToProto(&iscc.PreviousExecutionStats{}, ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
 	}
