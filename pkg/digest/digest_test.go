@@ -379,3 +379,20 @@ func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
 		},
 		digest.MustNewDigest("hello/world/cup", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
 }
+
+func TestRemoveUnsupportedDigestFunctions(t *testing.T) {
+	require.Equal(
+		t,
+		[]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_MD5,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_SHA256,
+		},
+		digest.RemoveUnsupportedDigestFunctions([]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_MD5,
+			remoteexecution.DigestFunction_SHA256,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_VSO,
+		}))
+}

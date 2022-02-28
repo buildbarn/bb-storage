@@ -78,6 +78,26 @@ var SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
 	remoteexecution.DigestFunction_SHA512,
 }
 
+// RemoveUnsupportedDigestFunctions returns the intersection between a
+// list of provided digest functions and ones supported by this
+// implementation. Results are guaranteed to be deduplicated and in
+// alphabetic order.
+func RemoveUnsupportedDigestFunctions(reported []remoteexecution.DigestFunction_Value) []remoteexecution.DigestFunction_Value {
+	// Convert provided digest functions to a set.
+	reportedSet := make(map[remoteexecution.DigestFunction_Value]struct{}, len(reported))
+	for _, digestFunction := range reported {
+		reportedSet[digestFunction] = struct{}{}
+	}
+	// Intersect with the supported set of digests.
+	supported := make([]remoteexecution.DigestFunction_Value, 0, len(SupportedDigestFunctions))
+	for _, digestFunction := range SupportedDigestFunctions {
+		if _, ok := reportedSet[digestFunction]; ok {
+			supported = append(supported, digestFunction)
+		}
+	}
+	return supported
+}
+
 // Unpack the individual hash, size and instance name fields from the
 // string representation stored inside the Digest object.
 func (d Digest) unpack() (int, int64, int) {
