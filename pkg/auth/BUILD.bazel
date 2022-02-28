@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "auth",
     srcs = [
+        "any_authorizer.go",
         "authentication_metadata.go",
         "authorizer.go",
         "authorizer_factory.go",
@@ -25,13 +26,16 @@ go_library(
 go_test(
     name = "auth_test",
     srcs = [
+        "any_authorizer_test.go",
         "jmespath_expression_authorizer_test.go",
         "static_authorizer_test.go",
     ],
     deps = [
         ":auth",
+        "//internal/mock",
         "//pkg/digest",
         "//pkg/testutil",
+        "@com_github_golang_mock//gomock",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
