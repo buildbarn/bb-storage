@@ -13,6 +13,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var acCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
@@ -28,7 +29,7 @@ var acCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.Ser
 type acBlobAccessCreator struct {
 	protoBlobAccessCreator
 
-	contentAddressableStorage BlobAccessInfo
+	contentAddressableStorage *BlobAccessInfo
 	grpcClientFactory         grpc.ClientFactory
 	maximumMessageSizeBytes   int
 }
@@ -36,7 +37,7 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &acBlobAccessCreator{
 		contentAddressableStorage: contentAddressableStorage,
 		grpcClientFactory:         grpcClientFactory,
@@ -81,6 +82,9 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "action_result_expiring", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
+		if bac.contentAddressableStorage == nil {
+			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
+		}
 		base, err := NewNestedBlobAccess(backend.CompletenessChecking, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err

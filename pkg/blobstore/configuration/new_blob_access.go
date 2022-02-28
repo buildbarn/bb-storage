@@ -602,7 +602,7 @@ func NewCASAndACBlobAccessFromConfiguration(configuration *pb.BlobstoreConfigura
 	actionCache, err := NewBlobAccessFromConfiguration(
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(
-			contentAddressableStorage,
+			&contentAddressableStorage,
 			grpcClientFactory,
 			maximumMessageSizeBytes))
 	if err != nil {
