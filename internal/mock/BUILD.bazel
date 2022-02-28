@@ -114,6 +114,15 @@ gomock(
 )
 
 gomock(
+    name = "capabilities",
+    out = "capabilities.go",
+    interfaces = ["Provider"],
+    library = "//pkg/capabilities",
+    mock_names = {"Provider": "MockCapabilitiesProvider"},
+    package = "mock",
+)
+
+gomock(
     name = "clock",
     out = "clock.go",
     interfaces = [
@@ -257,6 +266,7 @@ go_library(
         ":blockdevice.go",
         ":buffer.go",
         ":builder.go",
+        ":capabilities.go",
         ":clock.go",
         ":cloud_aws.go",
         ":digest.go",
