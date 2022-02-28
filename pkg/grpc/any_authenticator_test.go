@@ -14,7 +14,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestAnyAuthenticatorExample(t *testing.T) {
+func TestAnyAuthenticatorZero(t *testing.T) {
+	a := bb_grpc.NewAnyAuthenticator(nil)
+
+	_, err := a.Authenticate(context.Background())
+	testutil.RequireEqualStatus(
+		t,
+		status.Error(codes.Unauthenticated, "No authenticators configured"),
+		err)
+}
+
+func TestAnyAuthenticatorMultiple(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	m0 := mock.NewMockAuthenticator(ctrl)
