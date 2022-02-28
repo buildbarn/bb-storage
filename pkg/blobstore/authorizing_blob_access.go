@@ -17,7 +17,10 @@ type authorizingBlobAccess struct {
 	findMissingAuthorizer auth.Authorizer
 }
 
-// NewAuthorizingBlobAccess creates a new BlobAccess which guards blob accesses by checks with Authorizers.
+// NewAuthorizingBlobAccess creates a new BlobAccess which guards blob
+// accesses by checks with Authorizers. Calls to GetCapabilities() are
+// not checked, for the reason that the exact logic for this differs
+// between the Action Cache (AC) and Content Addressable Storage (CAS).
 func NewAuthorizingBlobAccess(base BlobAccess, getAuthorizer, putAuthorizer, findMissingAuthorizer auth.Authorizer) BlobAccess {
 	return &authorizingBlobAccess{
 		BlobAccess:            base,

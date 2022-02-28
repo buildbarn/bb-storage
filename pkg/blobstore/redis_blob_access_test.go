@@ -19,7 +19,8 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	redisClient := mock.NewMockRedisClient(ctrl)
-	blobAccess := blobstore.NewRedisBlobAccess(redisClient, blobstore.CASReadBufferFactory, digest.KeyWithoutInstance, 0, 0)
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := blobstore.NewRedisBlobAccess(redisClient, blobstore.CASReadBufferFactory, digest.KeyWithoutInstance, 0, 0, capabilitiesProvider)
 
 	canceledCtx, cancel := context.WithCancel(ctx)
 	cancel()

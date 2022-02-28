@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
@@ -30,6 +31,11 @@ type BlobAccessCreator interface {
 	// GetStorageTypeName() returns a short string that identifies
 	// the purpose of this storage (e.g., "ac", "cas").
 	GetStorageTypeName() string
+	// GetCapabilitiesProvider() returns a provider of REv2
+	// ServerCapabilities messages that should be returned for
+	// backends that can't report their own capabilities. This
+	// provider returns sane default values.
+	GetDefaultCapabilitiesProvider() capabilities.Provider
 	// NewBlockListGrowthPolicy() creates a BlockListGrowthPolicy
 	// for LocalBlobAccess that is recommended for this storage type.
 	NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error)

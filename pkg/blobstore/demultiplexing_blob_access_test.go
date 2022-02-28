@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -285,5 +287,70 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("b/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Build(),
 			missing)
+	})
+}
+
+func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+
+	t.Run("UnknownInstanceName", func(t *testing.T) {
+		// This request cannot be forwarded to any backend.
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("unknown")).Return(
+			nil,
+			"",
+			digest.NoopInstanceNamePatcher,
+			status.Error(codes.InvalidArgument, "Unknown instance name"))
+
+		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("unknown"))
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		// Error messages should have the backend name prepended.
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("goodbye/world")).
+			Return(nil, status.Error(codes.Internal, "Server offline"))
+
+		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server offline"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		baseBlobAccess.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("goodbye/world")).
+			Return(&remoteexecution.ServerCapabilities{
+				CacheCapabilities: &remoteexecution.CacheCapabilities{
+					ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+						UpdateEnabled: true,
+					},
+				},
+			}, nil)
+
+		serverCapabilities, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
+			CacheCapabilities: &remoteexecution.CacheCapabilities{
+				ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+					UpdateEnabled: true,
+				},
+			},
+		}, serverCapabilities)
 	})
 }

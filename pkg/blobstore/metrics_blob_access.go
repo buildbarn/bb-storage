@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -57,6 +58,7 @@ type metricsBlobAccess struct {
 	putDurationSeconds         prometheus.ObserverVec
 	findMissingBatchSize       prometheus.Observer
 	findMissingDurationSeconds prometheus.ObserverVec
+	getCapabilitiesSeconds     prometheus.ObserverVec
 }
 
 // NewMetricsBlobAccess creates an adapter for BlobAccess that adds
@@ -78,6 +80,7 @@ func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, storageType,
 		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Put"}),
 		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(storageType, backendType),
 		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "FindMissing"}),
+		getCapabilitiesSeconds:     blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "GetCapabilities"}),
 	}
 }
 
@@ -129,6 +132,13 @@ func (ba *metricsBlobAccess) FindMissing(ctx context.Context, digests digest.Set
 	digests, err := ba.blobAccess.FindMissing(ctx, digests)
 	ba.updateDurationSeconds(ba.findMissingDurationSeconds, status.Code(err), timeStart)
 	return digests, err
+}
+
+func (ba *metricsBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	timeStart := ba.clock.Now()
+	capabilities, err := ba.blobAccess.GetCapabilities(ctx, instanceName)
+	ba.updateDurationSeconds(ba.getCapabilitiesSeconds, status.Code(err), timeStart)
+	return capabilities, err
 }
 
 type metricsErrorHandler struct {

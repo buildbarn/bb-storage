@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,6 +30,8 @@ var (
 )
 
 type flatBlobAccess struct {
+	capabilities.Provider
+
 	keyBlobMap      KeyBlobMap
 	digestKeyFormat digest.KeyFormat
 
@@ -44,12 +47,14 @@ type flatBlobAccess struct {
 // objects are stored in a flat namespace. It either ignores the REv2
 // instance name in digests entirely, or it strongly partitions objects
 // by instance name. It does not introduce any hierarchy.
-func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string) blobstore.BlobAccess {
+func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshes)
 	})
 
 	return &flatBlobAccess{
+		Provider: capabilitiesProvider,
+
 		keyBlobMap:      keyBlobMap,
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,

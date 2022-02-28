@@ -3,6 +3,7 @@ package blobstore
 import (
 	"context"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -82,4 +83,10 @@ func (ba *sizeDistinguishingBlobAccess) FindMissing(ctx context.Context, digests
 
 	// Recombine results.
 	return digest.GetUnion([]digest.Set{smallResults, largeResults}), nil
+}
+
+func (ba *sizeDistinguishingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	// Assume that the capabilities announced by the small backend
+	// are also valid for the large backend.
+	return ba.smallBlobAccess.GetCapabilities(ctx, instanceName)
 }

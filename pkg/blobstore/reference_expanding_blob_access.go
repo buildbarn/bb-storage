@@ -137,6 +137,10 @@ func (ba *referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.D
 	return status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data")
 }
 
+func (ba *referenceExpandingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	return nil, status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage cannot be queried for capabilities")
+}
+
 func (ba *referenceExpandingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return ba.blobAccess.FindMissing(ctx, digests)
 }

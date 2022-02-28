@@ -37,6 +37,7 @@ go_library(
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blockdevice",
+        "//pkg/capabilities",
         "//pkg/clock",
         "//pkg/digest",
         "//pkg/filesystem",

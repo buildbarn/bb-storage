@@ -59,3 +59,7 @@ func (ba *isccBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffe
 func (ba *isccBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return digest.EmptySet, status.Error(codes.Unimplemented, "Initial Size Class Cache does not support bulk existence checking")
 }
+
+func (ba *isccBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	panic("GetCapabilities() should only be called against BlobAccess instances for the Content Addressable Storage and Action Cache")
+}

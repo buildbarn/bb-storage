@@ -3,6 +3,7 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
@@ -32,6 +33,10 @@ func (bac *isccBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFac
 
 func (bac *isccBlobAccessCreator) GetStorageTypeName() string {
 	return "iscc"
+}
+
+func (bac *isccBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+	return nil
 }
 
 func (bac *isccBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {

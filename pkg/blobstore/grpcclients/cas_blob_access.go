@@ -18,6 +18,7 @@ import (
 type casBlobAccess struct {
 	byteStreamClient                bytestream.ByteStreamClient
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
+	capabilitiesClient              remoteexecution.CapabilitiesClient
 	uuidGenerator                   util.UUIDGenerator
 	readChunkSize                   int
 }
@@ -31,6 +32,7 @@ func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGe
 	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
+		capabilitiesClient:              remoteexecution.NewCapabilitiesClient(client),
 		uuidGenerator:                   uuidGenerator,
 		readChunkSize:                   readChunkSize,
 	}
@@ -154,4 +156,21 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 		}
 	}
 	return missingDigests.Build(), nil
+}
+
+func (ba *casBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	cacheCapabilities, err := getCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only return fields that pertain to the Content Addressable
+	// Storage. Don't set 'max_batch_total_size_bytes', as we don't
+	// issue batch operations. The same holds for fields related to
+	// compression support.
+	return &remoteexecution.ServerCapabilities{
+		CacheCapabilities: &remoteexecution.CacheCapabilities{
+			DigestFunctions: digest.RemoveUnsupportedDigestFunctions(cacheCapabilities.DigestFunctions),
+		},
+	}, nil
 }

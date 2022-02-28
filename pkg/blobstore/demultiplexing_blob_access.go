@@ -3,6 +3,7 @@ package blobstore
 import (
 	"context"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -111,6 +112,18 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 		}
 	}
 	return allMissing.Build(), nil
+}
+
+func (ba *demultiplexingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	backend, backendName, patcher, err := ba.getBackend(instanceName)
+	if err != nil {
+		return nil, err
+	}
+	capabilities, err := backend.GetCapabilities(ctx, patcher.PatchInstanceName(instanceName))
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Backend %#v", backendName)
+	}
+	return capabilities, err
 }
 
 type backendNamePrefixingErrorHandler struct {

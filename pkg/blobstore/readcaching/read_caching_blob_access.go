@@ -13,7 +13,7 @@ import (
 )
 
 type readCachingBlobAccess struct {
-	slow       blobstore.BlobAccess
+	blobstore.BlobAccess
 	fast       blobstore.BlobAccess
 	replicator replication.BlobReplicator
 }
@@ -25,7 +25,7 @@ type readCachingBlobAccess struct {
 // streamed into the fast data store using a replicator.
 func NewReadCachingBlobAccess(slow, fast blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readCachingBlobAccess{
-		slow:       slow,
+		BlobAccess: slow,
 		fast:       fast,
 		replicator: replicator,
 	}
@@ -39,14 +39,6 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 			context:    ctx,
 			digest:     digest,
 		})
-}
-
-func (ba *readCachingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	return ba.slow.Put(ctx, digest, b)
-}
-
-func (ba *readCachingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	return ba.slow.FindMissing(ctx, digests)
 }
 
 type readCachingErrorHandler struct {

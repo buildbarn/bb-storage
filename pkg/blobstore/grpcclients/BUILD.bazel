@@ -35,6 +35,8 @@ go_test(
         "//pkg/blobstore/buffer",
         "//pkg/digest",
         "//pkg/testutil",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_bazelbuild_remote_apis//build/bazel/semver",
         "@com_github_golang_mock//gomock",
         "@com_github_google_uuid//:uuid",
         "@com_github_stretchr_testify//require",
@@ -42,5 +44,6 @@ go_test(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
     ],
 )

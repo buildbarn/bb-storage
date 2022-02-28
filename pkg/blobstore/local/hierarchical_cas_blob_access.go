@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -15,6 +16,8 @@ import (
 )
 
 type hierarchicalCASBlobAccess struct {
+	capabilities.Provider
+
 	keyLocationMap  KeyLocationMap
 	locationBlobMap LocationBlobMap
 
@@ -42,8 +45,10 @@ type hierarchicalCASBlobAccess struct {
 // that already exist for a different REv2 instance name don't cause any
 // new data to be ingested. This makes this implementation unsuitable
 // for mutable data sets.
-func NewHierarchicalCASBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, lock *sync.RWMutex) blobstore.BlobAccess {
+func NewHierarchicalCASBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	return &hierarchicalCASBlobAccess{
+		Provider: capabilitiesProvider,
+
 		keyLocationMap:  keyLocationMap,
 		locationBlobMap: locationBlobMap,
 		lock:            lock,

@@ -20,7 +20,8 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 
@@ -157,7 +158,8 @@ func TestFlatBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 
@@ -224,7 +226,8 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas")
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 

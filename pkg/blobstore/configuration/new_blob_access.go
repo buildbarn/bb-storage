@@ -167,7 +167,8 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				readBufferFactory,
 				digestKeyFormat,
 				backend.Redis.ReplicationCount,
-				replicationTimeout),
+				replicationTimeout,
+				creator.GetDefaultCapabilitiesProvider()),
 			DigestKeyFormat: digestKeyFormat,
 		}, "redis", nil
 	case *pb.BlobAccessConfiguration_Http:
@@ -182,7 +183,8 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				readBufferFactory,
 				&http.Client{
 					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPBlobAccess"),
-				}),
+				},
+				creator.GetDefaultCapabilitiesProvider()),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:
@@ -461,7 +463,8 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					locationBlobMap),
 				digestKeyFormat,
 				&globalLock,
-				storageTypeName)
+				storageTypeName,
+				creator.GetDefaultCapabilitiesProvider())
 		}
 		return BlobAccessInfo{
 			BlobAccess:      localBlobAccess,

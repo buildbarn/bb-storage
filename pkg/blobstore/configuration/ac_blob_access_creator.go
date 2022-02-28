@@ -1,9 +1,11 @@
 package configuration
 
 import (
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -12,6 +14,16 @@ import (
 
 	"google.golang.org/grpc/codes"
 )
+
+var acCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+	CacheCapabilities: &remoteexecution.CacheCapabilities{
+		ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+			UpdateEnabled: true,
+		},
+		// CachePriorityCapabilities: Priorities not supported.
+		SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
+	},
+})
 
 type acBlobAccessCreator struct {
 	protoBlobAccessCreator
@@ -38,6 +50,10 @@ func (bac *acBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFacto
 
 func (bac *acBlobAccessCreator) GetStorageTypeName() string {
 	return "ac"
+}
+
+func (bac *acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+	return acCapabilitiesProvider
 }
 
 func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {

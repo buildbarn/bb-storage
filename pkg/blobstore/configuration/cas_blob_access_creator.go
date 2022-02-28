@@ -5,9 +5,11 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -19,6 +21,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var casCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+	CacheCapabilities: &remoteexecution.CacheCapabilities{
+		DigestFunctions: digest.SupportedDigestFunctions,
+		// MaxBatchTotalSize: Not used by Bazel yet.
+	},
+})
 
 type casBlobAccessCreator struct {
 	casBlobReplicatorCreator
@@ -51,12 +60,16 @@ func (bac *casBlobAccessCreator) GetStorageTypeName() string {
 	return "cas"
 }
 
+func (bac *casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+	return casCapabilitiesProvider
+}
+
 func (bac *casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
 func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
-	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock), nil
+	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
 }
 
 func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {

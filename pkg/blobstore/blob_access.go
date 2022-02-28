@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -11,6 +12,8 @@ import (
 // hold an Action Cache (AC), Content Addressable Storage (CAS), or any
 // other data store that uses keys in the form of digests.
 type BlobAccess interface {
+	capabilities.Provider
+
 	Get(ctx context.Context, digest digest.Digest) buffer.Buffer
 	Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)

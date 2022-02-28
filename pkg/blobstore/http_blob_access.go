@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -14,6 +15,8 @@ import (
 )
 
 type httpBlobAccess struct {
+	capabilities.Provider
+
 	address           string
 	prefix            string
 	readBufferFactory ReadBufferFactory
@@ -27,8 +30,10 @@ func convertHTTPUnexpectedStatus(resp *http.Response) error {
 // NewHTTPBlobAccess for use of HTTP/1.1 cache backend.
 //
 // See: https://docs.bazel.build/versions/master/remote-caching.html#http-caching-protocol
-func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient *http.Client) BlobAccess {
+func NewHTTPBlobAccess(address, prefix string, readBufferFactory ReadBufferFactory, httpClient *http.Client, capabilitiesProvider capabilities.Provider) BlobAccess {
 	return &httpBlobAccess{
+		Provider: capabilitiesProvider,
+
 		address:           address,
 		prefix:            prefix,
 		readBufferFactory: readBufferFactory,

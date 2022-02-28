@@ -19,7 +19,7 @@ type readCanaryingCacheEntry struct {
 }
 
 type readCanaryingBlobAccess struct {
-	source               BlobAccess
+	BlobAccess
 	replica              BlobAccess
 	clock                clock.Clock
 	maximumCacheSize     int
@@ -48,7 +48,7 @@ type readCanaryingBlobAccess struct {
 // way.
 func NewReadCanaryingBlobAccess(source, replica BlobAccess, clock clock.Clock, evictionSet eviction.Set, maximumCacheSize int, maximumCacheDuration time.Duration) BlobAccess {
 	return &readCanaryingBlobAccess{
-		source:               source,
+		BlobAccess:           source,
 		replica:              replica,
 		clock:                clock,
 		maximumCacheSize:     maximumCacheSize,
@@ -125,15 +125,8 @@ func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buf
 			})
 	}
 	return buffer.WithErrorHandler(
-		ba.source.Get(ctx, d),
+		ba.BlobAccess.Get(ctx, d),
 		readCanaryingSourceErrorHandler{})
-}
-
-func (ba *readCanaryingBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {
-	// There is no point in writing objects to the replica, as the
-	// replica always has to forward it to the source. We therefore
-	// write to the source directly.
-	return ba.source.Put(ctx, d, b)
 }
 
 func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
@@ -161,7 +154,7 @@ func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests dige
 
 	// Single request to the source for all instance names for which
 	// the replica is unavailable.
-	missingFromSource, err := ba.source.FindMissing(ctx, digest.GetUnion(digestsForSource))
+	missingFromSource, err := ba.BlobAccess.FindMissing(ctx, digest.GetUnion(digestsForSource))
 	if err != nil {
 		return digest.EmptySet, util.StatusWrap(err, "Source")
 	}

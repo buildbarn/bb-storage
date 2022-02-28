@@ -14,7 +14,7 @@ import (
 )
 
 type readFallbackBlobAccess struct {
-	primary    blobstore.BlobAccess
+	blobstore.BlobAccess
 	secondary  blobstore.BlobAccess
 	replicator replication.BlobReplicator
 }
@@ -27,7 +27,7 @@ type readFallbackBlobAccess struct {
 // system, e.g. by combining it with ReferenceExpandingBlobAccess.
 func NewReadFallbackBlobAccess(primary, secondary blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
 	return &readFallbackBlobAccess{
-		primary:    primary,
+		BlobAccess: primary,
 		secondary:  secondary,
 		replicator: replicator,
 	}
@@ -35,16 +35,12 @@ func NewReadFallbackBlobAccess(primary, secondary blobstore.BlobAccess, replicat
 
 func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return buffer.WithErrorHandler(
-		ba.primary.Get(ctx, digest),
+		ba.BlobAccess.Get(ctx, digest),
 		&readFallbackErrorHandler{
 			replicator: ba.replicator,
 			context:    ctx,
 			digest:     digest,
 		})
-}
-
-func (ba *readFallbackBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	return ba.primary.Put(ctx, digest, b)
 }
 
 func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
@@ -53,7 +49,7 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 	// common case, the primary backend is capable of pruning most
 	// of the digests, making the call to the secondary backend a
 	// lot smaller.
-	missingInPrimary, err := ba.primary.FindMissing(ctx, digests)
+	missingInPrimary, err := ba.BlobAccess.FindMissing(ctx, digests)
 	if err != nil {
 		return digest.EmptySet, util.StatusWrap(err, "Primary")
 	}

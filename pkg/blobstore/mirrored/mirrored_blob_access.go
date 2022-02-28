@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -157,6 +158,25 @@ func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 		return digest.EmptySet, err
 	}
 	return missingFromBoth, nil
+}
+
+func (ba *mirroredBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	// Alternate requests between storage backends.
+	var backend blobstore.BlobAccess
+	var backendName string
+	if ba.round.Add(1)%2 == 1 {
+		backend = ba.backendA
+		backendName = "Backend A"
+	} else {
+		backend = ba.backendB
+		backendName = "Backend B"
+	}
+
+	capabilities, err := backend.GetCapabilities(ctx, instanceName)
+	if err != nil {
+		return nil, util.StatusWrap(err, backendName)
+	}
+	return capabilities, nil
 }
 
 type mirroredErrorHandler struct {

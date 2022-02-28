@@ -23,7 +23,8 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{})
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("some/instance/name", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	lookupKey1 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
 	lookupKey2 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
@@ -162,7 +163,8 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{})
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	canonicalKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	mostSpecificLookupKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example")
@@ -337,7 +339,8 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{})
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("some/instance/name", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	lookupKey1 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
 	lookupKey2 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
