@@ -41,8 +41,8 @@ This container image can then be launched using Docker as follows:
 ```
 $ cat config/bb_storage.jsonnet
 {
-  blobstore: {
-    contentAddressableStorage: {
+  contentAddressableStorage: {
+    backend: {
       'local': {
         keyLocationMapOnBlockDevice: {
           file: {
@@ -70,7 +70,12 @@ $ cat config/bb_storage.jsonnet
         },
       },
     },
-    actionCache: {
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { allow: {} },
+    findMissingAuthorizer: { allow: {} },
+  },
+  actionCache: {
+    backend: {
       completenessChecking: {
         'local': {
           keyLocationMapOnBlockDevice: {
@@ -100,6 +105,10 @@ $ cat config/bb_storage.jsonnet
         },
       },
     },
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { instanceNamePrefix: {
+      allowedInstanceNamePrefixes: ['foo'],
+    } },
   },
   global: { diagnosticsHttpServer: {
     listenAddress: ':9980',
@@ -112,17 +121,6 @@ $ cat config/bb_storage.jsonnet
   }],
   schedulers: {
     bar: { endpoint: { address: 'bar-scheduler:8981' } },
-  },
-  contentAddressableStorageAuthorizers: {
-    get: { allow: {} },
-    put: { allow: {} },
-    findMissing: { allow: {} },
-  },
-  actionCacheAuthorizers: {
-    get: { allow: {} },
-    put: { instanceNamePrefix: {
-      allowedInstanceNamePrefixes: ['foo'],
-    } },
   },
   executeAuthorizer: { allow: {} },
   maximumMessageSizeBytes: 16 * 1024 * 1024,

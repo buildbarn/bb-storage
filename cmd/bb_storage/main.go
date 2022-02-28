@@ -42,61 +42,47 @@ func main() {
 	var cacheCapabilitiesProviders []capabilities.Provider
 	var cacheCapabilitiesAuthorizers []auth.Authorizer
 
-	// Storage access.
-	contentAddressableStorage, actionCache, err := blobstore_configuration.NewCASAndACBlobAccessFromConfiguration(
-		configuration.Blobstore,
-		grpcClientFactory,
-		int(configuration.MaximumMessageSizeBytes))
-	if err != nil {
-		log.Fatal(err)
+	// Content Addressable Storage (CAS).
+	var contentAddressableStorageInfo *blobstore_configuration.BlobAccessInfo
+	var contentAddressableStorage blobstore.BlobAccess
+	if configuration.ContentAddressableStorage != nil {
+		info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+			configuration.ContentAddressableStorage,
+			blobstore_configuration.NewCASBlobAccessCreator(
+				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes)))
+		if err != nil {
+			log.Fatal("Failed to create Content Addressable Storage: ", err)
+		}
+		cacheCapabilitiesProviders = append(cacheCapabilitiesProviders, info.BlobAccess)
+		cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
+		contentAddressableStorageInfo = &info
+		contentAddressableStorage = authorizedBackend
 	}
 
-	// TODO: Make Content Addressable Storage support optional.
-	if true {
-		getAuthorizer, putAuthorizer, findMissingAuthorizer, err := newScannableBlobAccessAuthorizers(configuration.ContentAddressableStorageAuthorizers)
+	// Action Cache (AC).
+	var actionCache blobstore.BlobAccess
+	if configuration.ActionCache != nil {
+		info, authorizedBackend, allAuthorizers, putAuthorizer, err := newNonScannableBlobAccess(
+			configuration.ActionCache,
+			blobstore_configuration.NewACBlobAccessCreator(
+				contentAddressableStorageInfo,
+				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes)))
 		if err != nil {
-			log.Fatal("Failed to create Content Addressable Storage authorizers: ", err)
+			log.Fatal("Failed to create Action Cache: ", err)
 		}
 		cacheCapabilitiesProviders = append(
 			cacheCapabilitiesProviders,
-			contentAddressableStorage)
-		cacheCapabilitiesAuthorizers = append(
-			cacheCapabilitiesAuthorizers,
-			getAuthorizer,
-			putAuthorizer,
-			findMissingAuthorizer)
-		contentAddressableStorage = blobstore.NewAuthorizingBlobAccess(
-			contentAddressableStorage,
-			getAuthorizer,
-			putAuthorizer,
-			findMissingAuthorizer)
+			capabilities.NewActionCacheUpdateEnabledClearingProvider(info.BlobAccess, putAuthorizer))
+		cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
+		actionCache = authorizedBackend
 	}
 
-	// TODO: Make Action Cache support optional.
-	if true {
-		getAuthorizer, putAuthorizer, err := newNonScannableBlobAccessAuthorizers(configuration.ActionCacheAuthorizers)
-		if err != nil {
-			log.Fatal("Failed to create Action Cache authorizers: ", err)
-		}
-		cacheCapabilitiesProviders = append(
-			cacheCapabilitiesProviders,
-			capabilities.NewActionCacheUpdateEnabledClearingProvider(actionCache, putAuthorizer))
-		cacheCapabilitiesAuthorizers = append(
-			cacheCapabilitiesAuthorizers,
-			getAuthorizer,
-			putAuthorizer)
-		actionCache = blobstore.NewAuthorizingBlobAccess(
-			actionCache,
-			getAuthorizer,
-			putAuthorizer,
-			nil)
-	}
-
-	// Buildbarn extension: Indirect Content Addressable Storage
-	// (ICAS) access.
+	// Buildbarn extension: Indirect Content Addressable Storage (ICAS).
 	var indirectContentAddressableStorage blobstore.BlobAccess
 	if configuration.IndirectContentAddressableStorage != nil {
-		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		_, authorizedBackend, _, err := newScannableBlobAccess(
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
 				grpcClientFactory,
@@ -104,22 +90,13 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to create Indirect Content Addressable Storage: ", err)
 		}
-
-		icasGetAuthorizer, icasPutAuthorizer, icasFindMissingAuthorizer, err := newScannableBlobAccessAuthorizers(configuration.IndirectContentAddressableStorageAuthorizers)
-		if err != nil {
-			log.Fatal("Failed to create Indirect Content Addressable Storage authorizer: ", err)
-		}
-		indirectContentAddressableStorage = blobstore.NewAuthorizingBlobAccess(
-			info.BlobAccess,
-			icasGetAuthorizer,
-			icasPutAuthorizer,
-			icasFindMissingAuthorizer)
+		indirectContentAddressableStorage = authorizedBackend
 	}
 
 	// Buildbarn extension: Initial Size Class Cache (ISCC).
 	var initialSizeClassCache blobstore.BlobAccess
 	if configuration.InitialSizeClassCache != nil {
-		info, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
 			configuration.InitialSizeClassCache,
 			blobstore_configuration.NewISCCBlobAccessCreator(
 				grpcClientFactory,
@@ -127,16 +104,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to create Initial Size Class Cache: ", err)
 		}
-
-		isccGetAuthorizer, isccPutAuthorizer, err := newNonScannableBlobAccessAuthorizers(configuration.InitialSizeClassCacheAuthorizers)
-		if err != nil {
-			log.Fatal("Failed to create Initial Size Class Cache authorizer: ", err)
-		}
-		initialSizeClassCache = blobstore.NewAuthorizingBlobAccess(
-			info.BlobAccess,
-			isccGetAuthorizer,
-			isccPutAuthorizer,
-			nil)
+		initialSizeClassCache = authorizedBackend
 	}
 
 	var capabilitiesProviders []capabilities.Provider
@@ -218,35 +186,49 @@ func main() {
 	lifecycleState.MarkReadyAndWait()
 }
 
-func newNonScannableBlobAccessAuthorizers(configuration *bb_storage.NonScannableAuthorizersConfiguration) (auth.Authorizer, auth.Authorizer, error) {
-	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetGet())
+func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
 	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
 	}
 
-	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetPut())
+	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
 	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+	}
+	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
+	if err != nil {
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
 
-	return getAuthorizer, putAuthorizer, nil
+	return info,
+		blobstore.NewAuthorizingBlobAccess(info.BlobAccess, getAuthorizer, putAuthorizer, nil),
+		[]auth.Authorizer{getAuthorizer, putAuthorizer},
+		putAuthorizer,
+		nil
 }
 
-func newScannableBlobAccessAuthorizers(configuration *bb_storage.ScannableAuthorizersConfiguration) (auth.Authorizer, auth.Authorizer, auth.Authorizer, error) {
-	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetGet())
+func newScannableBlobAccess(configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
 	if err != nil {
-		return nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
 	}
 
-	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetPut())
+	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
 	if err != nil {
-		return nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+	}
+	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
+	if err != nil {
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
+	}
+	findMissingAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer)
+	if err != nil {
+		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
 	}
 
-	findMissingAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetFindMissing())
-	if err != nil {
-		return nil, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
-	}
-
-	return getAuthorizer, putAuthorizer, findMissingAuthorizer, nil
+	return info,
+		blobstore.NewAuthorizingBlobAccess(info.BlobAccess, getAuthorizer, putAuthorizer, findMissingAuthorizer),
+		[]auth.Authorizer{getAuthorizer, putAuthorizer, findMissingAuthorizer},
+		nil
 }
