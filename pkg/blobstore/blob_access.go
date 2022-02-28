@@ -8,8 +8,8 @@ import (
 )
 
 // BlobAccess is an abstraction for a data store that can be used to
-// hold both a Bazel Action Cache (AC) and Content Addressable Storage
-// (CAS).
+// hold an Action Cache (AC), Content Addressable Storage (CAS), or any
+// other data store that uses keys in the form of digests.
 type BlobAccess interface {
 	Get(ctx context.Context, digest digest.Digest) buffer.Buffer
 	Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error
