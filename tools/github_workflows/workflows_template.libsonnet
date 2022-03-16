@@ -82,7 +82,7 @@
         },
         {
           name: 'Gofmt',
-          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.17 -w -extra $(pwd)',
+          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.18 -w -extra $(pwd)',
         },
         {
           name: 'Clang format',

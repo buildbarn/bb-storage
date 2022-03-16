@@ -1,6 +1,6 @@
 module github.com/buildbarn/bb-storage
 
-go 1.17
+go 1.18
 
 replace github.com/gordonklaus/ineffassign => github.com/gordonklaus/ineffassign v0.0.0-20201223204552-cba2d2a1d5d9
 
