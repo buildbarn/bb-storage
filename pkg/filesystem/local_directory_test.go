@@ -392,23 +392,23 @@ func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
 	require.Equal(t, io.EOF, err)
 
 	// Test the behavior on a sparse file that ends with a hole.
-	require.NoError(t, f.Truncate(3072*1024))
+	require.NoError(t, f.Truncate(384*1024*1024))
 
-	_, err = f.GetNextRegionOffset(2048*1024, filesystem.Data)
+	_, err = f.GetNextRegionOffset(256*1024*1024, filesystem.Data)
 	require.Equal(t, io.EOF, err)
-	nextOffset, err = f.GetNextRegionOffset(2048*1024, filesystem.Hole)
+	nextOffset, err = f.GetNextRegionOffset(256*1024*1024, filesystem.Hole)
 	require.NoError(t, err)
-	require.Equal(t, int64(2048*1024), nextOffset)
+	require.Equal(t, int64(256*1024*1024), nextOffset)
 
-	_, err = f.GetNextRegionOffset(3072*1024-1, filesystem.Data)
+	_, err = f.GetNextRegionOffset(384*1024*1024-1, filesystem.Data)
 	require.Equal(t, io.EOF, err)
-	nextOffset, err = f.GetNextRegionOffset(3072*1024-1, filesystem.Hole)
+	nextOffset, err = f.GetNextRegionOffset(384*1024*1024-1, filesystem.Hole)
 	require.NoError(t, err)
-	require.Equal(t, int64(3072*1024-1), nextOffset)
+	require.Equal(t, int64(384*1024*1024-1), nextOffset)
 
-	_, err = f.GetNextRegionOffset(3072*1024, filesystem.Data)
+	_, err = f.GetNextRegionOffset(384*1024*1024, filesystem.Data)
 	require.Equal(t, io.EOF, err)
-	_, err = f.GetNextRegionOffset(3072*1024, filesystem.Hole)
+	_, err = f.GetNextRegionOffset(384*1024*1024, filesystem.Hole)
 	require.Equal(t, io.EOF, err)
 
 	require.NoError(t, f.Close())
