@@ -403,8 +403,7 @@ func (d *localDirectory) lstat(name path.Component) (FileType, error) {
 	case (fileAttributes & windows.FILE_ATTRIBUTE_DIRECTORY) == windows.FILE_ATTRIBUTE_DIRECTORY:
 		fileType = FileTypeDirectory
 	default:
-		// Assume all regular files are executable.
-		fileType = FileTypeExecutableFile
+		fileType = FileTypeRegularFile
 	}
 	return fileType, nil
 }
@@ -416,7 +415,8 @@ func (d *localDirectory) Lstat(name path.Component) (FileInfo, error) {
 	if err != nil {
 		return FileInfo{}, err
 	}
-	return NewFileInfo(name, fileType), nil
+	// Assume all regular files are executable.
+	return NewFileInfo(name, fileType, true), nil
 }
 
 func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {

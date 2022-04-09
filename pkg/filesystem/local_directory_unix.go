@@ -152,25 +152,23 @@ func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Director
 	})
 }
 
-func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, error) {
+func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, bool, error) {
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
 	if err := unix.Fstatat(d.fd, name.String(), &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return FileTypeOther, 0, err
+		return FileTypeOther, 0, false, err
 	}
 	fileType := FileTypeOther
+	isExecutable := false
 	switch stat.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
 		fileType = FileTypeDirectory
 	case syscall.S_IFLNK:
 		fileType = FileTypeSymlink
 	case syscall.S_IFREG:
-		if stat.Mode&0o111 != 0 {
-			fileType = FileTypeExecutableFile
-		} else {
-			fileType = FileTypeRegularFile
-		}
+		fileType = FileTypeRegularFile
+		isExecutable = stat.Mode&0o111 != 0
 	case syscall.S_IFBLK:
 		fileType = FileTypeBlockDevice
 	case syscall.S_IFCHR:
@@ -180,15 +178,15 @@ func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, err
 	case syscall.S_IFSOCK:
 		fileType = FileTypeSocket
 	}
-	return fileType, stat.Dev, nil
+	return fileType, stat.Dev, isExecutable, nil
 }
 
 func (d *localDirectory) Lstat(name path.Component) (FileInfo, error) {
-	fileType, _, err := d.lstat(name)
+	fileType, _, isExecutable, err := d.lstat(name)
 	if err != nil {
 		return FileInfo{}, err
 	}
-	return NewFileInfo(name, fileType), nil
+	return NewFileInfo(name, fileType, isExecutable), nil
 }
 
 func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
@@ -295,7 +293,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 	}
 	for _, name := range names {
 		component := path.MustNewComponent(name)
-		fileType, childDeviceNumber, err := d.lstat(component)
+		fileType, childDeviceNumber, _, err := d.lstat(component)
 		if err != nil {
 			return err
 		}
@@ -307,7 +305,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 			if err := d.unmount(component); err != nil {
 				return err
 			}
-			fileType, childDeviceNumber, err = d.lstat(component)
+			fileType, childDeviceNumber, _, err = d.lstat(component)
 			if err != nil {
 				return err
 			}

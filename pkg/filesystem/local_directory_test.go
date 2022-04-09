@@ -117,11 +117,7 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 	fi, err := d.Lstat(path.MustNewComponent("file"))
 	require.NoError(t, err)
 	require.Equal(t, path.MustNewComponent("file"), fi.Name())
-	if runtime.GOOS == "windows" {
-		require.Equal(t, filesystem.FileTypeExecutableFile, fi.Type())
-	} else {
-		require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
-	}
+	require.Equal(t, filesystem.FileTypeRegularFile, fi.Type())
 	require.NoError(t, d.Close())
 }
 
@@ -208,11 +204,7 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	require.Equal(t, path.MustNewComponent("directory"), files[0].Name())
 	require.Equal(t, filesystem.FileTypeDirectory, files[0].Type())
 	require.Equal(t, path.MustNewComponent("file"), files[1].Name())
-	if runtime.GOOS == "windows" {
-		require.Equal(t, filesystem.FileTypeExecutableFile, files[1].Type())
-	} else {
-		require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
-	}
+	require.Equal(t, filesystem.FileTypeRegularFile, files[1].Type())
 	require.Equal(t, path.MustNewComponent("symlink"), files[2].Name())
 	require.Equal(t, filesystem.FileTypeSymlink, files[2].Type())
 

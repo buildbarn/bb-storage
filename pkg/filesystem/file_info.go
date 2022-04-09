@@ -9,12 +9,8 @@ import (
 type FileType int
 
 const (
-	// FileTypeRegularFile means the file is a regular file that is
-	// not executable.
+	// FileTypeRegularFile means the file is a regular file.
 	FileTypeRegularFile FileType = iota
-	// FileTypeExecutableFile means the file is a regular file that
-	// is executable.
-	FileTypeExecutableFile
 	// FileTypeDirectory means the file is a directory.
 	FileTypeDirectory
 	// FileTypeSymlink means the file is a symbolic link.
@@ -35,16 +31,18 @@ const (
 // FileInfo is a subset of os.FileInfo, only containing the features
 // used by the Buildbarn codebase.
 type FileInfo struct {
-	name     path.Component
-	fileType FileType
+	name         path.Component
+	fileType     FileType
+	isExecutable bool
 }
 
 // NewFileInfo constructs a FileInfo object that returns fixed values
 // for its methods.
-func NewFileInfo(name path.Component, fileType FileType) FileInfo {
+func NewFileInfo(name path.Component, fileType FileType, isExecutable bool) FileInfo {
 	return FileInfo{
-		name:     name,
-		fileType: fileType,
+		name:         name,
+		fileType:     fileType,
+		isExecutable: isExecutable,
 	}
 }
 
@@ -56,6 +54,11 @@ func (fi *FileInfo) Name() path.Component {
 // Type returns the type of a file (e.g., regular file, directory, symlink).
 func (fi *FileInfo) Type() FileType {
 	return fi.fileType
+}
+
+// IsExecutable returns whether the regular file is executable.
+func (fi *FileInfo) IsExecutable() bool {
+	return fi.isExecutable
 }
 
 // FileInfoList is a list of FileInfo objects returned by
