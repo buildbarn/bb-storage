@@ -5,8 +5,11 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"hash"
+	"io"
 	"strings"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -122,6 +125,32 @@ func (in InstanceName) NewDigestFromProto(digest *remoteexecution.Digest) (Diges
 		return BadDigest, status.Error(codes.InvalidArgument, "No digest provided")
 	}
 	return in.NewDigest(digest.Hash, digest.SizeBytes)
+}
+
+// NewDigestFromCompactBinary constructs a Digest object by reading data
+// from a ByteReader that contains data that was generated using
+// Digest.GetCompactBinary().
+func (in InstanceName) NewDigestFromCompactBinary(r io.ByteReader) (Digest, error) {
+	hashLength, err := r.ReadByte()
+	if err != nil {
+		return BadDigest, err
+	}
+
+	hash := make([]byte, 0, hashLength)
+	for i := 0; i < int(hashLength); i++ {
+		b, err := r.ReadByte()
+		if err != nil {
+			return BadDigest, err
+		}
+		hash = append(hash, b)
+	}
+
+	sizeBytes, err := binary.ReadVarint(r)
+	if err != nil {
+		return BadDigest, err
+	}
+
+	return in.NewDigest(hex.EncodeToString(hash), sizeBytes)
 }
 
 // newDigestUnchecked constructs a Digest object from an instance name,

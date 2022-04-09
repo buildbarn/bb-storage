@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/binary"
 	"encoding/hex"
 	"hash"
 	"path"
@@ -433,4 +434,25 @@ func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
 		}
 		d.value = d.value[:end-1]
 	}
+}
+
+// GetCompactBinary returns a compact binary representation of the
+// Digest, not including the instance name. The representation consists
+// of the length of the Digest's hash, the hash in binary form, and the
+// length of the object encoded as a variable length integer.
+//
+// This representation is used by the NFSv4 server, as it needs to
+// encode digests in file handles.
+func (d Digest) GetCompactBinary() []byte {
+	hashEnd, sizeBytes, _ := d.unpack()
+
+	hash, err := hex.DecodeString(d.value[:hashEnd])
+	if err != nil {
+		panic("Failed to decode digest hash, even though its contents have already been validated")
+	}
+
+	var encodedSize [binary.MaxVarintLen64]byte
+	encodedSizeLength := binary.PutVarint(encodedSize[:], sizeBytes)
+
+	return append(append([]byte{byte(len(hash))}, hash...), encodedSize[:encodedSizeLength]...)
 }
