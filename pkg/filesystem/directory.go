@@ -81,7 +81,7 @@ type Directory interface {
 	// Mkdir is the equivalent of os.Mkdir().
 	Mkdir(name path.Component, perm os.FileMode) error
 	// Mknod is the equivalent of unix.Mknod().
-	Mknod(name path.Component, perm os.FileMode, dev int) error
+	Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error
 	// ReadDir is the equivalent of ioutil.ReadDir().
 	ReadDir() ([]FileInfo, error)
 	// Readlink is the equivalent of os.Readlink().

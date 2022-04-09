@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// deviceNumber is the equivalent of POSIX dev_t.
-type deviceNumber = int32
+// rawDeviceNumber is the equivalent of POSIX dev_t.
+type rawDeviceNumber = int32
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) error {
+func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Darwin")
 }
 

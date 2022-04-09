@@ -430,7 +430,7 @@ func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	return err
 }
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) error {
+func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Windows")
 }
 

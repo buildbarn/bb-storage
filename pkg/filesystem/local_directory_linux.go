@@ -14,10 +14,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// deviceNumber is the equivalent of POSIX dev_t.
-type deviceNumber = uint64
+// rawDeviceNumber is the equivalent of POSIX dev_t.
+type rawDeviceNumber = uint64
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) error {
+func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	defer runtime.KeepAlive(d)
 
 	var unixPerm uint32
@@ -28,7 +28,7 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) e
 		return status.Error(codes.InvalidArgument, "The provided file mode is not for a character device")
 	}
 
-	return unix.Mknodat(d.fd, name.String(), unixPerm, dev)
+	return unix.Mknodat(d.fd, name.String(), unixPerm, int(deviceNumber.ToRaw()))
 }
 
 func clonefileImpl(oldFD int, oldName string, newFD int, newName string) error {

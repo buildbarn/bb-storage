@@ -152,7 +152,7 @@ func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Director
 	})
 }
 
-func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, bool, error) {
+func (d *localDirectory) lstat(name path.Component) (FileType, rawDeviceNumber, bool, error) {
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
@@ -284,7 +284,7 @@ func (d *localDirectory) unmount(name path.Component) error {
 	return syscall.Unmount(name.String(), 0)
 }
 
-func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) error {
+func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) error {
 	defer runtime.KeepAlive(d)
 
 	names, err := d.readdirnames()

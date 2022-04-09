@@ -3,6 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "filesystem",
     srcs = [
+        "device_number_nonunix.go",
+        "device_number_unix.go",
         "directory.go",
         "file.go",
         "file_info.go",

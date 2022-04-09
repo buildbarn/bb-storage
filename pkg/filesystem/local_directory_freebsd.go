@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// deviceNumber is the equivalent of POSIX dev_t.
-type deviceNumber = uint64
+// rawDeviceNumber is the equivalent of POSIX dev_t.
+type rawDeviceNumber = uint64
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, dev int) error {
+func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	// Though mknodat() exists on FreeBSD, device nodes created
 	// outside of devfs are non-functional.
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on FreeBSD")
