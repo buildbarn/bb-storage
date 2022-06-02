@@ -1,6 +1,7 @@
 package local
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -105,13 +106,21 @@ func (ps *PeriodicSyncer) writePersistentStateRetrying() {
 //
 // This function must generally be called in a loop in a separate
 // goroutine, so that block release events are handled continuously.
-func (ps *PeriodicSyncer) ProcessBlockRelease() {
+//
+// The return value is false if ctx was cancelled, otherwise true is returned.
+func (ps *PeriodicSyncer) ProcessBlockRelease(ctx context.Context) bool {
 	ps.sourceLock.RLock()
 	ch := ps.source.GetBlockReleaseWakeup()
 	ps.sourceLock.RUnlock()
-	<-ch
 
+	select {
+	case <-ctx.Done():
+		return false
+	case <-ch:
+		break
+	}
 	ps.writePersistentStateRetrying()
+	return true
 }
 
 // ProcessBlockPut waits for writes to occur against a block managed by
@@ -121,7 +130,9 @@ func (ps *PeriodicSyncer) ProcessBlockRelease() {
 //
 // This function must generally be called in a loop in a separate
 // goroutine, so that the persistent state is updated continuously.
-func (ps *PeriodicSyncer) ProcessBlockPut() {
+//
+// The return value is false if ctx was cancelled, otherwise true is returned.
+func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context) bool {
 	ps.sourceLock.RLock()
 	ch := ps.source.GetBlockPutWakeup()
 	ps.sourceLock.RUnlock()
@@ -144,10 +155,32 @@ func (ps *PeriodicSyncer) ProcessBlockPut() {
 		// The system was idle for some time. Wait a bit, so
 		// that the current epoch gets a meaningful amount of
 		// data.
-		<-ch
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ch:
+			break
+		}
 		_, t = ps.clock.NewTimer(ps.minimumEpochInterval)
 	}
-	ps.lastSynchronizationTime = <-t
+	select {
+	case <-ctx.Done():
+		return false
+	case syncTime := <-t:
+		ps.syncNow(syncTime)
+	}
+	return true
+}
+
+// SyncNow triggers a sync like in ProcessBlockPut immediately.
+//
+// This function must not be called concurrently with ProcessBlockPut.
+func (ps *PeriodicSyncer) SyncNow() {
+	ps.syncNow(ps.clock.Now())
+}
+
+func (ps *PeriodicSyncer) syncNow(syncTime time.Time) {
+	ps.lastSynchronizationTime = syncTime
 
 	ps.sourceLock.Lock()
 	ps.source.NotifySyncStarting()

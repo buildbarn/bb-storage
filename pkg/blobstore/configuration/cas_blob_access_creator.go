@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -17,6 +18,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -72,10 +74,10 @@ func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(key
 	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
 }
 
-func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
-		base, err := NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
+		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ExistenceCaching.Backend, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -106,6 +108,8 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		// a new BlobAccessCreator to ensure data is loaded
 		// properly.
 		base, err := NewNestedBlobAccess(
+			terminationContext,
+			terminationGroup,
 			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,

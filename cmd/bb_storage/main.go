@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -34,6 +36,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+	signalContext := global.InstallTerminationSignalHandler()
+	terminationGroup, terminationContext := errgroup.WithContext(signalContext)
+	global.ServeDiagnostics(terminationContext, terminationGroup, diagnosticsServer)
 
 	// Providers for data returned by ServerCapabilities.cache_capabilities
 	// as part of the GetCapabilities() call. We permit these calls
@@ -47,6 +52,8 @@ func main() {
 	var contentAddressableStorage blobstore.BlobAccess
 	if configuration.ContentAddressableStorage != nil {
 		info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.ContentAddressableStorage,
 			blobstore_configuration.NewCASBlobAccessCreator(
 				grpcClientFactory,
@@ -64,6 +71,8 @@ func main() {
 	var actionCache blobstore.BlobAccess
 	if configuration.ActionCache != nil {
 		info, authorizedBackend, allAuthorizers, putAuthorizer, err := newNonScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.ActionCache,
 			blobstore_configuration.NewACBlobAccessCreator(
 				contentAddressableStorageInfo,
@@ -83,6 +92,8 @@ func main() {
 	var indirectContentAddressableStorage blobstore.BlobAccess
 	if configuration.IndirectContentAddressableStorage != nil {
 		_, authorizedBackend, _, err := newScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
 				grpcClientFactory,
@@ -97,6 +108,8 @@ func main() {
 	var initialSizeClassCache blobstore.BlobAccess
 	if configuration.InitialSizeClassCache != nil {
 		_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.InitialSizeClassCache,
 			blobstore_configuration.NewISCCBlobAccessCreator(
 				grpcClientFactory,
@@ -132,62 +145,65 @@ func main() {
 		capabilitiesProviders = append(capabilitiesProviders, buildQueue)
 	}
 
-	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
-			bb_grpc.NewServersFromConfigurationAndServe(
-				configuration.GrpcServers,
-				func(s grpc.ServiceRegistrar) {
-					if contentAddressableStorage != nil {
-						remoteexecution.RegisterContentAddressableStorageServer(
-							s,
-							grpcservers.NewContentAddressableStorageServer(
-								contentAddressableStorage,
-								configuration.MaximumMessageSizeBytes))
-						bytestream.RegisterByteStreamServer(
-							s,
-							grpcservers.NewByteStreamServer(
-								contentAddressableStorage,
-								1<<16))
-					}
-					if actionCache != nil {
-						remoteexecution.RegisterActionCacheServer(
-							s,
-							grpcservers.NewActionCacheServer(
-								actionCache,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if indirectContentAddressableStorage != nil {
-						icas.RegisterIndirectContentAddressableStorageServer(
-							s,
-							grpcservers.NewIndirectContentAddressableStorageServer(
-								indirectContentAddressableStorage,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if initialSizeClassCache != nil {
-						iscc.RegisterInitialSizeClassCacheServer(
-							s,
-							grpcservers.NewInitialSizeClassCacheServer(
-								initialSizeClassCache,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if buildQueue != nil {
-						remoteexecution.RegisterExecutionServer(s, buildQueue)
-					}
-					if len(capabilitiesProviders) > 0 {
-						remoteexecution.RegisterCapabilitiesServer(
-							s,
-							capabilities.NewServer(
-								capabilities.NewMergingProvider(capabilitiesProviders)))
-					}
-				}))
-	}()
+	grpcServers, err := bb_grpc.NewServersFromConfigurationAndServe(
+		terminationContext,
+		terminationGroup,
+		configuration.GrpcServers,
+		func(s grpc.ServiceRegistrar) {
+			if contentAddressableStorage != nil {
+				remoteexecution.RegisterContentAddressableStorageServer(
+					s,
+					grpcservers.NewContentAddressableStorageServer(
+						contentAddressableStorage,
+						configuration.MaximumMessageSizeBytes))
+				bytestream.RegisterByteStreamServer(
+					s,
+					grpcservers.NewByteStreamServer(
+						contentAddressableStorage,
+						1<<16))
+			}
+			if actionCache != nil {
+				remoteexecution.RegisterActionCacheServer(
+					s,
+					grpcservers.NewActionCacheServer(
+						actionCache,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if indirectContentAddressableStorage != nil {
+				icas.RegisterIndirectContentAddressableStorageServer(
+					s,
+					grpcservers.NewIndirectContentAddressableStorageServer(
+						indirectContentAddressableStorage,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if initialSizeClassCache != nil {
+				iscc.RegisterInitialSizeClassCacheServer(
+					s,
+					grpcservers.NewInitialSizeClassCacheServer(
+						initialSizeClassCache,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if buildQueue != nil {
+				remoteexecution.RegisterExecutionServer(s, buildQueue)
+			}
+			if len(capabilitiesProviders) > 0 {
+				remoteexecution.RegisterCapabilitiesServer(
+					s,
+					capabilities.NewServer(
+						capabilities.NewMergingProvider(capabilitiesProviders)))
+			}
+		})
+	if err != nil {
+		log.Fatal("gRPC server failure: ", err)
+	}
 
-	diagnosticsServer.MarkReadyAndWait()
+	diagnosticsServer.SetReady()
+	grpcServers.SetReady()
+	terminationGroup.Wait()
 }
 
-func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
-	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
+func newNonScannableBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
 	}
@@ -208,8 +224,8 @@ func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessC
 		nil
 }
 
-func newScannableBlobAccess(configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
-	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
+func newScannableBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
 	}

@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -8,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"golang.org/x/sync/errgroup"
 )
 
 // BlobAccessCreator contains a set of methods that are invoked by the
@@ -47,7 +49,7 @@ type BlobAccessCreator interface {
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
 	// applicable to the Action Cache.
-	NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error)
+	NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error)
 	// WrapTopLevelBlobAccess() is called at the very end of
 	// NewBlobAccessFromConfiguration() to apply any top-level
 	// decorators.

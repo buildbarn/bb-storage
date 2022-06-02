@@ -1,12 +1,14 @@
 package grpc
 
 import (
+	"context"
 	"net"
 	"os"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -27,13 +29,36 @@ func init() {
 			util.DecimalExponentialBuckets(-3, 6, 2)))
 }
 
+// ServerGroup holds references to multiple grpc.Server instances, to be
+// able to set the readiness status.
+type ServerGroup struct {
+	grpcServers []*grpc.Server
+
+	healthServers       []*health.Server
+	healthCheckServices []string
+}
+
 // NewServersFromConfigurationAndServe creates a series of gRPC servers
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
-	serveErrors := make(chan error)
+//
+// This function returns immediately after initializing and registering the
+// serving routines in the terminationContext, terminationGroup.
+func NewServersFromConfigurationAndServe(terminationContext context.Context, terminationGroup *errgroup.Group, configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) (*ServerGroup, error) {
+	sg := &ServerGroup{}
+	if err := sg.startup(terminationContext, terminationGroup, configurations, registrationFunc); err != nil {
+		return nil, util.StatusWrap(err, "gRPC server failure")
+	}
+	terminationGroup.Go(func() error {
+		<-terminationContext.Done()
+		sg.shutdown()
+		return nil
+	})
+	return sg, nil
+}
 
+func (sg *ServerGroup) startup(terminationContext context.Context, terminationGroup *errgroup.Group, configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
@@ -87,17 +112,19 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
+		sg.grpcServers = append(sg.grpcServers, s)
 		registrationFunc(s)
 
 		// Enable default services.
 		grpc_prometheus.Register(s)
 		reflection.Register(s)
 		h := health.NewServer()
+		sg.healthServers = append(sg.healthServers, h)
+		sg.healthCheckServices = append(sg.healthCheckServices, configuration.HealthCheckService)
 		grpc_health_v1.RegisterHealthServer(s, h)
 		// TODO: Construct an API for the caller to indicate
 		// when it is healthy and set this.
-		h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_SERVING)
-
+		h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
 			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
 		}
@@ -108,7 +135,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenAddress)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			terminationGroup.Go(func() error {
+				if err := s.Serve(sock); err != nil {
+					return util.StatusWrap(err, "gRPC server failure")
+				}
+				return nil
+			})
 		}
 
 		// UNIX sockets.
@@ -120,8 +152,32 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenPath)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			terminationGroup.Go(func() error {
+				if err := s.Serve(sock); err != nil {
+					return util.StatusWrap(err, "gRPC server failure")
+				}
+				return nil
+			})
 		}
 	}
-	return <-serveErrors
+	return nil
+}
+
+// SetReady marks the gRPC health service to respond with
+// grpc_health_v1.HealthCheckResponse_SERVING.
+func (sg *ServerGroup) SetReady() {
+	for i, h := range sg.healthServers {
+		h.SetServingStatus(sg.healthCheckServices[i], grpc_health_v1.HealthCheckResponse_SERVING)
+	}
+}
+
+// Shutdown stops the gRPC services. It cancels all active RPCs. Clients are
+// supposed to retry the operations whenever the service is up again.
+func (sg *ServerGroup) shutdown() {
+	for _, h := range sg.healthServers {
+		h.Shutdown()
+	}
+	for _, s := range sg.grpcServers {
+		s.Stop()
+	}
 }

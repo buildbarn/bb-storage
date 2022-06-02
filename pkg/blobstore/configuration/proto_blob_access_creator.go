@@ -1,12 +1,14 @@
 package configuration
 
 import (
+	"context"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,10 +40,10 @@ func (bac *protoBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.B
 // newProtoCustomBlobAccess is a common implementation of
 // BlobAccessCreator.NewCustomBlobAccess() for all types derived from
 // protoBlobAccessCreator.
-func newProtoCustomBlobAccess(bac BlobAccessCreator, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func newProtoCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, bac BlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_HierarchicalInstanceNames:
-		base, err := NewNestedBlobAccess(backend.HierarchicalInstanceNames, bac)
+		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.HierarchicalInstanceNames, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

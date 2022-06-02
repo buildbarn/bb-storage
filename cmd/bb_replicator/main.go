@@ -11,6 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator"
 	replicator_pb "github.com/buildbarn/bb-storage/pkg/proto/replicator"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
 )
@@ -27,17 +28,24 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+	signalContext := global.InstallTerminationSignalHandler()
+	terminationGroup, terminationContext := errgroup.WithContext(signalContext)
+	global.ServeDiagnostics(terminationContext, terminationGroup, diagnosticsServer)
 
 	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Source,
 		blobAccessCreator)
 	if err != nil {
 		log.Fatal("Failed to create source: ", err)
 	}
 	sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Sink,
 		blobAccessCreator)
 	if err != nil {
@@ -52,15 +60,18 @@ func main() {
 		log.Fatal("Failed to create replicator: ", err)
 	}
 
-	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
-			bb_grpc.NewServersFromConfigurationAndServe(
-				configuration.GrpcServers,
-				func(s grpc.ServiceRegistrar) {
-					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
-				}))
-	}()
+	grpcServers, err := bb_grpc.NewServersFromConfigurationAndServe(
+		terminationContext,
+		terminationGroup,
+		configuration.GrpcServers,
+		func(s grpc.ServiceRegistrar) {
+			replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
+		})
+	if err != nil {
+		log.Fatal("gRPC server failure: ", err)
+	}
 
-	diagnosticsServer.MarkReadyAndWait()
+	diagnosticsServer.SetReady()
+	grpcServers.SetReady()
+	terminationGroup.Wait()
 }

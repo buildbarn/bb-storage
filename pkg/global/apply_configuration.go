@@ -5,6 +5,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
@@ -21,10 +24,11 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -43,25 +47,40 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	stateNotServing int32 = iota
+	stateServing
+)
+
+// ExitCodeInterrupted is used to signal a successful controlled shutdown.
+var ExitCodeInterrupted int = 8
+
 // DiagnosticsServer is returned by ApplyConfiguration. It can be used by
 // the caller to report whether the application has started up
 // successfully.
 type DiagnosticsServer struct {
 	config                          *pb.DiagnosticsHTTPServerConfiguration
 	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
+	state                           int32
+	server                          *http.Server
 }
 
-// MarkReadyAndWait can be called to report that the program has started
-// successfully. The application should now be reported as being healthy
-// and ready, and receive incoming requests if applicable.
-func (ds *DiagnosticsServer) MarkReadyAndWait() {
+// Serve can be called to report that the program has started successfully.
+// The application should now be reported as being healthy and ready, according
+// to isReady, and receive incoming requests if applicable.
+func (ds *DiagnosticsServer) Serve(terminationContext context.Context) error {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
-	if ds.config == nil {
-		select {}
-	} else {
+	if ds.config != nil {
 		router := mux.NewRouter()
 		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
+		router.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
+			if ds.state == stateServing {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+			}
+		})
 		if ds.config.EnablePrometheus {
 			router.Handle("/metrics", promhttp.Handler())
 		}
@@ -72,8 +91,44 @@ func (ds *DiagnosticsServer) MarkReadyAndWait() {
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		log.Fatal(http.ListenAndServe(ds.config.ListenAddress, router))
+		ds.server = &http.Server{
+			Addr:    ds.config.ListenAddress,
+			Handler: router,
+		}
+		go func() {
+			<-terminationContext.Done()
+			ds.SetNotServing()
+			ds.server.Shutdown(terminationContext)
+		}()
+		if err := ds.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+	} else {
+		<-terminationContext.Done()
 	}
+	return nil
+}
+
+// SetReady updates the health probe to report healthy and ready.
+func (ds *DiagnosticsServer) SetReady() {
+	ds.state = stateServing
+}
+
+// SetNotServing updates the health probe to report healthy but not ready.
+func (ds *DiagnosticsServer) SetNotServing() {
+	ds.state = stateNotServing
+}
+
+// ServeDiagnostics is a wrapper that calls DiagnosticsServer.Serve inside
+// a goroutine, managed by the provided errgroup.Group, and returns
+// immediately.
+func ServeDiagnostics(terminationContext context.Context, terminationGroup *errgroup.Group, diagnosticsServer *DiagnosticsServer) {
+	terminationGroup.Go(func() error {
+		if err := diagnosticsServer.Serve(terminationContext); err != nil {
+			return util.StatusWrap(err, "Diagnostics server")
+		}
+		return nil
+	})
 }
 
 // ApplyConfiguration applies configuration options to the running
@@ -371,4 +426,25 @@ func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Unknown sampling policy")
 	}
+}
+
+// InstallTerminationSignalHandler starts watching for SIGTERM and SIGINT. The
+// first signal received will cancel the returned context. If a second signal
+// is received, the program will exit immediately.
+func InstallTerminationSignalHandler() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Catch SIGINT and SIGTERM to gracefully shutdown.
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-c
+		log.Printf("Caught signal %q for graceful shutdown", sig)
+		cancel()
+		// A second signal means immediate termination.
+		sig = <-c
+		log.Printf("Caught signal %q, terminating", sig)
+		os.Exit(ExitCodeInterrupted)
+	}()
+	return ctx
 }
