@@ -43,10 +43,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// LifecycleState is returned by ApplyConfiguration. It can be used by
+// DiagnosticsServer is returned by ApplyConfiguration. It can be used by
 // the caller to report whether the application has started up
 // successfully.
-type LifecycleState struct {
+type DiagnosticsServer struct {
 	config                          *pb.DiagnosticsHTTPServerConfiguration
 	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
 }
@@ -54,32 +54,32 @@ type LifecycleState struct {
 // MarkReadyAndWait can be called to report that the program has started
 // successfully. The application should now be reported as being healthy
 // and ready, and receive incoming requests if applicable.
-func (ls *LifecycleState) MarkReadyAndWait() {
+func (ds *DiagnosticsServer) MarkReadyAndWait() {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
-	if ls.config == nil {
+	if ds.config == nil {
 		select {}
 	} else {
 		router := mux.NewRouter()
 		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
-		if ls.config.EnablePrometheus {
+		if ds.config.EnablePrometheus {
 			router.Handle("/metrics", promhttp.Handler())
 		}
-		if ls.config.EnablePprof {
+		if ds.config.EnablePprof {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
-		if httpHandler := ls.activeSpansReportingHTTPHandler; httpHandler != nil {
+		if httpHandler := ds.activeSpansReportingHTTPHandler; httpHandler != nil {
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		log.Fatal(http.ListenAndServe(ls.config.ListenAddress, router))
+		log.Fatal(http.ListenAndServe(ds.config.ListenAddress, router))
 	}
 }
 
 // ApplyConfiguration applies configuration options to the running
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
-func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_grpc.ClientFactory, error) {
+func ApplyConfiguration(configuration *pb.Configuration) (*DiagnosticsServer, bb_grpc.ClientFactory, error) {
 	// Set the umask, if requested.
 	if setUmaskConfiguration := configuration.GetSetUmask(); setUmaskConfiguration != nil {
 		if err := setUmask(setUmaskConfiguration.Umask); err != nil {
@@ -307,7 +307,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}()
 	}
 
-	return &LifecycleState{
+	return &DiagnosticsServer{
 			config:                          configuration.GetDiagnosticsHttpServer(),
 			activeSpansReportingHTTPHandler: activeSpansReportingHTTPHandler,
 		},

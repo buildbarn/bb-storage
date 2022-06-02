@@ -30,7 +30,7 @@ func main() {
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-	lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
+	diagnosticsServer, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
@@ -183,7 +183,7 @@ func main() {
 				}))
 	}()
 
-	lifecycleState.MarkReadyAndWait()
+	diagnosticsServer.MarkReadyAndWait()
 }
 
 func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
