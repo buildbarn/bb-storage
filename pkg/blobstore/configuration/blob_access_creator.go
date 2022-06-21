@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+
 	"golang.org/x/sync/errgroup"
 )
 

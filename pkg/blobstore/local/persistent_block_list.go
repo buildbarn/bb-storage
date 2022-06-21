@@ -10,6 +10,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// errClosedForWriting is an error code to indicate that the BlockList does not
+// accept any more write operations and ongoing write operations will fail.
+var errClosedForWriting = status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down")
+
 // notificationChannel is a helper type to manage the channels returned
 // by GetBlockReleaseWakeup and GetBlockPutWakeup. For each of the
 // channels that these functions hand out, we must make sure that we
@@ -75,6 +79,8 @@ type PersistentBlockList struct {
 	blockAllocator   BlockAllocator
 	sectorSizeBytes  int
 	blockSectorCount int64
+	// closedForWriting can only transition from false to true.
+	closedForWriting bool
 
 	// Blocks that are currently available for reading and writing.
 	blocks []persistentBlockInfo
@@ -174,6 +180,17 @@ var (
 	_ PersistentStateSource = (*PersistentBlockList)(nil)
 )
 
+// CloseForWriting makes this BlockList return errClosedForWriting for all
+// future calls to PushBack and Put. This also applies to any ongoing calls
+// that that have not finished when CloseForWriting returns.
+//
+// It is recommended to synchronize the call to CloseForWriting with calls to
+// PushBack, Put, BlockListPutFinalizer etc., (e.g., under a write lock).
+// Read more in the BlockList interface specification.
+func (bl *PersistentBlockList) CloseForWriting() {
+	bl.closedForWriting = true
+}
+
 // BlockReferenceToBlockIndex converts a BlockReference to the index of
 // the block in the BlockList. This conversion may fail if the block has
 // already been released using PopFront().
@@ -245,6 +262,10 @@ func (bl *PersistentBlockList) PopFront() {
 // PushBack appends a new block to the BlockList. The block is obtained
 // by calling into the underlying BlockAllocator.
 func (bl *PersistentBlockList) PushBack() error {
+	if bl.closedForWriting {
+		return errClosedForWriting
+	}
+
 	block, location, err := bl.blockAllocator.NewBlock()
 	if err != nil {
 		return err
@@ -280,6 +301,15 @@ func (bl *PersistentBlockList) HasSpace(index int, sizeBytes int64) bool {
 
 // Put data into a block managed by the BlockList.
 func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWriter {
+	if bl.closedForWriting {
+		return func(b buffer.Buffer) BlockListPutFinalizer {
+			b.Discard()
+			return func() (int64, error) {
+				return 0, errClosedForWriting
+			}
+		}
+	}
+
 	// Allocate space from the requested block.
 	blockInfo := &bl.blocks[index]
 	offsetBytes := blockInfo.allocationOffsetSectors * int64(bl.sectorSizeBytes)
@@ -290,12 +320,23 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 	block.acquire()
 	return func(b buffer.Buffer) BlockListPutFinalizer {
 		// Copy data into the block without holding any locks.
-		err := block.block.Put(offsetBytes, b)
+		// closedForWriting can still be checked asynchronously, it will never
+		// be set to false again.
+		var err error
+		if bl.closedForWriting {
+			b.Discard()
+			err = errClosedForWriting
+		} else {
+			err = block.block.Put(offsetBytes, b)
+		}
 
 		return func() (int64, error) {
 			block.release()
 			if err != nil {
 				return 0, err
+			}
+			if bl.closedForWriting {
+				return 0, errClosedForWriting
 			}
 
 			// Adjust information on how much data has

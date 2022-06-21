@@ -11,8 +11,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator"
 	replicator_pb "github.com/buildbarn/bb-storage/pkg/proto/replicator"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"golang.org/x/sync/errgroup"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 

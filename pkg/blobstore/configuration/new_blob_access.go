@@ -24,8 +24,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
-	"golang.org/x/sync/errgroup"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -364,8 +364,7 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 				blockSectorCount,
 				persistentState.OldestEpochId,
 				persistentState.Blocks)
-			closableBlockList := local.NewClosableBlockList(persistentBlockList)
-			blockList = closableBlockList
+			blockList = persistentBlockList
 
 			// Start goroutines that update the persistent
 			// state file when writes and block releases
@@ -392,6 +391,7 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			terminationGroup.Go(func() error {
 				for periodicSyncer.ProcessBlockPut(terminationContext) {
 				}
+				persistentBlockList.CloseForWriting()
 				periodicSyncer.SyncNow()
 				return nil
 			})

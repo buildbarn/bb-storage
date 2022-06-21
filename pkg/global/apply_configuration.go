@@ -28,8 +28,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
-	"golang.org/x/sync/errgroup"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -436,15 +436,14 @@ func InstallTerminationSignalHandler() context.Context {
 
 	// Catch SIGINT and SIGTERM to gracefully shutdown.
 	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signalsToCapture := []os.Signal{os.Interrupt, syscall.SIGTERM}
+	signal.Notify(c, signalsToCapture...)
 	go func() {
 		sig := <-c
-		log.Printf("Caught signal %q for graceful shutdown", sig)
+		log.Printf("Caught signal %q, shutting down", sig)
 		cancel()
 		// A second signal means immediate termination.
-		sig = <-c
-		log.Printf("Caught signal %q, terminating", sig)
-		os.Exit(ExitCodeInterrupted)
+		signal.Reset(signalsToCapture...)
 	}()
 	return ctx
 }

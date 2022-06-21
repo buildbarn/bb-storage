@@ -9,7 +9,6 @@ go_library(
         "block_list.go",
         "block_list_growth_policy.go",
         "block_reference.go",
-        "closable_block_list.go",
         "directory_backed_persistent_state_store.go",
         "flat_blob_access.go",
         "hashing_key_location_map.go",
@@ -58,7 +57,6 @@ go_test(
     srcs = [
         "block_device_backed_block_allocator_test.go",
         "block_device_backed_location_record_array_test.go",
-        "closable_block_list_test.go",
         "directory_backed_persistent_state_store_test.go",
         "flat_blob_access_test.go",
         "hashing_key_location_map_test.go",
