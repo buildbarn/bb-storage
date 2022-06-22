@@ -36,9 +36,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
-	signalContext := global.InstallTerminationSignalHandler()
+	signalContext := global.InstallTerminationSignalHandler(context.Background())
 	terminationGroup, terminationContext := errgroup.WithContext(signalContext)
-	global.ServeDiagnostics(terminationContext, terminationGroup, diagnosticsServer)
+	startupContext, cancelStartup := context.WithCancel(terminationContext)
+
+	global.ServeDiagnostics(terminationContext, startupContext, diagnosticsServer)
 
 	// Providers for data returned by ServerCapabilities.cache_capabilities
 	// as part of the GetCapabilities() call. We permit these calls
@@ -145,60 +147,59 @@ func main() {
 		capabilitiesProviders = append(capabilitiesProviders, buildQueue)
 	}
 
-	grpcServers, err := bb_grpc.NewServersFromConfigurationAndServe(
-		terminationContext,
-		terminationGroup,
-		configuration.GrpcServers,
-		func(s grpc.ServiceRegistrar) {
-			if contentAddressableStorage != nil {
-				remoteexecution.RegisterContentAddressableStorageServer(
-					s,
-					grpcservers.NewContentAddressableStorageServer(
-						contentAddressableStorage,
-						configuration.MaximumMessageSizeBytes))
-				bytestream.RegisterByteStreamServer(
-					s,
-					grpcservers.NewByteStreamServer(
-						contentAddressableStorage,
-						1<<16))
-			}
-			if actionCache != nil {
-				remoteexecution.RegisterActionCacheServer(
-					s,
-					grpcservers.NewActionCacheServer(
-						actionCache,
-						int(configuration.MaximumMessageSizeBytes)))
-			}
-			if indirectContentAddressableStorage != nil {
-				icas.RegisterIndirectContentAddressableStorageServer(
-					s,
-					grpcservers.NewIndirectContentAddressableStorageServer(
-						indirectContentAddressableStorage,
-						int(configuration.MaximumMessageSizeBytes)))
-			}
-			if initialSizeClassCache != nil {
-				iscc.RegisterInitialSizeClassCacheServer(
-					s,
-					grpcservers.NewInitialSizeClassCacheServer(
-						initialSizeClassCache,
-						int(configuration.MaximumMessageSizeBytes)))
-			}
-			if buildQueue != nil {
-				remoteexecution.RegisterExecutionServer(s, buildQueue)
-			}
-			if len(capabilitiesProviders) > 0 {
-				remoteexecution.RegisterCapabilitiesServer(
-					s,
-					capabilities.NewServer(
-						capabilities.NewMergingProvider(capabilitiesProviders)))
-			}
-		})
-	if err != nil {
-		log.Fatal("gRPC server failure: ", err)
-	}
+	go func() {
+		log.Fatal(
+			"gRPC server failure: ",
+			bb_grpc.NewServersFromConfigurationAndServe(
+				startupContext,
+				terminationContext,
+				configuration.GrpcServers,
+				func(s grpc.ServiceRegistrar) {
+					if contentAddressableStorage != nil {
+						remoteexecution.RegisterContentAddressableStorageServer(
+							s,
+							grpcservers.NewContentAddressableStorageServer(
+								contentAddressableStorage,
+								configuration.MaximumMessageSizeBytes))
+						bytestream.RegisterByteStreamServer(
+							s,
+							grpcservers.NewByteStreamServer(
+								contentAddressableStorage,
+								1<<16))
+					}
+					if actionCache != nil {
+						remoteexecution.RegisterActionCacheServer(
+							s,
+							grpcservers.NewActionCacheServer(
+								actionCache,
+								int(configuration.MaximumMessageSizeBytes)))
+					}
+					if indirectContentAddressableStorage != nil {
+						icas.RegisterIndirectContentAddressableStorageServer(
+							s,
+							grpcservers.NewIndirectContentAddressableStorageServer(
+								indirectContentAddressableStorage,
+								int(configuration.MaximumMessageSizeBytes)))
+					}
+					if initialSizeClassCache != nil {
+						iscc.RegisterInitialSizeClassCacheServer(
+							s,
+							grpcservers.NewInitialSizeClassCacheServer(
+								initialSizeClassCache,
+								int(configuration.MaximumMessageSizeBytes)))
+					}
+					if buildQueue != nil {
+						remoteexecution.RegisterExecutionServer(s, buildQueue)
+					}
+					if len(capabilitiesProviders) > 0 {
+						remoteexecution.RegisterCapabilitiesServer(
+							s,
+							capabilities.NewServer(
+								capabilities.NewMergingProvider(capabilitiesProviders)))
+					}
+				}))
+	}()
 
-	diagnosticsServer.SetReady()
-	grpcServers.SetReady()
 	terminationGroup.Wait()
 }
 

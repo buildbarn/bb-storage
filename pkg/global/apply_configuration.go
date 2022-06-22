@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
@@ -52,9 +53,6 @@ const (
 	stateServing
 )
 
-// ExitCodeInterrupted is used to signal a successful controlled shutdown.
-var ExitCodeInterrupted int = 8
-
 // DiagnosticsServer is returned by ApplyConfiguration. It can be used by
 // the caller to report whether the application has started up
 // successfully.
@@ -65,17 +63,22 @@ type DiagnosticsServer struct {
 	server                          *http.Server
 }
 
-// Serve can be called to report that the program has started successfully.
-// The application should now be reported as being healthy and ready, according
-// to isReady, and receive incoming requests if applicable.
-func (ds *DiagnosticsServer) Serve(terminationContext context.Context) error {
+// ServeAndWait can be called to serve the diagnostics HTTP API receive
+// incoming requests if applicable. The application will reported as being
+// healthy. When the startupContext is cancelled, until the terminationContext
+// is cancelled, the service will be reported as ready.
+func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext context.Context) {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
-	if ds.config != nil {
+	if ds.config == nil {
+		select {}
+	} else {
+		servingState := &atomic.Int32{}
+		servingState.Initialize(stateNotServing)
 		router := mux.NewRouter()
 		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
 		router.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
-			if ds.state == stateServing {
+			if servingState.Load() == stateServing {
 				w.WriteHeader(http.StatusOK)
 			} else {
 				http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
@@ -96,17 +99,18 @@ func (ds *DiagnosticsServer) Serve(terminationContext context.Context) error {
 			Handler: router,
 		}
 		go func() {
+			select {
+			case <-terminationContext.Done():
+				// Terminated before startup had finished.
+				break
+			case <-startupContext.Done():
+				servingState.Store(stateServing)
+			}
 			<-terminationContext.Done()
-			ds.SetNotServing()
-			ds.server.Shutdown(terminationContext)
+			servingState.Store(stateNotServing)
 		}()
-		if err := ds.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
-		}
-	} else {
-		<-terminationContext.Done()
+		log.Fatal(ds.server.ListenAndServe())
 	}
-	return nil
 }
 
 // SetReady updates the health probe to report healthy and ready.
@@ -122,8 +126,8 @@ func (ds *DiagnosticsServer) SetNotServing() {
 // ServeDiagnostics is a wrapper that calls DiagnosticsServer.Serve inside
 // a goroutine, managed by the provided errgroup.Group, and returns
 // immediately.
-func ServeDiagnostics(terminationContext context.Context, terminationGroup *errgroup.Group, diagnosticsServer *DiagnosticsServer) {
-	terminationGroup.Go(func() error {
+func ServeDiagnostics(terminationContext, starutpContext context.Context, diagnosticsServer *DiagnosticsServer) {
+	go func() {
 		if err := diagnosticsServer.Serve(terminationContext); err != nil {
 			return util.StatusWrap(err, "Diagnostics server")
 		}
@@ -431,8 +435,8 @@ func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler)
 // InstallTerminationSignalHandler starts watching for SIGTERM and SIGINT. The
 // first signal received will cancel the returned context. If a second signal
 // is received, the program will exit immediately.
-func InstallTerminationSignalHandler() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
+func InstallTerminationSignalHandler(parentCtx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(parentCtx)
 
 	// Catch SIGINT and SIGTERM to gracefully shutdown.
 	c := make(chan os.Signal)
