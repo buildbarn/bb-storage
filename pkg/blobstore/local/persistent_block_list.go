@@ -79,7 +79,9 @@ type PersistentBlockList struct {
 	blockAllocator   BlockAllocator
 	sectorSizeBytes  int
 	blockSectorCount int64
-	// closedForWriting can only transition from false to true.
+	// When closedForWriting is set, BlockList will return errClosedForWriting
+	// for all future calls to PushBack and Put. This also applies to any
+	// ongoing calls. closedForWriting can only transition from false to true.
 	closedForWriting bool
 
 	// Blocks that are currently available for reading and writing.
@@ -179,17 +181,6 @@ var (
 	_ BlockList             = (*PersistentBlockList)(nil)
 	_ PersistentStateSource = (*PersistentBlockList)(nil)
 )
-
-// CloseForWriting makes this BlockList return errClosedForWriting for all
-// future calls to PushBack and Put. This also applies to any ongoing calls
-// that that have not finished when CloseForWriting returns.
-//
-// It is recommended to synchronize the call to CloseForWriting with calls to
-// PushBack, Put, BlockListPutFinalizer etc., (e.g., under a write lock).
-// Read more in the BlockList interface specification.
-func (bl *PersistentBlockList) CloseForWriting() {
-	bl.closedForWriting = true
-}
 
 // BlockReferenceToBlockIndex converts a BlockReference to the index of
 // the block in the BlockList. This conversion may fail if the block has
@@ -398,7 +389,10 @@ func (bl *PersistentBlockList) GetBlockPutWakeup() <-chan struct{} {
 // NotifySyncStarting needs to be called right before the data on the
 // storage medium underneath the BlockAllocator is synchronized. This
 // causes the epoch ID to be increased when the next blob is stored.
-func (bl *PersistentBlockList) NotifySyncStarting() {
+func (bl *PersistentBlockList) NotifySyncStarting(isFinalSync bool) {
+	if isFinalSync {
+		bl.closedForWriting = true
+	}
 	// Preserve the current epoch ID and the amount of data written
 	// into every block.
 	bl.synchronizingEpochs = len(bl.epochHashSeeds)

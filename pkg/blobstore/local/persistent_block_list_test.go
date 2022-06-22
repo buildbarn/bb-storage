@@ -86,7 +86,7 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// Successfully synchronize data to disk. This should cause the
 	// next call to GetPersistentState() to return all of the
 	// blocks.
-	blockList.NotifySyncStarting()
+	blockList.NotifySyncStarting(false)
 	blockList.NotifySyncCompleted()
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()
@@ -174,7 +174,7 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// Sync even more data. This should cause epoch 2 to be reported
 	// as part of GetPersistentState() as well. The write offset for
 	// the first block should also be increased now.
-	blockList.NotifySyncStarting()
+	blockList.NotifySyncStarting(false)
 	blockList.NotifySyncCompleted()
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()
@@ -372,10 +372,10 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	require.False(t, blockList.HasSpace(1, 49))
 }
 
-func TestPersistentBlockListPushBackWhenClosedForWriting(t *testing.T) {
+func TestPersistentBlockListPushBackAfterFinalSync(t *testing.T) {
 	blockList, _ := local.NewPersistentBlockList(nil, 16, 10, 0, nil)
 
-	blockList.CloseForWriting()
+	blockList.NotifySyncStarting(true)
 
 	require.Equal(
 		t,
@@ -383,7 +383,7 @@ func TestPersistentBlockListPushBackWhenClosedForWriting(t *testing.T) {
 		blockList.PushBack())
 }
 
-func TestPersistentBlockListPutWhenClosedForWriting1(t *testing.T) {
+func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
 	// Writing to a block list consists of calling Put(), which returns a
 	// putWriter to be called, which in turn returns a putFinalizer to be
 	// called. Make sure error is returned if closed for writing early.
@@ -403,7 +403,7 @@ func TestPersistentBlockListPutWhenClosedForWriting1(t *testing.T) {
 	require.NoError(t, blockList.PushBack())
 
 	// Close for writing even before calling Put.
-	blockList.CloseForWriting()
+	blockList.NotifySyncStarting(true)
 
 	putWriter := blockList.Put(0, 5)
 
@@ -425,7 +425,7 @@ func TestPersistentBlockListPutWhenClosedForWriting1(t *testing.T) {
 	verifyEpochIDStaysAtZero(t, blockList)
 }
 
-func TestPersistentBlockListPutWhenClosedForWriting2(t *testing.T) {
+func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	// Writing to a block list consists of calling Put(), which returns a
 	// putWriter to be called, which in turn returns a putFinalizer to be
 	// called. Make sure error is returned if closed for writing in the last
@@ -453,7 +453,7 @@ func TestPersistentBlockListPutWhenClosedForWriting2(t *testing.T) {
 	blockList.NotifyPersistentStateWritten()
 
 	// Close for writing after receiving the putWriter.
-	blockList.CloseForWriting()
+	blockList.NotifySyncStarting(true)
 
 	// Not expecting block.EXPECT().Put().
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
@@ -468,7 +468,7 @@ func TestPersistentBlockListPutWhenClosedForWriting2(t *testing.T) {
 	verifyEpochIDStaysAtZero(t, blockList)
 }
 
-func TestPersistentBlockListPutWhenClosedForWriting3(t *testing.T) {
+func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	// Writing to a block list consists of calling Put(), which returns a
 	// putWriter to be called, which in turn returns a putFinalizer to be
 	// called. Make sure error is returned if closed for writing in the last
@@ -507,7 +507,7 @@ func TestPersistentBlockListPutWhenClosedForWriting3(t *testing.T) {
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 	// Close for writing in the last minute.
-	blockList.CloseForWriting()
+	blockList.NotifySyncStarting(true)
 
 	_, err := putFinalizer()
 	require.Equal(
@@ -527,7 +527,7 @@ func verifyEpochIDStaysAtZero(t *testing.T, blockList *local.PersistentBlockList
 	require.Equal(t, uint32(0), oldestEpochID)
 	require.Empty(t, blockStateList)
 
-	blockList.NotifySyncStarting()
+	blockList.NotifySyncStarting(false)
 	blockList.NotifySyncCompleted()
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()

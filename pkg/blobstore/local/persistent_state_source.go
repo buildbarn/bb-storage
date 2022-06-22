@@ -35,7 +35,7 @@ type PersistentStateSource interface {
 	//
 	// This function must be called while holding a write lock on
 	// the BlockList.
-	NotifySyncStarting()
+	NotifySyncStarting(isFinalSync bool)
 
 	// NotifySyncCompleted instructs the BlockList that the
 	// synchronization performed after the last call to

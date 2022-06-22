@@ -391,8 +391,6 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			terminationGroup.Go(func() error {
 				for periodicSyncer.ProcessBlockPut(terminationContext) {
 				}
-				persistentBlockList.CloseForWriting()
-				periodicSyncer.SyncNow()
 				return nil
 			})
 		}
