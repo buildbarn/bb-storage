@@ -36,11 +36,26 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+
 	signalContext := global.InstallTerminationSignalHandler(context.Background())
 	terminationGroup, terminationContext := errgroup.WithContext(signalContext)
-	startupContext, cancelStartup := context.WithCancel(terminationContext)
+	startupContext, cancelStartupCtx := context.WithCancel(terminationContext)
+	errorChannel := make(chan error)
+	terminationGroup.Go(func() error {
+		select {
+		case err := <-errorChannel:
+			return err
+		case <-terminationContext.Done():
+			// Do not block termination.
+			return nil
+		}
+	})
 
-	global.ServeDiagnostics(terminationContext, startupContext, diagnosticsServer)
+	go func() {
+		errorChannel <- util.StatusWrap(
+			diagnosticsServer.ServeAndWait(startupContext, terminationContext),
+			"Diagnostics server")
+	}()
 
 	// Providers for data returned by ServerCapabilities.cache_capabilities
 	// as part of the GetCapabilities() call. We permit these calls
@@ -148,8 +163,7 @@ func main() {
 	}
 
 	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
+		errorChannel <- util.StatusWrap(
 			bb_grpc.NewServersFromConfigurationAndServe(
 				startupContext,
 				terminationContext,
@@ -197,9 +211,11 @@ func main() {
 							capabilities.NewServer(
 								capabilities.NewMergingProvider(capabilitiesProviders)))
 					}
-				}))
+				}),
+			"gRPC server failure")
 	}()
 
+	cancelStartupCtx()
 	terminationGroup.Wait()
 }
 

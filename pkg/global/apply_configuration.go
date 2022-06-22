@@ -30,7 +30,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
 
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,7 +58,6 @@ const (
 type DiagnosticsServer struct {
 	config                          *pb.DiagnosticsHTTPServerConfiguration
 	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
-	state                           int32
 	server                          *http.Server
 }
 
@@ -67,7 +65,7 @@ type DiagnosticsServer struct {
 // incoming requests if applicable. The application will reported as being
 // healthy. When the startupContext is cancelled, until the terminationContext
 // is cancelled, the service will be reported as ready.
-func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext context.Context) {
+func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext context.Context) error {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
 	if ds.config == nil {
@@ -109,30 +107,8 @@ func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext con
 			<-terminationContext.Done()
 			servingState.Store(stateNotServing)
 		}()
-		log.Fatal(ds.server.ListenAndServe())
+		return ds.server.ListenAndServe()
 	}
-}
-
-// SetReady updates the health probe to report healthy and ready.
-func (ds *DiagnosticsServer) SetReady() {
-	ds.state = stateServing
-}
-
-// SetNotServing updates the health probe to report healthy but not ready.
-func (ds *DiagnosticsServer) SetNotServing() {
-	ds.state = stateNotServing
-}
-
-// ServeDiagnostics is a wrapper that calls DiagnosticsServer.Serve inside
-// a goroutine, managed by the provided errgroup.Group, and returns
-// immediately.
-func ServeDiagnostics(terminationContext, starutpContext context.Context, diagnosticsServer *DiagnosticsServer) {
-	go func() {
-		if err := diagnosticsServer.Serve(terminationContext); err != nil {
-			return util.StatusWrap(err, "Diagnostics server")
-		}
-		return nil
-	})
 }
 
 // ApplyConfiguration applies configuration options to the running

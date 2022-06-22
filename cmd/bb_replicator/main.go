@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -28,9 +29,26 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
-	signalContext := global.InstallTerminationSignalHandler()
+
+	signalContext := global.InstallTerminationSignalHandler(context.Background())
 	terminationGroup, terminationContext := errgroup.WithContext(signalContext)
-	global.ServeDiagnostics(terminationContext, terminationGroup, diagnosticsServer)
+	startupContext, cancelStartupCtx := context.WithCancel(terminationContext)
+	errorChannel := make(chan error)
+	terminationGroup.Go(func() error {
+		select {
+		case err := <-errorChannel:
+			return err
+		case <-terminationContext.Done():
+			// Do not block termination.
+			return nil
+		}
+	})
+
+	go func() {
+		errorChannel <- util.StatusWrap(
+			diagnosticsServer.ServeAndWait(startupContext, terminationContext),
+			"Diagnostics server")
+	}()
 
 	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 		grpcClientFactory,
@@ -61,16 +79,17 @@ func main() {
 	}
 
 	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
+		errorChannel <- util.StatusWrap(
 			bb_grpc.NewServersFromConfigurationAndServe(
 				startupContext,
 				terminationContext,
 				configuration.GrpcServers,
 				func(s grpc.ServiceRegistrar) {
 					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
-				}))
+				}),
+			"gRPC server failure")
 	}()
 
+	cancelStartupCtx()
 	terminationGroup.Wait()
 }
