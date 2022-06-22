@@ -455,7 +455,16 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	// Close for writing after receiving the putWriter.
 	blockList.NotifySyncStarting(true)
 
-	// Not expecting block.EXPECT().Put().
+	// Because writing is permitted without holding any locks, there
+	// is nothing we can do to prevent the write from occurring. It
+	// should still be directed against the underlying Block.
+	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		data, err := b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+		return nil
+	})
+
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 	_, err := putFinalizer()

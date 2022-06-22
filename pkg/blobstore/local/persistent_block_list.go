@@ -311,15 +311,7 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 	block.acquire()
 	return func(b buffer.Buffer) BlockListPutFinalizer {
 		// Copy data into the block without holding any locks.
-		// closedForWriting can still be checked asynchronously, it will never
-		// be set to false again.
-		var err error
-		if bl.closedForWriting {
-			b.Discard()
-			err = errClosedForWriting
-		} else {
-			err = block.block.Put(offsetBytes, b)
-		}
+		err := block.block.Put(offsetBytes, b)
 
 		return func() (int64, error) {
 			block.release()
