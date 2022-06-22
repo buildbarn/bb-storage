@@ -131,9 +131,8 @@ func (ps *PeriodicSyncer) ProcessBlockRelease(ctx context.Context) bool {
 // This function must generally be called in a loop in a separate
 // goroutine, so that the persistent state is updated continuously.
 //
-// The return value is false if ctx was cancelled and a final sync was done,
-// otherwise true is returned.
-func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context) bool {
+// The return value is false if ctx was cancelled, otherwise true is returned.
+func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context, isFinalSync bool) bool {
 	ps.sourceLock.RLock()
 	ch := ps.source.GetBlockPutWakeup()
 	ps.sourceLock.RUnlock()
@@ -164,13 +163,13 @@ func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context) bool {
 			_, t = ps.clock.NewTimer(ps.minimumEpochInterval)
 		}
 	}
-	var isFinalSync bool
+	var syncedDueToTimeout bool
 	select {
 	case <-ctx.Done():
 		ps.lastSynchronizationTime = ps.clock.Now()
-		isFinalSync = true
+		syncedDueToTimeout = false
 	case ps.lastSynchronizationTime = <-t:
-		isFinalSync = false
+		syncedDueToTimeout = true
 	}
 
 	ps.sourceLock.Lock()
@@ -194,5 +193,5 @@ func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context) bool {
 
 	ps.writePersistentStateRetrying()
 
-	return !isFinalSync
+	return syncedDueToTimeout
 }

@@ -117,7 +117,15 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 	periodicSyncer.ProcessBlockRelease(context.Background())
 }
 
-func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
+func TestPeriodicSyncerProcessBlockPutNormalSync(t *testing.T) {
+	testPeriodicSyncerProcessBlockPut(t, false)
+}
+
+func TestPeriodicSyncerProcessBlockPutFinalSync(t *testing.T) {
+	testPeriodicSyncerProcessBlockPut(t, true)
+}
+
+func testPeriodicSyncerProcessBlockPut(t *testing.T, isFinalSync bool) {
 	ctrl := gomock.NewController(t)
 
 	source := mock.NewMockPersistentStateSource(ctrl)
@@ -160,7 +168,7 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 		// create too many epochs.
 		clock.EXPECT().Now().Return(time.Unix(1001, 0)),
 		clock.EXPECT().NewTimer(59*time.Second).Return(timer1, timerChan1),
-		source.EXPECT().NotifySyncStarting(false),
+		source.EXPECT().NotifySyncStarting(isFinalSync),
 
 		// Failure to synchronize the data should cause a delay,
 		// but not another call to NotifySyncStarting(). That
@@ -207,7 +215,7 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 		}),
 		source.EXPECT().NotifyPersistentStateWritten())
 
-	require.True(t, periodicSyncer.ProcessBlockPut(context.Background()))
+	require.True(t, periodicSyncer.ProcessBlockPut(context.Background(), isFinalSync))
 }
 
 func TestPeriodicSyncerProcessBlockPutCancelled(t *testing.T) {
@@ -281,7 +289,7 @@ func TestPeriodicSyncerProcessBlockPutCancelled(t *testing.T) {
 		}),
 		source.EXPECT().NotifyPersistentStateWritten())
 
-	require.False(t, periodicSyncer.ProcessBlockPut(ctx1))
+	require.False(t, periodicSyncer.ProcessBlockPut(ctx1, true))
 
 	// Case 2: Cancel the context after blockPutWakeup is closed.
 	close(blockPutWakeup)
@@ -302,7 +310,7 @@ func TestPeriodicSyncerProcessBlockPutCancelled(t *testing.T) {
 		}),
 		clock.EXPECT().Now().Return(time.Unix(1003, 0)),
 
-		source.EXPECT().NotifySyncStarting(true),
+		source.EXPECT().NotifySyncStarting(false),
 
 		// Successfully complete synchronizing data. This should
 		// cause the PersistentBlockList to be notified, so that
@@ -340,5 +348,5 @@ func TestPeriodicSyncerProcessBlockPutCancelled(t *testing.T) {
 		}),
 		source.EXPECT().NotifyPersistentStateWritten())
 
-	require.False(t, periodicSyncer.ProcessBlockPut(ctx2))
+	require.False(t, periodicSyncer.ProcessBlockPut(ctx2, false))
 }

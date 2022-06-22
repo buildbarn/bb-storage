@@ -389,8 +389,10 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 				return nil
 			})
 			terminationGroup.Go(func() error {
-				for periodicSyncer.ProcessBlockPut(terminationContext) {
+				for periodicSyncer.ProcessBlockPut(terminationContext, false) {
 				}
+				// Do a final sync of the last data.
+				periodicSyncer.ProcessBlockPut(terminationContext, true)
 				return nil
 			})
 		}
