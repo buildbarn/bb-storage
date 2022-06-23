@@ -91,5 +91,8 @@ func main() {
 	}()
 
 	cancelStartupCtx()
-	terminationGroup.Wait()
+	if err := terminationGroup.Wait(); err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(global.ExitCodeInterrupted)
 }

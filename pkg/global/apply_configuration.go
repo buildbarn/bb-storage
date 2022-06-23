@@ -52,6 +52,9 @@ const (
 	stateServing
 )
 
+// ExitCodeInterrupted is used to signal a successful controlled shutdown.
+var ExitCodeInterrupted int = 8
+
 // DiagnosticsServer is returned by ApplyConfiguration. It can be used by
 // the caller to report whether the application has started up
 // successfully.

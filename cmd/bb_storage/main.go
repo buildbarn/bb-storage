@@ -216,7 +216,10 @@ func main() {
 	}()
 
 	cancelStartupCtx()
-	terminationGroup.Wait()
+	if err := terminationGroup.Wait(); err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(global.ExitCodeInterrupted)
 }
 
 func newNonScannableBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
