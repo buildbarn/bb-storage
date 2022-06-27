@@ -67,6 +67,10 @@ message TracingConfiguration {
     oneof span_exporter {
       // Export spans to a Jaeger collector using jaeger.thrift over
       // HTTP.
+      //
+      // NOTE: This option is deprecated, as Jaeger 1.35 and later
+      // provide native support for the OpenTelemetry protocol:
+      // https://medium.com/jaegertracing/introducing-native-support-for-opentelemetry-in-jaeger-eb661be8183c
       JaegerCollectorSpanExporter jaeger_collector_span_exporter = 1;
 
       // Export spans over gRPC using the OpenTelemetry protocol.
