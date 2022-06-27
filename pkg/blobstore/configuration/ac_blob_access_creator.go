@@ -110,3 +110,13 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 		return newProtoCustomBlobAccess(bac, configuration)
 	}
 }
+
+func (bac *acBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+	// For the Action Cache we want to ensure that all ActionResult
+	// objects have a 'worker_completed_timestamp'. This is needed
+	// to make decorators like ActionResultExpiringBlobAccess work.
+	return blobstore.NewActionResultTimestampInjectingBlobAccess(
+		blobAccess,
+		clock.SystemClock,
+		bac.maximumMessageSizeBytes)
+}

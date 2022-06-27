@@ -54,3 +54,7 @@ func (bac *isccBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcce
 		return newProtoCustomBlobAccess(bac, configuration)
 	}
 }
+
+func (bac *isccBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+	return blobAccess
+}

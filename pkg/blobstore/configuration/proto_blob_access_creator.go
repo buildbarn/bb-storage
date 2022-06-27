@@ -31,10 +31,6 @@ func (bac *protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(k
 	return nil, status.Error(codes.InvalidArgument, "The hierarchical instance names option can only be used for the Content Addressable Storage")
 }
 
-func (bac *protoBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
-	return blobAccess
-}
-
 // newProtoCustomBlobAccess is a common implementation of
 // BlobAccessCreator.NewCustomBlobAccess() for all types derived from
 // protoBlobAccessCreator.

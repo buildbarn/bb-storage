@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "ac_read_buffer_factory.go",
         "action_result_expiring_blob_access.go",
+        "action_result_timestamp_injecting_blob_access.go",
         "authorizing_blob_access.go",
         "blob_access.go",
         "cas_read_buffer_factory.go",
@@ -46,6 +47,7 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
     ],
 )
@@ -54,6 +56,7 @@ go_test(
     name = "blobstore_test",
     srcs = [
         "action_result_expiring_blob_access_test.go",
+        "action_result_timestamp_injecting_blob_access_test.go",
         "authorizing_blob_access_test.go",
         "demultiplexing_blob_access_test.go",
         "empty_blob_injecting_blob_access_test.go",
