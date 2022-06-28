@@ -25,7 +25,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -61,7 +61,6 @@ var ExitCodeInterrupted int = 8
 type DiagnosticsServer struct {
 	config                          *pb.DiagnosticsHTTPServerConfiguration
 	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
-	server                          *http.Server
 }
 
 // ServeAndWait can be called to serve the diagnostics HTTP API receive
@@ -95,10 +94,6 @@ func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext con
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		ds.server = &http.Server{
-			Addr:    ds.config.ListenAddress,
-			Handler: router,
-		}
 		go func() {
 			select {
 			case <-terminationContext.Done():
@@ -110,7 +105,7 @@ func (ds *DiagnosticsServer) ServeAndWait(startupContext, terminationContext con
 			<-terminationContext.Done()
 			servingState.Store(stateNotServing)
 		}()
-		return ds.server.ListenAndServe()
+		return http.ListenAndServe(ds.config.ListenAddress, router)
 	}
 }
 

@@ -107,7 +107,8 @@ func (ps *PeriodicSyncer) writePersistentStateRetrying() {
 // This function must generally be called in a loop in a separate
 // goroutine, so that block release events are handled continuously.
 //
-// The return value is false if ctx was cancelled, otherwise true is returned.
+// The return value is false if ctx was canceled before any block release.
+// If the persistent state was written, then the return value is true.
 func (ps *PeriodicSyncer) ProcessBlockRelease(ctx context.Context) bool {
 	ps.sourceLock.RLock()
 	ch := ps.source.GetBlockReleaseWakeup()
@@ -131,7 +132,8 @@ func (ps *PeriodicSyncer) ProcessBlockRelease(ctx context.Context) bool {
 // This function must generally be called in a loop in a separate
 // goroutine, so that the persistent state is updated continuously.
 //
-// The return value is false if ctx was cancelled, otherwise true is returned.
+// The return value is false if ctx was canceled before it was time to sync,
+// otherwise true. In both cases, the data is synchronized to disk.
 func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context, isFinalSync bool) bool {
 	ps.sourceLock.RLock()
 	ch := ps.source.GetBlockPutWakeup()

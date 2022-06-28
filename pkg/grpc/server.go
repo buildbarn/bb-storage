@@ -7,7 +7,7 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,10 +32,9 @@ func init() {
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-//
-// This function returns immediately after initializing the gRPC servers.
 func NewServersFromConfigurationAndServe(startupContext, terminationContext context.Context, configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
 	serveErrors := make(chan error)
+
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
