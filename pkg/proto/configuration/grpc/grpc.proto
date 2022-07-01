@@ -80,6 +80,17 @@ message ClientConfiguration {
 
   // If set, forward all traffic through a proxy with a given URL.
   string proxy_url = 10;
+
+  // Add fields contained in Protobuf request and response messages as
+  // attributes of OpenTelemetry trace spans. The key of this map
+  // corresponds to the full gRPC method name. Examples of valid names
+  // include:
+  //
+  // /build.bazel.remote.execution.v2.ActionCache/UpdateActionResult
+  // /build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs
+  // /build.bazel.remote.execution.v2.Execution/Execute
+  // /google.bytestream.ByteStream/Read
+  map<string, TracingMethodConfiguration> tracing = 11;
 }
 
 message ClientKeepaliveConfiguration {
@@ -161,6 +172,17 @@ message ServerConfiguration {
   // The gRPC connection's initial connection window size.  See grpc-go
   // InitialConnWindowSize
   int32 initial_conn_window_size_bytes = 9;
+
+  // Add fields contained in Protobuf request and response messages as
+  // attributes of OpenTelemetry trace spans. The key of this map
+  // corresponds to the full gRPC method name. Examples of valid names
+  // include:
+  //
+  // /build.bazel.remote.execution.v2.ActionCache/UpdateActionResult
+  // /build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs
+  // /build.bazel.remote.execution.v2.Execution/Execute
+  // /google.bytestream.ByteStream/Read
+  map<string, TracingMethodConfiguration> tracing = 10;
 }
 
 message ServerKeepaliveEnforcementPolicy {
@@ -218,4 +240,37 @@ message TLSClientCertificateAuthenticationPolicy {
   // TODO: Provide a way to transform fields in the client certificate
   // to authentication metadata.
   google.protobuf.Value metadata = 2;
+}
+
+message TracingMethodConfiguration {
+  // Names of fields to extract from the request message of an RPC, and
+  // convert into trace span attributes. The resulting attributes will
+  // have "request." prepended to their names. If the RPC is client
+  // streaming, the value is extracted from the first message.
+  //
+  // Lookups are performed against the names used in the Protobuf
+  // schema; not the Protobuf JSON encoding. Nested fields can be
+  // accessed by using "." as a separator. It is only valid to refer to
+  // fields that use boolean, enumeration, floating point, signed
+  // integer or string types. Fields may be singular or repeated, but
+  // not maps.
+  //
+  // For example, using value "action_digest.hash" for RPC method
+  // "build.bazel.remote.execution.v2.ActionCache/GetActionResult" will
+  // cause attribute "request.action_digest.hash" to be attached to the
+  // trace span, being of type string, containing the value of
+  // Digest.hash, contained in the GetActionResultRequest.action_digest.
+  //
+  // Attributes will not be attached to trace spans if one of the parent
+  // messages of the field that is referenced is not set.
+  repeated string attributes_from_first_request_message = 1;
+
+  // Names of fields to extract from the response message of an RPC, and
+  // convert into trace span attributes. The resulting attributes will
+  // have "response." prepended to their names. If the RPC is server
+  // streaming, the value is extracted from the first message.
+  //
+  // Lookups are performed using the same rules as those for
+  // 'attributes_from_first_request_message'.
+  repeated string attributes_from_first_response_message = 2;
 }

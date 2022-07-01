@@ -42,17 +42,28 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// Default server options.
+		unaryInterceptors := []grpc.UnaryServerInterceptor{
+			grpc_prometheus.UnaryServerInterceptor,
+			otelgrpc.UnaryServerInterceptor(),
+		}
+		streamInterceptors := []grpc.StreamServerInterceptor{
+			grpc_prometheus.StreamServerInterceptor,
+			otelgrpc.StreamServerInterceptor(),
+		}
+
+		// Optional: Tracing attributes.
+		if tracing := configuration.Tracing; len(tracing) > 0 {
+			extractor := NewProtoTraceAttributesExtractor(tracing, util.DefaultErrorLogger)
+			unaryInterceptors = append(unaryInterceptors, extractor.InterceptUnaryServer)
+			streamInterceptors = append(streamInterceptors, extractor.InterceptStreamServer)
+		}
+
+		unaryInterceptors = append(unaryInterceptors, NewAuthenticatingUnaryInterceptor(authenticator))
+		streamInterceptors = append(streamInterceptors, NewAuthenticatingStreamInterceptor(authenticator))
+
 		serverOptions := []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(
-				grpc_prometheus.UnaryServerInterceptor,
-				otelgrpc.UnaryServerInterceptor(),
-				RequestMetadataTracingUnaryInterceptor,
-				NewAuthenticatingUnaryInterceptor(authenticator)),
-			grpc.ChainStreamInterceptor(
-				grpc_prometheus.StreamServerInterceptor,
-				otelgrpc.StreamServerInterceptor(),
-				RequestMetadataTracingStreamInterceptor,
-				NewAuthenticatingStreamInterceptor(authenticator)),
+			grpc.ChainUnaryInterceptor(unaryInterceptors...),
+			grpc.ChainStreamInterceptor(streamInterceptors...),
 		}
 
 		// Enable TLS if provided.

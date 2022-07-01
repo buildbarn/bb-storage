@@ -43,6 +43,13 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	unaryInterceptors := cf.unaryInterceptors
 	streamInterceptors := cf.streamInterceptors
 
+	// Optional: Tracing attributes.
+	if tracing := config.Tracing; len(tracing) > 0 {
+		extractor := NewProtoTraceAttributesExtractor(tracing, util.DefaultErrorLogger)
+		unaryInterceptors = append(unaryInterceptors, extractor.InterceptUnaryClient)
+		streamInterceptors = append(streamInterceptors, extractor.InterceptStreamClient)
+	}
+
 	// Optional: TLS.
 	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)
 	if err != nil {

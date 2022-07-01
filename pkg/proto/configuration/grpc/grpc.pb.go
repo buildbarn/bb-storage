@@ -30,15 +30,16 @@ type ClientConfiguration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Address                    string                              `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	Tls                        *tls.ClientConfiguration            `protobuf:"bytes,2,opt,name=tls,proto3" json:"tls,omitempty"`
-	Keepalive                  *ClientKeepaliveConfiguration       `protobuf:"bytes,3,opt,name=keepalive,proto3" json:"keepalive,omitempty"`
-	ForwardMetadata            []string                            `protobuf:"bytes,4,rep,name=forward_metadata,json=forwardMetadata,proto3" json:"forward_metadata,omitempty"`
-	AddMetadata                []*ClientConfiguration_HeaderValues `protobuf:"bytes,5,rep,name=add_metadata,json=addMetadata,proto3" json:"add_metadata,omitempty"`
-	Oauth                      *ClientOAuthConfiguration           `protobuf:"bytes,6,opt,name=oauth,proto3" json:"oauth,omitempty"`
-	InitialWindowSizeBytes     int32                               `protobuf:"varint,8,opt,name=initial_window_size_bytes,json=initialWindowSizeBytes,proto3" json:"initial_window_size_bytes,omitempty"`
-	InitialConnWindowSizeBytes int32                               `protobuf:"varint,9,opt,name=initial_conn_window_size_bytes,json=initialConnWindowSizeBytes,proto3" json:"initial_conn_window_size_bytes,omitempty"`
-	ProxyUrl                   string                              `protobuf:"bytes,10,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
+	Address                    string                                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	Tls                        *tls.ClientConfiguration               `protobuf:"bytes,2,opt,name=tls,proto3" json:"tls,omitempty"`
+	Keepalive                  *ClientKeepaliveConfiguration          `protobuf:"bytes,3,opt,name=keepalive,proto3" json:"keepalive,omitempty"`
+	ForwardMetadata            []string                               `protobuf:"bytes,4,rep,name=forward_metadata,json=forwardMetadata,proto3" json:"forward_metadata,omitempty"`
+	AddMetadata                []*ClientConfiguration_HeaderValues    `protobuf:"bytes,5,rep,name=add_metadata,json=addMetadata,proto3" json:"add_metadata,omitempty"`
+	Oauth                      *ClientOAuthConfiguration              `protobuf:"bytes,6,opt,name=oauth,proto3" json:"oauth,omitempty"`
+	InitialWindowSizeBytes     int32                                  `protobuf:"varint,8,opt,name=initial_window_size_bytes,json=initialWindowSizeBytes,proto3" json:"initial_window_size_bytes,omitempty"`
+	InitialConnWindowSizeBytes int32                                  `protobuf:"varint,9,opt,name=initial_conn_window_size_bytes,json=initialConnWindowSizeBytes,proto3" json:"initial_conn_window_size_bytes,omitempty"`
+	ProxyUrl                   string                                 `protobuf:"bytes,10,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
+	Tracing                    map[string]*TracingMethodConfiguration `protobuf:"bytes,11,rep,name=tracing,proto3" json:"tracing,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ClientConfiguration) Reset() {
@@ -134,6 +135,13 @@ func (x *ClientConfiguration) GetProxyUrl() string {
 		return x.ProxyUrl
 	}
 	return ""
+}
+
+func (x *ClientConfiguration) GetTracing() map[string]*TracingMethodConfiguration {
+	if x != nil {
+		return x.Tracing
+	}
+	return nil
 }
 
 type ClientKeepaliveConfiguration struct {
@@ -292,15 +300,16 @@ type ServerConfiguration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ListenAddresses                 []string                          `protobuf:"bytes,1,rep,name=listen_addresses,json=listenAddresses,proto3" json:"listen_addresses,omitempty"`
-	ListenPaths                     []string                          `protobuf:"bytes,2,rep,name=listen_paths,json=listenPaths,proto3" json:"listen_paths,omitempty"`
-	Tls                             *tls.ServerConfiguration          `protobuf:"bytes,3,opt,name=tls,proto3" json:"tls,omitempty"`
-	AuthenticationPolicy            *AuthenticationPolicy             `protobuf:"bytes,4,opt,name=authentication_policy,json=authenticationPolicy,proto3" json:"authentication_policy,omitempty"`
-	MaximumReceivedMessageSizeBytes int64                             `protobuf:"varint,5,opt,name=maximum_received_message_size_bytes,json=maximumReceivedMessageSizeBytes,proto3" json:"maximum_received_message_size_bytes,omitempty"`
-	KeepaliveEnforcementPolicy      *ServerKeepaliveEnforcementPolicy `protobuf:"bytes,6,opt,name=keepalive_enforcement_policy,json=keepaliveEnforcementPolicy,proto3" json:"keepalive_enforcement_policy,omitempty"`
-	HealthCheckService              string                            `protobuf:"bytes,7,opt,name=health_check_service,json=healthCheckService,proto3" json:"health_check_service,omitempty"`
-	InitialWindowSizeBytes          int32                             `protobuf:"varint,8,opt,name=initial_window_size_bytes,json=initialWindowSizeBytes,proto3" json:"initial_window_size_bytes,omitempty"`
-	InitialConnWindowSizeBytes      int32                             `protobuf:"varint,9,opt,name=initial_conn_window_size_bytes,json=initialConnWindowSizeBytes,proto3" json:"initial_conn_window_size_bytes,omitempty"`
+	ListenAddresses                 []string                               `protobuf:"bytes,1,rep,name=listen_addresses,json=listenAddresses,proto3" json:"listen_addresses,omitempty"`
+	ListenPaths                     []string                               `protobuf:"bytes,2,rep,name=listen_paths,json=listenPaths,proto3" json:"listen_paths,omitempty"`
+	Tls                             *tls.ServerConfiguration               `protobuf:"bytes,3,opt,name=tls,proto3" json:"tls,omitempty"`
+	AuthenticationPolicy            *AuthenticationPolicy                  `protobuf:"bytes,4,opt,name=authentication_policy,json=authenticationPolicy,proto3" json:"authentication_policy,omitempty"`
+	MaximumReceivedMessageSizeBytes int64                                  `protobuf:"varint,5,opt,name=maximum_received_message_size_bytes,json=maximumReceivedMessageSizeBytes,proto3" json:"maximum_received_message_size_bytes,omitempty"`
+	KeepaliveEnforcementPolicy      *ServerKeepaliveEnforcementPolicy      `protobuf:"bytes,6,opt,name=keepalive_enforcement_policy,json=keepaliveEnforcementPolicy,proto3" json:"keepalive_enforcement_policy,omitempty"`
+	HealthCheckService              string                                 `protobuf:"bytes,7,opt,name=health_check_service,json=healthCheckService,proto3" json:"health_check_service,omitempty"`
+	InitialWindowSizeBytes          int32                                  `protobuf:"varint,8,opt,name=initial_window_size_bytes,json=initialWindowSizeBytes,proto3" json:"initial_window_size_bytes,omitempty"`
+	InitialConnWindowSizeBytes      int32                                  `protobuf:"varint,9,opt,name=initial_conn_window_size_bytes,json=initialConnWindowSizeBytes,proto3" json:"initial_conn_window_size_bytes,omitempty"`
+	Tracing                         map[string]*TracingMethodConfiguration `protobuf:"bytes,10,rep,name=tracing,proto3" json:"tracing,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ServerConfiguration) Reset() {
@@ -396,6 +405,13 @@ func (x *ServerConfiguration) GetInitialConnWindowSizeBytes() int32 {
 		return x.InitialConnWindowSizeBytes
 	}
 	return 0
+}
+
+func (x *ServerConfiguration) GetTracing() map[string]*TracingMethodConfiguration {
+	if x != nil {
+		return x.Tracing
+	}
+	return nil
 }
 
 type ServerKeepaliveEnforcementPolicy struct {
@@ -677,6 +693,61 @@ func (x *TLSClientCertificateAuthenticationPolicy) GetMetadata() *structpb.Value
 	return nil
 }
 
+type TracingMethodConfiguration struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AttributesFromFirstRequestMessage  []string `protobuf:"bytes,1,rep,name=attributes_from_first_request_message,json=attributesFromFirstRequestMessage,proto3" json:"attributes_from_first_request_message,omitempty"`
+	AttributesFromFirstResponseMessage []string `protobuf:"bytes,2,rep,name=attributes_from_first_response_message,json=attributesFromFirstResponseMessage,proto3" json:"attributes_from_first_response_message,omitempty"`
+}
+
+func (x *TracingMethodConfiguration) Reset() {
+	*x = TracingMethodConfiguration{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TracingMethodConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TracingMethodConfiguration) ProtoMessage() {}
+
+func (x *TracingMethodConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TracingMethodConfiguration.ProtoReflect.Descriptor instead.
+func (*TracingMethodConfiguration) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *TracingMethodConfiguration) GetAttributesFromFirstRequestMessage() []string {
+	if x != nil {
+		return x.AttributesFromFirstRequestMessage
+	}
+	return nil
+}
+
+func (x *TracingMethodConfiguration) GetAttributesFromFirstResponseMessage() []string {
+	if x != nil {
+		return x.AttributesFromFirstResponseMessage
+	}
+	return nil
+}
+
 type ClientConfiguration_HeaderValues struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -689,7 +760,7 @@ type ClientConfiguration_HeaderValues struct {
 func (x *ClientConfiguration_HeaderValues) Reset() {
 	*x = ClientConfiguration_HeaderValues{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+		mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -702,7 +773,7 @@ func (x *ClientConfiguration_HeaderValues) String() string {
 func (*ClientConfiguration_HeaderValues) ProtoMessage() {}
 
 func (x *ClientConfiguration_HeaderValues) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -750,7 +821,7 @@ var file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = []byte{
 	0x6a, 0x77, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x25, 0x70, 0x6b, 0x67, 0x2f, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x2f, 0x74, 0x6c, 0x73, 0x2f, 0x74, 0x6c, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x22, 0x8b, 0x05, 0x0a, 0x13, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69,
+	0x22, 0xdb, 0x06, 0x0a, 0x13, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69,
 	0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72,
 	0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65,
 	0x73, 0x73, 0x12, 0x42, 0x0a, 0x03, 0x74, 0x6c, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
@@ -786,11 +857,24 @@ var file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = []byte{
 	0x1a, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x57, 0x69, 0x6e, 0x64,
 	0x6f, 0x77, 0x53, 0x69, 0x7a, 0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x1b, 0x0a, 0x09, 0x70,
 	0x72, 0x6f, 0x78, 0x79, 0x5f, 0x75, 0x72, 0x6c, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
-	0x70, 0x72, 0x6f, 0x78, 0x79, 0x55, 0x72, 0x6c, 0x1a, 0x3e, 0x0a, 0x0c, 0x48, 0x65, 0x61, 0x64,
-	0x65, 0x72, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x61, 0x64,
-	0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72,
-	0x12, 0x16, 0x0a, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09,
-	0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x4a, 0x04, 0x08, 0x07, 0x10, 0x08, 0x22, 0xb6,
+	0x70, 0x72, 0x6f, 0x78, 0x79, 0x55, 0x72, 0x6c, 0x12, 0x58, 0x0a, 0x07, 0x74, 0x72, 0x61, 0x63,
+	0x69, 0x6e, 0x67, 0x18, 0x0b, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3e, 0x2e, 0x62, 0x75, 0x69, 0x6c,
+	0x64, 0x62, 0x61, 0x72, 0x6e, 0x2e, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2e, 0x67, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x43,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x54, 0x72, 0x61,
+	0x63, 0x69, 0x6e, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x07, 0x74, 0x72, 0x61, 0x63, 0x69,
+	0x6e, 0x67, 0x1a, 0x3e, 0x0a, 0x0c, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x75,
+	0x65, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x73, 0x1a, 0x74, 0x0a, 0x0c, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x45, 0x6e, 0x74,
+	0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x12, 0x4e, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x38, 0x2e, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e, 0x2e,
+	0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x67, 0x72,
+	0x70, 0x63, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x4a, 0x04, 0x08, 0x07, 0x10, 0x08, 0x22, 0xb6,
 	0x01, 0x0a, 0x1c, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4b, 0x65, 0x65, 0x70, 0x61, 0x6c, 0x69,
 	0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12,
 	0x2d, 0x0a, 0x04, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e,
@@ -815,7 +899,7 @@ var file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = []byte{
 	0x76, 0x69, 0x63, 0x65, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4b, 0x65, 0x79, 0x12, 0x16,
 	0x0a, 0x06, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06,
 	0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x42, 0x0d, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e,
-	0x74, 0x69, 0x61, 0x6c, 0x73, 0x22, 0x92, 0x05, 0x0a, 0x13, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72,
+	0x74, 0x69, 0x61, 0x6c, 0x73, 0x22, 0xe2, 0x06, 0x0a, 0x13, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72,
 	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x29, 0x0a,
 	0x10, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65,
 	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0f, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x41,
@@ -856,7 +940,20 @@ var file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = []byte{
 	0x6c, 0x5f, 0x63, 0x6f, 0x6e, 0x6e, 0x5f, 0x77, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x5f, 0x73, 0x69,
 	0x7a, 0x65, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x09, 0x20, 0x01, 0x28, 0x05, 0x52, 0x1a,
 	0x69, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x57, 0x69, 0x6e, 0x64, 0x6f,
-	0x77, 0x53, 0x69, 0x7a, 0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x22, 0x8c, 0x01, 0x0a, 0x20, 0x53,
+	0x77, 0x53, 0x69, 0x7a, 0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x58, 0x0a, 0x07, 0x74, 0x72,
+	0x61, 0x63, 0x69, 0x6e, 0x67, 0x18, 0x0a, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3e, 0x2e, 0x62, 0x75,
+	0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e, 0x2e, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x67, 0x72, 0x70, 0x63, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65,
+	0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x54,
+	0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x07, 0x74, 0x72, 0x61,
+	0x63, 0x69, 0x6e, 0x67, 0x1a, 0x74, 0x0a, 0x0c, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x45,
+	0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x4e, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x38, 0x2e, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72,
+	0x6e, 0x2e, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e,
+	0x67, 0x72, 0x70, 0x63, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68,
+	0x6f, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x8c, 0x01, 0x0a, 0x20, 0x53,
 	0x65, 0x72, 0x76, 0x65, 0x72, 0x4b, 0x65, 0x65, 0x70, 0x61, 0x6c, 0x69, 0x76, 0x65, 0x45, 0x6e,
 	0x66, 0x6f, 0x72, 0x63, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12,
 	0x34, 0x0a, 0x08, 0x6d, 0x69, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
@@ -907,11 +1004,24 @@ var file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = []byte{
 	0x74, 0x69, 0x65, 0x73, 0x12, 0x32, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
 	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x08,
-	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e,
-	0x2f, 0x62, 0x62, 0x2d, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x2f, 0x67, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0xc2, 0x01, 0x0a, 0x1a, 0x54, 0x72, 0x61,
+	0x63, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x50, 0x0a, 0x25, 0x61, 0x74, 0x74, 0x72, 0x69,
+	0x62, 0x75, 0x74, 0x65, 0x73, 0x5f, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x66, 0x69, 0x72, 0x73, 0x74,
+	0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x21, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
+	0x65, 0x73, 0x46, 0x72, 0x6f, 0x6d, 0x46, 0x69, 0x72, 0x73, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x52, 0x0a, 0x26, 0x61, 0x74, 0x74,
+	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x5f, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x66, 0x69, 0x72,
+	0x73, 0x74, 0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x5f, 0x6d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x22, 0x61, 0x74, 0x74, 0x72, 0x69,
+	0x62, 0x75, 0x74, 0x65, 0x73, 0x46, 0x72, 0x6f, 0x6d, 0x46, 0x69, 0x72, 0x73, 0x74, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x42, 0x3e, 0x5a,
+	0x3c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x62, 0x75, 0x69, 0x6c,
+	0x64, 0x62, 0x61, 0x72, 0x6e, 0x2f, 0x62, 0x62, 0x2d, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65,
+	0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x67, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -926,7 +1036,7 @@ func file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP() []byte {
 	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []interface{}{
 	(*ClientConfiguration)(nil),                        // 0: buildbarn.configuration.grpc.ClientConfiguration
 	(*ClientKeepaliveConfiguration)(nil),               // 1: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
@@ -936,37 +1046,44 @@ var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []interface{}{
 	(*AuthenticationPolicy)(nil),                       // 5: buildbarn.configuration.grpc.AuthenticationPolicy
 	(*AnyAuthenticationPolicy)(nil),                    // 6: buildbarn.configuration.grpc.AnyAuthenticationPolicy
 	(*TLSClientCertificateAuthenticationPolicy)(nil),   // 7: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
-	(*ClientConfiguration_HeaderValues)(nil),           // 8: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
-	(*tls.ClientConfiguration)(nil),                    // 9: buildbarn.configuration.tls.ClientConfiguration
-	(*durationpb.Duration)(nil),                        // 10: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                              // 11: google.protobuf.Empty
-	(*tls.ServerConfiguration)(nil),                    // 12: buildbarn.configuration.tls.ServerConfiguration
-	(*structpb.Value)(nil),                             // 13: google.protobuf.Value
-	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 14: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	(*TracingMethodConfiguration)(nil),                 // 8: buildbarn.configuration.grpc.TracingMethodConfiguration
+	(*ClientConfiguration_HeaderValues)(nil),           // 9: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
+	nil,                                                // 10: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
+	nil,                                                // 11: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
+	(*tls.ClientConfiguration)(nil),                    // 12: buildbarn.configuration.tls.ClientConfiguration
+	(*durationpb.Duration)(nil),                        // 13: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                              // 14: google.protobuf.Empty
+	(*tls.ServerConfiguration)(nil),                    // 15: buildbarn.configuration.tls.ServerConfiguration
+	(*structpb.Value)(nil),                             // 16: google.protobuf.Value
+	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 17: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
 }
 var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
-	9,  // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
+	12, // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
 	1,  // 1: buildbarn.configuration.grpc.ClientConfiguration.keepalive:type_name -> buildbarn.configuration.grpc.ClientKeepaliveConfiguration
-	8,  // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
+	9,  // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
 	2,  // 3: buildbarn.configuration.grpc.ClientConfiguration.oauth:type_name -> buildbarn.configuration.grpc.ClientOAuthConfiguration
-	10, // 4: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.time:type_name -> google.protobuf.Duration
-	10, // 5: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.timeout:type_name -> google.protobuf.Duration
-	11, // 6: buildbarn.configuration.grpc.ClientOAuthConfiguration.google_default_credentials:type_name -> google.protobuf.Empty
-	12, // 7: buildbarn.configuration.grpc.ServerConfiguration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
-	5,  // 8: buildbarn.configuration.grpc.ServerConfiguration.authentication_policy:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
-	4,  // 9: buildbarn.configuration.grpc.ServerConfiguration.keepalive_enforcement_policy:type_name -> buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
-	10, // 10: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy.min_time:type_name -> google.protobuf.Duration
-	13, // 11: buildbarn.configuration.grpc.AuthenticationPolicy.allow:type_name -> google.protobuf.Value
-	6,  // 12: buildbarn.configuration.grpc.AuthenticationPolicy.any:type_name -> buildbarn.configuration.grpc.AnyAuthenticationPolicy
-	7,  // 13: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
-	14, // 14: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	5,  // 15: buildbarn.configuration.grpc.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
-	13, // 16: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.metadata:type_name -> google.protobuf.Value
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	10, // 4: buildbarn.configuration.grpc.ClientConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
+	13, // 5: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.time:type_name -> google.protobuf.Duration
+	13, // 6: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.timeout:type_name -> google.protobuf.Duration
+	14, // 7: buildbarn.configuration.grpc.ClientOAuthConfiguration.google_default_credentials:type_name -> google.protobuf.Empty
+	15, // 8: buildbarn.configuration.grpc.ServerConfiguration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
+	5,  // 9: buildbarn.configuration.grpc.ServerConfiguration.authentication_policy:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
+	4,  // 10: buildbarn.configuration.grpc.ServerConfiguration.keepalive_enforcement_policy:type_name -> buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
+	11, // 11: buildbarn.configuration.grpc.ServerConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
+	13, // 12: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy.min_time:type_name -> google.protobuf.Duration
+	16, // 13: buildbarn.configuration.grpc.AuthenticationPolicy.allow:type_name -> google.protobuf.Value
+	6,  // 14: buildbarn.configuration.grpc.AuthenticationPolicy.any:type_name -> buildbarn.configuration.grpc.AnyAuthenticationPolicy
+	7,  // 15: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
+	17, // 16: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	5,  // 17: buildbarn.configuration.grpc.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
+	16, // 18: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.metadata:type_name -> google.protobuf.Value
+	8,  // 19: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
+	8,  // 20: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_grpc_grpc_proto_init() }
@@ -1072,6 +1189,18 @@ func file_pkg_proto_configuration_grpc_grpc_proto_init() {
 			}
 		}
 		file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TracingMethodConfiguration); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ClientConfiguration_HeaderValues); i {
 			case 0:
 				return &v.state
@@ -1101,7 +1230,7 @@ func file_pkg_proto_configuration_grpc_grpc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_proto_configuration_grpc_grpc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
