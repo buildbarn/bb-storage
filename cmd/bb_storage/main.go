@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/auth"
@@ -34,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+	terminationContext, terminationGroup := global.InstallGracefulTerminationHandler()
 
 	// Providers for data returned by ServerCapabilities.cache_capabilities
 	// as part of the GetCapabilities() call. We permit these calls
@@ -47,6 +50,8 @@ func main() {
 	var contentAddressableStorage blobstore.BlobAccess
 	if configuration.ContentAddressableStorage != nil {
 		info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.ContentAddressableStorage,
 			blobstore_configuration.NewCASBlobAccessCreator(
 				grpcClientFactory,
@@ -64,6 +69,8 @@ func main() {
 	var actionCache blobstore.BlobAccess
 	if configuration.ActionCache != nil {
 		info, authorizedBackend, allAuthorizers, putAuthorizer, err := newNonScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.ActionCache,
 			blobstore_configuration.NewACBlobAccessCreator(
 				contentAddressableStorageInfo,
@@ -83,6 +90,8 @@ func main() {
 	var indirectContentAddressableStorage blobstore.BlobAccess
 	if configuration.IndirectContentAddressableStorage != nil {
 		_, authorizedBackend, _, err := newScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.IndirectContentAddressableStorage,
 			blobstore_configuration.NewICASBlobAccessCreator(
 				grpcClientFactory,
@@ -97,6 +106,8 @@ func main() {
 	var initialSizeClassCache blobstore.BlobAccess
 	if configuration.InitialSizeClassCache != nil {
 		_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
 			configuration.InitialSizeClassCache,
 			blobstore_configuration.NewISCCBlobAccessCreator(
 				grpcClientFactory,
@@ -186,8 +197,8 @@ func main() {
 	lifecycleState.MarkReadyAndWait()
 }
 
-func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
-	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
+func newNonScannableBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
 	}
@@ -208,8 +219,8 @@ func newNonScannableBlobAccess(configuration *bb_storage.NonScannableBlobAccessC
 		nil
 }
 
-func newScannableBlobAccess(configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
-	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(configuration.Backend, creator)
+func newScannableBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
+	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
 	}

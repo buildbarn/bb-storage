@@ -1,6 +1,9 @@
 package configuration
 
 import (
+	"context"
+	"sync"
+
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -39,7 +42,7 @@ func (bac *icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.
 	return nil
 }
 
-func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
@@ -53,7 +56,7 @@ func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcce
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:
-		return newProtoCustomBlobAccess(bac, configuration)
+		return newProtoCustomBlobAccess(terminationContext, terminationGroup, configuration, bac)
 	}
 }
 

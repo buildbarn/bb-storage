@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -42,7 +43,7 @@ func newRedisClient(opt *redis.Options) *redis.Client {
 	return client
 }
 
-func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
+func newNestedBlobAccessBare(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
@@ -52,11 +53,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: digest.KeyWithoutInstance,
 		}, "error", nil
 	case *pb.BlobAccessConfiguration_ReadCaching:
-		slow, err := NewNestedBlobAccess(backend.ReadCaching.Slow, creator)
+		slow, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadCaching.Slow, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		fast, err := NewNestedBlobAccess(backend.ReadCaching.Fast, creator)
+		fast, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadCaching.Fast, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -197,7 +198,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 				backends = append(backends, nil)
 			} else {
 				// Undrained backend.
-				backend, err := NewNestedBlobAccess(shard.Backend, creator)
+				backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, shard.Backend, creator)
 				if err != nil {
 					return BlobAccessInfo{}, "", err
 				}
@@ -226,11 +227,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: *combinedDigestKeyFormat,
 		}, "sharding", nil
 	case *pb.BlobAccessConfiguration_SizeDistinguishing:
-		small, err := NewNestedBlobAccess(backend.SizeDistinguishing.Small, creator)
+		small, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.SizeDistinguishing.Small, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		large, err := NewNestedBlobAccess(backend.SizeDistinguishing.Large, creator)
+		large, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.SizeDistinguishing.Large, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -239,11 +240,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: small.DigestKeyFormat.Combine(large.DigestKeyFormat),
 		}, "size_distinguishing", nil
 	case *pb.BlobAccessConfiguration_Mirrored:
-		backendA, err := NewNestedBlobAccess(backend.Mirrored.BackendA, creator)
+		backendA, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.Mirrored.BackendA, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		backendB, err := NewNestedBlobAccess(backend.Mirrored.BackendB, creator)
+		backendB, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.Mirrored.BackendB, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -386,10 +387,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 					periodicSyncer.ProcessBlockRelease()
 				}
 			}()
+			terminationGroup.Add(1)
 			go func() {
-				for {
-					periodicSyncer.ProcessBlockPut()
+				for periodicSyncer.ProcessBlockPut(terminationContext) {
 				}
+				terminationGroup.Done()
 			}()
 		}
 
@@ -471,11 +473,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_ReadFallback:
-		primary, err := NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
+		primary, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadFallback.Primary, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		secondary, err := NewNestedBlobAccess(backend.ReadFallback.Secondary, creator)
+		secondary, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadFallback.Secondary, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -506,7 +508,7 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Invalid instance name %#v", demultiplexed.AddInstanceNamePrefix)
 			}
-			backend, err := NewNestedBlobAccess(demultiplexed.Backend, creator)
+			backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, demultiplexed.Backend, creator)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
 			}
@@ -530,11 +532,11 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 		}, "demultiplexing", nil
 	case *pb.BlobAccessConfiguration_ReadCanarying:
 		config := backend.ReadCanarying
-		source, err := NewNestedBlobAccess(config.Source, creator)
+		source, err := NewNestedBlobAccess(terminationContext, terminationGroup, config.Source, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replica, err := NewNestedBlobAccess(config.Replica, creator)
+		replica, err := NewNestedBlobAccess(terminationContext, terminationGroup, config.Replica, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -553,18 +555,18 @@ func newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator 
 			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),
 		}, "read_canarying", nil
 	}
-	return creator.NewCustomBlobAccess(configuration)
+	return creator.NewCustomBlobAccess(terminationContext, terminationGroup, configuration)
 }
 
 // NewNestedBlobAccess may be called by
 // BlobAccessCreator.NewCustomBlobAccess() to create BlobAccess
 // objects for instances nested inside the configuration.
-func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
 	if configuration == nil {
 		return BlobAccessInfo{}, status.Error(codes.InvalidArgument, "Storage configuration not specified")
 	}
 
-	backend, backendType, err := newNestedBlobAccessBare(configuration, creator)
+	backend, backendType, err := newNestedBlobAccessBare(terminationContext, terminationGroup, configuration, creator)
 	if err != nil {
 		return BlobAccessInfo{}, err
 	}
@@ -576,8 +578,8 @@ func NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator Blob
 
 // NewBlobAccessFromConfiguration creates a BlobAccess object based on a
 // configuration file.
-func NewBlobAccessFromConfiguration(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
-	backend, err := NewNestedBlobAccess(configuration, creator)
+func NewBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+	backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, configuration, creator)
 	if err != nil {
 		return BlobAccessInfo{}, err
 	}
@@ -591,8 +593,10 @@ func NewBlobAccessFromConfiguration(configuration *pb.BlobAccessConfiguration, c
 // create BlobAccess objects for both the Content Addressable Storage
 // and Action Cache. Most Buildbarn components tend to require access to
 // both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
+func NewCASAndACBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.GetContentAddressableStorage(),
 		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes))
 	if err != nil {
@@ -600,6 +604,8 @@ func NewCASAndACBlobAccessFromConfiguration(configuration *pb.BlobstoreConfigura
 	}
 
 	actionCache, err := NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(
 			&contentAddressableStorage,

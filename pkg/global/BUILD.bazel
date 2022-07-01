@@ -4,6 +4,7 @@ go_library(
     name = "global",
     srcs = [
         "apply_configuration.go",
+        "graceful_termination_handler.go",
         "umask_nonunix.go",
         "umask_unix.go",
     ],

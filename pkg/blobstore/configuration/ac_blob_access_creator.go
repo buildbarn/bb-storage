@@ -1,6 +1,9 @@
 package configuration
 
 import (
+	"context"
+	"sync"
+
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
@@ -57,10 +60,10 @@ func (bac *acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Pr
 	return acCapabilitiesProvider
 }
 
-func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ActionResultExpiring:
-		base, err := NewNestedBlobAccess(backend.ActionResultExpiring.Backend, bac)
+		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ActionResultExpiring.Backend, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -85,7 +88,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 		if bac.contentAddressableStorage == nil {
 			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
 		}
-		base, err := NewNestedBlobAccess(backend.CompletenessChecking, bac)
+		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.CompletenessChecking, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -107,7 +110,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:
-		return newProtoCustomBlobAccess(bac, configuration)
+		return newProtoCustomBlobAccess(terminationContext, terminationGroup, configuration, bac)
 	}
 }
 

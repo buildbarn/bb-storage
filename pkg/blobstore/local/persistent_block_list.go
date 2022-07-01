@@ -10,6 +10,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// errClosedForWriting is an error code to indicate that the BlockList does not
+// accept any more write operations and ongoing write operations will fail.
+var errClosedForWriting = status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down")
+
 // notificationChannel is a helper type to manage the channels returned
 // by GetBlockReleaseWakeup and GetBlockPutWakeup. For each of the
 // channels that these functions hand out, we must make sure that we
@@ -75,6 +79,10 @@ type PersistentBlockList struct {
 	blockAllocator   BlockAllocator
 	sectorSizeBytes  int
 	blockSectorCount int64
+	// When closedForWriting is set, BlockList will return errClosedForWriting
+	// for all future calls to PushBack and Put. This also applies to any
+	// ongoing calls. closedForWriting can only transition from false to true.
+	closedForWriting bool
 
 	// Blocks that are currently available for reading and writing.
 	blocks []persistentBlockInfo
@@ -245,6 +253,10 @@ func (bl *PersistentBlockList) PopFront() {
 // PushBack appends a new block to the BlockList. The block is obtained
 // by calling into the underlying BlockAllocator.
 func (bl *PersistentBlockList) PushBack() error {
+	if bl.closedForWriting {
+		return errClosedForWriting
+	}
+
 	block, location, err := bl.blockAllocator.NewBlock()
 	if err != nil {
 		return err
@@ -280,6 +292,15 @@ func (bl *PersistentBlockList) HasSpace(index int, sizeBytes int64) bool {
 
 // Put data into a block managed by the BlockList.
 func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWriter {
+	if bl.closedForWriting {
+		return func(b buffer.Buffer) BlockListPutFinalizer {
+			b.Discard()
+			return func() (int64, error) {
+				return 0, errClosedForWriting
+			}
+		}
+	}
+
 	// Allocate space from the requested block.
 	blockInfo := &bl.blocks[index]
 	offsetBytes := blockInfo.allocationOffsetSectors * int64(bl.sectorSizeBytes)
@@ -296,6 +317,9 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 			block.release()
 			if err != nil {
 				return 0, err
+			}
+			if bl.closedForWriting {
+				return 0, errClosedForWriting
 			}
 
 			// Adjust information on how much data has
@@ -357,7 +381,10 @@ func (bl *PersistentBlockList) GetBlockPutWakeup() <-chan struct{} {
 // NotifySyncStarting needs to be called right before the data on the
 // storage medium underneath the BlockAllocator is synchronized. This
 // causes the epoch ID to be increased when the next blob is stored.
-func (bl *PersistentBlockList) NotifySyncStarting() {
+func (bl *PersistentBlockList) NotifySyncStarting(isFinalSync bool) {
+	if isFinalSync {
+		bl.closedForWriting = true
+	}
 	// Preserve the current epoch ID and the amount of data written
 	// into every block.
 	bl.synchronizingEpochs = len(bl.epochHashSeeds)

@@ -27,17 +27,22 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+	terminationContext, terminationGroup := global.InstallGracefulTerminationHandler()
 
 	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Source,
 		blobAccessCreator)
 	if err != nil {
 		log.Fatal("Failed to create source: ", err)
 	}
 	sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Sink,
 		blobAccessCreator)
 	if err != nil {

@@ -86,7 +86,7 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// Successfully synchronize data to disk. This should cause the
 	// next call to GetPersistentState() to return all of the
 	// blocks.
-	blockList.NotifySyncStarting()
+	blockList.NotifySyncStarting(false)
 	blockList.NotifySyncCompleted()
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()
@@ -174,7 +174,7 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// Sync even more data. This should cause epoch 2 to be reported
 	// as part of GetPersistentState() as well. The write offset for
 	// the first block should also be increased now.
-	blockList.NotifySyncStarting()
+	blockList.NotifySyncStarting(false)
 	blockList.NotifySyncCompleted()
 
 	oldestEpochID, blockStateList = blockList.GetPersistentState()
@@ -296,16 +296,7 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	// to call BlockIndexToBlockReference(). The current epoch ID
 	// should therefore still be zero, even if we forced a
 	// synchronization of all data.
-	oldestEpochID, blockStateList = blockList.GetPersistentState()
-	require.Equal(t, uint32(0), oldestEpochID)
-	require.Empty(t, blockStateList)
-
-	blockList.NotifySyncStarting()
-	blockList.NotifySyncCompleted()
-
-	oldestEpochID, blockStateList = blockList.GetPersistentState()
-	require.Equal(t, uint32(0), oldestEpochID)
-	require.Empty(t, blockStateList)
+	verifyEpochIDStaysAtZero(t, blockList)
 }
 
 func TestPersistentBlockListRestorePersistentState(t *testing.T) {
@@ -379,4 +370,176 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	require.True(t, blockList.HasSpace(1, 47))
 	require.True(t, blockList.HasSpace(1, 48))
 	require.False(t, blockList.HasSpace(1, 49))
+}
+
+func TestPersistentBlockListPushBackAfterFinalSync(t *testing.T) {
+	blockList, _ := local.NewPersistentBlockList(nil, 16, 10, 0, nil)
+
+	blockList.NotifySyncStarting(true)
+
+	require.Equal(
+		t,
+		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
+		blockList.PushBack())
+}
+
+func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
+	// Writing to a block list consists of calling Put(), which returns a
+	// putWriter to be called, which in turn returns a putFinalizer to be
+	// called. Make sure error is returned if closed for writing early.
+	ctrl := gomock.NewController(t)
+
+	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	require.Equal(t, 0, blocksRestored)
+
+	// Attach a Block to the BlockList in which we're going to write
+	// some data.
+	block := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block, &pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}, nil)
+	require.NoError(t, blockList.PushBack())
+
+	// Close for writing even before calling Put.
+	blockList.NotifySyncStarting(true)
+
+	putWriter := blockList.Put(0, 5)
+
+	oldestEpochID, blockStateList := blockList.GetPersistentState()
+	require.Equal(t, uint32(0), oldestEpochID)
+	require.Empty(t, blockStateList)
+	blockList.NotifyPersistentStateWritten()
+
+	// Not expecting block.EXPECT().Put().
+	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+	_, err := putFinalizer()
+	require.Equal(
+		t,
+		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
+		err)
+
+	// When closed for writing, the epoch ID should not change.
+	verifyEpochIDStaysAtZero(t, blockList)
+}
+
+func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
+	// Writing to a block list consists of calling Put(), which returns a
+	// putWriter to be called, which in turn returns a putFinalizer to be
+	// called. Make sure error is returned if closed for writing in the last
+	// minute.
+	ctrl := gomock.NewController(t)
+
+	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	require.Equal(t, 0, blocksRestored)
+
+	// Attach a Block to the BlockList in which we're going to write
+	// some data.
+	block := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block, &pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}, nil)
+	require.NoError(t, blockList.PushBack())
+
+	putWriter := blockList.Put(0, 5)
+
+	oldestEpochID, blockStateList := blockList.GetPersistentState()
+	require.Equal(t, uint32(0), oldestEpochID)
+	require.Empty(t, blockStateList)
+	blockList.NotifyPersistentStateWritten()
+
+	// Close for writing after receiving the putWriter.
+	blockList.NotifySyncStarting(true)
+
+	// Because writing is permitted without holding any locks, there
+	// is nothing we can do to prevent the write from occurring. It
+	// should still be directed against the underlying Block.
+	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		data, err := b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+		return nil
+	})
+
+	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+	_, err := putFinalizer()
+	require.Equal(
+		t,
+		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
+		err)
+
+	// When closed for writing, the epoch ID should not change.
+	verifyEpochIDStaysAtZero(t, blockList)
+}
+
+func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
+	// Writing to a block list consists of calling Put(), which returns a
+	// putWriter to be called, which in turn returns a putFinalizer to be
+	// called. Make sure error is returned if closed for writing in the last
+	// minute.
+	ctrl := gomock.NewController(t)
+
+	blockAllocator := mock.NewMockBlockAllocator(ctrl)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	require.Equal(t, 0, blocksRestored)
+
+	// Attach a Block to the BlockList in which we're going to write
+	// some data.
+	block := mock.NewMockBlock(ctrl)
+	blockAllocator.EXPECT().NewBlock().Return(block, &pb.BlockLocation{
+		OffsetBytes: 0,
+		SizeBytes:   160,
+	}, nil)
+	require.NoError(t, blockList.PushBack())
+
+	putWriter := blockList.Put(0, 5)
+
+	oldestEpochID, blockStateList := blockList.GetPersistentState()
+	require.Equal(t, uint32(0), oldestEpochID)
+	require.Empty(t, blockStateList)
+	blockList.NotifyPersistentStateWritten()
+
+	// Because writing is permitted without holding any locks, there
+	// is nothing we can do to prevent the write from occurring. It
+	// should still be directed against the underlying Block.
+	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		data, err := b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+		return nil
+	})
+	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+	// Close for writing in the last minute.
+	blockList.NotifySyncStarting(true)
+
+	_, err := putFinalizer()
+	require.Equal(
+		t,
+		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
+		err)
+
+	// When closed for writing, the epoch ID should not change.
+	verifyEpochIDStaysAtZero(t, blockList)
+}
+
+func verifyEpochIDStaysAtZero(t *testing.T, blockList *local.PersistentBlockList) {
+	// When BlockIndexToBlockReference() has not been called, the current
+	// epoch ID should therefore still be zero, even if we forced a
+	// synchronization of all data.
+	oldestEpochID, blockStateList := blockList.GetPersistentState()
+	require.Equal(t, uint32(0), oldestEpochID)
+	require.Empty(t, blockStateList)
+
+	blockList.NotifySyncStarting(false)
+	blockList.NotifySyncCompleted()
+
+	oldestEpochID, blockStateList = blockList.GetPersistentState()
+	require.Equal(t, uint32(0), oldestEpochID)
+	require.Empty(t, blockStateList)
 }

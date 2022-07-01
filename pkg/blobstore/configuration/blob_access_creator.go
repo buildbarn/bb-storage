@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -47,7 +48,7 @@ type BlobAccessCreator interface {
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
 	// applicable to the Action Cache.
-	NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error)
+	NewCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error)
 	// WrapTopLevelBlobAccess() is called at the very end of
 	// NewBlobAccessFromConfiguration() to apply any top-level
 	// decorators.

@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -34,10 +35,10 @@ func (bac *protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(k
 // newProtoCustomBlobAccess is a common implementation of
 // BlobAccessCreator.NewCustomBlobAccess() for all types derived from
 // protoBlobAccessCreator.
-func newProtoCustomBlobAccess(bac BlobAccessCreator, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func newProtoCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, bac BlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_HierarchicalInstanceNames:
-		base, err := NewNestedBlobAccess(backend.HierarchicalInstanceNames, bac)
+		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.HierarchicalInstanceNames, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
