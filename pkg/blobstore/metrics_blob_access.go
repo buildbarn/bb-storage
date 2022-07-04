@@ -109,6 +109,7 @@ func (ba *metricsBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 	// BlobAccess. Such a Put() call wouldn't have any effect.
 	sizeBytes, err := b.GetSizeBytes()
 	if err != nil {
+		b.Discard()
 		return err
 	}
 	ba.putBlobSizeBytes.Observe(float64(sizeBytes))
