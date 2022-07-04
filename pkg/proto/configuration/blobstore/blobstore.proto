@@ -164,6 +164,30 @@ message BlobAccessConfiguration {
     // Only infrastructure errors (RPCs failing with INTERNAL,
     // UNAVAILABLE and UNKNOWN) are considered failures.
     ReadCanaryingBlobAccessConfiguration read_canarying = 23;
+
+    // Read objects from a ZIP file. Example use cases of this backend
+    // include the following:
+    //
+    // - When used in combination with ReadFallbackBlobAccess, it may be
+    //   used to augment a data store with a set of objects that are
+    //   guaranteed to remain present.
+    // - It may be used to access historical build actions that have
+    //   been archived, so that they can be inspected or rerun.
+    //
+    // If this backend is used as a Content Addressable Storage (CAS),
+    // it will search for files named "${hash}-${sizeBytes}". For other
+    // storage types it will search for files named
+    // "${hash}-${sizeBytes}-${instanceName}".
+    ZIPBlobAccessConfiguration zip_reading = 24;
+
+    // Write objects to an uncompressed ZIP file. The resulting ZIP
+    // files can be read back using the 'zip_reading' option.
+    //
+    // This backend does not support reopening existing ZIP files. ZIP
+    // files will always be truncated upon startup. The trailing central
+    // directory is only written upon graceful termination, meaning that
+    // interrupting execution will create a malformed ZIP file.
+    ZIPBlobAccessConfiguration zip_writing = 25;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -855,4 +879,20 @@ message ReadCanaryingBlobAccessConfiguration {
   //
   // Recommended value: 300s
   google.protobuf.Duration maximum_cache_duration = 4;
+}
+
+message ZIPBlobAccessConfiguration {
+  // Path of the ZIP file.
+  string path = 1;
+
+  // When set, temporarily cache the integrity of data after it's been
+  // read from the ZIP file. Once cached, uncompressed files in the ZIP
+  // file (i.e., ones stored with compression method STORE) may be
+  // randomly accessed quickly.
+  //
+  // The disadvantage of enabling this option is that data corruption in
+  // the ZIP file may not be detected. It is therefore recommended to
+  // set the cache duration to a limited value (e.g., "4h").
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      data_integrity_validation_cache = 2;
 }

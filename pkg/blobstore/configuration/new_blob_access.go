@@ -1,8 +1,11 @@
 package configuration
 
 import (
+	"archive/zip"
 	"context"
+	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -20,6 +23,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/extra/redisotel"
@@ -41,6 +45,20 @@ func newRedisClient(opt *redis.Options) *redis.Client {
 	client := redis.NewClient(opt)
 	client.AddHook(redisotel.TracingHook{})
 	return client
+}
+
+func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConfiguration, baseReadBufferFactory blobstore.ReadBufferFactory, digestKeyFormat digest.KeyFormat) (blobstore.ReadBufferFactory, error) {
+	if cacheConfiguration == nil {
+		// No caching enabled.
+		return baseReadBufferFactory, nil
+	}
+	dataIntegrityCheckingCache, err := digest.NewExistenceCacheFromConfiguration(cacheConfiguration, digestKeyFormat, "DataIntegrityValidationCache")
+	if err != nil {
+		return nil, err
+	}
+	return blobstore.NewValidationCachingReadBufferFactory(
+		baseReadBufferFactory,
+		dataIntegrityCheckingCache), nil
 }
 
 func newNestedBlobAccessBare(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
@@ -304,15 +322,9 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			blockCount := blocksOnBlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			blockSectorCount = sectorCount / int64(blockCount)
 
-			cachedReadBufferFactory := readBufferFactory
-			if cacheConfiguration := blocksOnBlockDevice.DataIntegrityValidationCache; cacheConfiguration != nil {
-				dataIntegrityCheckingCache, err := digest.NewExistenceCacheFromConfiguration(cacheConfiguration, digestKeyFormat, "DataIntegrityValidationCache")
-				if err != nil {
-					return BlobAccessInfo{}, "", err
-				}
-				cachedReadBufferFactory = blobstore.NewValidationCachingReadBufferFactory(
-					readBufferFactory,
-					dataIntegrityCheckingCache)
+			cachedReadBufferFactory, err := newCachedReadBufferFactory(blocksOnBlockDevice.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
+			if err != nil {
+				return BlobAccessInfo{}, "", err
 			}
 
 			blockAllocator = local.NewBlockDeviceBackedBlockAllocator(
@@ -554,6 +566,71 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 				maximumCacheDuration.AsDuration()),
 			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),
 		}, "read_canarying", nil
+	case *pb.BlobAccessConfiguration_ZipReading:
+		config := backend.ZipReading
+		file, err := os.Open(config.Path)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		fileInfo, err := file.Stat()
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		zipReader, err := zip.NewReader(file, fileInfo.Size())
+		if err != nil {
+			file.Close()
+			return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open ZIP file %#v", config.Path)
+		}
+
+		digestKeyFormat := creator.GetBaseDigestKeyFormat()
+		cachedReadBufferFactory, err := newCachedReadBufferFactory(config.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+
+		return BlobAccessInfo{
+			BlobAccess: blobstore.NewZIPReadingBlobAccess(
+				creator.GetDefaultCapabilitiesProvider(),
+				cachedReadBufferFactory,
+				digestKeyFormat,
+				zipReader.File),
+			DigestKeyFormat: digestKeyFormat,
+		}, "zip_reading", nil
+	case *pb.BlobAccessConfiguration_ZipWriting:
+		config := backend.ZipWriting
+		zipPath := config.Path
+		file, err := os.OpenFile(zipPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o666)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		digestKeyFormat := creator.GetBaseDigestKeyFormat()
+		cachedReadBufferFactory, err := newCachedReadBufferFactory(config.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		blobAccess := blobstore.NewZIPWritingBlobAccess(
+			creator.GetDefaultCapabilitiesProvider(),
+			cachedReadBufferFactory,
+			digestKeyFormat,
+			file)
+
+		// Ensure the central directory is written upon termination.
+		terminationGroup.Add(1)
+		go func() {
+			<-terminationContext.Done()
+			if err := blobAccess.Finalize(); err != nil {
+				log.Printf("Failed to finalize ZIP archive %#v: %s", zipPath, err)
+				return
+			}
+			if err := file.Sync(); err != nil {
+				log.Printf("Failed to synchronize ZIP archive %#v: %s", zipPath, err)
+			}
+		}()
+
+		return BlobAccessInfo{
+			BlobAccess:      blobAccess,
+			DigestKeyFormat: digestKeyFormat,
+		}, "zip_writing", nil
 	}
 	return creator.NewCustomBlobAccess(terminationContext, terminationGroup, configuration)
 }

@@ -32,6 +32,7 @@ gomock(
         "BlobAccess",
         "DemultiplexedBlobAccessGetter",
         "ReadBufferFactory",
+        "ReadWriterAt",
     ],
     library = "//pkg/blobstore",
     package = "mock",

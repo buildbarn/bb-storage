@@ -24,6 +24,8 @@ go_library(
         "reference_expanding_blob_access.go",
         "size_distinguishing_blob_access.go",
         "validation_caching_read_buffer_factory.go",
+        "zip_reading_blob_access.go",
+        "zip_writing_blob_access.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore",
     visibility = ["//visibility:public"],
@@ -66,6 +68,8 @@ go_test(
         "redis_blob_access_test.go",
         "reference_expanding_blob_access_test.go",
         "validation_caching_read_buffer_factory_test.go",
+        "zip_reading_blob_access_test.go",
+        "zip_writing_blob_access_test.go",
     ],
     deps = [
         ":blobstore",
