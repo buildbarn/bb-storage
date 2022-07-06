@@ -60,6 +60,18 @@
                "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
             },
             {
+               "name": "linux_amd64: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "linux_amd64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.linux_amd64",
+                  "path": "bb_copy"
+               }
+            },
+            {
                "name": "linux_amd64: copy bb_replicator",
                "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
@@ -86,6 +98,18 @@
             {
                "name": "linux_386: build and test",
                "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //..."
+            },
+            {
+               "name": "linux_386: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "linux_386: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.linux_386",
+                  "path": "bb_copy"
+               }
             },
             {
                "name": "linux_386: copy bb_replicator",
@@ -116,6 +140,18 @@
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //..."
             },
             {
+               "name": "linux_arm: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "linux_arm: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.linux_arm",
+                  "path": "bb_copy"
+               }
+            },
+            {
                "name": "linux_arm: copy bb_replicator",
                "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
             },
@@ -142,6 +178,18 @@
             {
                "name": "linux_arm64: build and test",
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //..."
+            },
+            {
+               "name": "linux_arm64: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "linux_arm64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.linux_arm64",
+                  "path": "bb_copy"
+               }
             },
             {
                "name": "linux_arm64: copy bb_replicator",
@@ -172,6 +220,18 @@
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
             },
             {
+               "name": "darwin_amd64: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "darwin_amd64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.darwin_amd64",
+                  "path": "bb_copy"
+               }
+            },
+            {
                "name": "darwin_amd64: copy bb_replicator",
                "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
@@ -200,6 +260,18 @@
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //..."
             },
             {
+               "name": "darwin_arm64: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "darwin_arm64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.darwin_arm64",
+                  "path": "bb_copy"
+               }
+            },
+            {
                "name": "darwin_arm64: copy bb_replicator",
                "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
@@ -225,7 +297,19 @@
             },
             {
                "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator //cmd/bb_storage"
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
+            },
+            {
+               "name": "freebsd_amd64: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "name": "freebsd_amd64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.freebsd_amd64",
+                  "path": "bb_copy"
+               }
             },
             {
                "name": "freebsd_amd64: copy bb_replicator",
@@ -254,6 +338,18 @@
             {
                "name": "windows_amd64: build and test",
                "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //..."
+            },
+            {
+               "name": "windows_amd64: copy bb_copy",
+               "run": "rm -f bb_copy.exe && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/bb_copy $(pwd)/bb_copy.exe"
+            },
+            {
+               "name": "windows_amd64: upload bb_copy",
+               "uses": "actions/upload-artifact@v2-preview",
+               "with": {
+                  "name": "bb_copy.windows_amd64",
+                  "path": "bb_copy.exe"
+               }
             },
             {
                "name": "windows_amd64: copy bb_replicator",
@@ -285,6 +381,10 @@
                },
                "name": "Install Docker credentials",
                "run": "mkdir -p ~/.docker && echo \"${DOCKER_CONFIG_JSON}\" > ~/.docker/config.json"
+            },
+            {
+               "name": "Push container bb_copy:bb_copy",
+               "run": "bazel run //cmd/bb_copy:bb_copy_container_push"
             },
             {
                "name": "Push container bb_replicator:bb_replicator",
