@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"os"
-	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/auth"
@@ -20,6 +19,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
 )
@@ -197,7 +197,7 @@ func main() {
 	lifecycleState.MarkReadyAndWait()
 }
 
-func newNonScannableBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
+func newNonScannableBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
 	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
@@ -219,7 +219,7 @@ func newNonScannableBlobAccess(terminationContext context.Context, terminationGr
 		nil
 }
 
-func newScannableBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
+func newScannableBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
 	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(terminationContext, terminationGroup, configuration.Backend, creator)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err

@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"context"
-	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -10,6 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type isccBlobAccessCreator struct {
@@ -42,7 +43,7 @@ func (bac *isccBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.
 	return nil
 }
 
-func (bac *isccBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *isccBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)

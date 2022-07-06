@@ -3,7 +3,6 @@ package configuration
 import (
 	"archive/zip"
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -61,7 +61,7 @@ func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConf
 		dataIntegrityCheckingCache), nil
 }
 
-func newNestedBlobAccessBare(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
+func newNestedBlobAccessBare(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
@@ -399,12 +399,14 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 					periodicSyncer.ProcessBlockRelease()
 				}
 			}()
-			terminationGroup.Add(1)
-			go func() {
+			terminationGroup.Go(func() error {
 				for periodicSyncer.ProcessBlockPut(terminationContext) {
 				}
-				terminationGroup.Done()
-			}()
+				// TODO: Let PeriodicSyncer propagate errors
+				// upwards in case they occur after the context
+				// has been cancelled.
+				return nil
+			})
 		}
 
 		blockListGrowthPolicy, err := creator.NewBlockListGrowthPolicy(
@@ -615,17 +617,16 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			file)
 
 		// Ensure the central directory is written upon termination.
-		terminationGroup.Add(1)
-		go func() {
+		terminationGroup.Go(func() error {
 			<-terminationContext.Done()
 			if err := blobAccess.Finalize(); err != nil {
-				log.Printf("Failed to finalize ZIP archive %#v: %s", zipPath, err)
-				return
+				return util.StatusWrapf(err, "Failed to finalize ZIP archive %#v", zipPath)
 			}
 			if err := file.Sync(); err != nil {
-				log.Printf("Failed to synchronize ZIP archive %#v: %s", zipPath, err)
+				return util.StatusWrapf(err, "Failed to synchronize ZIP archive %#v", zipPath)
 			}
-		}()
+			return nil
+		})
 
 		return BlobAccessInfo{
 			BlobAccess:      blobAccess,
@@ -638,7 +639,7 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 // NewNestedBlobAccess may be called by
 // BlobAccessCreator.NewCustomBlobAccess() to create BlobAccess
 // objects for instances nested inside the configuration.
-func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
 	if configuration == nil {
 		return BlobAccessInfo{}, status.Error(codes.InvalidArgument, "Storage configuration not specified")
 	}
@@ -655,7 +656,7 @@ func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *s
 
 // NewBlobAccessFromConfiguration creates a BlobAccess object based on a
 // configuration file.
-func NewBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func NewBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
 	backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, configuration, creator)
 	if err != nil {
 		return BlobAccessInfo{}, err
@@ -670,7 +671,7 @@ func NewBlobAccessFromConfiguration(terminationContext context.Context, terminat
 // create BlobAccess objects for both the Content Addressable Storage
 // and Action Cache. Most Buildbarn components tend to require access to
 // both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
+func NewCASAndACBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
 		terminationContext,
 		terminationGroup,

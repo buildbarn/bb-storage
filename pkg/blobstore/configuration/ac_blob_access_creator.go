@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"context"
-	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -15,6 +14,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -60,7 +60,7 @@ func (bac *acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Pr
 	return acCapabilitiesProvider
 }
 
-func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *sync.WaitGroup, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ActionResultExpiring:
 		base, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ActionResultExpiring.Backend, bac)
