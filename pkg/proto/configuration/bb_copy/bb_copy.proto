@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package buildbarn.configuration.bb_copy;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+import "pkg/proto/configuration/blobstore/blobstore.proto";
+
+message ApplicationConfiguration {
+  // Content Addressable Storage where data needs to be read.
+  buildbarn.configuration.blobstore.BlobAccessConfiguration source = 1;
+
+  // Content Addressable Storage where data needs to be written.
+  buildbarn.configuration.blobstore.BlobAccessConfiguration sink = 2;
+
+  // Configuration for replication.
+  buildbarn.configuration.blobstore.BlobReplicatorConfiguration replicator = 3;
+
+  // REv2 instance name that should be used for all requests.
+  string instance_name = 4;
+
+  // Digests of REv2 Action objects that need to be copied, including
+  // its input root and Command object.
+  repeated build.bazel.remote.execution.v2.Digest actions = 5;
+
+  // Digests of individual objects that need to be copied (e.g.,
+  // individual files, Command messages).
+  repeated build.bazel.remote.execution.v2.Digest blobs = 6;
+
+  // Digests of REv2 Directory objects that need to be copied, including
+  // its transitive set child Directory objects and files.
+  repeated build.bazel.remote.execution.v2.Digest directories = 7;
+
+  // Digests of REv2 Tree objects that need to be copied, including its
+  // set of child files.
+  repeated build.bazel.remote.execution.v2.Digest trees = 8;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 9;
+
+  // The concurrency that needs to be applied when traversing nested
+  // objects stored in the Content Addressable Storage (e.g., Directory
+  // objects pointing to children).
+  int32 traversal_concurrency = 10;
+}
