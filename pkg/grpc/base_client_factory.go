@@ -7,6 +7,7 @@ import (
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -103,16 +104,6 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		}))
 	}
 
-	// Optional: metadata forwarding.
-	if headers := config.ForwardMetadata; len(headers) > 0 {
-		unaryInterceptors = append(
-			unaryInterceptors,
-			NewMetadataForwardingUnaryClientInterceptor(headers))
-		streamInterceptors = append(
-			streamInterceptors,
-			NewMetadataForwardingStreamClientInterceptor(headers))
-	}
-
 	// Optional: add metadata.
 	if headers := config.AddMetadata; len(headers) > 0 {
 		var headerValues MetadataHeaderValues
@@ -137,6 +128,24 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 			httpProxy: http.ProxyURL(parsedProxyURL),
 		}
 		dialOptions = append(dialOptions, grpc.WithContextDialer(proxyDialer.proxyDial))
+	}
+
+	// Optional: metadata extraction.
+	if jmesExpression := config.AddMetadataJmespathExpression; jmesExpression != "" {
+		expr, err := jmespath.Compile(jmesExpression)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to compile JMESPath expression")
+		}
+		extractor, err := NewJMESPathMetadataExtractor(expr)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create JMESPath extractor")
+		}
+		unaryInterceptors = append(
+			unaryInterceptors,
+			NewMetadataExtractingAndForwardingUnaryClientInterceptor(extractor))
+		streamInterceptors = append(
+			streamInterceptors,
+			NewMetadataExtractingAndForwardingStreamClientInterceptor(extractor))
 	}
 
 	dialOptions = append(

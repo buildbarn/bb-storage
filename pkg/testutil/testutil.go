@@ -20,6 +20,7 @@ import (
 // (and can be embedded into google.protobuf.Any values), this function
 // falls back to doing a string comparison upon failure.
 func RequireEqualProto(t *testing.T, want, got proto.Message) {
+	t.Helper()
 	if !proto.Equal(want, got) {
 		wantStr := mustMarshalToString(t, want)
 		gotStr := mustMarshalToString(t, got)
@@ -31,6 +32,7 @@ func RequireEqualProto(t *testing.T, want, got proto.Message) {
 
 // RequireEqualStatus asserts that two grpc Statuses are equal.
 func RequireEqualStatus(t *testing.T, want, got error) {
+	t.Helper()
 	RequireEqualProto(t, status.Convert(want).Proto(), status.Convert(got).Proto())
 }
 

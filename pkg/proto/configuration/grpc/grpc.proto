@@ -29,8 +29,50 @@ message ClientConfiguration {
   // correct.
   ClientKeepaliveConfiguration keepalive = 3;
 
-  // List of gRPC metadata headers to forward from the calling context.
-  // Valid header names include:
+  // Was forward_metadata, folded into add_metadata_jmespath_expression.
+  // For instance, to forward the `authorization` header, you would use the
+  // expression:
+  //
+  // {"authorization": incomingGRPCMetadata.authorization}
+  //
+  // Incoming metadata names containing dots must be quoted, e.g.
+  //
+  // {"build.bazel.remote.execution.v2.requestmetadata-bin":
+  //     incomingGRPCMetadata."build.bazel.remote.execution.v2.requestmetadata-bin"}
+  reserved 4;
+
+  message HeaderValues {
+    string header = 1;
+    repeated string values = 2;
+  }
+
+  // Map of gRPC metadata headers to set in client connection.
+  // Header names must be lower case.
+  // TODO: Remove this and replace it with uses of
+  //  add_metadata_jmespath_expression.
+  repeated HeaderValues add_metadata = 5;
+
+  // JMESPath expression used to add headers to outgoing requests.
+  // The JMESPath should evaluate to a map<string, repeated string> with keys
+  // representing header names and values the header values.
+  //
+  // Header names must be lower case.
+  //
+  // The JMESPath expression is called against a JSON object with the following
+  // structure:
+  //
+  //  {
+  //      "authenticationMetadata": value,
+  //      "incomingGRPCMetadata": map<string, repeated string>
+  //  }
+  //
+  // authenticationMetadata must only contain primitive JSON-compatible types
+  // (string, bool, int, float), slices, or maps with type
+  // map[string]interface{}.
+  // Note that structs, pointers, and maps with different types
+  // (e.g. map[string]string) are not supported.
+  //
+  // Some known headers that may be expected in incomingGRPCMetadata:
   //
   // - "authorization":
   //   The bearer token (e.g. an OAuth2 access token) of the client.
@@ -42,24 +84,13 @@ message ClientConfiguration {
   //   Name and version of the low-level transport library used by the
   //   client.
   //
-  // Header names must be lower case.
-  //
-  // Note: Keep in mind that this option can only be used to forward
-  // metadata from incoming calls on gRPC servers to outgoing calls on
-  // gRPC clients. This means that this option cannot be used to let
+  // Note: Keep in mind that this option can only be used to send
+  // metadata to outgoing calls on gRPC clients.
+  // This means that this option cannot be used to let
   // bb-scheduler forward client provided credentials to workers. That
   // would only be possible if bb-scheduler made outgoing connections to
   // workers, which is not the case.
-  repeated string forward_metadata = 4;
-
-  message HeaderValues {
-    string header = 1;
-    repeated string values = 2;
-  }
-
-  // Map of gRPC metadata headers to set in client connection.
-  // Header names must be lower case.
-  repeated HeaderValues add_metadata = 5;
+  string add_metadata_jmespath_expression = 12;
 
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
