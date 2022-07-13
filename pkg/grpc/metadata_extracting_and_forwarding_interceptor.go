@@ -26,9 +26,9 @@ func NewMetadataExtractingAndForwardingUnaryClientInterceptor(metadataExtractor 
 	}
 }
 
-// NewMetadataExtractingAndForwardingStreamClientInterceptor creates a gRPC
-// request interceptor for unary calls that adds headers into the outgoing
-// metadata headers based on examining the context.
+// NewMetadataExtractingAndForwardingStreamClientInterceptor creates a
+// gRPC request interceptor for streaming calls that adds headers into
+// the outgoing metadata headers based on examining the context.
 func NewMetadataExtractingAndForwardingStreamClientInterceptor(metadataExtractor MetadataExtractor) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		extraMetadata, err := metadataExtractor(ctx)

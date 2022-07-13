@@ -17,7 +17,7 @@ import (
 
 func TestJMESPathMetadataExtractorSimple(t *testing.T) {
 	extractor, err := grpc.NewJMESPathMetadataExtractor(jmespath.MustCompile(`{
-        "hdr-from-auth": [authenticationMetadata.beep],
+		"hdr-from-auth": [authenticationMetadata.beep],
 		"hdr-from-incoming": incomingGRPCMetadata.whiz,
 		"this-is-static": ['and great'],
 		"hdr-from-both": [incomingGRPCMetadata.whiz[0], authenticationMetadata.beep],
