@@ -188,6 +188,18 @@ message BlobAccessConfiguration {
     // directory is only written upon graceful termination, meaning that
     // interrupting execution will create a malformed ZIP file.
     ZIPBlobAccessConfiguration zip_writing = 25;
+
+    // Prevent repetition in the BlobAccess configuration by introducing
+    // one or more BlobAccess objects that can later be referred to
+    // using string labels.
+    //
+    // This option does not introduce new kind of actual backend; it's
+    // merely present to allow creating BlobAccess setups that are DAG
+    // (Directed Acyclic Graph) shaped, as opposed to just trees.
+    WithLabelsBlobAccessConfiguration with_labels = 26;
+
+    // Refer to a BlobAccess object declared through 'with_labels'.
+    string label = 27;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -895,4 +907,13 @@ message ZIPBlobAccessConfiguration {
   // set the cache duration to a limited value (e.g., "4h").
   buildbarn.configuration.digest.ExistenceCacheConfiguration
       data_integrity_validation_cache = 2;
+}
+
+message WithLabelsBlobAccessConfiguration {
+  // The backend that should be created, having access to the declared
+  // labels.
+  BlobAccessConfiguration backend = 1;
+
+  // A map of string labels to backends that can be referenced.
+  map<string, BlobAccessConfiguration> labels = 2;
 }

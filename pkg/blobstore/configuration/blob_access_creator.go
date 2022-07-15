@@ -1,7 +1,6 @@
 package configuration
 
 import (
-	"context"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -9,9 +8,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-
-	"golang.org/x/sync/errgroup"
 )
+
+// NestedBlobAccessCreator is a helper type that implementations of
+// BlobAccessCreator may use to construct nested instances of
+// BlobAccess. For example, ACBlobAccessCreator will call into this
+// interface to create the backend of CompletenessCheckingBlobAccess.
+type NestedBlobAccessCreator interface {
+	NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error)
+}
 
 // BlobAccessCreator contains a set of methods that are invoked by the
 // generic NewBlobAccessFromConfiguration() function to create a
@@ -50,7 +55,7 @@ type BlobAccessCreator interface {
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
 	// applicable to the Action Cache.
-	NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error)
+	NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error)
 	// WrapTopLevelBlobAccess() is called at the very end of
 	// NewBlobAccessFromConfiguration() to apply any top-level
 	// decorators.

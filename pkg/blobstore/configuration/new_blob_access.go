@@ -61,7 +61,13 @@ func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConf
 		dataIntegrityCheckingCache), nil
 }
 
-func newNestedBlobAccessBare(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
+type simpleNestedBlobAccessCreator struct {
+	terminationContext context.Context
+	terminationGroup   *errgroup.Group
+	labels             map[string]BlobAccessInfo
+}
+
+func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
 	readBufferFactory := creator.GetReadBufferFactory()
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
@@ -71,11 +77,11 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			DigestKeyFormat: digest.KeyWithoutInstance,
 		}, "error", nil
 	case *pb.BlobAccessConfiguration_ReadCaching:
-		slow, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadCaching.Slow, creator)
+		slow, err := nc.NewNestedBlobAccess(backend.ReadCaching.Slow, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		fast, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadCaching.Fast, creator)
+		fast, err := nc.NewNestedBlobAccess(backend.ReadCaching.Fast, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -216,7 +222,7 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 				backends = append(backends, nil)
 			} else {
 				// Undrained backend.
-				backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, shard.Backend, creator)
+				backend, err := nc.NewNestedBlobAccess(shard.Backend, creator)
 				if err != nil {
 					return BlobAccessInfo{}, "", err
 				}
@@ -245,11 +251,11 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			DigestKeyFormat: *combinedDigestKeyFormat,
 		}, "sharding", nil
 	case *pb.BlobAccessConfiguration_SizeDistinguishing:
-		small, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.SizeDistinguishing.Small, creator)
+		small, err := nc.NewNestedBlobAccess(backend.SizeDistinguishing.Small, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		large, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.SizeDistinguishing.Large, creator)
+		large, err := nc.NewNestedBlobAccess(backend.SizeDistinguishing.Large, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -258,11 +264,11 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			DigestKeyFormat: small.DigestKeyFormat.Combine(large.DigestKeyFormat),
 		}, "size_distinguishing", nil
 	case *pb.BlobAccessConfiguration_Mirrored:
-		backendA, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.Mirrored.BackendA, creator)
+		backendA, err := nc.NewNestedBlobAccess(backend.Mirrored.BackendA, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		backendB, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.Mirrored.BackendB, creator)
+		backendB, err := nc.NewNestedBlobAccess(backend.Mirrored.BackendB, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -399,7 +405,8 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 					periodicSyncer.ProcessBlockRelease()
 				}
 			}()
-			terminationGroup.Go(func() error {
+			terminationContext := nc.terminationContext
+			nc.terminationGroup.Go(func() error {
 				for periodicSyncer.ProcessBlockPut(terminationContext) {
 				}
 				// TODO: Let PeriodicSyncer propagate errors
@@ -487,11 +494,11 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_ReadFallback:
-		primary, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadFallback.Primary, creator)
+		primary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		secondary, err := NewNestedBlobAccess(terminationContext, terminationGroup, backend.ReadFallback.Secondary, creator)
+		secondary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Secondary, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -522,7 +529,7 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Invalid instance name %#v", demultiplexed.AddInstanceNamePrefix)
 			}
-			backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, demultiplexed.Backend, creator)
+			backend, err := nc.NewNestedBlobAccess(demultiplexed.Backend, creator)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
 			}
@@ -546,11 +553,11 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 		}, "demultiplexing", nil
 	case *pb.BlobAccessConfiguration_ReadCanarying:
 		config := backend.ReadCanarying
-		source, err := NewNestedBlobAccess(terminationContext, terminationGroup, config.Source, creator)
+		source, err := nc.NewNestedBlobAccess(config.Source, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replica, err := NewNestedBlobAccess(terminationContext, terminationGroup, config.Replica, creator)
+		replica, err := nc.NewNestedBlobAccess(config.Replica, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -617,7 +624,8 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			file)
 
 		// Ensure the central directory is written upon termination.
-		terminationGroup.Go(func() error {
+		terminationContext := nc.terminationContext
+		nc.terminationGroup.Go(func() error {
 			<-terminationContext.Done()
 			if err := blobAccess.Finalize(); err != nil {
 				return util.StatusWrapf(err, "Failed to finalize ZIP archive %#v", zipPath)
@@ -633,18 +641,56 @@ func newNestedBlobAccessBare(terminationContext context.Context, terminationGrou
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_writing", nil
 	}
-	return creator.NewCustomBlobAccess(terminationContext, terminationGroup, configuration)
+	return creator.NewCustomBlobAccess(configuration, nc)
 }
 
 // NewNestedBlobAccess may be called by
 // BlobAccessCreator.NewCustomBlobAccess() to create BlobAccess
 // objects for instances nested inside the configuration.
-func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
 	if configuration == nil {
 		return BlobAccessInfo{}, status.Error(codes.InvalidArgument, "Storage configuration not specified")
 	}
 
-	backend, backendType, err := newNestedBlobAccessBare(terminationContext, terminationGroup, configuration, creator)
+	// Protobuf does not support anchors/aliases like YAML. Have
+	// separate 'with_labels' and 'labels' backends that can be used
+	// to declare anchors and aliases, respectively.
+	switch backend := configuration.Backend.(type) {
+	case *pb.BlobAccessConfiguration_WithLabels:
+		config := backend.WithLabels
+
+		// Inherit labels from the parent.
+		labels := map[string]BlobAccessInfo{}
+		for label, labelBackend := range nc.labels {
+			labels[label] = labelBackend
+		}
+
+		// Add additional labels declared in config.
+		for label, labelBackend := range config.Labels {
+			if _, ok := labels[label]; ok {
+				// Disallow shadowing.
+				return BlobAccessInfo{}, status.Errorf(codes.InvalidArgument, "Label %#v has already been declared", label)
+			}
+			info, err := nc.NewNestedBlobAccess(labelBackend, creator)
+			if err != nil {
+				return BlobAccessInfo{}, util.StatusWrapf(err, "Label %#v", label)
+			}
+			labels[label] = info
+		}
+
+		return (&simpleNestedBlobAccessCreator{
+			terminationContext: nc.terminationContext,
+			terminationGroup:   nc.terminationGroup,
+			labels:             labels,
+		}).NewNestedBlobAccess(config.Backend, creator)
+	case *pb.BlobAccessConfiguration_Label:
+		if labelBackend, ok := nc.labels[backend.Label]; ok {
+			return labelBackend, nil
+		}
+		return BlobAccessInfo{}, status.Errorf(codes.InvalidArgument, "Label %#v not declared", backend.Label)
+	}
+
+	backend, backendType, err := nc.newNestedBlobAccessBare(configuration, creator)
 	if err != nil {
 		return BlobAccessInfo{}, err
 	}
@@ -657,7 +703,11 @@ func NewNestedBlobAccess(terminationContext context.Context, terminationGroup *e
 // NewBlobAccessFromConfiguration creates a BlobAccess object based on a
 // configuration file.
 func NewBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
-	backend, err := NewNestedBlobAccess(terminationContext, terminationGroup, configuration, creator)
+	nestedCreator := &simpleNestedBlobAccessCreator{
+		terminationContext: terminationContext,
+		terminationGroup:   terminationGroup,
+	}
+	backend, err := nestedCreator.NewNestedBlobAccess(configuration, creator)
 	if err != nil {
 		return BlobAccessInfo{}, err
 	}

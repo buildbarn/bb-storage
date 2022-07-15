@@ -1,16 +1,12 @@
 package configuration
 
 import (
-	"context"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-
-	"golang.org/x/sync/errgroup"
 )
 
 type icasBlobAccessCreator struct {
@@ -43,7 +39,7 @@ func (bac *icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.
 	return nil
 }
 
-func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
@@ -57,7 +53,7 @@ func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationContext context
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:
-		return newProtoCustomBlobAccess(terminationContext, terminationGroup, configuration, bac)
+		return newProtoCustomBlobAccess(configuration, nestedCreator, bac)
 	}
 }
 
