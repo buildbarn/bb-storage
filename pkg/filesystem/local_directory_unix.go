@@ -404,14 +404,6 @@ func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) er
 		return util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert modification time")
 	}
 
-	// TODO: UtimesNanoAt() is a stub on Darwin, even though recent
-	// versions of Darwin support utimensat() perfectly fine. We
-	// should patch go-sys to have a functional UtimesNanoAt()
-	// implementation.
-	if runtime.GOOS == "darwin" {
-		return nil
-	}
-
 	return unix.UtimesNanoAt(d.fd, name.String(), ts[:], unix.AT_SYMLINK_NOFOLLOW)
 }
 
