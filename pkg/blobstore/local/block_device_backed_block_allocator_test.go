@@ -42,8 +42,10 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 
 	// Blocks should initially be handed out in order of the offset.
 	// The third block should thus start at offset 300.
-	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(317)).Return(5, nil)
-	require.NoError(t, blocks[3].Put(17, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(300)).Return(5, nil)
+	offsetBytes, err := blocks[3].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	require.NoError(t, err)
+	require.Equal(t, int64(0), offsetBytes)
 
 	// Fetch a blob from a block. Don't consume it yet, but do
 	// release the block associated with the blob. It should not be
@@ -81,8 +83,10 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		OffsetBytes: 700,
 		SizeBytes:   100,
 	}, location)
-	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
-	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(700)).Return(5, nil)
+	offsetBytes, err = blocks[7].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	require.NoError(t, err)
+	require.Equal(t, int64(0), offsetBytes)
 
 	// When blocks are reused, they should be allocated according to
 	// which one was least recently released. This ensures wear
@@ -99,20 +103,22 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 			SizeBytes:   100,
 		}, location)
 
-		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i+83)).Return(5, nil)
-		require.NoError(t, blocks[i].Put(83, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i)).Return(5, nil)
+		offsetBytes, err := blocks[i].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		require.NoError(t, err)
+		require.Equal(t, int64(0), offsetBytes)
 	}
 
 	// The NewBlockAtLocation() function allows extracting blocks at
 	// a given location. It shouldn't work on invalid locations, or
 	// locations of blocks that are already allocated.
-	_, found := pa.NewBlockAtLocation(nil)
+	_, found := pa.NewBlockAtLocation(nil, 37)
 	require.False(t, found)
 
 	_, found = pa.NewBlockAtLocation(&pb.BlockLocation{
 		OffsetBytes: 700,
 		SizeBytes:   100,
-	})
+	}, 42)
 	require.False(t, found)
 
 	// Releasing a block should make it possible to extract it using
@@ -121,8 +127,10 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	blocks[7], found = pa.NewBlockAtLocation(&pb.BlockLocation{
 		OffsetBytes: 700,
 		SizeBytes:   100,
-	})
+	}, 17)
 	require.True(t, found)
-	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(741)).Return(5, nil)
-	require.NoError(t, blocks[7].Put(41, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(717)).Return(5, nil)
+	offsetBytes, err = blocks[7].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	require.NoError(t, err)
+	require.Equal(t, int64(17), offsetBytes)
 }

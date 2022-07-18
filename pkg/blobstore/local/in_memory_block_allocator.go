@@ -23,26 +23,40 @@ func NewInMemoryBlockAllocator(blockSize int) BlockAllocator {
 }
 
 func (ia *inMemoryBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
-	return inMemoryBlock{
+	return &inMemoryBlock{
 		data: make([]byte, ia.blockSize),
 	}, nil, nil
 }
 
-func (ia *inMemoryBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation) (Block, bool) {
+func (ia *inMemoryBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation, writeOffsetBytes int64) (Block, bool) {
 	// There is no way to access old blocks again.
 	return nil, false
 }
 
 type inMemoryBlock struct {
-	data []byte
+	data             []byte
+	writeOffsetBytes int
 }
 
-func (ib inMemoryBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (ib *inMemoryBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewValidatedBufferFromByteSlice(ib.data[offsetBytes : offsetBytes+sizeBytes])
 }
 
-func (ib inMemoryBlock) Put(offsetBytes int64, b buffer.Buffer) error {
-	return b.IntoWriter(bytes.NewBuffer(ib.data[offsetBytes:offsetBytes]))
+func (ib *inMemoryBlock) HasSpace(sizeBytes int64) bool {
+	return int64(len(ib.data)-ib.writeOffsetBytes) >= sizeBytes
 }
 
-func (ib inMemoryBlock) Release() {}
+func (ib *inMemoryBlock) Put(sizeBytes int64) BlockPutWriter {
+	// Allocate space.
+	offsetBytes := ib.writeOffsetBytes
+	ib.writeOffsetBytes += int(sizeBytes)
+	return func(b buffer.Buffer) BlockPutFinalizer {
+		// Ingest data.
+		err := b.IntoWriter(bytes.NewBuffer(ib.data[offsetBytes:offsetBytes]))
+		return func() (int64, error) {
+			return int64(offsetBytes), err
+		}
+	}
+}
+
+func (ib *inMemoryBlock) Release() {}

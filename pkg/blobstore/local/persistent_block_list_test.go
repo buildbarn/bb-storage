@@ -18,7 +18,7 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 1, nil)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 1, nil)
 	require.Equal(t, 0, blocksRestored)
 
 	// The persistent state should match up with how the BlockList
@@ -58,13 +58,14 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// data hasn't been persisted, so GetPersistentState() should
 	// still not return any blocks.
 	for i := 0; i < 5; i++ {
+		block2.EXPECT().HasSpace(int64(5)).Return(true)
 		require.True(t, blockList.HasSpace(1, 5))
 
-		block2.EXPECT().Put(int64(i)*16, gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		block2.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return nil
+			return func() (int64, error) { return int64(i) * 16, nil }
 		})
 		offset, err := blockList.Put(1, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
 		require.NoError(t, err)
@@ -123,13 +124,14 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 	// BlockReferences should refer to epoch 2. This new epoch
 	// shouldn't be returned by GetPersistentState() yet.
 	for i := 0; i < 3; i++ {
+		block1.EXPECT().HasSpace(int64(5)).Return(true)
 		require.True(t, blockList.HasSpace(0, 5))
 
-		block1.EXPECT().Put(int64(i)*16, gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+		block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return nil
+			return func() (int64, error) { return int64(i) * 16, nil }
 		})
 		offset, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
 		require.NoError(t, err)
@@ -251,7 +253,7 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 0, nil)
 	require.Equal(t, 0, blocksRestored)
 
 	// Attach a Block to the BlockList in which we're going to write
@@ -263,11 +265,13 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	}, nil)
 	require.NoError(t, blockList.PushBack())
 
+	blockPutWriter := mock.NewMockBlockPutWriter(ctrl)
+	block.EXPECT().Put(int64(5)).Return(blockPutWriter.Call)
+
 	putWriter := blockList.Put(0, 5)
 
-	// Release the Block. This should not cause the underlying Block
-	// to be released immediately, as there is still a write that is
-	// in flight.
+	// Release the Block.
+	block.EXPECT().Release()
 	blockList.PopFront()
 
 	oldestEpochID, blockStateList := blockList.GetPersistentState()
@@ -278,17 +282,16 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
 		data, err := b.ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-		return nil
+		return func() (int64, error) { return 0, nil }
 	})
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
-	// Finalizing the write should immediately cause the Block to be
-	// released.
-	block.EXPECT().Release()
+	// Finalizing the write should fail, as the Block against which
+	// it occurred is no longer addressable.
 	_, err := putFinalizer()
 	require.Equal(t, status.Error(codes.Internal, "The block to which this blob was written, has already been released"), err)
 
@@ -310,14 +313,14 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	blockAllocator.EXPECT().NewBlockAtLocation(&pb.BlockLocation{
 		OffsetBytes: 0,
 		SizeBytes:   160,
-	}).Return(block1, true)
+	}, int64(42)).Return(block1, true)
 	block2 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlockAtLocation(&pb.BlockLocation{
 		OffsetBytes: 160,
 		SizeBytes:   160,
-	}).Return(block2, true)
+	}, int64(103)).Return(block2, true)
 
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 5, []*pb.BlockState{
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 5, []*pb.BlockState{
 		{
 			BlockLocation: &pb.BlockLocation{
 				OffsetBytes: 0,
@@ -363,17 +366,19 @@ func TestPersistentBlockListRestorePersistentState(t *testing.T) {
 	// We store the write offset in bytes in the Protobuf messages.
 	// When allocating data, we should use round these offsets to
 	// the next sector.
-	require.True(t, blockList.HasSpace(0, 111))
+	block1.EXPECT().HasSpace(int64(112)).Return(true)
 	require.True(t, blockList.HasSpace(0, 112))
+	block1.EXPECT().HasSpace(int64(113)).Return(false)
 	require.False(t, blockList.HasSpace(0, 113))
 
-	require.True(t, blockList.HasSpace(1, 47))
+	block2.EXPECT().HasSpace(int64(48)).Return(true)
 	require.True(t, blockList.HasSpace(1, 48))
+	block2.EXPECT().HasSpace(int64(49)).Return(false)
 	require.False(t, blockList.HasSpace(1, 49))
 }
 
 func TestPersistentBlockListPushBackAfterFinalSync(t *testing.T) {
-	blockList, _ := local.NewPersistentBlockList(nil, 16, 10, 0, nil)
+	blockList, _ := local.NewPersistentBlockList(nil, 0, nil)
 
 	blockList.NotifySyncStarting(true)
 
@@ -390,7 +395,7 @@ func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 0, nil)
 	require.Equal(t, 0, blocksRestored)
 
 	// Attach a Block to the BlockList in which we're going to write
@@ -433,7 +438,7 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 0, nil)
 	require.Equal(t, 0, blocksRestored)
 
 	// Attach a Block to the BlockList in which we're going to write
@@ -444,6 +449,9 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 		SizeBytes:   160,
 	}, nil)
 	require.NoError(t, blockList.PushBack())
+
+	blockPutWriter := mock.NewMockBlockPutWriter(ctrl)
+	block.EXPECT().Put(int64(5)).Return(blockPutWriter.Call)
 
 	putWriter := blockList.Put(0, 5)
 
@@ -458,11 +466,11 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
 		data, err := b.ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-		return nil
+		return func() (int64, error) { return 0, nil }
 	})
 
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
@@ -485,7 +493,7 @@ func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 16, 10, 0, nil)
+	blockList, blocksRestored := local.NewPersistentBlockList(blockAllocator, 0, nil)
 	require.Equal(t, 0, blocksRestored)
 
 	// Attach a Block to the BlockList in which we're going to write
@@ -497,6 +505,9 @@ func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	}, nil)
 	require.NoError(t, blockList.PushBack())
 
+	blockPutWriter := mock.NewMockBlockPutWriter(ctrl)
+	block.EXPECT().Put(int64(5)).Return(blockPutWriter.Call)
+
 	putWriter := blockList.Put(0, 5)
 
 	oldestEpochID, blockStateList := blockList.GetPersistentState()
@@ -507,11 +518,11 @@ func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	block.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offsetBytes int64, b buffer.Buffer) error {
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
 		data, err := b.ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-		return nil
+		return func() (int64, error) { return 0, nil }
 	})
 	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 

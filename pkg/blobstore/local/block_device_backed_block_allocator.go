@@ -56,7 +56,7 @@ type blockDeviceBackedBlockAllocator struct {
 	blockDevice       blockdevice.BlockDevice
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
-	blockSizeBytes    int64
+	blockSectorCount  int64
 
 	lock        sync.Mutex
 	freeOffsets []int64
@@ -88,7 +88,7 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 		blockDevice:       blockDevice,
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
-		blockSizeBytes:    blockSectorCount * int64(sectorSizeBytes),
+		blockSectorCount:  blockSectorCount,
 	}
 	for i := 0; i < blockCount; i++ {
 		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
@@ -96,14 +96,31 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 	return pa
 }
 
-func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
+func (pa *blockDeviceBackedBlockAllocator) toSectors(sizeBytes int64) int64 {
+	// Determine the number of sectors needed to store the object.
+	//
+	// TODO: This can be wasteful for storing small objects with
+	// large sector sizes. Should we add logic for packing small
+	// objects together into a single sector?
+	return (sizeBytes + int64(pa.sectorSizeBytes) - 1) / int64(pa.sectorSizeBytes)
+}
+
+func (pa *blockDeviceBackedBlockAllocator) newBlockObject(deviceOffsetSectors, writeOffsetSectors int64) Block {
 	blockDeviceBackedBlockAllocatorAllocations.Inc()
 	pb := &blockDeviceBackedBlock{
-		blockAllocator: pa,
-		offset:         offset,
+		blockAllocator:      pa,
+		deviceOffsetSectors: deviceOffsetSectors,
+		writeOffsetSectors:  writeOffsetSectors,
 	}
 	pb.usecount.Initialize(1)
 	return pb
+}
+
+func (pa *blockDeviceBackedBlockAllocator) getBlockLocationMessage(deviceOffsetSectors int64) *pb.BlockLocation {
+	return &pb.BlockLocation{
+		OffsetBytes: deviceOffsetSectors * int64(pa.sectorSizeBytes),
+		SizeBytes:   pa.blockSectorCount * int64(pa.sectorSizeBytes),
+	}
 }
 
 func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
@@ -113,35 +130,33 @@ func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation,
 	if len(pa.freeOffsets) == 0 {
 		return nil, nil, status.Error(codes.Unavailable, "No unused blocks available")
 	}
-	offset := pa.freeOffsets[0]
+	deviceOffsetSectors := pa.freeOffsets[0]
 	pa.freeOffsets = pa.freeOffsets[1:]
-	return pa.newBlockObject(offset), &pb.BlockLocation{
-		OffsetBytes: offset * int64(pa.sectorSizeBytes),
-		SizeBytes:   pa.blockSizeBytes,
-	}, nil
+	return pa.newBlockObject(deviceOffsetSectors, 0), pa.getBlockLocationMessage(deviceOffsetSectors), nil
 }
 
-func (pa *blockDeviceBackedBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation) (Block, bool) {
+func (pa *blockDeviceBackedBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation, writeOffsetBytes int64) (Block, bool) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
-	for i, offset := range pa.freeOffsets {
-		if proto.Equal(&pb.BlockLocation{
-			OffsetBytes: offset * int64(pa.sectorSizeBytes),
-			SizeBytes:   pa.blockSizeBytes,
-		}, location) {
+	for i, deviceOffsetSectors := range pa.freeOffsets {
+		if proto.Equal(pa.getBlockLocationMessage(deviceOffsetSectors), location) {
 			pa.freeOffsets[i] = pa.freeOffsets[len(pa.freeOffsets)-1]
 			pa.freeOffsets = pa.freeOffsets[:len(pa.freeOffsets)-1]
-			return pa.newBlockObject(offset), true
+			return pa.newBlockObject(
+				deviceOffsetSectors,
+				(writeOffsetBytes+int64(pa.sectorSizeBytes)-1)/int64(pa.sectorSizeBytes),
+			), true
 		}
 	}
 	return nil, false
 }
 
 type blockDeviceBackedBlock struct {
-	usecount       atomic.Int64
-	blockAllocator *blockDeviceBackedBlockAllocator
-	offset         int64
+	usecount            atomic.Int64
+	blockAllocator      *blockDeviceBackedBlockAllocator
+	deviceOffsetSectors int64
+	writeOffsetSectors  int64
 }
 
 func (pb *blockDeviceBackedBlock) Release() {
@@ -152,7 +167,7 @@ func (pb *blockDeviceBackedBlock) Release() {
 		// storage to be reused for new data.
 		pa := pb.blockAllocator
 		pa.lock.Lock()
-		pa.freeOffsets = append(pa.freeOffsets, pb.offset)
+		pa.freeOffsets = append(pa.freeOffsets, pb.deviceOffsetSectors)
 		pa.lock.Unlock()
 		blockDeviceBackedBlockAllocatorReleases.Inc()
 	}
@@ -169,7 +184,7 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 		&blockDeviceBackedBlockReader{
 			SectionReader: *io.NewSectionReader(
 				pb.blockAllocator.blockDevice,
-				pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
+				pb.deviceOffsetSectors*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
 				sizeBytes),
 			block: pb,
 		},
@@ -177,26 +192,36 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 		dataIntegrityCallback)
 }
 
-func (pb *blockDeviceBackedBlock) Put(offsetBytes int64, b buffer.Buffer) error {
-	if pb.usecount.Load() <= 0 {
-		panic("Attempted to store buffer in unused block")
+func (pb *blockDeviceBackedBlock) HasSpace(sizeBytes int64) bool {
+	pa := pb.blockAllocator
+	return pa.blockSectorCount-pb.writeOffsetSectors >= pa.toSectors(sizeBytes)
+}
+
+func (pb *blockDeviceBackedBlock) Put(sizeBytes int64) BlockPutWriter {
+	if c := pb.usecount.Add(1); c <= 1 {
+		panic(fmt.Sprintf("Put(): Block has invalid reference count %d", c))
 	}
 
-	sectorSizeBytes := pb.blockAllocator.sectorSizeBytes
-	if offsetBytes%int64(sectorSizeBytes) != 0 {
-		panic("Attempted to store buffer at unaligned location")
-	}
+	writeOffsetSectors := pb.writeOffsetSectors
+	pb.writeOffsetSectors += pb.blockAllocator.toSectors(sizeBytes)
 
-	w := &blockDeviceBackedBlockWriter{
-		w:             pb.blockAllocator.blockDevice,
-		partialSector: make([]byte, 0, pb.blockAllocator.sectorSizeBytes),
-		offset:        pb.offset + offsetBytes/int64(sectorSizeBytes),
-	}
+	return func(b buffer.Buffer) BlockPutFinalizer {
+		w := &blockDeviceBackedBlockWriter{
+			w:             pb.blockAllocator.blockDevice,
+			partialSector: make([]byte, 0, pb.blockAllocator.sectorSizeBytes),
+			offset:        pb.deviceOffsetSectors + writeOffsetSectors,
+		}
 
-	if err := b.IntoWriter(w); err != nil {
-		return err
+		err := b.IntoWriter(w)
+		if err == nil {
+			err = w.flush()
+		}
+		pb.Release()
+
+		return func() (int64, error) {
+			return writeOffsetSectors * int64(pb.blockAllocator.sectorSizeBytes), err
+		}
 	}
-	return w.flush()
 }
 
 // blockDeviceBackedBlockReader reads a blob from underlying storage at

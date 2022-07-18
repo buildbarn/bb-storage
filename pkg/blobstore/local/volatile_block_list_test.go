@@ -17,7 +17,7 @@ func TestVolatileBlockList(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockAllocator := mock.NewMockBlockAllocator(ctrl)
-	blockList := local.NewVolatileBlockList(blockAllocator, 16, 10)
+	blockList := local.NewVolatileBlockList(blockAllocator)
 
 	// In the initial state, the BlockList does not contain any
 	// blocks. This means that no BlockReferences should be
@@ -95,34 +95,35 @@ func TestVolatileBlockList(t *testing.T) {
 	}, blockReference)
 
 	// The block should be empty initially.
-	require.True(t, blockList.HasSpace(0, 0))
-	require.True(t, blockList.HasSpace(0, 159))
+	block1.EXPECT().HasSpace(int64(160)).Return(true)
 	require.True(t, blockList.HasSpace(0, 160))
+	block1.EXPECT().HasSpace(int64(161)).Return(false)
 	require.False(t, blockList.HasSpace(0, 161))
 
 	// Attempt to write some data into the block. Let one of the
 	// writes fail, while another one succeeds. Even for failed
 	// writes, the resulting space is wasted.
-	block1.EXPECT().Put(int64(0), gomock.Any()).DoAndReturn(func(offset int64, b buffer.Buffer) error {
+	block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
 		b.Discard()
-		return status.Error(codes.Internal, "Disk on fire")
+		return func() (int64, error) { return 0, status.Error(codes.Internal, "Disk on fire") }
 	})
 	_, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
 	require.Equal(t, status.Error(codes.Internal, "Disk on fire"), err)
 
-	block1.EXPECT().Put(int64(16), gomock.Any()).DoAndReturn(func(offset int64, b buffer.Buffer) error {
+	block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
 		data, err := b.ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-		return nil
+		return func() (int64, error) { return 16, nil }
 	})
 	offsetBytes, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
 	require.NoError(t, err)
 	require.Equal(t, int64(16), offsetBytes)
 
 	// The amount of available space should have been reduced now.
-	require.True(t, blockList.HasSpace(0, 127))
+	block1.EXPECT().HasSpace(int64(128)).Return(true)
 	require.True(t, blockList.HasSpace(0, 128))
+	block1.EXPECT().HasSpace(int64(129)).Return(false)
 	require.False(t, blockList.HasSpace(0, 129))
 
 	// Add a second block to the BlockList.
@@ -178,9 +179,13 @@ func TestVolatileBlockList(t *testing.T) {
 	}, blockReference)
 
 	// Ensure HasSpace() calls are directed against the right block.
+	block1.EXPECT().HasSpace(int64(128)).Return(true)
 	require.True(t, blockList.HasSpace(0, 128))
+	block1.EXPECT().HasSpace(int64(129)).Return(false)
 	require.False(t, blockList.HasSpace(0, 129))
+	block2.EXPECT().HasSpace(int64(160)).Return(true)
 	require.True(t, blockList.HasSpace(1, 160))
+	block2.EXPECT().HasSpace(int64(161)).Return(false)
 	require.False(t, blockList.HasSpace(1, 161))
 
 	// Pop the first block off the BlockList. This should cause the
@@ -218,6 +223,8 @@ func TestVolatileBlockList(t *testing.T) {
 	}, blockReference)
 
 	// Ensure HasSpace() forwards calls to the second block now.
+	block2.EXPECT().HasSpace(int64(160)).Return(true)
 	require.True(t, blockList.HasSpace(0, 160))
+	block2.EXPECT().HasSpace(int64(161)).Return(false)
 	require.False(t, blockList.HasSpace(0, 161))
 }

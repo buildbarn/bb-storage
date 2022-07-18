@@ -47,6 +47,7 @@ gomock(
         "BlockList",
         "BlockListPutFinalizer",
         "BlockListPutWriter",
+        "BlockPutWriter",
         "BlockReferenceResolver",
         "DataSyncer",
         "KeyBlobGetter",

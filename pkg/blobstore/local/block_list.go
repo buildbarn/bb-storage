@@ -13,14 +13,14 @@ import (
 // This function blocks until all data contained in the Buffer has been
 // processed or an error occurs. A BlockListPutFinalizer is returned
 // that the caller must invoke while locked.
-type BlockListPutWriter func(b buffer.Buffer) BlockListPutFinalizer
+type BlockListPutWriter = BlockPutWriter
 
 // BlockListPutFinalizer is returned by BlockListPutWriter after writing
 // of data has finished. This function returns the offset at which the
 // blob was stored. There is no guarantee that this data can be
 // extracted again, as BlockList.PopFront() may have been called in the
 // meantime.
-type BlockListPutFinalizer func() (int64, error)
+type BlockListPutFinalizer = BlockPutFinalizer
 
 // BlockList keeps track of a list of blocks that are handed out by an
 // underlying BlockAllocator. For every block, BlockList tracks how much

@@ -350,10 +350,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if persistent == nil {
 			// Persistency is disabled. Provide a simple
 			// volatile BlockList.
-			blockList = local.NewVolatileBlockList(
-				blockAllocator,
-				sectorSizeBytes,
-				blockSectorCount)
+			blockList = local.NewVolatileBlockList(blockAllocator)
 			keyLocationMapHashInitialization = random.CryptoThreadSafeGenerator.Uint64()
 		} else {
 			// Persistency is enabled. Reload previous
@@ -377,8 +374,6 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			var persistentBlockList *local.PersistentBlockList
 			persistentBlockList, initialBlockCount = local.NewPersistentBlockList(
 				blockAllocator,
-				sectorSizeBytes,
-				blockSectorCount,
 				persistentState.OldestEpochId,
 				persistentState.Blocks)
 			blockList = persistentBlockList

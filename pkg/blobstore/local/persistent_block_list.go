@@ -48,7 +48,7 @@ func (nc *notificationChannel) unblock() {
 }
 
 type persistentBlockInfo struct {
-	block         *sharedBlock
+	block         Block
 	blockLocation *pb.BlockLocation
 
 	// The offsets at which new data needs to be stored, the highest
@@ -60,8 +60,6 @@ type persistentBlockInfo struct {
 	//        synchronizedOffsetBytes
 	//     <= synchronizingOffsetBytes
 	//     <= writtenOffsetBytes
-	//     <= allocationOffsetSectors * sectorSizeBytes
-	allocationOffsetSectors  int64
 	writtenOffsetBytes       int64
 	synchronizingOffsetBytes int64
 	synchronizedOffsetBytes  int64
@@ -76,9 +74,7 @@ type persistentBlockInfo struct {
 // state can be extracted and persisted. This allows data contained in
 // its blocks to be accessed after restarts.
 type PersistentBlockList struct {
-	blockAllocator   BlockAllocator
-	sectorSizeBytes  int
-	blockSectorCount int64
+	blockAllocator BlockAllocator
 	// When closedForWriting is set, BlockList will return errClosedForWriting
 	// for all future calls to PushBack and Put. This also applies to any
 	// ongoing calls. closedForWriting can only transition from false to true.
@@ -126,7 +122,7 @@ type PersistentBlockList struct {
 	// Whenever we need to release a block, we request that
 	// persistent state is updated immediately. This is done to
 	// ensure block allocation doesn't start failing.
-	blocksToRelease    []*sharedBlock
+	blocksToRelease    []Block
 	blocksReleasing    int
 	blockReleaseWakeup notificationChannel
 }
@@ -134,11 +130,9 @@ type PersistentBlockList struct {
 // NewPersistentBlockList provides an implementation of BlockList whose
 // state can be persisted. This makes it possible to preserve the
 // contents of a KeyBlobMap across restarts.
-func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, blockSectorCount int64, initialOldestEpochID uint32, initialBlocks []*pb.BlockState) (*PersistentBlockList, int) {
+func NewPersistentBlockList(blockAllocator BlockAllocator, initialOldestEpochID uint32, initialBlocks []*pb.BlockState) (*PersistentBlockList, int) {
 	bl := &PersistentBlockList{
-		blockAllocator:   blockAllocator,
-		sectorSizeBytes:  sectorSizeBytes,
-		blockSectorCount: blockSectorCount,
+		blockAllocator: blockAllocator,
 
 		blockPutWakeup:     newNotificationChannel(),
 		blockReleaseWakeup: newNotificationChannel(),
@@ -146,7 +140,7 @@ func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, 
 
 	// Attempt to restore blocks from a previous run.
 	for _, blockState := range initialBlocks {
-		block, found := blockAllocator.NewBlockAtLocation(blockState.BlockLocation)
+		block, found := blockAllocator.NewBlockAtLocation(blockState.BlockLocation, blockState.WriteOffsetBytes)
 		if !found {
 			// Persistence state references an unknown
 			// block. Skip the remaining blocks.
@@ -160,9 +154,8 @@ func NewPersistentBlockList(blockAllocator BlockAllocator, sectorSizeBytes int, 
 		}
 
 		bl.blocks = append(bl.blocks, persistentBlockInfo{
-			block:                    newSharedBlock(block),
+			block:                    block,
 			blockLocation:            blockState.BlockLocation,
-			allocationOffsetSectors:  (blockState.WriteOffsetBytes + int64(sectorSizeBytes) - 1) / int64(sectorSizeBytes),
 			writtenOffsetBytes:       blockState.WriteOffsetBytes,
 			synchronizingOffsetBytes: blockState.WriteOffsetBytes,
 			synchronizedOffsetBytes:  blockState.WriteOffsetBytes,
@@ -263,7 +256,7 @@ func (bl *PersistentBlockList) PushBack() error {
 	}
 
 	bl.blocks = append(bl.blocks, persistentBlockInfo{
-		block:         newSharedBlock(block),
+		block:         block,
 		blockLocation: location,
 	})
 	return nil
@@ -271,23 +264,13 @@ func (bl *PersistentBlockList) PushBack() error {
 
 // Get data from one of the blocks managed by this BlockList.
 func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return bl.blocks[index].block.block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
-}
-
-func (bl *PersistentBlockList) toSectors(sizeBytes int64) int64 {
-	// Determine the number of sectors needed to store the object.
-	//
-	// TODO: This can be wasteful for storing small objects with
-	// large sector sizes. Should we add logic for packing small
-	// objects together into a single sector?
-	return (sizeBytes + int64(bl.sectorSizeBytes) - 1) / int64(bl.sectorSizeBytes)
+	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
 }
 
 // HasSpace returns whether a block with a given index has sufficient
 // space to store a blob of a given size.
 func (bl *PersistentBlockList) HasSpace(index int, sizeBytes int64) bool {
-	blockInfo := &bl.blocks[index]
-	return bl.blockSectorCount-blockInfo.allocationOffsetSectors >= bl.toSectors(sizeBytes)
+	return bl.blocks[index].block.HasSpace(sizeBytes)
 }
 
 // Put data into a block managed by the BlockList.
@@ -302,19 +285,14 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 	}
 
 	// Allocate space from the requested block.
-	blockInfo := &bl.blocks[index]
-	offsetBytes := blockInfo.allocationOffsetSectors * int64(bl.sectorSizeBytes)
-	blockInfo.allocationOffsetSectors += bl.toSectors(sizeBytes)
-
-	block := blockInfo.block
+	putWriter := bl.blocks[index].block.Put(sizeBytes)
 	absoluteBlockIndex := bl.totalBlocksReleased + index
-	block.acquire()
 	return func(b buffer.Buffer) BlockListPutFinalizer {
 		// Copy data into the block without holding any locks.
-		err := block.block.Put(offsetBytes, b)
+		putFinalizer := putWriter(b)
 
 		return func() (int64, error) {
-			block.release()
+			offsetBytes, err := putFinalizer()
 			if err != nil {
 				return 0, err
 			}
@@ -455,7 +433,7 @@ func (bl *PersistentBlockList) NotifyPersistentStateWritten() {
 	// previous version of the persistent state. It is now safe to
 	// let PushBack() reuse these blocks.
 	for i := 0; i < bl.blocksReleasing; i++ {
-		bl.blocksToRelease[i].release()
+		bl.blocksToRelease[i].Release()
 		bl.blocksToRelease[i] = nil
 	}
 	bl.blocksToRelease = bl.blocksToRelease[bl.blocksReleasing:]

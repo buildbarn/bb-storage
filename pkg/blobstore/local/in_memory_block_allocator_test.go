@@ -22,15 +22,15 @@ func TestInMemoryBlockAllocatorNewBlock(t *testing.T) {
 	require.Nil(t, location)
 
 	// Write an object into the block.
-	require.NoError(t, block.Put(
-		123,
-		buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
+	offsetBytes, err := block.Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello world")))()
+	require.NoError(t, err)
+	require.Equal(t, int64(0), offsetBytes)
 
 	// Extract it once again, using the right offset and size.
 	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 	data, err := block.Get(
 		digest.MustNewDigest("hello", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 456),
-		123,
+		0,
 		11,
 		dataIntegrityCallback.Call).ToByteSlice(1024)
 	require.NoError(t, err)
@@ -45,12 +45,12 @@ func TestInMemoryBlockAllocatorNewBlockAtLocation(t *testing.T) {
 	// InMemoryBlockAllocator provide no persistency, so
 	// NewBlockAtLocation() should simply not function. There is no
 	// way to get historical blocks back.
-	_, found := blockAllocator.NewBlockAtLocation(nil)
+	_, found := blockAllocator.NewBlockAtLocation(nil, 700)
 	require.False(t, found)
 
 	_, found = blockAllocator.NewBlockAtLocation(&pb.BlockLocation{
 		OffsetBytes: 1024,
 		SizeBytes:   1024,
-	})
+	}, 700)
 	require.False(t, found)
 }
