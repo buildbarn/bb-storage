@@ -3,7 +3,6 @@ package buffer
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -130,7 +129,7 @@ func (b validatedByteSliceBuffer) toUnvalidatedReader(off int64) io.ReadCloser {
 	if err := validateReaderOffset(int64(len(b.data)), off); err != nil {
 		return newErrorReader(err)
 	}
-	return ioutil.NopCloser(bytes.NewBuffer(b.data[off:]))
+	return io.NopCloser(bytes.NewBuffer(b.data[off:]))
 }
 
 type byteSliceChunkReader struct {

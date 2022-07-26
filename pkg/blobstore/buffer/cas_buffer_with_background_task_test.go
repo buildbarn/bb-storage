@@ -3,7 +3,6 @@ package buffer_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
@@ -20,7 +19,7 @@ func TestCASBufferWithBackgroundTaskGetSizeBytes(t *testing.T) {
 	done := make(chan struct{})
 	b := buffer.NewCASBufferFromReader(
 		digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
-		ioutil.NopCloser(bytes.NewBufferString("Hello, world")),
+		io.NopCloser(bytes.NewBufferString("Hello, world")),
 		buffer.UserProvided,
 	).WithTask(func() error {
 		<-done
@@ -41,7 +40,7 @@ func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
-			ioutil.NopCloser(bytes.NewBufferString("Hello, world")),
+			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
 
@@ -53,7 +52,7 @@ func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
-			ioutil.NopCloser(bytes.NewBufferString("Hello, world")),
+			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
 
@@ -66,7 +65,7 @@ func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
-			ioutil.NopCloser(bytes.NewBufferString("Hello, world")),
+			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
 
@@ -90,7 +89,7 @@ func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5),
-			ioutil.NopCloser(bytes.NewBufferString("Hello")),
+			io.NopCloser(bytes.NewBufferString("Hello")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
 
@@ -113,12 +112,12 @@ func TestCASBufferWithBackgroundTaskToReader(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
-			ioutil.NopCloser(bytes.NewBufferString("Hello, world")),
+			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
 
 		r := b.ToReader()
-		data, err := ioutil.ReadAll(r)
+		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello, world"), data)
 		require.NoError(t, r.Close())
@@ -127,14 +126,14 @@ func TestCASBufferWithBackgroundTaskToReader(t *testing.T) {
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
 			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5),
-			ioutil.NopCloser(bytes.NewBufferString("Hello")),
+			io.NopCloser(bytes.NewBufferString("Hello")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
 
 		// io.ReadCloser.Close() is used to return errors of
 		// background tasks.
 		r := b.ToReader()
-		data, err := ioutil.ReadAll(r)
+		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 		require.Equal(t, status.Error(codes.Internal, "Synchronization failed"), r.Close())

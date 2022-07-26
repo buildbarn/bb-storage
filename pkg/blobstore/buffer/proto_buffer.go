@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"io"
-	"io/ioutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,7 +58,7 @@ func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, source Source) B
 	// safe to keep them in memory. Read and store them in a byte
 	// slice buffer immediately. This permits implementing
 	// GetSizeBytes() properly.
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	r.Close()
 	if err != nil {
 		return NewBufferFromError(err)

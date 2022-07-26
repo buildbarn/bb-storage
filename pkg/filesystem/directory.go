@@ -82,7 +82,7 @@ type Directory interface {
 	Mkdir(name path.Component, perm os.FileMode) error
 	// Mknod is the equivalent of unix.Mknod().
 	Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error
-	// ReadDir is the equivalent of ioutil.ReadDir().
+	// ReadDir is the equivalent of os.ReadDir().
 	ReadDir() ([]FileInfo, error)
 	// Readlink is the equivalent of os.Readlink().
 	Readlink(name path.Component) (string, error)
@@ -125,7 +125,7 @@ type nopDirectoryCloser struct {
 }
 
 // NopDirectoryCloser adds a no-op Close method to a Directory object,
-// similar to how ioutil.NopCloser() adds a Close method to a Reader.
+// similar to how io.NopCloser() adds a Close method to a Reader.
 func NopDirectoryCloser(d Directory) DirectoryCloser {
 	return nopDirectoryCloser{
 		Directory: d,

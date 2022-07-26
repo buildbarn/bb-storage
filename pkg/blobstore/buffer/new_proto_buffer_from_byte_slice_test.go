@@ -2,7 +2,6 @@ package buffer_test
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -202,7 +201,7 @@ func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 		exampleActionResultBytes,
 		buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data)
 

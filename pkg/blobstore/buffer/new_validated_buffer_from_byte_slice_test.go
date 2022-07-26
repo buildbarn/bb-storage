@@ -2,7 +2,6 @@ package buffer_test
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -153,7 +152,7 @@ func TestNewValidatedBufferFromByteSliceToChunkReader(t *testing.T) {
 func TestNewValidatedBufferFromByteSliceToReader(t *testing.T) {
 	r := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).ToReader()
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
 

@@ -2,7 +2,7 @@ package local
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -233,7 +233,7 @@ func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.
 			// to an object it doesn't possess. The buffer
 			// layer validates data automatically, so we
 			// only need to consume the buffer.
-			if err := b.IntoWriter(ioutil.Discard); err != nil {
+			if err := b.IntoWriter(io.Discard); err != nil {
 				return err
 			}
 

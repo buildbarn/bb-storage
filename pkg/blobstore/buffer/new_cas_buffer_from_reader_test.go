@@ -3,7 +3,6 @@ package buffer_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -38,7 +37,7 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		writer := bytes.NewBuffer(nil)
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
@@ -87,7 +86,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -116,7 +115,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -130,7 +129,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("ShortRead", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -145,7 +144,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("SizeTooSmall", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Foo"))
+		reader := io.NopCloser(bytes.NewBufferString("Foo"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -159,7 +158,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("SizeTooLarge", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("FooBar"))
+		reader := io.NopCloser(bytes.NewBufferString("FooBar"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -173,7 +172,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Xyzzy"))
+		reader := io.NopCloser(bytes.NewBufferString("Xyzzy"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -206,7 +205,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("SmallerThanMaximum", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
+		reader := io.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -220,7 +219,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	})
 
 	t.Run("Exact", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
+		reader := io.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -247,7 +246,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	})
 
 	t.Run("DataCorruption", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Foo"))
+		reader := io.NopCloser(bytes.NewBufferString("Foo"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -264,7 +263,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		// should not be treated as a data integrity error if
 		// the hash of the object matches. That's an error on
 		// the consumption side.
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -298,7 +297,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	// Only test the successful case, as other aspects are already
 	// covered by TestNewCASBufferFromReaderToProto.
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -312,7 +311,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	})
 
 	t.Run("Empty", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(nil))
+		reader := io.NopCloser(bytes.NewBuffer(nil))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -335,7 +334,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		11)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -368,7 +367,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("AtTheEnd", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -418,7 +417,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello worlf"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello worlf"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -447,7 +446,7 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -479,7 +478,7 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello worlf"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello worlf"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -509,7 +508,7 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
