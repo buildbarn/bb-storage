@@ -49,7 +49,10 @@ func InstallGracefulTerminationHandler() (context.Context, *errgroup.Group) {
 		if err := process.Signal(receivedSignal); err != nil {
 			panic(err)
 		}
-		panic("Raising the original signal didn't cause us to shut down")
+		// This code should not be reached, if it weren't for the
+		// fact that process.Signal() does not guarantee that the
+		// signal is delivered to the same thread.
+		// More details: https://github.com/golang/go/issues/19326
 	}()
 
 	return ctx, &group
