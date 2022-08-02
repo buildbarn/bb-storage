@@ -33,7 +33,6 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/local",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/atomic",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blockdevice",

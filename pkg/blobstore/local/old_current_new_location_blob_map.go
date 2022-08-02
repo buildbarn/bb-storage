@@ -2,9 +2,9 @@ package local
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -170,7 +170,7 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy 
 		})
 	}
 	if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
-		lbm.totalBlocksToBeReleased.Initialize(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
+		lbm.totalBlocksToBeReleased.Store(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
 	}
 	return lbm
 }

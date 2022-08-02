@@ -28,7 +28,6 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/grpc",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/atomic",
         "//pkg/auth",
         "//pkg/clock",
         "//pkg/jwt",

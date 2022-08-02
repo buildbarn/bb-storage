@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
@@ -103,7 +103,7 @@ func (pa *blockDeviceBackedBlockAllocator) newBlockObject(deviceOffsetSectors, w
 		deviceOffsetSectors: deviceOffsetSectors,
 		writeOffsetSectors:  writeOffsetSectors,
 	}
-	pb.usecount.Initialize(1)
+	pb.usecount.Store(1)
 	return pb
 }
 

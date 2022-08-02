@@ -33,7 +33,6 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/buffer",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/atomic",
         "//pkg/digest",
         "//pkg/util",
         "@org_golang_google_grpc//codes",

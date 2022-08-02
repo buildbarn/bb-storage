@@ -2,8 +2,7 @@ package buffer
 
 import (
 	"io"
-
-	"github.com/buildbarn/bb-storage/pkg/atomic"
+	"sync/atomic"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
