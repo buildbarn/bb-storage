@@ -90,6 +90,7 @@ type BlobAccessConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Backend:
+	//
 	//	*BlobAccessConfiguration_Redis
 	//	*BlobAccessConfiguration_Http
 	//	*BlobAccessConfiguration_ReadCaching
@@ -633,6 +634,7 @@ type RedisBlobAccessConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Mode:
+	//
 	//	*RedisBlobAccessConfiguration_Clustered
 	//	*RedisBlobAccessConfiguration_Single
 	Mode               isRedisBlobAccessConfiguration_Mode `protobuf_oneof:"mode"`
@@ -1005,6 +1007,7 @@ type LocalBlobAccessConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to KeyLocationMapBackend:
+	//
 	//	*LocalBlobAccessConfiguration_KeyLocationMapInMemory_
 	//	*LocalBlobAccessConfiguration_KeyLocationMapOnBlockDevice
 	KeyLocationMapBackend            isLocalBlobAccessConfiguration_KeyLocationMapBackend `protobuf_oneof:"key_location_map_backend"`
@@ -1014,6 +1017,7 @@ type LocalBlobAccessConfiguration struct {
 	CurrentBlocks                    int32                                                `protobuf:"varint,6,opt,name=current_blocks,json=currentBlocks,proto3" json:"current_blocks,omitempty"`
 	NewBlocks                        int32                                                `protobuf:"varint,7,opt,name=new_blocks,json=newBlocks,proto3" json:"new_blocks,omitempty"`
 	// Types that are assignable to BlocksBackend:
+	//
 	//	*LocalBlobAccessConfiguration_BlocksInMemory_
 	//	*LocalBlobAccessConfiguration_BlocksOnBlockDevice_
 	BlocksBackend             isLocalBlobAccessConfiguration_BlocksBackend `protobuf_oneof:"blocks_backend"`
@@ -1366,6 +1370,7 @@ type BlobReplicatorConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Mode:
+	//
 	//	*BlobReplicatorConfiguration_Local
 	//	*BlobReplicatorConfiguration_Remote
 	//	*BlobReplicatorConfiguration_Queued

@@ -31,6 +31,7 @@ type Reference struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Medium:
+	//
 	//	*Reference_HttpUrl
 	//	*Reference_S3_
 	Medium       isReference_Medium  `protobuf_oneof:"medium"`

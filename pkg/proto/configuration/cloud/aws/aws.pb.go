@@ -138,6 +138,7 @@ type SessionConfiguration struct {
 
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	// Types that are assignable to Credentials:
+	//
 	//	*SessionConfiguration_StaticCredentials
 	//	*SessionConfiguration_WebIdentityRoleCredentials
 	Credentials isSessionConfiguration_Credentials `protobuf_oneof:"credentials"`

@@ -213,6 +213,7 @@ type ClientOAuthConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Credentials:
+	//
 	//	*ClientOAuthConfiguration_GoogleDefaultCredentials
 	//	*ClientOAuthConfiguration_ServiceAccountKey
 	Credentials isClientOAuthConfiguration_Credentials `protobuf_oneof:"credentials"`
@@ -475,6 +476,7 @@ type AuthenticationPolicy struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Policy:
+	//
 	//	*AuthenticationPolicy_Allow
 	//	*AuthenticationPolicy_Any
 	//	*AuthenticationPolicy_Deny

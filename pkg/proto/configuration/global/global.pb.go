@@ -385,10 +385,12 @@ type TracingConfiguration_Backend struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to SpanExporter:
+	//
 	//	*TracingConfiguration_Backend_JaegerCollectorSpanExporter_
 	//	*TracingConfiguration_Backend_OtlpSpanExporter
 	SpanExporter isTracingConfiguration_Backend_SpanExporter `protobuf_oneof:"span_exporter"`
 	// Types that are assignable to SpanProcessor:
+	//
 	//	*TracingConfiguration_Backend_SimpleSpanProcessor
 	//	*TracingConfiguration_Backend_BatchSpanProcessor_
 	SpanProcessor isTracingConfiguration_Backend_SpanProcessor `protobuf_oneof:"span_processor"`
@@ -509,6 +511,7 @@ type TracingConfiguration_ResourceAttributeValue struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Kind:
+	//
 	//	*TracingConfiguration_ResourceAttributeValue_Bool
 	//	*TracingConfiguration_ResourceAttributeValue_Int64
 	//	*TracingConfiguration_ResourceAttributeValue_Float64
@@ -681,6 +684,7 @@ type TracingConfiguration_Sampler struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Policy:
+	//
 	//	*TracingConfiguration_Sampler_Always
 	//	*TracingConfiguration_Sampler_Never
 	//	*TracingConfiguration_Sampler_ParentBased_

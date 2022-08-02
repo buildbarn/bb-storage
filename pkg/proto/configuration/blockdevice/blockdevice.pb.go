@@ -81,6 +81,7 @@ type Configuration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Source:
+	//
 	//	*Configuration_DevicePath
 	//	*Configuration_File
 	Source isConfiguration_Source `protobuf_oneof:"source"`

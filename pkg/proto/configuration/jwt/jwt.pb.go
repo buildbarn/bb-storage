@@ -27,6 +27,7 @@ type AuthorizationHeaderParserConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Key:
+	//
 	//	*AuthorizationHeaderParserConfiguration_HmacKey
 	//	*AuthorizationHeaderParserConfiguration_PublicKey
 	Key                                  isAuthorizationHeaderParserConfiguration_Key `protobuf_oneof:"key"`

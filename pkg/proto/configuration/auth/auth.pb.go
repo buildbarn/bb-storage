@@ -27,6 +27,7 @@ type AuthorizerConfiguration struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Policy:
+	//
 	//	*AuthorizerConfiguration_Allow
 	//	*AuthorizerConfiguration_InstanceNamePrefix
 	//	*AuthorizerConfiguration_Deny

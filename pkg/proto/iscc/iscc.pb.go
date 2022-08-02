@@ -34,6 +34,7 @@ type PreviousExecution struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Outcome:
+	//
 	//	*PreviousExecution_Failed
 	//	*PreviousExecution_TimedOut
 	//	*PreviousExecution_Succeeded
