@@ -20,10 +20,10 @@ import (
 // The JMESPath expression is called against a JSON object with the following
 // structure:
 //
-//  {
-//      "authenticationMetadata": value,
-//      "incomingGRPCMetadata": map<string, repeated string>
-//  }
+//	{
+//	    "authenticationMetadata": value,
+//	    "incomingGRPCMetadata": map<string, repeated string>
+//	}
 func NewJMESPathMetadataExtractor(expression *jmespath.JMESPath) (MetadataExtractor, error) {
 	return func(ctx context.Context) (MetadataHeaderValues, error) {
 		searchContext := make(map[string]interface{}, 2)

@@ -45,14 +45,14 @@ func init() {
 // object is preferred over remoteexecution.Digest for a couple of
 // reasons.
 //
-// - Instances of these objects are guaranteed not to contain any
-//   degenerate values. The hash has already been decoded from
-//   hexadecimal to binary. The size is non-negative.
-// - They keep track of the instance as part of the digest, which allows
-//   us to keep function signatures across the codebase simple.
-// - They provide utility functions for deriving new digests from them.
-//   This ensures that outputs of build actions automatically use the
-//   same instance name and hashing algorithm.
+//   - Instances of these objects are guaranteed not to contain any
+//     degenerate values. The hash has already been decoded from
+//     hexadecimal to binary. The size is non-negative.
+//   - They keep track of the instance as part of the digest, which allows
+//     us to keep function signatures across the codebase simple.
+//   - They provide utility functions for deriving new digests from them.
+//     This ensures that outputs of build actions automatically use the
+//     same instance name and hashing algorithm.
 //
 // Because Digest objects are frequently used as keys (as part of
 // caching data structures or to construct sets without duplicate

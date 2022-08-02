@@ -34,11 +34,11 @@ type hierarchicalCASBlobAccess struct {
 // prefixes are permitted to access an object. It does this by writing
 // multiple entries into the key-location map:
 //
-// - One canonical entry that always points to the newest copy of an
-//   object. This entry's key does not contain an instance name.
-// - One or more lookup entries, whose keys contain an instance name
-//   prefix. These are only synchronized with the canonical entry when
-//   the lookup entry points to an object that needs to be refreshed.
+//   - One canonical entry that always points to the newest copy of an
+//     object. This entry's key does not contain an instance name.
+//   - One or more lookup entries, whose keys contain an instance name
+//     prefix. These are only synchronized with the canonical entry when
+//     the lookup entry points to an object that needs to be refreshed.
 //
 // As the name implies, this implementation should only be used for the
 // Content Addressable Storage (CAS). This is because writes for objects

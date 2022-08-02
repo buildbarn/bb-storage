@@ -58,20 +58,20 @@ type oldBlockState struct {
 // single block. The number of characters indicates the amount of data
 // stored within.
 //
-//     ← Over time, blocks move from "new" to "current" to "old" ←
+//	← Over time, blocks move from "new" to "current" to "old" ←
 //
-//                   Old         Current        New
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █ █
-//                 ↓ ↓ ↓ ↓                     ↑ ↑ ↑ ↑
-//                 └─┴─┴─┴─────────────────────┴─┴─┴─┘
-//        Data gets copied from "old" to "new" when requested.
+//	              Old         Current        New
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █ █
+//	            ↓ ↓ ↓ ↓                     ↑ ↑ ↑ ↑
+//	            └─┴─┴─┴─────────────────────┴─┴─┴─┘
+//	   Data gets copied from "old" to "new" when requested.
 //
 // Blobs get stored in blocks in the "new" group with an inverse
 // exponential probability. This is done to reduce the probability of
