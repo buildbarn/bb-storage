@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -63,7 +64,7 @@ func TestBlockDeviceBackedLocationRecordArrayGet(t *testing.T) {
 			Return(0, status.Error(codes.Internal, "Disk failure"))
 
 		_, err := lra.Get(100)
-		require.Equal(t, status.Error(codes.Internal, "Disk failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk failure"), err)
 	})
 
 	blockDevice.EXPECT().ReadAt(gomock.Len(len(exampleBlockDeviceBackedLocationRecordBytes)), int64(6600)).

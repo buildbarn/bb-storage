@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -36,7 +37,7 @@ func TestLazyClientDialer(t *testing.T) {
 
 		clientConnection, err := clientDialer(ctx, "hello")
 		require.NoError(t, err)
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to create client connection: Some error occurred"),
 			clientConnection.Invoke(ctx, "method", nil, nil))

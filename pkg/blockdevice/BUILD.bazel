@@ -48,6 +48,7 @@ go_test(
     srcs = ["new_block_device_from_file_test.go"],
     deps = [
         ":blockdevice",
+        "//pkg/testutil",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

@@ -44,7 +44,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		directory.EXPECT().OpenRead(path.MustNewComponent("state")).Return(nil, syscall.EIO)
 
 		_, err := persistentStateStore.ReadPersistentState()
-		require.Equal(t, status.Error(codes.Internal, "Failed to open file: input/output error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to open file: input/output error"), err)
 	})
 
 	t.Run("ReadReadFailure", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		f.EXPECT().Close()
 
 		_, err := persistentStateStore.ReadPersistentState()
-		require.Equal(t, status.Error(codes.Internal, "Failed to read from file: input/output error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to read from file: input/output error"), err)
 	})
 
 	t.Run("ReadCorrupted", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 	t.Run("WriteTemporaryFileRemovalFailure", func(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.EACCES)
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to remove previous temporary file: permission denied"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -97,7 +97,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		directory.EXPECT().Remove(path.MustNewComponent("state.new")).Return(syscall.ENOENT)
 		directory.EXPECT().OpenAppend(path.MustNewComponent("state.new"), filesystem.CreateExcl(0o666)).Return(nil, syscall.EIO)
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to create temporary file: input/output error"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -110,7 +110,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		f.EXPECT().Write(examplePersistentStateBytes).Return(0, syscall.ENOSPC)
 		f.EXPECT().Close()
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to write to temporary file: no space left on device"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -124,7 +124,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		f.EXPECT().Sync().Return(syscall.EIO)
 		f.EXPECT().Close()
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to synchronize temporary file: input/output error"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -138,7 +138,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		f.EXPECT().Sync()
 		f.EXPECT().Close().Return(syscall.EIO)
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to close temporary file: input/output error"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -153,7 +153,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		f.EXPECT().Close()
 		directory.EXPECT().Rename(path.MustNewComponent("state.new"), directory, path.MustNewComponent("state")).Return(syscall.EACCES)
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to rename temporary file: permission denied"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))
@@ -169,7 +169,7 @@ func TestDirectoryBackedPersistentStateStore(t *testing.T) {
 		directory.EXPECT().Rename(path.MustNewComponent("state.new"), directory, path.MustNewComponent("state"))
 		directory.EXPECT().Sync().Return(syscall.EIO)
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to synchronize directory: input/output error"),
 			persistentStateStore.WritePersistentState(&examplePersistentState))

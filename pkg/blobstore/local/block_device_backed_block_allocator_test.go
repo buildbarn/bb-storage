@@ -38,7 +38,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 
 	// Creating an eleventh block should fail.
 	_, _, err := pa.NewBlock()
-	require.Equal(t, err, status.Error(codes.Unavailable, "No unused blocks available"))
+	testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "No unused blocks available"), err)
 
 	// Blocks should initially be handed out in order of the offset.
 	// The third block should thus start at offset 300.
@@ -60,7 +60,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		dataIntegrityCallback.Call)
 	blocks[7].Release()
 	_, _, err = pa.NewBlock()
-	require.Equal(t, err, status.Error(codes.Unavailable, "No unused blocks available"))
+	testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "No unused blocks available"), err)
 
 	// The blob may still be consumed with the block being released.
 	// It should have started at offset 700.

@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -45,7 +46,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 		helloDigest,
 		[]byte("xyzzy"),
 		dataIntegrityCallback1.Call).ToByteSlice(10)
-	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 
 	// The previous checksum failure should not cause data integrity
 	// to be cached. A second call should also call into the base
@@ -102,7 +103,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 		helloDigest,
 		[]byte("xyzzy"),
 		dataIntegrityCallback4.Call).ToByteSlice(10)
-	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 }
 
 func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {

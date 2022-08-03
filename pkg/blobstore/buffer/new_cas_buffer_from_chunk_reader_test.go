@@ -64,7 +64,7 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 			helloDigest,
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestNewCASBufferFromChunkReaderIntoWriter(t *testing.T) {
 			helloDigest,
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 }
 
@@ -117,7 +117,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("SizeTooLarge", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -205,7 +205,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
@@ -220,7 +220,7 @@ func TestNewCASBufferFromChunkReaderReadAt(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -322,7 +322,7 @@ func TestNewCASBufferFromChunkReaderToProto(t *testing.T) {
 			chunkReader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -451,7 +451,7 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 			/* offset = */ -1,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
 		r.Close()
 	})
 
@@ -467,7 +467,7 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 			/* offset = */ 12,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
 		r.Close()
 	})
 
@@ -492,9 +492,9 @@ func TestNewCASBufferFromChunkReaderToChunkReader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello "), chunk)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		r.Close()
 	})
 }
@@ -562,11 +562,11 @@ func TestNewCASBufferFromChunkReaderToReader(t *testing.T) {
 		var p [20]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 6, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		require.Equal(t, []byte("Hello "), p[:6])
 		n, err = r.Read(p[:])
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		require.Nil(t, r.Close())
 	})
 }
@@ -610,10 +610,10 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -629,10 +629,10 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("TooBig", func(t *testing.T) {
@@ -646,10 +646,10 @@ func TestNewCASBufferFromChunkReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(4)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
 	})
 }
 
@@ -704,13 +704,13 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 
 		go func() {
 			_, err := b1.ToByteSlice(10)
-			require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 			done <- struct{}{}
 		}()
 
 		go func() {
 			_, err := b2.ToByteSlice(10)
-			require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 			done <- struct{}{}
 		}()
 
@@ -733,13 +733,13 @@ func TestNewCASBufferFromChunkReaderCloneStream(t *testing.T) {
 
 		go func() {
 			_, err := b1.ToByteSlice(10)
-			require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 			done <- struct{}{}
 		}()
 
 		go func() {
 			_, err := b2.ToByteSlice(10)
-			require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 			done <- struct{}{}
 		}()
 

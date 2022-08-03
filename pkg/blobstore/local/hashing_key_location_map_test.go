@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -46,7 +47,7 @@ func TestHashingKeyLocationMapGet(t *testing.T) {
 			Location:  validLocation,
 		}, nil)
 		_, err := klm.Get(key1)
-		require.Equal(t, status.Error(codes.NotFound, "Object not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
 	})
 }
 

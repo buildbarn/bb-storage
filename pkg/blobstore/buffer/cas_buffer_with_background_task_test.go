@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +58,7 @@ func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
 
 		_, err := b.ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Synchronization failed"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Synchronization failed"), err)
 	})
 }
 
@@ -101,9 +102,9 @@ func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Synchronization failed"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Synchronization failed"), err)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Synchronization failed"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Synchronization failed"), err)
 		r.Close()
 	})
 }
@@ -136,7 +137,7 @@ func TestCASBufferWithBackgroundTaskToReader(t *testing.T) {
 		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-		require.Equal(t, status.Error(codes.Internal, "Synchronization failed"), r.Close())
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Synchronization failed"), r.Close())
 	})
 }
 

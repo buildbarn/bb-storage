@@ -41,6 +41,7 @@ go_test(
     deps = [
         ":path",
         "//internal/mock",
+        "//pkg/testutil",
         "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",

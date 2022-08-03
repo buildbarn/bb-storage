@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +30,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			status.Error(codes.NotFound, "Backend not found"))
 
 		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("Nonexistent backend"))
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -43,7 +44,7 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
 		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -86,7 +87,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
@@ -105,7 +106,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -132,7 +133,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -191,7 +192,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "This is an operation name that doesn't contain slash-operations-slash, meaning we can't demultiplex",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unable to extract instance name from operation name"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unable to extract instance name from operation name"), err)
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
@@ -206,7 +207,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "Nonexistent backend/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -225,7 +226,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "ubuntu1804/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

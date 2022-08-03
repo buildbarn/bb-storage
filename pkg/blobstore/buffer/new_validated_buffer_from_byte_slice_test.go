@@ -26,7 +26,7 @@ func TestNewValidatedBufferFromByteSliceReadAt(t *testing.T) {
 		var p [5]byte
 		n, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestNewValidatedBufferFromByteSliceToProto(t *testing.T) {
 	t.Run("TooBig", func(t *testing.T) {
 		_, err := buffer.NewValidatedBufferFromByteSlice(exampleActionResultBytes).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 
 	t.Run("Failure", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestNewValidatedBufferFromByteSliceToByteSlice(t *testing.T) {
 
 	t.Run("TooBig", func(t *testing.T) {
 		_, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).ToByteSlice(4)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
 	})
 }
 
@@ -132,7 +132,7 @@ func TestNewValidatedBufferFromByteSliceToChunkReader(t *testing.T) {
 			/* chunk size = */ 1024)
 
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 
 		r.Close()
 	})
@@ -143,7 +143,7 @@ func TestNewValidatedBufferFromByteSliceToChunkReader(t *testing.T) {
 			/* chunk size = */ 1024)
 
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a read at offset 6 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a read at offset 6 was requested"), err)
 
 		r.Close()
 	})
@@ -206,7 +206,7 @@ func TestNewValidatedBufferFromByteSliceWithTask(t *testing.T) {
 		_, err := buffer.NewValidatedBufferFromByteSlice([]byte("Hello")).
 			WithTask(func() error { return status.Error(codes.Internal, "I/O error") }).
 			ToByteSlice(123)
-		require.Equal(t, status.Error(codes.Internal, "I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "I/O error"), err)
 	})
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +58,7 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 
 	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.NoError(t, err)
-	require.Equal(t, &remoteexecution.BatchReadBlobsResponse{
+	testutil.RequireEqualProto(t, &remoteexecution.BatchReadBlobsResponse{
 		Responses: []*remoteexecution.BatchReadBlobsResponse_Response{
 			{
 				Digest: &remoteexecution.Digest{
@@ -109,7 +110,5 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(contentAddressableStorage, 200)
 
 	_, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
-	require.Equal(t, status.Error(codes.InvalidArgument,
-		"Attempted to read a total of at least 357 bytes, while a maximum of 200 bytes is permitted"),
-		err)
+	testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to read a total of at least 357 bytes, while a maximum of 200 bytes is permitted"), err)
 }

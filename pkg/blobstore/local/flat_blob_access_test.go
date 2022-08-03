@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -31,7 +32,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(nil, int64(0), false, status.Error(codes.NotFound, "Blob not found"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.NotFound, "Blob not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
 	})
 
 	t.Run("NoRefreshSuccess", func(t *testing.T) {
@@ -59,7 +60,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(nil, int64(0), false, status.Error(codes.NotFound, "Blob not found"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.NotFound, "Blob not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
 	})
 
 	t.Run("RefreshButNoLongerNeeded", func(t *testing.T) {
@@ -95,7 +96,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to refresh blob: No space left to store data"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob: No space left to store data"), err)
 	})
 
 	t.Run("RefreshFinalizeFailure", func(t *testing.T) {
@@ -123,7 +124,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to refresh blob: Write error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob: Write error"), err)
 	})
 
 	t.Run("RefreshSuccess", func(t *testing.T) {
@@ -236,7 +237,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(nil, int64(0), false, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		require.Equal(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase1NotFound", func(t *testing.T) {
@@ -266,7 +267,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(nil, int64(0), false, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		require.Equal(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2PutFailure", func(t *testing.T) {
@@ -282,7 +283,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		require.Equal(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": No space left to store data"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": No space left to store data"), err)
 	})
 
 	t.Run("Phase2FinalizeFailure", func(t *testing.T) {
@@ -308,7 +309,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		require.Equal(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Write error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Write error"), err)
 	})
 
 	t.Run("Phase2NotFound", func(t *testing.T) {

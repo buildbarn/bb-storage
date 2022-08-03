@@ -100,7 +100,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot
 		// extract peer state information.
 		_, err := authenticator.Authenticate(ctx)
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Connection was not established using gRPC"),
 			err)
@@ -109,7 +109,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	t.Run("NoTLS", func(t *testing.T) {
 		// Non-TLS connection.
 		_, err := authenticator.Authenticate(peer.NewContext(ctx, &peer.Peer{}))
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Connection was not established using TLS"),
 			err)
@@ -125,7 +125,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 						State: tls.ConnectionState{},
 					},
 				}))
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Client provided no TLS client certificate"),
 			err)
@@ -168,7 +168,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 						},
 					},
 				}))
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid: current time 2023-11-14T22:13:20Z is after 2020-11-17T09:03:34Z"),
 			err)

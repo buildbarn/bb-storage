@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -57,13 +58,13 @@ func TestNewBlockDeviceFromFile(t *testing.T) {
 	n, err = blockDevice.ReadAt(b[:], 12340)
 	require.False(t, debug.SetPanicOnFault(false))
 	require.Equal(t, 0, n)
-	require.Equal(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
 
 	debug.SetPanicOnFault(true)
 	n, err = blockDevice.ReadAt(b[:], 12340)
 	require.True(t, debug.SetPanicOnFault(false))
 	require.Equal(t, 0, n)
-	require.Equal(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
 }
 
 func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {

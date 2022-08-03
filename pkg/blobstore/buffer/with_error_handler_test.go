@@ -109,7 +109,7 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 		_, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
 			errorHandler).ToByteSlice(1000)
-		require.Equal(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
 	})
 
 	t.Run("RetriesSuccess", func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 
 		writer := bytes.NewBuffer(nil)
 		err := buffer.WithErrorHandler(b1, errorHandler).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "No backends available"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "No backends available"), err)
 		require.Equal(t, []byte("Hello "), writer.Bytes())
 	})
 
@@ -198,7 +198,7 @@ func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 		// stream.
 		writer := bytes.NewBuffer(nil)
 		err := buffer.WithErrorHandler(b1, errorHandler).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		require.Equal(t, []byte("Xyzzy "), writer.Bytes())
 	})
 }
@@ -239,7 +239,7 @@ func TestWithErrorHandlerOnCASBuffersToProto(t *testing.T) {
 		errorHandler.EXPECT().Done()
 
 		_, err := buffer.WithErrorHandler(b1, errorHandler).ToProto(&remoteexecution.ActionResult{}, 10000)
-		require.Equal(t, status.Error(codes.Internal, "No backends available"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "No backends available"), err)
 	})
 
 	t.Run("RetriesSuccess", func(t *testing.T) {
@@ -333,7 +333,7 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("llo "), chunk)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "No backends available"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "No backends available"), err)
 		r.Close()
 	})
 
@@ -401,7 +401,7 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Xyzzy "), chunk)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		r.Close()
 	})
 }
@@ -424,7 +424,7 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 
 		r := buffer.WithErrorHandler(b1, errorHandler).ToReader()
 		_, err := io.ReadAll(r)
-		require.Equal(t, status.Error(codes.Internal, "No backends available"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "No backends available"), err)
 		require.NoError(t, r.Close())
 	})
 
@@ -477,7 +477,7 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 		// stream.
 		r := buffer.WithErrorHandler(b1, errorHandler).ToReader()
 		data, err := io.ReadAll(r)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 3c61ab3f7343f99e0d18e0a7dfb3b0ce, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		require.Equal(t, []byte("Xyzzy "), data)
 		require.NoError(t, r.Close())
 	})
@@ -571,9 +571,9 @@ func TestWithErrorHandlerOnClonedErrorBuffer(t *testing.T) {
 
 	// The first consumer will get access to the original error message.
 	_, err := b1.ToByteSlice(100)
-	require.Equal(t, status.Error(codes.Internal, "Error message A"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Error message A"), err)
 
 	// The second consumer will have the error message replaced.
 	_, err = b2.ToByteSlice(100)
-	require.Equal(t, status.Error(codes.Internal, "Error message B"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Error message B"), err)
 }

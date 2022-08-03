@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -53,7 +54,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 	})
 
 	t.Run("ReplicateMultipleError", func(t *testing.T) {
@@ -61,7 +62,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		base.EXPECT().ReplicateMultiple(ctx, helloDigestSet).Return(status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to replicate blob 8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to replicate blob 8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
 	})
 
 	t.Run("GetError", func(t *testing.T) {
@@ -69,7 +70,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().Get(ctx, helloDigest).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk I/O failure")))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk I/O failure"), err)
 	})
 
 	t.Run("GetNotFound", func(t *testing.T) {
@@ -81,7 +82,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().Get(ctx, helloDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Key not found in bucket")))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Blob absent from sink after replication: Key not found in bucket"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob absent from sink after replication: Key not found in bucket"), err)
 	})
 
 	t.Run("ParallelFailure", func(t *testing.T) {
@@ -100,7 +101,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			go func() {
 				_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-				require.Equal(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 
 				done <- struct{}{}
 			}()

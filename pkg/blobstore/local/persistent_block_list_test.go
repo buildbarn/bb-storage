@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -293,7 +294,7 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	// Finalizing the write should fail, as the Block against which
 	// it occurred is no longer addressable.
 	_, err := putFinalizer()
-	require.Equal(t, status.Error(codes.Internal, "The block to which this blob was written, has already been released"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "The block to which this blob was written, has already been released"), err)
 
 	// Because the write failed to finalize, the caller isn't going
 	// to call BlockIndexToBlockReference(). The current epoch ID

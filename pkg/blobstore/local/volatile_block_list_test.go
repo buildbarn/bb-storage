@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -108,7 +109,7 @@ func TestVolatileBlockList(t *testing.T) {
 		return func() (int64, error) { return 0, status.Error(codes.Internal, "Disk on fire") }
 	})
 	_, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
-	require.Equal(t, status.Error(codes.Internal, "Disk on fire"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
 
 	block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
 		data, err := b.ToByteSlice(10)

@@ -43,7 +43,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Primary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
 	})
 
 	t.Run("SecondarySuccess", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
@@ -165,7 +165,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Primary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
 	})
 
 	t.Run("SecondaryFailure", func(t *testing.T) {
@@ -175,6 +175,6 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
 	})
 }

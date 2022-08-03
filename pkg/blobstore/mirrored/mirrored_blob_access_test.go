@@ -127,7 +127,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 				return nil
 			})
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend A: Server on fire"),
 			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
@@ -145,7 +145,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 				return status.Error(codes.Internal, "Server on fire")
 			})
 
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend B: Server on fire"),
 			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
@@ -192,7 +192,7 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(missingFromB, nil)
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Backend A: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend A: Server on fire"), err)
 	})
 
 	t.Run("FindMissingErrorBackendB", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 		backendB.EXPECT().FindMissing(gomock.Any(), allDigests).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Backend B: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend B: Server on fire"), err)
 	})
 
 	t.Run("ReplicateErrorAToB", func(t *testing.T) {

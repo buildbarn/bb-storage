@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -78,7 +79,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 
 		// Because replication did succeed, a second call should
 		// not trigger another replication.
@@ -88,7 +89,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b = replicator.ReplicateSingle(ctx, helloDigest)
 		_, err = b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 
 	t.Run("ReplicationError", func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
 
 		// Replication failures should not be cached. Another
 		// replication should be triggered.
@@ -112,7 +113,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b = replicator.ReplicateSingle(ctx, helloDigest)
 		_, err = b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
 	})
 }
 

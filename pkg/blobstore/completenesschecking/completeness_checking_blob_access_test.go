@@ -36,7 +36,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Action not found")))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.NotFound, "Action not found"))
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action not found"), err)
 	})
 
 	t.Run("BadDigest", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"))
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"), err)
 	})
 
 	t.Run("MissingInput", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"))
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"), err)
 	})
 
 	t.Run("FindMissingError", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		).Return(digest.EmptySet, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.Internal, "Failed to determine existence of child objects: Hard disk has a case of the Mondays"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to determine existence of child objects: Hard disk has a case of the Mondays"), err)
 	})
 
 	t.Run("GetTreeError", func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hard disk has a case of the Mondays")))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		require.Equal(t, err, status.Error(codes.Internal, "Failed to fetch output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to fetch output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

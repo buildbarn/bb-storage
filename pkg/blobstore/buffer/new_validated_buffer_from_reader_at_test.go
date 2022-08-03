@@ -56,7 +56,7 @@ func TestNewValidatedBufferFromReaderAtIntoWriter(t *testing.T) {
 		writer := bytes.NewBuffer(nil)
 
 		err := buffer.NewValidatedBufferFromReaderAt(reader, 10).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -87,7 +87,7 @@ func TestNewValidatedBufferFromReaderAtReadAt(t *testing.T) {
 		var p [5]byte
 		n, err := buffer.NewValidatedBufferFromReaderAt(reader, 5).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 }
 
@@ -132,7 +132,7 @@ func TestNewValidatedBufferFromReaderAtToProto(t *testing.T) {
 
 		_, err := buffer.NewValidatedBufferFromReaderAt(reader, int64(len(exampleActionResultBytes))).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -233,7 +233,7 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 			/* offset = */ -1,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
 		r.Close()
 	})
 
@@ -245,7 +245,7 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 			/* offset = */ 12,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
 		r.Close()
 	})
 
@@ -260,7 +260,7 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 			/* offset = */ 3,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 		r.Close()
 	})
 }
@@ -321,7 +321,7 @@ func TestNewValidatedBufferFromReaderAtToReader(t *testing.T) {
 		var p [3]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 		require.Nil(t, r.Close())
 	})
 }

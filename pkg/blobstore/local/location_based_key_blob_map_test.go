@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +35,7 @@ func TestLocationBasedKeyBlobMap(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 
 		_, _, _, err := keyBlobMap.Get(key)
-		require.Equal(t, status.Error(codes.NotFound, "Object not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
 	})
 
 	t.Run("GetLocationBlobMapError", func(t *testing.T) {
@@ -50,7 +51,7 @@ func TestLocationBasedKeyBlobMap(t *testing.T) {
 		require.False(t, needsRefresh)
 
 		_, err = keyBlobGetter(blobDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
 	})
 
 	t.Run("GetSuccess", func(t *testing.T) {
@@ -75,7 +76,7 @@ func TestLocationBasedKeyBlobMap(t *testing.T) {
 			Return(nil, status.Error(codes.Internal, "No space left"))
 
 		_, err := keyBlobMap.Put(123)
-		require.Equal(t, status.Error(codes.Internal, "No space left"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "No space left"), err)
 	})
 
 	t.Run("PutLocationBlobMapError2", func(t *testing.T) {
@@ -85,7 +86,7 @@ func TestLocationBasedKeyBlobMap(t *testing.T) {
 		locationBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
 			func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 				_, err := b.ToByteSlice(10)
-				require.Equal(t, status.Error(codes.Unknown, "Client hung up"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 				return locationBlobPutFinalizer.Call
 			})
 		locationBlobPutFinalizer.EXPECT().Call().
