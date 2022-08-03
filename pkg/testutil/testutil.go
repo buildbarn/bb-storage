@@ -46,56 +46,85 @@ func RequirePrefixedStatus(t *testing.T, want, got error) {
 	RequireEqualProto(t, wantProto, gotProto)
 }
 
-type protoMatches struct {
+type eqProtoMatcher struct {
 	t     *testing.T
 	proto proto.Message
 }
 
 // EqProto is a gomock matcher for proto equality.
 func EqProto(t *testing.T, proto proto.Message) gomock.Matcher {
-	return &protoMatches{t, proto}
+	return &eqProtoMatcher{
+		t:     t,
+		proto: proto,
+	}
 }
 
-func (p *protoMatches) Matches(other interface{}) bool {
-	otherProto, ok := other.(proto.Message)
-	if ok {
+func (p *eqProtoMatcher) Matches(other interface{}) bool {
+	if otherProto, ok := other.(proto.Message); ok {
 		return proto.Equal(p.proto, otherProto)
 	}
 	return false
 }
 
-func (p *protoMatches) String() string {
+func (p *eqProtoMatcher) String() string {
 	return "is proto equal to " + mustMarshalToString(p.t, p.proto)
 }
 
-type statusMatches struct {
+type eqStatusMatcher struct {
+	t             *testing.T
+	status        error
+	statusMessage proto.Message
+}
+
+// EqStatus is a gomock matcher for gRPC status equality.
+func EqStatus(t *testing.T, s error) gomock.Matcher {
+	return &eqStatusMatcher{
+		t:             t,
+		status:        s,
+		statusMessage: status.Convert(s).Proto(),
+	}
+}
+
+func (s *eqStatusMatcher) Matches(got interface{}) bool {
+	if gotError, ok := got.(error); ok {
+		gotMessage := status.Convert(gotError).Proto()
+		return proto.Equal(s.statusMessage, gotMessage) || mustMarshalToString(s.t, s.statusMessage) == mustMarshalToString(s.t, gotMessage)
+	}
+	return false
+}
+
+func (s *eqStatusMatcher) String() string {
+	return fmt.Sprintf("is status equal to %v", s.status)
+}
+
+type eqPrefixedStatusMatcher struct {
 	status error
 }
 
-// EqPrefixedStatus is a gomock matcher for grps Status equality allowing
-// trailing characters in the message.
+// EqPrefixedStatus is a gomock matcher for gRPC status equality
+// allowing trailing characters in the message.
 func EqPrefixedStatus(status error) gomock.Matcher {
-	return &statusMatches{status}
+	return &eqPrefixedStatusMatcher{
+		status: status,
+	}
 }
 
-func (s *statusMatches) Matches(got interface{}) bool {
-	gotError, ok := got.(error)
-	if !ok {
-		return false
+func (s *eqPrefixedStatusMatcher) Matches(got interface{}) bool {
+	if gotError, ok := got.(error); ok {
+		gotProto := status.Convert(gotError).Proto()
+		matchProto := status.Convert(s.status).Proto()
+		if strings.HasPrefix(gotProto.GetMessage(), matchProto.GetMessage()) {
+			originalMessage := matchProto.GetMessage()
+			matchProto.Message = gotProto.GetMessage()
+			eq := proto.Equal(gotProto, matchProto)
+			matchProto.Message = originalMessage
+			return eq
+		}
 	}
-	gotProto := status.Convert(gotError).Proto()
-	matchProto := status.Convert(s.status).Proto()
-	if !strings.HasPrefix(gotProto.GetMessage(), matchProto.GetMessage()) {
-		return false
-	}
-	originalMessage := matchProto.GetMessage()
-	matchProto.Message = gotProto.GetMessage()
-	eq := proto.Equal(gotProto, matchProto)
-	matchProto.Message = originalMessage
-	return eq
+	return false
 }
 
-func (s *statusMatches) String() string {
+func (s *eqPrefixedStatusMatcher) String() string {
 	return fmt.Sprintf("is status equal to %v", s.status)
 }
 

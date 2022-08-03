@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -79,7 +80,7 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 		// When the above fails, we should wait a bit before
 		// retrying. There is no point in retrying this
 		// immediately.
-		errorLogger.EXPECT().Log(status.Error(codes.Internal, "Failed to write persistent state: Permission denied")),
+		errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.Internal, "Failed to write persistent state: Permission denied"))),
 		clock.EXPECT().NewTimer(30*time.Second).Return(timer, timerChan),
 
 		// When retrying, is no point in writing the old state.
@@ -179,7 +180,7 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 			// better not do until we know for sure that storage is
 			// back online.
 			dataSyncer.EXPECT().Call().Return(status.Error(codes.Internal, "Disk on fire")),
-			errorLogger.EXPECT().Log(status.Error(codes.Internal, "Failed to synchronize data: Disk on fire")),
+			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.Internal, "Failed to synchronize data: Disk on fire"))),
 			clock.EXPECT().NewTimer(30*time.Second).Return(timer2, timerChan2),
 
 			// Successfully complete synchronizing data. This should
