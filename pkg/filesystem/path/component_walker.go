@@ -98,3 +98,20 @@ func OnTerminalViaOnDirectory(cw ComponentWalker, name Component) (*GotSymlink, 
 		panic("Missing result")
 	}
 }
+
+// TerminalNameTrackingComponentWalker can be embedded into an
+// implementation of ComponentWalker to provide a default implementation
+// of the OnTerminal() method. OnTerminal() is implemented in such a way
+// that it simply tracks the name.
+//
+// This implementation is useful for ComponentWalkers that are used to
+// create new files or directories.
+type TerminalNameTrackingComponentWalker struct {
+	TerminalName *Component
+}
+
+// OnTerminal records the name of the final component of a path.
+func (cw *TerminalNameTrackingComponentWalker) OnTerminal(name Component) (*GotSymlink, error) {
+	cw.TerminalName = &name
+	return nil, nil
+}

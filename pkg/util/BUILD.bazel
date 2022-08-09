@@ -6,6 +6,7 @@ go_library(
         "buckets.go",
         "error_logger.go",
         "jsonnet.go",
+        "non_empty_stack.go",
         "status.go",
         "tls.go",
         "uuid.go",
