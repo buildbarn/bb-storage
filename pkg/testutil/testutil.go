@@ -25,7 +25,7 @@ func RequireEqualProto(t *testing.T, want, got proto.Message) {
 		wantStr := mustMarshalToString(t, want)
 		gotStr := mustMarshalToString(t, got)
 		if wantStr != gotStr {
-			t.Fatalf("Not equal: want: %#v, got: %#v", wantStr, gotStr)
+			t.Fatalf("Not equal:\nWant:\n\n%s\n\nGot:\n\n%s", wantStr, gotStr)
 		}
 	}
 }
@@ -129,7 +129,9 @@ func (s *eqPrefixedStatusMatcher) String() string {
 }
 
 func mustMarshalToString(t *testing.T, proto proto.Message) string {
-	s, err := protojson.Marshal(proto)
+	s, err := protojson.MarshalOptions{
+		Multiline: true,
+	}.Marshal(proto)
 	if err != nil {
 		t.Fatal(err)
 	}
