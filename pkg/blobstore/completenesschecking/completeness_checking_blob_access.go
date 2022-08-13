@@ -153,6 +153,9 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		}
 		treeMessage, err := ba.contentAddressableStorage.Get(ctx, treeDigest).ToProto(&remoteexecution.Tree{}, ba.maximumMessageSizeBytes)
 		if err != nil {
+			if status.Code(err) == codes.InvalidArgument {
+				return util.StatusWrapfWithCode(err, codes.NotFound, "Failed to fetch output directory %#v", outputDirectory.Path)
+			}
 			return util.StatusWrapf(err, "Failed to fetch output directory %#v", outputDirectory.Path)
 		}
 		tree := treeMessage.(*remoteexecution.Tree)

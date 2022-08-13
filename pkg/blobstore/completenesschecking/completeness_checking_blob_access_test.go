@@ -144,6 +144,37 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to fetch output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"), err)
 	})
 
+	t.Run("GetTreeTooLarge", func(t *testing.T) {
+		// ActionResult entries that reference Tree objects that
+		// are too big to load should be treated as being
+		// invalid, and thus invisible to the caller.
+		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
+		dataIntegrityCallback.EXPECT().Call(true)
+		actionCache.EXPECT().Get(ctx, actionDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&remoteexecution.ActionResult{
+					OutputDirectories: []*remoteexecution.OutputDirectory{
+						{
+							Path: "bazel-out/foo",
+							TreeDigest: &remoteexecution.Digest{
+								Hash:      "7ef23d85401d061552b188ae0a87d7f8",
+								SizeBytes: 1024 * 1024 * 1024,
+							},
+						},
+					},
+				},
+				buffer.BackendProvided(dataIntegrityCallback.Call)))
+		reader := mock.NewMockReadAtCloser(ctrl)
+		contentAddressableStorage.EXPECT().Get(
+			ctx,
+			digest.MustNewDigest("hello", "7ef23d85401d061552b188ae0a87d7f8", 1024*1024*1024),
+		).Return(buffer.NewValidatedBufferFromReaderAt(reader, 1024*1024*1024))
+		reader.EXPECT().Close()
+
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to fetch output directory \"bazel-out/foo\": Buffer is 1073741824 bytes in size, while a maximum of 1000 bytes is permitted"), err)
+	})
+
 	t.Run("Success", func(t *testing.T) {
 		// Successful checking of existence of dependencies.
 		// Below is an ActionResult that contains five
