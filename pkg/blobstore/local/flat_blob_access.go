@@ -32,7 +32,8 @@ var (
 type flatBlobAccess struct {
 	capabilities.Provider
 
-	keyBlobMap      KeyBlobMap
+	keyLocationMap  KeyLocationMap
+	locationBlobMap LocationBlobMap
 	digestKeyFormat digest.KeyFormat
 
 	lock        *sync.RWMutex
@@ -42,12 +43,13 @@ type flatBlobAccess struct {
 	refreshesFindMissing prometheus.Observer
 }
 
-// NewFlatBlobAccess creates a BlobAccess that forwards all calls to a
-// KeyBlobMap backend. It's called 'flat', because it assumes all
-// objects are stored in a flat namespace. It either ignores the REv2
-// instance name in digests entirely, or it strongly partitions objects
-// by instance name. It does not introduce any hierarchy.
-func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
+// NewFlatBlobAccess creates a BlobAccess that forwards all calls to
+// KeyLocationMap and LocationBlobMap backend. It's called 'flat',
+// because it assumes all objects are stored in a flat namespace. It
+// either ignores the REv2 instance name in digests entirely, or it
+// strongly partitions objects by instance name. It does not introduce
+// any hierarchy.
+func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshes)
 	})
@@ -55,7 +57,8 @@ func NewFlatBlobAccess(keyBlobMap KeyBlobMap, digestKeyFormat digest.KeyFormat, 
 	return &flatBlobAccess{
 		Provider: capabilitiesProvider,
 
-		keyBlobMap:      keyBlobMap,
+		keyLocationMap:  keyLocationMap,
+		locationBlobMap: locationBlobMap,
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,
 
@@ -68,16 +71,27 @@ func (ba *flatBlobAccess) getKey(digest digest.Digest) Key {
 	return NewKeyFromString(digest.GetKey(ba.digestKeyFormat))
 }
 
+// finalizePut is called to finalize a write to the data store. This
+// method must be called while holding the write lock.
+func (ba *flatBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, key Key) (Location, error) {
+	location, err := putFinalizer()
+	if err != nil {
+		return Location{}, err
+	}
+	return location, ba.keyLocationMap.Put(key, location)
+}
+
 func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
 	key := ba.getKey(blobDigest)
 
 	// Look up the blob in storage while holding a read lock.
 	ba.lock.RLock()
-	getter, _, needsRefresh, err := ba.keyBlobMap.Get(key)
+	location, err := ba.keyLocationMap.Get(key)
 	if err != nil {
 		ba.lock.RUnlock()
 		return buffer.NewBufferFromError(err)
 	}
+	getter, needsRefresh := ba.locationBlobMap.Get(location)
 	if !needsRefresh {
 		// The blob doesn't need to be refreshed, so we can
 		// return its data directly.
@@ -89,18 +103,20 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 
 	// Blob was found, but it needs to be refreshed to ensure it
 	// doesn't disappear. Retry loading the blob a second time, this
-	// time holding a write lock. This allows us to allocate new
-	// space to copy the blob on the fly.
+	// time holding a write lock. This allows us to mutate the
+	// key-location map or allocate new space to copy the blob on
+	// the fly.
 	//
 	// TODO: Instead of copying data on the fly, should this be done
 	// immediately, so that we can prevent potential duplication by
 	// picking up the refresh lock?
 	ba.lock.Lock()
-	getter, sizeBytes, needsRefresh, err := ba.keyBlobMap.Get(key)
+	location, err = ba.keyLocationMap.Get(key)
 	if err != nil {
 		ba.lock.Unlock()
 		return buffer.NewBufferFromError(err)
 	}
+	getter, needsRefresh = ba.locationBlobMap.Get(location)
 	b := getter(blobDigest)
 	if !needsRefresh {
 		// Some other thread managed to refresh the blob before
@@ -110,7 +126,7 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 	}
 
 	// Allocate space for the copy.
-	putWriter, err := ba.keyBlobMap.Put(sizeBytes)
+	putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
 	ba.lock.Unlock()
 	if err != nil {
 		b.Discard()
@@ -123,7 +139,7 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 	return b1.WithTask(func() error {
 		putFinalizer := putWriter(b2)
 		ba.lock.Lock()
-		err := putFinalizer(key)
+		_, err := ba.finalizePut(putFinalizer, key)
 		if err == nil {
 			ba.refreshesGet.Observe(1)
 		}
@@ -144,20 +160,21 @@ func (ba *flatBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b b
 
 	// Allocate space to store the object.
 	ba.lock.Lock()
-	putWriter, err := ba.keyBlobMap.Put(sizeBytes)
+	putWriter, err := ba.locationBlobMap.Put(sizeBytes)
 	ba.lock.Unlock()
 	if err != nil {
 		b.Discard()
 		return err
 	}
 
-	// Copy the the object into storage. This can be done without
-	// holding any locks, so that I/O can happen in parallel.
+	// Ingest the data associated with the object. This must be done
+	// without holding any locks, so that I/O can happen in
+	// parallel.
 	putFinalizer := putWriter(b)
 
 	key := ba.getKey(blobDigest)
 	ba.lock.Lock()
-	err = putFinalizer(key)
+	_, err = ba.finalizePut(putFinalizer, key)
 	ba.lock.Unlock()
 	return err
 }
@@ -180,7 +197,8 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	ba.lock.RLock()
 	for i, blobDigest := range digests.Items() {
 		key := keys[i]
-		if _, _, needsRefresh, err := ba.keyBlobMap.Get(key); err == nil {
+		if location, err := ba.keyLocationMap.Get(key); err == nil {
+			_, needsRefresh := ba.locationBlobMap.Get(location)
 			if needsRefresh {
 				// Blob is present, but it must be
 				// refreshed for it to remain present.
@@ -216,12 +234,13 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	blobsRefreshedSuccessfully := 0
 	ba.lock.Lock()
 	for _, blobToRefresh := range blobsToRefresh {
-		if getter, sizeBytes, needsRefresh, err := ba.keyBlobMap.Get(blobToRefresh.key); err == nil {
+		if location, err := ba.keyLocationMap.Get(blobToRefresh.key); err == nil {
+			getter, needsRefresh := ba.locationBlobMap.Get(location)
 			if needsRefresh {
 				// Blob is present and still needs to be
 				// refreshed. Allocate space for a copy.
 				b := getter(blobToRefresh.digest)
-				putWriter, err := ba.keyBlobMap.Put(sizeBytes)
+				putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
 				ba.lock.Unlock()
 				if err != nil {
 					b.Discard()
@@ -234,7 +253,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 				putFinalizer := putWriter(b)
 
 				ba.lock.Lock()
-				if err := putFinalizer(blobToRefresh.key); err != nil {
+				if _, err := ba.finalizePut(putFinalizer, blobToRefresh.key); err != nil {
 					ba.lock.Unlock()
 					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
 				}

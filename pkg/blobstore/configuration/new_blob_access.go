@@ -470,15 +470,14 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			}
 		} else {
 			localBlobAccess = local.NewFlatBlobAccess(
-				local.NewLocationBasedKeyBlobMap(
-					local.NewHashingKeyLocationMap(
-						locationRecordArray,
-						locationRecordArraySize,
-						keyLocationMapHashInitialization,
-						backend.Local.KeyLocationMapMaximumGetAttempts,
-						int(backend.Local.KeyLocationMapMaximumPutAttempts),
-						storageTypeName),
-					locationBlobMap),
+				local.NewHashingKeyLocationMap(
+					locationRecordArray,
+					locationRecordArraySize,
+					keyLocationMapHashInitialization,
+					backend.Local.KeyLocationMapMaximumGetAttempts,
+					int(backend.Local.KeyLocationMapMaximumPutAttempts),
+					storageTypeName),
+				locationBlobMap,
 				digestKeyFormat,
 				&globalLock,
 				storageTypeName,

@@ -20,16 +20,27 @@ import (
 func TestFlatBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
+	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	location1 := local.Location{
+		BlockIndex:  7,
+		OffsetBytes: 42,
+		SizeBytes:   5,
+	}
+	location2 := local.Location{
+		BlockIndex:  8,
+		OffsetBytes: 382,
+		SizeBytes:   5,
+	}
 
 	t.Run("NoRefreshNotFound", func(t *testing.T) {
 		// Lookup failures on the blob.
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.NotFound, "Blob not found"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.NotFound, "Blob not found"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
@@ -38,10 +49,12 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	t.Run("NoRefreshSuccess", func(t *testing.T) {
 		// The blob is not expected to disappear from storage
 		// soon, so no refreshing needs to take place.
-		keyBlobGetter := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter.Call, int64(5), false, nil)
-		keyBlobGetter.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter.Call, false)
+		getter.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
@@ -53,11 +66,13 @@ func TestFlatBlobAccessGet(t *testing.T) {
 		// An initial lookup on the blob returned success, but
 		// when retrying the lookup while holding an exclusive
 		// lock, we got NotFound.
-		keyBlobGetter := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter.Call, int64(5), true, nil)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.NotFound, "Blob not found"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.NotFound, "Blob not found"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
@@ -67,13 +82,17 @@ func TestFlatBlobAccessGet(t *testing.T) {
 		// An initial lookup indicated that the blob needed to
 		// be refreshed, but a second lookup while holding an
 		// exclusive lock showed that this is no longer needed.
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), false, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, false)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
@@ -84,15 +103,19 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	t.Run("RefreshPutFailure", func(t *testing.T) {
 		// Refreshing needs to take place, but a failure to
 		// allocate space occurs.
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobMap.EXPECT().Put(int64(5)).
+		locationBlobMap.EXPECT().Put(int64(5)).
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
@@ -102,26 +125,30 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	t.Run("RefreshFinalizeFailure", func(t *testing.T) {
 		// Refreshing needs to take place, but an I/O error
 		// takes place while writing the contents.
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey).
-			Return(status.Error(codes.Internal, "Write error"))
+		putFinalizer.EXPECT().Call().
+			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob: Write error"), err)
@@ -129,25 +156,31 @@ func TestFlatBlobAccessGet(t *testing.T) {
 
 	t.Run("RefreshSuccess", func(t *testing.T) {
 		// Refreshing needs to take place, and it succeeds.
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey)
+		putFinalizer.EXPECT().Call().
+			Return(location2, nil)
+		keyLocationMap.EXPECT().Put(helloKey, location2)
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		require.NoError(t, err)
@@ -158,11 +191,17 @@ func TestFlatBlobAccessGet(t *testing.T) {
 func TestFlatBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
+	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	location := local.Location{
+		BlockIndex:  7,
+		OffsetBytes: 42,
+		SizeBytes:   5,
+	}
 
 	t.Run("BrokenBlob", func(t *testing.T) {
 		// Calling Put() with a blob that is already in a known
@@ -175,7 +214,7 @@ func TestFlatBlobAccessPut(t *testing.T) {
 
 	t.Run("PutFailure", func(t *testing.T) {
 		// A failure while allocating space occurs.
-		keyBlobMap.EXPECT().Put(int64(5)).
+		locationBlobMap.EXPECT().Put(int64(5)).
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		require.Equal(
@@ -186,18 +225,18 @@ func TestFlatBlobAccessPut(t *testing.T) {
 
 	t.Run("FinalizeFailure", func(t *testing.T) {
 		// An I/O error takes place writing the contents.
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey).
-			Return(status.Error(codes.Internal, "Write error"))
+		putFinalizer.EXPECT().Call().
+			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		require.Equal(
 			t,
@@ -207,17 +246,18 @@ func TestFlatBlobAccessPut(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// The blob is written to storage successfully.
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey)
+		putFinalizer.EXPECT().Call().Return(location, nil)
+		keyLocationMap.EXPECT().Put(helloKey, location)
 
 		require.NoError(t, blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
@@ -226,23 +266,34 @@ func TestFlatBlobAccessPut(t *testing.T) {
 func TestFlatBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	keyBlobMap := mock.NewMockKeyBlobMap(ctrl)
+	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	location1 := local.Location{
+		BlockIndex:  7,
+		OffsetBytes: 42,
+		SizeBytes:   5,
+	}
+	location2 := local.Location{
+		BlockIndex:  8,
+		OffsetBytes: 382,
+		SizeBytes:   5,
+	}
 
 	t.Run("Phase1GetFailure", func(t *testing.T) {
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.Internal, "Disk on fire"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase1NotFound", func(t *testing.T) {
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.NotFound, "Object not found"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)
@@ -250,9 +301,11 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Phase1Found", func(t *testing.T) {
-		keyBlobGetter := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter.Call, int64(5), false, nil)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter.Call, false)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)
@@ -260,26 +313,32 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Phase2GetFailure", func(t *testing.T) {
-		keyBlobGetter := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter.Call, int64(5), true, nil)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.Internal, "Disk on fire"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2PutFailure", func(t *testing.T) {
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobMap.EXPECT().Put(int64(5)).
+		locationBlobMap.EXPECT().Put(int64(5)).
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -287,37 +346,43 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Phase2FinalizeFailure", func(t *testing.T) {
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey).
-			Return(status.Error(codes.Internal, "Write error"))
+		putFinalizer.EXPECT().Call().
+			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Write error"), err)
 	})
 
 	t.Run("Phase2NotFound", func(t *testing.T) {
-		keyBlobGetter := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter.Call, int64(5), true, nil)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(nil, int64(0), false, status.Error(codes.NotFound, "Object not found"))
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)
@@ -325,12 +390,16 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Phase2FoundNoRefresh", func(t *testing.T) {
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), false, nil)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, false)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)
@@ -338,25 +407,30 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Phase2FoundRefresh", func(t *testing.T) {
-		keyBlobGetter1 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter1.Call, int64(5), true, nil)
-		keyBlobGetter2 := mock.NewMockKeyBlobGetter(ctrl)
-		keyBlobMap.EXPECT().Get(helloKey).
-			Return(keyBlobGetter2.Call, int64(5), true, nil)
-		keyBlobGetter2.EXPECT().Call(helloDigest).
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter1.Call, true)
+		keyLocationMap.EXPECT().Get(helloKey).
+			Return(location1, nil)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
+		locationBlobMap.EXPECT().Get(location1).
+			Return(getter2.Call, true)
+		getter2.EXPECT().Call(helloDigest).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-		keyBlobPutWriter := mock.NewMockKeyBlobPutWriter(ctrl)
-		keyBlobMap.EXPECT().Put(int64(5)).
-			Return(keyBlobPutWriter.Call, nil)
-		keyBlobPutFinalizer := mock.NewMockKeyBlobPutFinalizer(ctrl)
-		keyBlobPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.KeyBlobPutFinalizer {
+		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
+		locationBlobMap.EXPECT().Put(int64(5)).
+			Return(putWriter.Call, nil)
+		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
+		putWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.LocationBlobPutFinalizer {
 			data, err := b.ToByteSlice(10)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
-			return keyBlobPutFinalizer.Call
+			return putFinalizer.Call
 		})
-		keyBlobPutFinalizer.EXPECT().Call(helloKey)
+		putFinalizer.EXPECT().Call().Return(location2, nil)
+		keyLocationMap.EXPECT().Put(helloKey, location2)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)

@@ -29,10 +29,10 @@ type hierarchicalCASBlobAccess struct {
 // KeyLocationMap and a LocationBlobMap as backing stores.
 //
 // The BlobAccess returned by this function can be thought of as being
-// an amalgamation of FlatBlobAccess and LocationBasedKeyBlobMap, with
-// one big difference: it keeps track of which REv2 instance name
-// prefixes are permitted to access an object. It does this by writing
-// multiple entries into the key-location map:
+// an alternative to FlatBlobAccess, with one big difference: it keeps
+// track of which REv2 instance name prefixes are permitted to access an
+// object. It does this by writing multiple entries into the
+// key-location map:
 //
 //   - One canonical entry that always points to the newest copy of an
 //     object. This entry's key does not contain an instance name.

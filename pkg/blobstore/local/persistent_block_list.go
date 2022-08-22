@@ -129,7 +129,8 @@ type PersistentBlockList struct {
 
 // NewPersistentBlockList provides an implementation of BlockList whose
 // state can be persisted. This makes it possible to preserve the
-// contents of a KeyBlobMap across restarts.
+// contents of FlatBlobAccess and HierarchicalCASBlobAccess across
+// restarts.
 func NewPersistentBlockList(blockAllocator BlockAllocator, initialOldestEpochID uint32, initialBlocks []*pb.BlockState) (*PersistentBlockList, int) {
 	bl := &PersistentBlockList{
 		blockAllocator: blockAllocator,
