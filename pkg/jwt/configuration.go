@@ -53,7 +53,7 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
 
-	evictionSet, err := eviction.NewSetFromConfiguration(config.CacheReplacementPolicy)
+	evictionSet, err := eviction.NewSetFromConfiguration[string](config.CacheReplacementPolicy)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create eviction set")
 	}

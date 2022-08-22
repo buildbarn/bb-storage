@@ -51,12 +51,12 @@ type AuthorizationHeaderParser struct {
 
 	lock                       sync.Mutex
 	cachedAuthorizationHeaders map[string]response
-	evictionSet                eviction.Set
+	evictionSet                eviction.Set[string]
 }
 
 // NewAuthorizationHeaderParser creates a new AuthorizationHeaderParser
 // that does not have any cached tokens.
-func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator, metadataExtractor *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set) *AuthorizationHeaderParser {
+func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator, metadataExtractor *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set[string]) *AuthorizationHeaderParser {
 	return &AuthorizationHeaderParser{
 		clock:              clock,
 		signatureValidator: signatureValidator,

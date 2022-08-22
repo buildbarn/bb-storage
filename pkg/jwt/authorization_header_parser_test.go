@@ -23,7 +23,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		jmespath.MustCompile("forbiddenField == null"),
 		jmespath.MustCompile("@"),
 		1000,
-		eviction.NewLRUSet())
+		eviction.NewLRUSet[string]())
 
 	t.Run("NoAuthorizationHeadersProvided", func(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635747849, 0))

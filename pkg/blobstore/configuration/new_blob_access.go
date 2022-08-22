@@ -565,7 +565,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				source.BlobAccess,
 				replica.BlobAccess,
 				clock.SystemClock,
-				eviction.NewMetricsSet(eviction.NewLRUSet(), "ReadCanaryingBlobAccess"),
+				eviction.NewMetricsSet(eviction.NewLRUSet[string](), "ReadCanaryingBlobAccess"),
 				int(config.MaximumCacheSize),
 				maximumCacheDuration.AsDuration()),
 			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),

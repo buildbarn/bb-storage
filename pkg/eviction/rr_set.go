@@ -4,22 +4,22 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/random"
 )
 
-type rrSet struct {
+type rrSet[T any] struct {
 	generator random.SingleThreadedGenerator
-	elements  []string
+	elements  []T
 }
 
 // NewRRSet creates a new cache replacement set that implements the
 // Random Replacement (RR) policy.
 //
 // https://en.wikipedia.org/wiki/Cache_replacement_policies#Random_replacement_(RR)
-func NewRRSet() Set {
-	return &rrSet{
+func NewRRSet[T any]() Set[T] {
+	return &rrSet[T]{
 		generator: random.NewFastSingleThreadedGenerator(),
 	}
 }
 
-func (s *rrSet) Insert(value string) {
+func (s *rrSet[T]) Insert(value T) {
 	// Insert element into a random location in the list, opening up
 	// space by moving an existing element to the end of the list.
 	index := s.generator.Intn(len(s.elements) + 1)
@@ -31,13 +31,13 @@ func (s *rrSet) Insert(value string) {
 	}
 }
 
-func (s *rrSet) Touch(value string) {
+func (s *rrSet[T]) Touch(value T) {
 }
 
-func (s *rrSet) Peek() string {
+func (s *rrSet[T]) Peek() T {
 	return s.elements[len(s.elements)-1]
 }
 
-func (s *rrSet) Remove() {
+func (s *rrSet[T]) Remove() {
 	s.elements = s.elements[:len(s.elements)-1]
 }

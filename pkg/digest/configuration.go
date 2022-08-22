@@ -15,7 +15,7 @@ func NewExistenceCacheFromConfiguration(configuration *pb.ExistenceCacheConfigur
 	if err := cacheDuration.CheckValid(); err != nil {
 		return nil, util.StatusWrap(err, "Cache duration")
 	}
-	evictionSet, err := eviction.NewSetFromConfiguration(configuration.CacheReplacementPolicy)
+	evictionSet, err := eviction.NewSetFromConfiguration[string](configuration.CacheReplacementPolicy)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Cache replacement policy")
 	}

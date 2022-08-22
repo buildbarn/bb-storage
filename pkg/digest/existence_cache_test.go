@@ -15,7 +15,7 @@ func TestExistenceCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	clock := mock.NewMockClock(ctrl)
-	existenceCache := digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 2, time.Minute, eviction.NewLRUSet())
+	existenceCache := digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 2, time.Minute, eviction.NewLRUSet[string]())
 
 	digests := []digest.Digest{
 		digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 5),

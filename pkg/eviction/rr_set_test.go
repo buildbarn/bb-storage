@@ -9,7 +9,7 @@ import (
 )
 
 func TestRRSetExample(t *testing.T) {
-	set := eviction.NewRRSet()
+	set := eviction.NewRRSet[string]()
 
 	// Insert a set of words.
 	words := []string{

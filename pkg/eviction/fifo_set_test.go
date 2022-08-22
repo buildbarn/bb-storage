@@ -8,7 +8,7 @@ import (
 )
 
 func TestFIFOSetExample(t *testing.T) {
-	set := eviction.NewFIFOSet()
+	set := eviction.NewFIFOSet[string]()
 
 	// Insert a set of words.
 	words := []string{

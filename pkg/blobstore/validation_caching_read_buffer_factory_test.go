@@ -25,7 +25,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	baseReadBufferFactory := mock.NewMockReadBufferFactory(ctrl)
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.
@@ -116,7 +116,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
 	baseReadBufferFactory := mock.NewMockReadBufferFactory(ctrl)
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.

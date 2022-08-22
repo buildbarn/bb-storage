@@ -27,7 +27,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
 	helloDigests := helloDigest.ToSingletonSet()
 
@@ -126,7 +126,7 @@ func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigests := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {

@@ -27,7 +27,7 @@ type readCanaryingBlobAccess struct {
 
 	lock                sync.Mutex
 	cachedInstanceNames map[string]readCanaryingCacheEntry
-	evictionSet         eviction.Set
+	evictionSet         eviction.Set[string]
 }
 
 // NewReadCanaryingBlobAccess creates a decorator for two BlobAccess
@@ -46,7 +46,7 @@ type readCanaryingBlobAccess struct {
 // if the replica uses features like AuthorizingBlobAccess or
 // DemultiplexingBlobAccess, this backend still behaves in a meaningful
 // way.
-func NewReadCanaryingBlobAccess(source, replica BlobAccess, clock clock.Clock, evictionSet eviction.Set, maximumCacheSize int, maximumCacheDuration time.Duration) BlobAccess {
+func NewReadCanaryingBlobAccess(source, replica BlobAccess, clock clock.Clock, evictionSet eviction.Set[string], maximumCacheSize int, maximumCacheDuration time.Duration) BlobAccess {
 	return &readCanaryingBlobAccess{
 		BlobAccess:           source,
 		replica:              replica,

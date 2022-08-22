@@ -29,7 +29,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		sourceBackend,
 		replicaBackend,
 		clock,
-		eviction.NewLRUSet(),
+		eviction.NewLRUSet[string](),
 		100,
 		5*time.Minute)
 
