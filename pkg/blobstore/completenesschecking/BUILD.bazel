@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",

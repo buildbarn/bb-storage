@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -33,14 +34,46 @@ func NewReadFallbackBlobAccess(primary, secondary blobstore.BlobAccess, replicat
 	}
 }
 
+func (ba *readFallbackBlobAccess) getBlobReplicatorSelector() replication.BlobReplicatorSelector {
+	replicator := ba.replicator
+	return func(observedErr error) (replication.BlobReplicator, error) {
+		if status.Code(observedErr) != codes.NotFound {
+			// One of the backends returned an error other than
+			// NOT_FOUND. Prepend the name of the backend to make
+			// debugging easier.
+			if replicator != nil {
+				return nil, util.StatusWrap(observedErr, "Primary")
+			}
+			return nil, util.StatusWrap(observedErr, "Secondary")
+		}
+		if replicator == nil {
+			// We already tried the secondary below and got another
+			// codes.NotFound, so just return that error.
+			return nil, observedErr
+		}
+
+		replicatorToReturn := replicator
+		replicator = nil
+		return replicatorToReturn, nil
+	}
+}
+
 func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	return buffer.WithErrorHandler(
-		ba.BlobAccess.Get(ctx, digest),
-		&readFallbackErrorHandler{
-			replicator: ba.replicator,
-			context:    ctx,
-			digest:     digest,
-		})
+	return replication.GetWithBlobReplicator(
+		ctx,
+		digest,
+		ba.BlobAccess,
+		ba.getBlobReplicatorSelector())
+}
+
+func (ba *readFallbackBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	return replication.GetFromCompositeWithBlobReplicator(
+		ctx,
+		parentDigest,
+		childDigest,
+		slicer,
+		ba.BlobAccess,
+		ba.getBlobReplicatorSelector())
 }
 
 func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
@@ -59,33 +92,3 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 	}
 	return missingInBoth, nil
 }
-
-type readFallbackErrorHandler struct {
-	replicator replication.BlobReplicator
-	context    context.Context
-	digest     digest.Digest
-}
-
-func (eh *readFallbackErrorHandler) OnError(observedErr error) (buffer.Buffer, error) {
-	if status.Code(observedErr) != codes.NotFound {
-		// One of the backends returned an error other than
-		// NOT_FOUND. Prepend the name of the backend to make
-		// debugging easier.
-		if eh.replicator != nil {
-			return nil, util.StatusWrap(observedErr, "Primary")
-		}
-		return nil, util.StatusWrap(observedErr, "Secondary")
-	}
-	if eh.replicator == nil {
-		// We already tried the secondary below and got another
-		// codes.NotFound, so just return that error.
-		return nil, observedErr
-	}
-
-	// Run the replicator.
-	r := eh.replicator
-	eh.replicator = nil
-	return r.ReplicateSingle(eh.context, eh.digest), nil
-}
-
-func (eh *readFallbackErrorHandler) Done() {}

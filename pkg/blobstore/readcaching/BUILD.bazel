@@ -9,6 +9,7 @@ go_library(
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/replication",
+        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

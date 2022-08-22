@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "slicing",
+    srcs = ["blob_slicer.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/slicing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/blobstore/buffer",
+        "//pkg/digest",
+    ],
+)

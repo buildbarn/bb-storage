@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -39,8 +40,9 @@ type flatBlobAccess struct {
 	lock        *sync.RWMutex
 	refreshLock sync.Mutex
 
-	refreshesGet         prometheus.Observer
-	refreshesFindMissing prometheus.Observer
+	refreshesGet              prometheus.Observer
+	refreshesGetFromComposite prometheus.Observer
+	refreshesFindMissing      prometheus.Observer
 }
 
 // NewFlatBlobAccess creates a BlobAccess that forwards all calls to
@@ -62,8 +64,9 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,
 
-		refreshesGet:         flatBlobAccessRefreshes.WithLabelValues(storageType, "Get"),
-		refreshesFindMissing: flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
+		refreshesGet:              flatBlobAccessRefreshes.WithLabelValues(storageType, "Get"),
+		refreshesGetFromComposite: flatBlobAccessRefreshes.WithLabelValues(storageType, "GetFromComposite"),
+		refreshesFindMissing:      flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
 	}
 }
 
@@ -149,6 +152,124 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 		}
 		return nil
 	})
+}
+
+func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	parentKey := ba.getKey(parentDigest)
+	childKey := ba.getKey(childDigest)
+
+	// Look up the blob in storage while holding a read lock. Even
+	// though the child object determines the data to be returned,
+	// the parent object controls whether it needs to be refreshed.
+	// We therefore look up both unconditionally.
+	ba.lock.RLock()
+	parentLocation, err := ba.keyLocationMap.Get(parentKey)
+	if err != nil {
+		ba.lock.RUnlock()
+		return buffer.NewBufferFromError(err)
+	}
+	if _, needsRefresh := ba.locationBlobMap.Get(parentLocation); !needsRefresh {
+		if childLocation, err := ba.keyLocationMap.Get(childKey); err == nil {
+			// The parent object doesn't need to be
+			// refreshed, and the child object exists.
+			// Return the child object immediately.
+			childGetter, _ := ba.locationBlobMap.Get(childLocation)
+			b := childGetter(childDigest)
+			ba.lock.RUnlock()
+			return b
+		} else if status.Code(err) != codes.NotFound {
+			ba.lock.RUnlock()
+			return buffer.NewBufferFromError(err)
+		}
+	}
+	ba.lock.RUnlock()
+
+	// The parent object was found, but it either hasn't been sliced
+	// yet, or it needs to be refreshed to ensure it doesn't
+	// disappear. Retry the process above, but now with write locks
+	// acquired.
+	ba.refreshLock.Lock()
+	defer ba.refreshLock.Unlock()
+
+	ba.lock.Lock()
+	parentLocation, err = ba.keyLocationMap.Get(parentKey)
+	if err != nil {
+		ba.lock.Unlock()
+		return buffer.NewBufferFromError(err)
+	}
+
+	var bParentSlicing buffer.Buffer
+	var putFinalizer LocationBlobPutFinalizer
+	parentGetter, needsRefresh := ba.locationBlobMap.Get(parentLocation)
+	if needsRefresh {
+		// The parent object needs to be refreshed and sliced.
+		bParent := parentGetter(parentDigest)
+		putWriter, err := ba.locationBlobMap.Put(parentLocation.SizeBytes)
+		ba.lock.Unlock()
+		if err != nil {
+			bParent.Discard()
+			return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to refresh blob"))
+		}
+
+		// Copy the data while it's being sliced.
+		bParent1, bParent2 := bParent.CloneStream()
+		bParentSlicing = bParent1.WithTask(func() error {
+			putFinalizer = putWriter(bParent2)
+			return nil
+		})
+	} else {
+		if childLocation, err := ba.keyLocationMap.Get(childKey); err == nil {
+			// The parent object was refreshed and sliced in
+			// the meantime.
+			childGetter, _ := ba.locationBlobMap.Get(childLocation)
+			b := childGetter(childDigest)
+			ba.lock.Unlock()
+			return b
+		} else if status.Code(err) != codes.NotFound {
+			ba.lock.Unlock()
+			return buffer.NewBufferFromError(err)
+		}
+
+		// The parent object only needs to be sliced.
+		bParentSlicing = parentGetter(parentDigest)
+		ba.lock.Unlock()
+	}
+
+	// Perform the slicing.
+	bChild, slices := slicer.Slice(bParentSlicing, childDigest)
+	sliceKeys := make([]Key, 0, len(slices))
+	for _, slice := range slices {
+		sliceKeys = append(sliceKeys, ba.getKey(slice.Digest))
+	}
+
+	// Complete refreshing in case it was performed.
+	ba.lock.Lock()
+	if needsRefresh {
+		parentLocation, err = ba.finalizePut(putFinalizer, parentKey)
+		if err != nil {
+			ba.lock.Unlock()
+			bChild.Discard()
+			return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to refresh blob"))
+		}
+		ba.refreshesGetFromComposite.Observe(1)
+	}
+
+	// Create key-location map entries for each of the slices. This
+	// permits subsequent GetFromComposite() calls to access the
+	// individual parts without any slicing.
+	for i, slice := range slices {
+		if err := ba.keyLocationMap.Put(sliceKeys[i], Location{
+			BlockIndex:  parentLocation.BlockIndex,
+			OffsetBytes: parentLocation.OffsetBytes + slice.OffsetBytes,
+			SizeBytes:   slice.SizeBytes,
+		}); err != nil {
+			ba.lock.Unlock()
+			bChild.Discard()
+			return buffer.NewBufferFromError(util.StatusWrapf(err, "Failed to create child blob %#v", slice.Digest.String()))
+		}
+	}
+	ba.lock.Unlock()
+	return bChild
 }
 
 func (ba *flatBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {

@@ -51,6 +51,24 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
 	})
 
+	t.Run("GetFromComposite-Allowed", func(t *testing.T) {
+		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{nil})
+		blobSlicer := mock.NewMockBlobSlicer(ctrl)
+		baseBlobAccess.EXPECT().GetFromComposite(ctx, d, d2, blobSlicer).Return(wantBuf)
+
+		gotBuf, err := ba.GetFromComposite(ctx, d, d2, blobSlicer).ToByteSlice(30)
+		require.NoError(t, err)
+		require.Equal(t, wantBytes, gotBuf)
+	})
+
+	t.Run("GetFromComposite-Denied", func(t *testing.T) {
+		blobSlicer := mock.NewMockBlobSlicer(ctrl)
+		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
+
+		_, err := ba.GetFromComposite(ctx, d, d2, blobSlicer).ToByteSlice(30)
+		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
+	})
+
 	t.Run("Put-Allowed", func(t *testing.T) {
 		putAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{nil})
 		baseBlobAccess.EXPECT().Put(ctx, d, wantBuf).Return(nil)

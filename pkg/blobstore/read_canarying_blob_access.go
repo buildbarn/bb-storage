@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -126,6 +127,21 @@ func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buf
 	}
 	return buffer.WithErrorHandler(
 		ba.BlobAccess.Get(ctx, d),
+		readCanaryingSourceErrorHandler{})
+}
+
+func (ba *readCanaryingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	instanceNameStr := parentDigest.GetInstanceName().String()
+	if ba.shouldSendToReplica(instanceNameStr) {
+		return buffer.WithErrorHandler(
+			ba.replica.GetFromComposite(ctx, parentDigest, childDigest, slicer),
+			&readCanaryingReplicaErrorHandler{
+				blobAccess:      ba,
+				instanceNameStr: instanceNameStr,
+			})
+	}
+	return buffer.WithErrorHandler(
+		ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer),
 		readCanaryingSourceErrorHandler{})
 }
 

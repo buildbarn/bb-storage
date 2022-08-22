@@ -32,6 +32,7 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/slicing",
         "//pkg/capabilities",
         "//pkg/clock",
         "//pkg/cloud/aws",

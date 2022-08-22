@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -44,6 +45,15 @@ func (br *queuedBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest 
 	// process may each run at a different pace.
 	return br.source.Get(ctx, blobDigest).WithTask(func() error {
 		if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
+			return util.StatusWrap(err, "Replication failed")
+		}
+		return nil
+	})
+}
+
+func (br *queuedBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer).WithTask(func() error {
+		if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
 			return util.StatusWrap(err, "Replication failed")
 		}
 		return nil

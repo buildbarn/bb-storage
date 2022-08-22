@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -42,6 +43,13 @@ func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.D
 		return buffer.NewCASBufferFromByteSlice(digest, nil, buffer.UserProvided)
 	}
 	return ba.BlobAccess.Get(ctx, digest)
+}
+
+func (ba *emptyBlobInjectingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	if childDigest.GetSizeBytes() == 0 {
+		return buffer.NewCASBufferFromByteSlice(childDigest, nil, buffer.UserProvided)
+	}
+	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

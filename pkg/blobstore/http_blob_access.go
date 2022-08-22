@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -62,6 +63,11 @@ func (ba *httpBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.
 		resp.Body.Close()
 		return buffer.NewBufferFromError(convertHTTPUnexpectedStatus(resp))
 	}
+}
+
+func (ba *httpBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *httpBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

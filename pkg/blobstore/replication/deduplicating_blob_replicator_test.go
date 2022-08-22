@@ -144,6 +144,35 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 	})
 }
 
+func TestDeduplicatingBlobReplicatorReplicateComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	base := mock.NewMockBlobReplicator(ctrl)
+	sink := mock.NewMockBlobAccess(ctrl)
+	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
+
+	parentDigest := digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentDigestSet := parentDigest.ToSingletonSet()
+	childDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// Only a single test for the success case is provided, as the
+	// tests for ReplicateSingle() provide enough coverage.
+
+	t.Run("SuccessReplication", func(t *testing.T) {
+		// If the sink reports the parent as absent, we should
+		// see a replication take place before reading the child
+		// blob from the sink.
+		sink.EXPECT().FindMissing(ctx, parentDigestSet).Return(parentDigestSet, nil)
+		base.EXPECT().ReplicateMultiple(ctx, parentDigestSet)
+		sink.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+}
+
 func TestDeduplicatingBlobReplicatorReplicateMultiple(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

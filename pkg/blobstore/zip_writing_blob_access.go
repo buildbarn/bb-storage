@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -88,6 +89,16 @@ func (ba *ZIPWritingBlobAccess) Get(ctx context.Context, blobDigest digest.Diges
 		nopAtCloser{ReaderAt: io.NewSectionReader(ba.rw, file.dataOffsetBytes, file.dataSizeBytes)},
 		file.dataSizeBytes,
 		buffer.Irreparable(blobDigest))
+}
+
+// GetFromComposite fetches an object that is contained within a
+// composite object that was successfully stored in the ZIP archive
+// through a previous call to Put().
+func (ba *ZIPWritingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	// TODO: We can provide a better implementation that stores the
+	// resulting slices.
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 // Put a new object in the ZIP archive.

@@ -6,6 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -26,6 +27,10 @@ func NewErrorBlobAccess(err error) BlobAccess {
 }
 
 func (ba *errorBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	return buffer.NewBufferFromError(ba.err)
+}
+
+func (ba *errorBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
 	return buffer.NewBufferFromError(ba.err)
 }
 

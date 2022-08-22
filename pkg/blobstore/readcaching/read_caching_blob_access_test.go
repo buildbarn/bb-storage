@@ -64,6 +64,30 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 	})
 }
 
+func TestReadCachingBlobAccessGetFromComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	slowBlobAccess := mock.NewMockBlobAccess(ctrl)
+	fastBlobAccess := mock.NewMockBlobAccess(ctrl)
+	blobReplicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
+	parentDigest := digest.MustNewDigest("default", "834c514174f3a7d5952dfa68d4b657f3c4cf78b3973dcf2721731c3861559828", 100)
+	childDigest := digest.MustNewDigest("default", "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// We assume that tests for Get() provides coverage for other
+	// scenarios.
+
+	t.Run("Slow", func(t *testing.T) {
+		fastBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
+		blobReplicator.EXPECT().ReplicateComposite(ctx, parentDigest, childDigest, slicer).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello world")))
+
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello world"), data)
+	})
+}
+
 func TestReadCachingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

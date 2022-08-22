@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -19,6 +20,9 @@ type BlobReplicator interface {
 	// Replicate a single object between backends, while at the same
 	// time giving a handle back to it.
 	ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer
+	// Replicate a single composite object between backends, while
+	// at the same time giving a handle back to one of its children.
+	ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer
 	// Replicate a set of objects between backends.
 	ReplicateMultiple(ctx context.Context, digests digest.Set) error
 }

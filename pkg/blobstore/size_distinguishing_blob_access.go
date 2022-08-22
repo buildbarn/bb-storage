@@ -5,6 +5,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -35,6 +36,13 @@ func (ba *sizeDistinguishingBlobAccess) Get(ctx context.Context, digest digest.D
 		return ba.smallBlobAccess.Get(ctx, digest)
 	}
 	return ba.largeBlobAccess.Get(ctx, digest)
+}
+
+func (ba *sizeDistinguishingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	if parentDigest.GetSizeBytes() <= ba.cutoffSizeBytes {
+		return ba.smallBlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
+	}
+	return ba.largeBlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
 func (ba *sizeDistinguishingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

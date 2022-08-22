@@ -7,6 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -52,13 +53,15 @@ type metricsBlobAccess struct {
 	blobAccess BlobAccess
 	clock      clock.Clock
 
-	getBlobSizeBytes           prometheus.Observer
-	getDurationSeconds         prometheus.ObserverVec
-	putBlobSizeBytes           prometheus.Observer
-	putDurationSeconds         prometheus.ObserverVec
-	findMissingBatchSize       prometheus.Observer
-	findMissingDurationSeconds prometheus.ObserverVec
-	getCapabilitiesSeconds     prometheus.ObserverVec
+	getBlobSizeBytes                prometheus.Observer
+	getDurationSeconds              prometheus.ObserverVec
+	getFromCompositeBlobSizeBytes   prometheus.Observer
+	getFromCompositeDurationSeconds prometheus.ObserverVec
+	putBlobSizeBytes                prometheus.Observer
+	putDurationSeconds              prometheus.ObserverVec
+	findMissingBatchSize            prometheus.Observer
+	findMissingDurationSeconds      prometheus.ObserverVec
+	getCapabilitiesSeconds          prometheus.ObserverVec
 }
 
 // NewMetricsBlobAccess creates an adapter for BlobAccess that adds
@@ -74,13 +77,15 @@ func NewMetricsBlobAccess(blobAccess BlobAccess, clock clock.Clock, storageType,
 		blobAccess: blobAccess,
 		clock:      clock,
 
-		getBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Get"),
-		getDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Get"}),
-		putBlobSizeBytes:           blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Put"),
-		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Put"}),
-		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(storageType, backendType),
-		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "FindMissing"}),
-		getCapabilitiesSeconds:     blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "GetCapabilities"}),
+		getBlobSizeBytes:                blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Get"),
+		getDurationSeconds:              blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Get"}),
+		getFromCompositeBlobSizeBytes:   blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "GetFromComposite"),
+		getFromCompositeDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "GetFromComposite"}),
+		putBlobSizeBytes:                blobAccessOperationsBlobSizeBytes.WithLabelValues(storageType, backendType, "Put"),
+		putDurationSeconds:              blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Put"}),
+		findMissingBatchSize:            blobAccessOperationsFindMissingBatchSize.WithLabelValues(storageType, backendType),
+		findMissingDurationSeconds:      blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "FindMissing"}),
+		getCapabilitiesSeconds:          blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "GetCapabilities"}),
 	}
 }
 
@@ -93,12 +98,29 @@ func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 	b := buffer.WithErrorHandler(
 		ba.blobAccess.Get(ctx, digest),
 		&metricsErrorHandler{
-			blobAccess: ba,
-			timeStart:  timeStart,
-			errorCode:  codes.OK,
+			blobAccess:      ba,
+			timeStart:       timeStart,
+			errorCode:       codes.OK,
+			durationSeconds: ba.getDurationSeconds,
 		})
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		ba.getBlobSizeBytes.Observe(float64(sizeBytes))
+	}
+	return b
+}
+
+func (ba *metricsBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	timeStart := ba.clock.Now()
+	b := buffer.WithErrorHandler(
+		ba.blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer),
+		&metricsErrorHandler{
+			blobAccess:      ba,
+			timeStart:       timeStart,
+			errorCode:       codes.OK,
+			durationSeconds: ba.getFromCompositeDurationSeconds,
+		})
+	if sizeBytes, err := b.GetSizeBytes(); err == nil {
+		ba.getFromCompositeBlobSizeBytes.Observe(float64(sizeBytes))
 	}
 	return b
 }
@@ -143,9 +165,10 @@ func (ba *metricsBlobAccess) GetCapabilities(ctx context.Context, instanceName d
 }
 
 type metricsErrorHandler struct {
-	blobAccess *metricsBlobAccess
-	timeStart  time.Time
-	errorCode  codes.Code
+	blobAccess      *metricsBlobAccess
+	timeStart       time.Time
+	errorCode       codes.Code
+	durationSeconds prometheus.ObserverVec
 }
 
 func (eh *metricsErrorHandler) OnError(err error) (buffer.Buffer, error) {
@@ -154,5 +177,5 @@ func (eh *metricsErrorHandler) OnError(err error) (buffer.Buffer, error) {
 }
 
 func (eh *metricsErrorHandler) Done() {
-	eh.blobAccess.updateDurationSeconds(eh.blobAccess.getDurationSeconds, eh.errorCode, eh.timeStart)
+	eh.blobAccess.updateDurationSeconds(eh.durationSeconds, eh.errorCode, eh.timeStart)
 }

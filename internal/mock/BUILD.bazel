@@ -80,6 +80,14 @@ gomock(
 )
 
 gomock(
+    name = "blobstore_slicing",
+    out = "blobstore_slicing.go",
+    interfaces = ["BlobSlicer"],
+    library = "//pkg/blobstore/slicing",
+    package = "mock",
+)
+
+gomock(
     name = "blockdevice",
     out = "blockdevice.go",
     interfaces = ["BlockDevice"],
@@ -261,6 +269,7 @@ go_library(
         ":blobstore_local.go",
         ":blobstore_replication.go",
         ":blobstore_sharding.go",
+        ":blobstore_slicing.go",
         ":blockdevice.go",
         ":buffer.go",
         ":builder.go",
@@ -285,6 +294,7 @@ go_library(
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
+        "//pkg/blobstore/slicing",
         "//pkg/builder",
         "//pkg/clock",
         "//pkg/digest",

@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -60,7 +61,7 @@ func NewMirroredBlobAccess(backendA, backendB blobstore.BlobAccess, replicatorAT
 	}
 }
 
-func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (ba *mirroredBlobAccess) getBlobReplicatorSelector() (blobstore.BlobAccess, replication.BlobReplicatorSelector) {
 	// Alternate requests between storage backends.
 	var firstBackend blobstore.BlobAccess
 	var firstBackendName, secondBackendName string
@@ -75,15 +76,39 @@ func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 		replicator = ba.replicatorAToB
 	}
 
-	return buffer.WithErrorHandler(
-		firstBackend.Get(ctx, digest),
-		&mirroredErrorHandler{
-			firstBackendName:  firstBackendName,
-			secondBackendName: secondBackendName,
-			replicator:        replicator,
-			context:           ctx,
-			digest:            digest,
-		})
+	return firstBackend, func(observedErr error) (replication.BlobReplicator, error) {
+		// A fatal error occurred. Prepend the name of the
+		// backend that triggered the error.
+		if status.Code(observedErr) != codes.NotFound {
+			if replicator != nil {
+				return nil, util.StatusWrap(observedErr, firstBackendName)
+			}
+			return nil, util.StatusWrap(observedErr, secondBackendName)
+		}
+
+		// Both storage backends returned NotFound. Return one
+		// of the errors in original form.
+		if replicator == nil {
+			return nil, observedErr
+		}
+
+		// Consult the other storage backend. It may still have
+		// a copy of the object. Attempt to sync it back to
+		// repair this inconsistency.
+		replicatorToReturn := replicator
+		replicator = nil
+		return replicatorToReturn, nil
+	}
+}
+
+func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
+	return replication.GetWithBlobReplicator(ctx, digest, firstBackend, successiveBackends)
+}
+
+func (ba *mirroredBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
+	return replication.GetFromCompositeWithBlobReplicator(ctx, parentDigest, childDigest, slicer, firstBackend, successiveBackends)
 }
 
 func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -178,41 +203,3 @@ func (ba *mirroredBlobAccess) GetCapabilities(ctx context.Context, instanceName 
 	}
 	return capabilities, nil
 }
-
-type mirroredErrorHandler struct {
-	firstBackendName  string
-	secondBackendName string
-	replicator        replication.BlobReplicator
-	context           context.Context
-	digest            digest.Digest
-}
-
-func (eh *mirroredErrorHandler) attemptedBothBackends() bool {
-	return eh.replicator == nil
-}
-
-func (eh *mirroredErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	// A fatal error occurred. Prepend the name of the backend that
-	// triggered the error.
-	if status.Code(err) != codes.NotFound {
-		if !eh.attemptedBothBackends() {
-			return nil, util.StatusWrap(err, eh.firstBackendName)
-		}
-		return nil, util.StatusWrap(err, eh.secondBackendName)
-	}
-
-	// Both storage backends returned NotFound. Return one of the
-	// errors in original form.
-	if eh.attemptedBothBackends() {
-		return nil, err
-	}
-
-	// Consult the other storage backend. It may still have a copy
-	// of the object. Attempt to sync it back to repair this
-	// inconsistency.
-	b := eh.replicator.ReplicateSingle(eh.context, eh.digest)
-	eh.replicator = nil
-	return b, nil
-}
-
-func (eh *mirroredErrorHandler) Done() {}

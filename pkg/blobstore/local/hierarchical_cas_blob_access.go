@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -208,6 +209,13 @@ func (ba *hierarchicalCASBlobAccess) Get(ctx context.Context, blobDigest digest.
 		}
 		return nil
 	})
+}
+
+func (ba *hierarchicalCASBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	// TODO: We can provide a better implementation that stores the
+	// resulting slices, just like FlatBlobAccess already has.
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {

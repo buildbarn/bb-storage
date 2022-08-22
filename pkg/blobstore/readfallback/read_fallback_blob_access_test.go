@@ -86,6 +86,32 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 	})
 }
 
+func TestReadFallbackBlobAccessGetFromComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	primary := mock.NewMockBlobAccess(ctrl)
+	secondary := mock.NewMockBlobAccess(ctrl)
+	replicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
+	parentDigest := digest.MustNewDigest("instance", "d20fb8dfa347cf895b38649410aeb3f8", 100)
+	childDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// We assume that tests for Get() provides coverage for other
+	// scenarios.
+
+	t.Run("SecondarySuccess", func(t *testing.T) {
+		primary.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
+			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		replicator.EXPECT().ReplicateComposite(ctx, parentDigest, childDigest, slicer).
+			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+}
+
 func TestReadFallbackBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

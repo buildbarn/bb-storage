@@ -79,6 +79,85 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 	})
 }
 
+func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+
+	t.Run("UnknownInstanceName", func(t *testing.T) {
+		// This request cannot be forwarded to any backend.
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("unknown")).Return(
+			nil,
+			"",
+			digest.NoopInstanceNamePatcher,
+			status.Error(codes.InvalidArgument, "Unknown instance name"))
+		blobSlicer := mock.NewMockBlobSlicer(ctrl)
+
+		_, err := blobAccess.GetFromComposite(
+			ctx,
+			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("unknown", "3123059c1c816471780539f6b6b738dc", 3),
+			blobSlicer,
+		).ToByteSlice(100)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
+	})
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		// Error messages should have the backend name prepended.
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		blobSlicer := mock.NewMockBlobSlicer(ctrl)
+		baseBlobAccess.EXPECT().GetFromComposite(
+			ctx,
+			digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("goodbye/world", "3123059c1c816471780539f6b6b738dc", 3),
+			blobSlicer,
+		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
+
+		_, err := blobAccess.GetFromComposite(
+			ctx,
+			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", "3123059c1c816471780539f6b6b738dc", 3),
+			blobSlicer,
+		).ToByteSlice(100)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		demultiplexedBlobAccessGetter.EXPECT().Call(digest.MustNewInstanceName("hello/world")).Return(
+			baseBlobAccess,
+			"Primary",
+			digest.NewInstanceNamePatcher(
+				digest.MustNewInstanceName("hello"),
+				digest.MustNewInstanceName("goodbye")),
+			nil)
+		blobSlicer := mock.NewMockBlobSlicer(ctrl)
+		baseBlobAccess.EXPECT().GetFromComposite(
+			ctx,
+			digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("goodbye/world", "3123059c1c816471780539f6b6b738dc", 3),
+			blobSlicer,
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell")))
+
+		data, err := blobAccess.GetFromComposite(
+			ctx,
+			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", "3123059c1c816471780539f6b6b738dc", 3),
+			blobSlicer,
+		).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("ell"), data)
+	})
+}
+
 func TestDemultiplexingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

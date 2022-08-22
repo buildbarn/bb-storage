@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -30,13 +31,27 @@ func NewHierarchicalInstanceNamesBlobAccess(base BlobAccess) BlobAccess {
 }
 
 func (ba *hierarchicalInstanceNamesBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	parentDigests := digest.GetDigestsWithParentInstanceNames()
+	digests := digest.GetDigestsWithParentInstanceNames()
 	return buffer.WithErrorHandler(
-		ba.BlobAccess.Get(ctx, parentDigests[len(parentDigests)-1]),
-		&hierarchicalInstanceNamesErrorHandler{
+		ba.BlobAccess.Get(ctx, digests[len(digests)-1]),
+		&hierarchicalInstanceNamesGetErrorHandler{
+			blobAccess: ba.BlobAccess,
+			context:    ctx,
+			digests:    digests,
+		})
+}
+
+func (ba *hierarchicalInstanceNamesBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	parentDigests := parentDigest.GetDigestsWithParentInstanceNames()
+	childDigests := childDigest.GetDigestsWithParentInstanceNames()
+	return buffer.WithErrorHandler(
+		ba.BlobAccess.GetFromComposite(ctx, parentDigests[len(parentDigests)-1], childDigests[len(childDigests)-1], slicer),
+		&hierarchicalInstanceNamesGetFromCompositeErrorHandler{
 			blobAccess:    ba.BlobAccess,
 			context:       ctx,
 			parentDigests: parentDigests,
+			childDigests:  childDigests,
+			slicer:        slicer,
 		})
 }
 
@@ -117,13 +132,38 @@ func (ba *hierarchicalInstanceNamesBlobAccess) FindMissing(ctx context.Context, 
 	return finallyMissing.Build(), nil
 }
 
-type hierarchicalInstanceNamesErrorHandler struct {
+type hierarchicalInstanceNamesGetErrorHandler struct {
+	blobAccess BlobAccess
+	context    context.Context
+	digests    []digest.Digest
+}
+
+func (eh *hierarchicalInstanceNamesGetErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	if status.Code(err) != codes.NotFound {
+		// Serious error. Prepend the instance name, so that
+		// errors can be disambiguated.
+		return nil, util.StatusWrapf(err, "Instance name %#v", eh.digests[len(eh.digests)-1].GetInstanceName().String())
+	}
+	if len(eh.digests) == 1 {
+		// The object was found in none of the instance names.
+		// There is no need to prepend the instance name.
+		return nil, err
+	}
+	eh.digests = eh.digests[:len(eh.digests)-1]
+	return eh.blobAccess.Get(eh.context, eh.digests[len(eh.digests)-1]), nil
+}
+
+func (eh *hierarchicalInstanceNamesGetErrorHandler) Done() {}
+
+type hierarchicalInstanceNamesGetFromCompositeErrorHandler struct {
 	blobAccess    BlobAccess
 	context       context.Context
 	parentDigests []digest.Digest
+	childDigests  []digest.Digest
+	slicer        slicing.BlobSlicer
 }
 
-func (eh *hierarchicalInstanceNamesErrorHandler) OnError(err error) (buffer.Buffer, error) {
+func (eh *hierarchicalInstanceNamesGetFromCompositeErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	if status.Code(err) != codes.NotFound {
 		// Serious error. Prepend the instance name, so that
 		// errors can be disambiguated.
@@ -135,7 +175,13 @@ func (eh *hierarchicalInstanceNamesErrorHandler) OnError(err error) (buffer.Buff
 		return nil, err
 	}
 	eh.parentDigests = eh.parentDigests[:len(eh.parentDigests)-1]
-	return eh.blobAccess.Get(eh.context, eh.parentDigests[len(eh.parentDigests)-1]), nil
+	eh.childDigests = eh.childDigests[:len(eh.childDigests)-1]
+	return eh.blobAccess.GetFromComposite(
+		eh.context,
+		eh.parentDigests[len(eh.parentDigests)-1],
+		eh.childDigests[len(eh.childDigests)-1],
+		eh.slicer,
+	), nil
 }
 
-func (eh *hierarchicalInstanceNamesErrorHandler) Done() {}
+func (eh *hierarchicalInstanceNamesGetFromCompositeErrorHandler) Done() {}

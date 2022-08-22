@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -35,6 +36,13 @@ func (ba *authorizingBlobAccess) Get(ctx context.Context, d digest.Digest) buffe
 		return buffer.NewBufferFromError(util.StatusWrap(err, "Authorization"))
 	}
 	return ba.BlobAccess.Get(ctx, d)
+}
+
+func (ba *authorizingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	if err := auth.AuthorizeSingleInstanceName(ctx, ba.getAuthorizer, parentDigest.GetInstanceName()); err != nil {
+		return buffer.NewBufferFromError(util.StatusWrap(err, "Authorization"))
+	}
+	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
 func (ba *authorizingBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {

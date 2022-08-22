@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -24,6 +25,10 @@ func NewNoopBlobReplicator(source blobstore.BlobAccess) BlobReplicator {
 
 func (br noopBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	return br.source.Get(ctx, digest)
+}
+
+func (br noopBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
 func (br noopBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/proto/iscc",

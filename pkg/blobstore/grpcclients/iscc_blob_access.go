@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 
@@ -41,6 +42,11 @@ func (ba *isccBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.
 		return buffer.NewBufferFromError(err)
 	}
 	return buffer.NewProtoBufferFromProto(previousExecutionStats, buffer.BackendProvided(buffer.Irreparable(digest)))
+}
+
+func (ba *isccBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *isccBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
