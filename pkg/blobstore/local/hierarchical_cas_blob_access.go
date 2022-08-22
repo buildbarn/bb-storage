@@ -114,7 +114,7 @@ func (ba *hierarchicalCASBlobAccess) syncFromCanonicalEntry(canonicalKey, lookup
 }
 
 // finalizePut is called to finalize a write to the data store. This
-// method must becalled while holding the write lock.
+// method must be called while holding the write lock.
 func (ba *hierarchicalCASBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, canonicalKey, lookupKey Key) error {
 	// Finalize the write of the data.
 	location, err := putFinalizer()
