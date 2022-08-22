@@ -962,6 +962,7 @@ def go_dependencies():
     go_repository(
         name = "org_golang_x_lint",
         importpath = "golang.org/x/lint",
+        patches = ["//:patches/org_golang_x_lint/generic.diff"],
         sum = "h1:2M3HP5CCK1Si9FQhwnzYhXdG6DXeebvUHFpre8QvbyI=",
         version = "v0.0.0-20201208152925-83fdc39ff7b5",
     )
