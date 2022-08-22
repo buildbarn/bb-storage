@@ -71,7 +71,7 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 		// The blob is not expected to disappear from storage
 		// soon, so no refreshing needs to take place.
 		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
-		getter := mock.NewMockKeyBlobGetter(ctrl)
+		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, false)
 		reader := mock.NewMockReadCloser(ctrl)
 		getter.EXPECT().Call(helloDigest).
@@ -93,13 +93,13 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 		// can simply copy that entry and return the contents of
 		// that object.
 		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
-		getter1 := mock.NewMockKeyBlobGetter(ctrl)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
-		getter2 := mock.NewMockKeyBlobGetter(ctrl)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
 		keyLocationMap.EXPECT().Get(canonicalKey).Return(location2, nil)
-		getter3 := mock.NewMockKeyBlobGetter(ctrl)
+		getter3 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location2).Return(getter3.Call, false)
 		keyLocationMap.EXPECT().Put(lookupKey1, location2)
 		reader := mock.NewMockReadCloser(ctrl)
@@ -125,10 +125,10 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 		// the lookup key and the canonical key need to be
 		// updated.
 		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
-		getter1 := mock.NewMockKeyBlobGetter(ctrl)
+		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
-		getter2 := mock.NewMockKeyBlobGetter(ctrl)
+		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
 		keyLocationMap.EXPECT().Get(canonicalKey).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
