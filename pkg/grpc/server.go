@@ -45,10 +45,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		unaryInterceptors := []grpc.UnaryServerInterceptor{
 			grpc_prometheus.UnaryServerInterceptor,
 			otelgrpc.UnaryServerInterceptor(),
+			RequestMetadataTracingUnaryInterceptor,
 		}
 		streamInterceptors := []grpc.StreamServerInterceptor{
 			grpc_prometheus.StreamServerInterceptor,
 			otelgrpc.StreamServerInterceptor(),
+			RequestMetadataTracingStreamInterceptor,
 		}
 
 		// Optional: Tracing attributes.
