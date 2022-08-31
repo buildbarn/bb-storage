@@ -3,14 +3,6 @@ workspace(name = "com_github_buildbarn_bb_storage")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "bazel_gomock",
-    patches = ["//:patches/bazel_gomock/upstream-pr-50.diff"],
-    sha256 = "4baf3389ca48c30d8b072a027923c91c45915ab8061e39e7a0c62706332e096e",
-    strip_prefix = "bazel_gomock-1.2",
-    urls = ["https://github.com/jmhodges/bazel_gomock/archive/v1.2.tar.gz"],
-)
-
-http_archive(
     name = "io_bazel_rules_docker",
     sha256 = "59d5b42ac315e7eadffa944e86e90c2990110a1c8075f1cd145f487e999d22b3",
     strip_prefix = "rules_docker-0.17.0",
