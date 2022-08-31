@@ -41,7 +41,7 @@
             },
             {
                "name": "Protobuf generation",
-               "run": "bazel build $(bazel query 'kind(\"go_proto_library\", //...)')\nfind . -name '*.pb.go' -delete\nfind bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\ndone\n"
+               "run": "find . bazel-bin/pkg/proto -name '*.pb.go' -delete\nbazel build $(bazel query 'kind(\"go_proto_library\", //...)')\nfind bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\ndone\n"
             },
             {
                "name": "Test style conformance",
