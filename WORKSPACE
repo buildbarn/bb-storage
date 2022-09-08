@@ -143,3 +143,17 @@ npm_install(
     package_lock_json = "//:package-lock.json",
     symlink_node_modules = False,
 )
+
+http_archive(
+    name = "io_opentelemetry_proto",
+    build_file_content = """
+proto_library(
+    name = "common_proto",
+    srcs = ["opentelemetry/proto/common/v1/common.proto"],
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "464bc2b348e674a1a03142e403cbccb01be8655b6de0f8bfe733ea31fcd421be",
+    strip_prefix = "opentelemetry-proto-0.19.0",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v0.19.0.tar.gz"],
+)

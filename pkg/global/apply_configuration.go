@@ -33,7 +33,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/propagation"
@@ -217,29 +216,9 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 
 			// Set resource attributes, so that this process can be
 			// identified uniquely.
-			fields := tracingConfiguration.ResourceAttributes
-			resourceAttributes := make([]attribute.KeyValue, 0, len(fields))
-			for key, value := range fields {
-				switch kind := value.Kind.(type) {
-				case *pb.TracingConfiguration_ResourceAttributeValue_Bool:
-					resourceAttributes = append(resourceAttributes, attribute.Bool(key, kind.Bool))
-				case *pb.TracingConfiguration_ResourceAttributeValue_Int64:
-					resourceAttributes = append(resourceAttributes, attribute.Int64(key, kind.Int64))
-				case *pb.TracingConfiguration_ResourceAttributeValue_Float64:
-					resourceAttributes = append(resourceAttributes, attribute.Float64(key, kind.Float64))
-				case *pb.TracingConfiguration_ResourceAttributeValue_String_:
-					resourceAttributes = append(resourceAttributes, attribute.String(key, kind.String_))
-				case *pb.TracingConfiguration_ResourceAttributeValue_BoolArray_:
-					resourceAttributes = append(resourceAttributes, attribute.BoolSlice(key, kind.BoolArray.Values))
-				case *pb.TracingConfiguration_ResourceAttributeValue_Int64Array_:
-					resourceAttributes = append(resourceAttributes, attribute.Int64Slice(key, kind.Int64Array.Values))
-				case *pb.TracingConfiguration_ResourceAttributeValue_Float64Array_:
-					resourceAttributes = append(resourceAttributes, attribute.Float64Slice(key, kind.Float64Array.Values))
-				case *pb.TracingConfiguration_ResourceAttributeValue_StringArray_:
-					resourceAttributes = append(resourceAttributes, attribute.StringSlice(key, kind.StringArray.Values))
-				default:
-					return nil, nil, status.Error(codes.InvalidArgument, "Resource attribute is of an unknown type")
-				}
+			resourceAttributes, err := bb_otel.NewKeyValueListFromProto(tracingConfiguration.ResourceAttributes, "")
+			if err != nil {
+				return nil, nil, util.StatusWrap(err, "Failed to create resource attributes")
 			}
 			tracerProviderOptions = append(
 				tracerProviderOptions,

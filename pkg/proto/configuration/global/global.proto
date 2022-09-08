@@ -4,6 +4,7 @@ package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "opentelemetry/proto/common/v1/common.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/http/http.proto";
 
@@ -124,36 +125,6 @@ message TracingConfiguration {
   // The backends to which to submit trace spans.
   repeated Backend backends = 1;
 
-  message ResourceAttributeValue {
-    message BoolArray {
-      repeated bool values = 1;
-    }
-
-    message Int64Array {
-      repeated int64 values = 1;
-    }
-
-    message Float64Array {
-      repeated double values = 1;
-    }
-
-    message StringArray {
-      repeated string values = 1;
-    }
-
-    oneof kind {
-      bool bool = 1;
-      int64 int64 = 2;
-      double float64 = 3;
-      string string = 4;
-
-      BoolArray bool_array = 5;
-      Int64Array int64_array = 6;
-      Float64Array float64_array = 7;
-      StringArray string_array = 8;
-    }
-  }
-
   // Resource attributes to announce to backends. These can be used to
   // uniquely identify processes to the tracing system. Conventions
   // about the naming of attributes exist. For example, an attribute
@@ -163,7 +134,7 @@ message TracingConfiguration {
   // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/sdk.md
   // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md
   // https://pkg.go.dev/go.opentelemetry.io/otel/semconv/v1.4.0
-  map<string, ResourceAttributeValue> resource_attributes = 2;
+  repeated opentelemetry.proto.common.v1.KeyValue resource_attributes = 2;
 
   message Sampler {
     message ParentBased {

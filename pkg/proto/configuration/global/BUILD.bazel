@@ -18,6 +18,7 @@ proto_library(
         "//pkg/proto/configuration/http:http_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
+        "@io_opentelemetry_proto//:common_proto",
     ],
 )
 
@@ -29,5 +30,6 @@ go_proto_library(
     deps = [
         "//pkg/proto/configuration/grpc",
         "//pkg/proto/configuration/http",
+        "@io_opentelemetry_go_proto_otlp//common/v1:common",
     ],
 )
