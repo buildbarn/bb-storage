@@ -22,14 +22,14 @@ import (
 func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := context.WithValue(ctx, auth.AuthenticationMetadata{}, map[string]string{"header": "value"})
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadata(map[string]string{"header": "value"}))
 	invoker := mock.NewMockUnaryInvoker(ctrl)
 	req := &emptypb.Empty{}
 	resp := &emptypb.Empty{}
 
 	t.Run("AddHeader", func(t *testing.T) {
 		interceptor := bb_grpc.NewMetadataExtractingAndForwardingUnaryClientInterceptor(func(ctx context.Context) (bb_grpc.MetadataHeaderValues, error) {
-			kv := ctx.Value(auth.AuthenticationMetadata{})
+			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()
 			var headers bb_grpc.MetadataHeaderValues
 			for k, v := range kv.(map[string]string) {
 				headers = append(headers, k, v)
@@ -66,14 +66,14 @@ func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 func TestMetadataExtractingAndForwardingStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := context.WithValue(ctx, auth.AuthenticationMetadata{}, map[string]string{"header": "value"})
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadata(map[string]string{"header": "value"}))
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}
 	streamer := mock.NewMockStreamer(ctrl)
 	clientStream := mock.NewMockClientStream(ctrl)
 
 	t.Run("AddHeader", func(t *testing.T) {
 		interceptor := bb_grpc.NewMetadataExtractingAndForwardingStreamClientInterceptor(func(ctx context.Context) (bb_grpc.MetadataHeaderValues, error) {
-			kv := ctx.Value(auth.AuthenticationMetadata{})
+			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()
 			var headers bb_grpc.MetadataHeaderValues
 			for k, v := range kv.(map[string]string) {
 				headers = append(headers, k, v)

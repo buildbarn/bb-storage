@@ -175,10 +175,14 @@ message ServerConfiguration {
 
   // Policy for authenticating clients against the gRPC server.
   //
-  // Each authentication policy yields a JSON-like authentication
-  // metadata object that is passed on to the authorization layer. The
-  // authentication metadata may be used to store the username or sets
-  // of permissions.
+  // Each authentication policy yields a freeform JSON-like
+  // authentication metadata object that is passed on to the
+  // authorization layer. The authentication metadata may be used to
+  // store the username or sets of permissions.
+  //
+  // The authentication metadata object may contain certain fields that
+  // have a special meaning, such as "public". Those fields and their
+  // interpretation are documented in pkg/proto/auth/auth.proto.
   AuthenticationPolicy authentication_policy = 4;
 
   // Maximum size of a Protobuf message that may be received by this

@@ -3,11 +3,13 @@ package jwt
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"math"
 	"regexp"
 	"sync"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/jmespath/go-jmespath"
@@ -19,7 +21,7 @@ var jwtHeaderPattern = regexp.MustCompile("^Bearer\\s+(([-_a-zA-Z0-9]+)\\.([-_a-
 type response struct {
 	notBefore      time.Time
 	expirationTime time.Time
-	metadata       interface{}
+	metadata       *auth.AuthenticationMetadata
 }
 
 func (r *response) isAuthenticated(now time.Time) bool {
@@ -118,7 +120,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	}
 
 	// Convert payload to authentication metadata.
-	metadata, err := a.metadataExtractor.Search(fullPayloadMessage)
+	rawMetadata, err := a.metadataExtractor.Search(fullPayloadMessage)
 	if err != nil {
 		return unauthenticated
 	}
@@ -131,10 +133,16 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	if json.Unmarshal(decodedFields[1], &payloadMessage) != nil {
 		return unauthenticated
 	}
+
+	authenticationMetadata, err := auth.NewAuthenticationMetadata(rawMetadata)
+	if err != nil {
+		log.Print("Failed to create authentication metadata: ", err)
+		return unauthenticated
+	}
 	r := response{
 		notBefore:      farHistory,
 		expirationTime: farFuture,
-		metadata:       metadata,
+		metadata:       authenticationMetadata,
 	}
 	if nbf := payloadMessage.Nbf; nbf != nil {
 		// Extract "nbf" (Not Before) claim.
@@ -159,7 +167,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 // and returned true if one or more headers contain a token whose
 // signature can be validated, and whose "exp" (Expiration Time) and
 // "nbf" (Not Before) claims are in bounds.
-func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) (interface{}, bool) {
+func (a *AuthorizationHeaderParser) ParseAuthorizationHeaders(headers []string) (*auth.AuthenticationMetadata, bool) {
 	now := a.clock.Now()
 
 	a.lock.Lock()

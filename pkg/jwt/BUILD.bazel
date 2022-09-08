@@ -16,6 +16,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/jwt",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/auth",
         "//pkg/clock",
         "//pkg/eviction",
         "//pkg/proto/configuration/jwt",

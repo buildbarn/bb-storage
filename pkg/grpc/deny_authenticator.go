@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/auth"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -21,6 +23,6 @@ func NewDenyAuthenticator(message string) Authenticator {
 	}
 }
 
-func (a denyAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
+func (a denyAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
 	return nil, a.err
 }

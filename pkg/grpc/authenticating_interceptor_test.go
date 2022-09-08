@@ -12,13 +12,15 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	authenticator := mock.NewMockAuthenticator(ctrl)
-	authenticator.EXPECT().Authenticate(ctx).Return("You're totally who you say you are", nil)
 
 	interceptor := bb_grpc.NewAuthenticatingUnaryInterceptor(authenticator)
 	handler := mock.NewMockUnaryHandler(ctrl)
@@ -26,13 +28,39 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 	resp := &emptypb.Empty{}
 
 	t.Run("ReturnsModifiedCtx", func(t *testing.T) {
+		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
 		handler.EXPECT().Call(gomock.Any(), req).DoAndReturn(
 			func(ctx context.Context, req interface{}) (interface{}, error) {
-				require.Equal(t, "You're totally who you say you are", ctx.Value(auth.AuthenticationMetadata{}))
+				require.Equal(t, "You're totally who you say you are", auth.AuthenticationMetadataFromContext(ctx).GetRaw())
 				return resp, nil
 			})
 
 		gotResp, err := interceptor(ctx, req, nil, handler.Call)
+		require.NoError(t, err)
+		require.Equal(t, resp, gotResp)
+	})
+
+	t.Run("InstallsSpanAttributes", func(t *testing.T) {
+		span := mock.NewMockSpan(ctrl)
+		ctxWithSpan := trace.ContextWithSpan(ctx, span)
+		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadata(map[string]any{
+			"tracingAttributes": []any{
+				map[string]any{
+					"key": "username",
+					"value": map[string]any{
+						"stringValue": "john_doe",
+					},
+				},
+			},
+		}), nil)
+		span.EXPECT().SetAttributes(attribute.String("auth.username", "john_doe"))
+
+		handler.EXPECT().Call(gomock.Any(), req).DoAndReturn(
+			func(ctx context.Context, req interface{}) (interface{}, error) {
+				return resp, nil
+			})
+
+		gotResp, err := interceptor(ctxWithSpan, req, nil, handler.Call)
 		require.NoError(t, err)
 		require.Equal(t, resp, gotResp)
 	})
@@ -42,20 +70,43 @@ func TestAuthenticatingStreamInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	authenticator := mock.NewMockAuthenticator(ctrl)
-	authenticator.EXPECT().Authenticate(ctx).Return("You're totally who you say you are", nil)
 
 	interceptor := bb_grpc.NewAuthenticatingStreamInterceptor(authenticator)
 	handler := mock.NewMockStreamHandler(ctrl)
 
-	serverStream := mock.NewMockServerStream(ctrl)
-	serverStream.EXPECT().Context().Return(ctx).AnyTimes()
-
 	t.Run("ReturnsModifiedCtx", func(t *testing.T) {
+		serverStream := mock.NewMockServerStream(ctrl)
+		serverStream.EXPECT().Context().Return(ctx).AnyTimes()
+		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
 		handler.EXPECT().Call(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(srv interface{}, stream grpc.ServerStream) error {
-				require.Equal(t, "You're totally who you say you are", stream.Context().Value(auth.AuthenticationMetadata{}))
+				require.Equal(t, "You're totally who you say you are", auth.AuthenticationMetadataFromContext(stream.Context()).GetRaw())
 				return nil
 			})
+
+		require.NoError(t, interceptor(nil, serverStream, nil, handler.Call))
+	})
+
+	t.Run("InstallsSpanAttributes", func(t *testing.T) {
+		serverStream := mock.NewMockServerStream(ctrl)
+		span := mock.NewMockSpan(ctrl)
+		ctxWithSpan := trace.ContextWithSpan(ctx, span)
+		serverStream.EXPECT().Context().Return(ctxWithSpan).AnyTimes()
+		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadata(map[string]any{
+			"tracingAttributes": []any{
+				map[string]any{
+					"key": "username",
+					"value": map[string]any{
+						"stringValue": "john_doe",
+					},
+				},
+			},
+		}), nil)
+		handler.EXPECT().Call(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(srv interface{}, stream grpc.ServerStream) error {
+				return nil
+			})
+		span.EXPECT().SetAttributes(attribute.String("auth.username", "john_doe"))
 
 		require.NoError(t, interceptor(nil, serverStream, nil, handler.Call))
 	})

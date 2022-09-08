@@ -2,10 +2,12 @@ package grpc
 
 import (
 	"context"
+
+	"github.com/buildbarn/bb-storage/pkg/auth"
 )
 
 type allowAuthenticator struct {
-	metadata interface{}
+	metadata *auth.AuthenticationMetadata
 }
 
 // NewAllowAuthenticator creates an implementation of Authenticator that
@@ -13,12 +15,12 @@ type allowAuthenticator struct {
 // case a gRPC server needs to be started that does not perform any
 // authentication (e.g., one listening on a UNIX socket with restricted
 // file permissions).
-func NewAllowAuthenticator(metadata interface{}) Authenticator {
+func NewAllowAuthenticator(metadata *auth.AuthenticationMetadata) Authenticator {
 	return allowAuthenticator{
 		metadata: metadata,
 	}
 }
 
-func (a allowAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
+func (a allowAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
 	return a.metadata, nil
 }

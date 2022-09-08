@@ -7,6 +7,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"google.golang.org/grpc"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // NewAuthenticatingUnaryInterceptor creates a gRPC request interceptor
@@ -18,7 +20,8 @@ func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerIntercep
 		if err != nil {
 			return nil, err
 		}
-		return handler(context.WithValue(ctx, auth.AuthenticationMetadata{}, metadata), req)
+		trace.SpanFromContext(ctx).SetAttributes(metadata.GetTracingAttributes()...)
+		return handler(auth.NewContextWithAuthenticationMetadata(ctx, metadata), req)
 	}
 }
 
@@ -33,8 +36,9 @@ func NewAuthenticatingStreamInterceptor(a Authenticator) grpc.StreamServerInterc
 		if err != nil {
 			return err
 		}
+		trace.SpanFromContext(ctx).SetAttributes(metadata.GetTracingAttributes()...)
 		wrappedServerStream := grpc_middleware.WrapServerStream(ss)
-		wrappedServerStream.WrappedContext = context.WithValue(ctx, auth.AuthenticationMetadata{}, metadata)
+		wrappedServerStream.WrappedContext = auth.NewContextWithAuthenticationMetadata(ctx, metadata)
 
 		return handler(srv, wrappedServerStream)
 	}

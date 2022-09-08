@@ -33,7 +33,7 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 	t.Run("EmptyAuthenticationMetadata", func(t *testing.T) {
 		// The authentication metadata does not include the
 		// "permittedInstanceNames" field.
-		ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, nil)
+		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(nil))
 		errs := a.Authorize(ctx, instanceNames)
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[0])
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[1])
@@ -43,9 +43,9 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 		// The authentication metadata includes a
 		// "permittedInstanceNames" field that gives access to the
 		// "allowed" instance name.
-		ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string]interface{}{
-			"permittedInstanceNames": []interface{}{"allowed"},
-		})
+		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string]any{
+			"permittedInstanceNames": []any{"allowed"},
+		}))
 		errs := a.Authorize(ctx, instanceNames)
 		require.NoError(t, errs[0])
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[1])

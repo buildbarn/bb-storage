@@ -35,9 +35,9 @@ func TestJMESPathMetadataExtractorSimple(t *testing.T) {
 		"hdr-from-both", "boop",
 	})...)
 
-	ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string]interface{}{
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string]any{
 		"beep": "boop",
-	})
+	}))
 
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("whiz", "bang"))
 
@@ -55,7 +55,7 @@ func TestJMESPathMetadataExtractorAuthMetadataMapToString(t *testing.T) {
 	// jmespath hard-codes map[string]interface{} as a valid type,
 	// but ignores map[string]string
 	// Make sure we give a good error in this case
-	ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string]string{"beep": "boop"})
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string]string{"beep": "boop"}))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-string metadata value"), err)
@@ -68,7 +68,7 @@ func TestJMESPathMetadataExtractorAuthMetadataMapToStringSlice(t *testing.T) {
 	// jmespath hard-codes map[string]interface{} as a valid type,
 	// but ignores map[string]string
 	// Make sure we give a good error in this case
-	ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string][]string{"beep": {"boop"}})
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string][]string{"beep": {"boop"}}))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-string metadata value"), err)
@@ -81,7 +81,7 @@ func TestJMESPathMetadataExtractorAuthMatchToString(t *testing.T) {
 	// jmespath hard-codes map[string]interface{} as a valid type,
 	// but ignores map[string]string
 	// Make sure we give a good error in this case
-	ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string]interface{}{"beep": "boop"})
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string]any{"beep": "boop"}))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-slice metadata value"), err)
@@ -94,7 +94,7 @@ func TestJMESPathMetadataExtractorAuthMatchToHeterogenousSlice(t *testing.T) {
 	// jmespath hard-codes map[string]interface{} as a valid type,
 	// but ignores map[string]string
 	// Make sure we give a good error in this case
-	ctx := context.WithValue(context.Background(), auth.AuthenticationMetadata{}, map[string]interface{}{"beep": []interface{}{"boop", 1}})
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadata(map[string]any{"beep": []any{"boop", 1}}))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-string metadata value"), err)

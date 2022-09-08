@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -93,7 +94,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)
 	clock := mock.NewMockClock(ctrl)
-	expectedMetadata := map[string]interface{}{"username": "John Doe"}
+	expectedMetadata := auth.MustNewAuthenticationMetadata(map[string]interface{}{"username": "John Doe"})
 	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, expectedMetadata)
 
 	t.Run("NoGRPC", func(t *testing.T) {

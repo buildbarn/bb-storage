@@ -76,7 +76,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"sub":  "1234567890",
 			"name": "John Doe",
 			"iat":  1516239022.0,
-		}, metadata)
+		}, metadata.GetRaw())
 
 		// Successive calls for the same token should have cache hits.
 		clock.EXPECT().Now().Return(time.Unix(1635781701, 0))
@@ -89,7 +89,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"sub":  "1234567890",
 			"name": "John Doe",
 			"iat":  1516239022.0,
-		}, metadata)
+		}, metadata.GetRaw())
 	})
 
 	t.Run("WithTimestamps", func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"name": "John Doe",
 			"nbf":  1635781780.0,
 			"exp":  1635781792.0,
-		}, metadata)
+		}, metadata.GetRaw())
 
 		// Future calls that occur before the expiration time
 		// should have cache hits.
@@ -148,7 +148,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"name": "John Doe",
 			"nbf":  1635781780.0,
 			"exp":  1635781792.0,
-		}, metadata)
+		}, metadata.GetRaw())
 
 		clock.EXPECT().Now().Return(time.Unix(1635781791, 0))
 
@@ -161,7 +161,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"name": "John Doe",
 			"nbf":  1635781780.0,
 			"exp":  1635781792.0,
-		}, metadata)
+		}, metadata.GetRaw())
 
 		// If the time exceeds the original expiration time, the
 		// token should no longer be valid.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
@@ -17,7 +18,7 @@ import (
 // Implementations may grant access based on TLS connection state,
 // provided headers, source IP address ranges, etc. etc. etc.
 type Authenticator interface {
-	Authenticate(ctx context.Context) (interface{}, error)
+	Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error)
 }
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
@@ -28,7 +29,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	}
 	switch policyKind := policy.Policy.(type) {
 	case *configuration.AuthenticationPolicy_Allow:
-		return NewAllowAuthenticator(policyKind.Allow.AsInterface()), nil
+		authenticationMetadata, err := auth.NewAuthenticationMetadata(policyKind.Allow.AsInterface())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
+		}
+		return NewAllowAuthenticator(authenticationMetadata), nil
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
 		for _, childConfiguration := range policyKind.Any.Policies {
@@ -46,10 +51,14 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
 			return nil, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
 		}
+		authenticationMetadata, err := auth.NewAuthenticationMetadata(policyKind.TlsClientCertificate.Metadata.AsInterface())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
+		}
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock,
-			policyKind.TlsClientCertificate.Metadata.AsInterface(),
+			authenticationMetadata,
 		), nil
 	case *configuration.AuthenticationPolicy_Jwt:
 		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)

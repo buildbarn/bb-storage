@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -29,7 +30,7 @@ func NewAnyAuthenticator(authenticators []Authenticator) Authenticator {
 	}
 }
 
-func (a *anyAuthenticator) Authenticate(ctx context.Context) (interface{}, error) {
+func (a *anyAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
 	var unauthenticatedErrs []error
 	var otherErr error
 	for _, authenticator := range a.authenticators {

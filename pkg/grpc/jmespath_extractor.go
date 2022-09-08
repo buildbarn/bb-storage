@@ -27,8 +27,8 @@ import (
 func NewJMESPathMetadataExtractor(expression *jmespath.JMESPath) (MetadataExtractor, error) {
 	return func(ctx context.Context) (MetadataHeaderValues, error) {
 		searchContext := make(map[string]interface{}, 2)
-		if authMetadata := ctx.Value(auth.AuthenticationMetadata{}); authMetadata != nil {
-			searchContext["authenticationMetadata"] = authMetadata
+		if authenticationMetadata := auth.AuthenticationMetadataFromContext(ctx); authenticationMetadata != nil {
+			searchContext["authenticationMetadata"] = authenticationMetadata.GetRaw()
 		}
 
 		if md, ok := metadata.FromIncomingContext(ctx); ok {

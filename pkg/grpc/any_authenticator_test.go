@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -35,20 +36,20 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// There is no need to check the third authentication
 		// backend if the second already returns success.
-		m0.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No token present"))
-		m1.EXPECT().Authenticate(ctx).Return("You're totally who you say you are", nil)
+		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No token present"))
+		m1.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
-		require.Equal(t, "You're totally who you say you are", metadata)
+		require.Equal(t, "You're totally who you say you are", metadata.GetRaw())
 	})
 
 	t.Run("AllUnauthenticated", func(t *testing.T) {
 		// A user is unauthenticated if all backends consider it
 		// being unauthenticated.
-		m0.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
-		m1.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No token present"))
-		m2.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "Not an internal IP range"))
+		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
+		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No token present"))
+		m2.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "Not an internal IP range"))
 
 		_, err := a.Authenticate(ctx)
 		testutil.RequireEqualStatus(
@@ -60,9 +61,9 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 	t.Run("AllUnauthenticatedIdentical", func(t *testing.T) {
 		// Identical error message should be filtered out, so
 		// that error messages aren't too spammy.
-		m0.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
-		m1.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
-		m2.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
+		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
+		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
+		m2.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
 
 		_, err := a.Authenticate(ctx)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unauthenticated, "No TLS used"), err)
@@ -72,9 +73,9 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// If an internal error occurs, we should return it, as
 		// that may be the reason the user cannot be
 		// authenticated.
-		m0.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
-		m1.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
-		m2.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "Not an internal IP range"))
+		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
+		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
+		m2.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "Not an internal IP range"))
 
 		_, err := a.Authenticate(ctx)
 		testutil.RequireEqualStatus(
@@ -88,12 +89,12 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// requests to be dropped that can be validated through
 		// some other backend. This prevents the service from
 		// going down entirely.
-		m0.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Unauthenticated, "No TLS used"))
-		m1.EXPECT().Authenticate(ctx).Return(ctx, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
-		m2.EXPECT().Authenticate(ctx).Return("You're totally who you say you are", nil)
+		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
+		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
+		m2.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
-		require.Equal(t, "You're totally who you say you are", metadata)
+		require.Equal(t, "You're totally who you say you are", metadata.GetRaw())
 	})
 }
