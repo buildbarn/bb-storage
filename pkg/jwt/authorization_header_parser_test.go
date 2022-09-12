@@ -21,7 +21,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock,
 		signatureValidator,
 		jmespath.MustCompile("forbiddenField == null"),
-		jmespath.MustCompile("@"),
+		jmespath.MustCompile("{\"private\": @}"),
 		1000,
 		eviction.NewLRUSet[string]())
 
@@ -72,10 +72,12 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
 		})
 		require.True(t, ok)
-		require.Equal(t, map[string]interface{}{
-			"sub":  "1234567890",
-			"name": "John Doe",
-			"iat":  1516239022.0,
+		require.Equal(t, map[string]any{
+			"private": map[string]any{
+				"sub":  "1234567890",
+				"name": "John Doe",
+				"iat":  1516239022.0,
+			},
 		}, metadata.GetRaw())
 
 		// Successive calls for the same token should have cache hits.
@@ -85,10 +87,12 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
 		})
 		require.True(t, ok)
-		require.Equal(t, map[string]interface{}{
-			"sub":  "1234567890",
-			"name": "John Doe",
-			"iat":  1516239022.0,
+		require.Equal(t, map[string]any{
+			"private": map[string]any{
+				"sub":  "1234567890",
+				"name": "John Doe",
+				"iat":  1516239022.0,
+			},
 		}, metadata.GetRaw())
 	})
 
@@ -128,11 +132,13 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
-		require.Equal(t, map[string]interface{}{
-			"sub":  "1234567890",
-			"name": "John Doe",
-			"nbf":  1635781780.0,
-			"exp":  1635781792.0,
+		require.Equal(t, map[string]any{
+			"private": map[string]any{
+				"sub":  "1234567890",
+				"name": "John Doe",
+				"nbf":  1635781780.0,
+				"exp":  1635781792.0,
+			},
 		}, metadata.GetRaw())
 
 		// Future calls that occur before the expiration time
@@ -143,11 +149,13 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
-		require.Equal(t, map[string]interface{}{
-			"sub":  "1234567890",
-			"name": "John Doe",
-			"nbf":  1635781780.0,
-			"exp":  1635781792.0,
+		require.Equal(t, map[string]any{
+			"private": map[string]any{
+				"sub":  "1234567890",
+				"name": "John Doe",
+				"nbf":  1635781780.0,
+				"exp":  1635781792.0,
+			},
 		}, metadata.GetRaw())
 
 		clock.EXPECT().Now().Return(time.Unix(1635781791, 0))
@@ -156,11 +164,13 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
-		require.Equal(t, map[string]interface{}{
-			"sub":  "1234567890",
-			"name": "John Doe",
-			"nbf":  1635781780.0,
-			"exp":  1635781792.0,
+		require.Equal(t, map[string]any{
+			"private": map[string]any{
+				"sub":  "1234567890",
+				"name": "John Doe",
+				"nbf":  1635781780.0,
+				"exp":  1635781792.0,
+			},
 		}, metadata.GetRaw())
 
 		// If the time exceeds the original expiration time, the

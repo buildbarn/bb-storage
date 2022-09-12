@@ -7,12 +7,14 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAnyAuthenticatorZero(t *testing.T) {
@@ -37,11 +39,15 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// There is no need to check the third authentication
 		// backend if the second already returns success.
 		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No token present"))
-		m1.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
+		m1.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Public: structpb.NewStringValue("You're totally who you say you are"),
+		}), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
-		require.Equal(t, "You're totally who you say you are", metadata.GetRaw())
+		require.Equal(t, map[string]any{
+			"public": "You're totally who you say you are",
+		}, metadata.GetRaw())
 	})
 
 	t.Run("AllUnauthenticated", func(t *testing.T) {
@@ -91,10 +97,14 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// going down entirely.
 		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
 		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
-		m2.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
+		m2.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Public: structpb.NewStringValue("You're totally who you say you are"),
+		}), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
-		require.Equal(t, "You're totally who you say you are", metadata.GetRaw())
+		require.Equal(t, map[string]any{
+			"public": "You're totally who you say you are",
+		}, metadata.GetRaw())
 	})
 }

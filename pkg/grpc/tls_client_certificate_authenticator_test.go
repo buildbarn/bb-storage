@@ -11,6 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
@@ -94,7 +96,13 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)
 	clock := mock.NewMockClock(ctrl)
-	expectedMetadata := auth.MustNewAuthenticationMetadata(map[string]interface{}{"username": "John Doe"})
+	expectedMetadata := auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		Public: structpb.NewStructValue(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"username": structpb.NewStringValue("John Doe"),
+			},
+		}),
+	})
 	authenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, expectedMetadata)
 
 	t.Run("NoGRPC", func(t *testing.T) {

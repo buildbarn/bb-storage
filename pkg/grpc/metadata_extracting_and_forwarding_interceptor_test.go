@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -17,22 +18,29 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadata(map[string]string{"header": "value"}))
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		Private: structpb.NewStructValue(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"header": structpb.NewStringValue("value"),
+			},
+		}),
+	}))
 	invoker := mock.NewMockUnaryInvoker(ctrl)
 	req := &emptypb.Empty{}
 	resp := &emptypb.Empty{}
 
 	t.Run("AddHeader", func(t *testing.T) {
 		interceptor := bb_grpc.NewMetadataExtractingAndForwardingUnaryClientInterceptor(func(ctx context.Context) (bb_grpc.MetadataHeaderValues, error) {
-			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()
+			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()["private"]
 			var headers bb_grpc.MetadataHeaderValues
-			for k, v := range kv.(map[string]string) {
-				headers = append(headers, k, v)
+			for k, v := range kv.(map[string]any) {
+				headers = append(headers, k, v.(string))
 			}
 			return headers, nil
 		})
@@ -66,17 +74,23 @@ func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 func TestMetadataExtractingAndForwardingStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadata(map[string]string{"header": "value"}))
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		Private: structpb.NewStructValue(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"header": structpb.NewStringValue("value"),
+			},
+		}),
+	}))
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}
 	streamer := mock.NewMockStreamer(ctrl)
 	clientStream := mock.NewMockClientStream(ctrl)
 
 	t.Run("AddHeader", func(t *testing.T) {
 		interceptor := bb_grpc.NewMetadataExtractingAndForwardingStreamClientInterceptor(func(ctx context.Context) (bb_grpc.MetadataHeaderValues, error) {
-			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()
+			kv := auth.AuthenticationMetadataFromContext(ctx).GetRaw()["private"]
 			var headers bb_grpc.MetadataHeaderValues
-			for k, v := range kv.(map[string]string) {
-				headers = append(headers, k, v)
+			for k, v := range kv.(map[string]any) {
+				headers = append(headers, k, v.(string))
 			}
 			return headers, nil
 		})

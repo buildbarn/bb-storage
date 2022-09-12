@@ -4,7 +4,7 @@ package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/struct.proto";
+import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -62,15 +62,9 @@ message ClientConfiguration {
   // structure:
   //
   //  {
-  //      "authenticationMetadata": value,
-  //      "incomingGRPCMetadata": map<string, repeated string>
+  //    "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
+  //    "incomingGRPCMetadata": map<string, repeated string>
   //  }
-  //
-  // authenticationMetadata must only contain primitive JSON-compatible types
-  // (string, bool, int, float), slices, or maps with type
-  // map[string]interface{}.
-  // Note that structs, pointers, and maps with different types
-  // (e.g. map[string]string) are not supported.
   //
   // Some known headers that may be expected in incomingGRPCMetadata:
   //
@@ -175,14 +169,10 @@ message ServerConfiguration {
 
   // Policy for authenticating clients against the gRPC server.
   //
-  // Each authentication policy yields a freeform JSON-like
-  // authentication metadata object that is passed on to the
-  // authorization layer. The authentication metadata may be used to
+  // Each authentication policy yields a Protobuf message of type
+  // buildbarn.auth.AuthenticationMetadata object that is passed on to
+  // the authorization layer. The authentication metadata may be used to
   // store the username or sets of permissions.
-  //
-  // The authentication metadata object may contain certain fields that
-  // have a special meaning, such as "public". Those fields and their
-  // interpretation are documented in pkg/proto/auth/auth.proto.
   AuthenticationPolicy authentication_policy = 4;
 
   // Maximum size of a Protobuf message that may be received by this
@@ -238,7 +228,7 @@ message AuthenticationPolicy {
     //
     // The value of this field is used as authentication metadata in
     // literal form.
-    google.protobuf.Value allow = 1;
+    buildbarn.auth.AuthenticationMetadata allow = 1;
 
     // Allow incoming requests if one of multiple authentication
     // policies allows it, similar to Python's any() function.
@@ -274,7 +264,7 @@ message TLSClientCertificateAuthenticationPolicy {
   //
   // TODO: Provide a way to transform fields in the client certificate
   // to authentication metadata.
-  google.protobuf.Value metadata = 2;
+  buildbarn.auth.AuthenticationMetadata metadata = 2;
 }
 
 message TracingMethodConfiguration {

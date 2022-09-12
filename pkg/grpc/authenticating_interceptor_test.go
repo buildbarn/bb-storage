@@ -7,14 +7,17 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/proto/otlp/common/v1"
 )
 
 func TestAuthenticatingUnaryInterceptor(t *testing.T) {
@@ -28,10 +31,14 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 	resp := &emptypb.Empty{}
 
 	t.Run("ReturnsModifiedCtx", func(t *testing.T) {
-		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
+		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Public: structpb.NewStringValue("You're totally who you say you are"),
+		}), nil)
 		handler.EXPECT().Call(gomock.Any(), req).DoAndReturn(
 			func(ctx context.Context, req interface{}) (interface{}, error) {
-				require.Equal(t, "You're totally who you say you are", auth.AuthenticationMetadataFromContext(ctx).GetRaw())
+				require.Equal(t, map[string]any{
+					"public": "You're totally who you say you are",
+				}, auth.AuthenticationMetadataFromContext(ctx).GetRaw())
 				return resp, nil
 			})
 
@@ -43,12 +50,14 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 	t.Run("InstallsSpanAttributes", func(t *testing.T) {
 		span := mock.NewMockSpan(ctrl)
 		ctxWithSpan := trace.ContextWithSpan(ctx, span)
-		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadata(map[string]any{
-			"tracingAttributes": []any{
-				map[string]any{
-					"key": "username",
-					"value": map[string]any{
-						"stringValue": "john_doe",
+		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			TracingAttributes: []*v1.KeyValue{
+				{
+					Key: "username",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "john_doe",
+						},
 					},
 				},
 			},
@@ -77,10 +86,14 @@ func TestAuthenticatingStreamInterceptor(t *testing.T) {
 	t.Run("ReturnsModifiedCtx", func(t *testing.T) {
 		serverStream := mock.NewMockServerStream(ctrl)
 		serverStream.EXPECT().Context().Return(ctx).AnyTimes()
-		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadata("You're totally who you say you are"), nil)
+		authenticator.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Public: structpb.NewStringValue("You're totally who you say you are"),
+		}), nil)
 		handler.EXPECT().Call(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(srv interface{}, stream grpc.ServerStream) error {
-				require.Equal(t, "You're totally who you say you are", auth.AuthenticationMetadataFromContext(stream.Context()).GetRaw())
+				require.Equal(t, map[string]any{
+					"public": "You're totally who you say you are",
+				}, auth.AuthenticationMetadataFromContext(stream.Context()).GetRaw())
 				return nil
 			})
 
@@ -92,12 +105,14 @@ func TestAuthenticatingStreamInterceptor(t *testing.T) {
 		span := mock.NewMockSpan(ctrl)
 		ctxWithSpan := trace.ContextWithSpan(ctx, span)
 		serverStream.EXPECT().Context().Return(ctxWithSpan).AnyTimes()
-		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadata(map[string]any{
-			"tracingAttributes": []any{
-				map[string]any{
-					"key": "username",
-					"value": map[string]any{
-						"stringValue": "john_doe",
+		authenticator.EXPECT().Authenticate(ctxWithSpan).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			TracingAttributes: []*v1.KeyValue{
+				{
+					Key: "username",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "john_doe",
+						},
 					},
 				},
 			},

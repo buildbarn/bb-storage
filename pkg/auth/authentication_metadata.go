@@ -10,7 +10,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -18,51 +17,47 @@ import (
 // AuthenticationMetadata contains information on the authentication
 // user that is performing the current operation.
 type AuthenticationMetadata struct {
-	raw               any
+	raw               map[string]any
 	proto             auth_pb.AuthenticationMetadata
 	tracingAttributes []attribute.KeyValue
 }
 
-// NewAuthenticationMetadata creates a new AuthenticationMetadata object
-// that contains the data obtained by the gRPC Authenticator.
-func NewAuthenticationMetadata(raw any) (*AuthenticationMetadata, error) {
-	// If the authentication metadata is object-like, attempt to
-	// extract predefined fields from it as well.
-	//
-	// TODO: Should we require that metadata is object-like?
-	var public *structpb.Value
-	var tracingAttributes []attribute.KeyValue
-	if _, ok := raw.(map[string]any); ok {
-		rawJSON, err := json.Marshal(raw)
-		if err != nil {
-			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert authentication metadata to JSON")
-		}
-		var message auth_pb.AuthenticationMetadata
-		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(rawJSON, &message); err != nil {
-			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert authentication metadata to Protobuf")
-		}
-		public = message.Public
+// NewAuthenticationMetadataFromProto creates a new
+// AuthenticationMetadata object that contains the data obtained by the
+// gRPC Authenticator.
+func NewAuthenticationMetadataFromProto(message *auth_pb.AuthenticationMetadata) (*AuthenticationMetadata, error) {
+	// Create raw value, which stores the contents of the Protobuf
+	// message as an object normally returned by json.Unmarshal().
+	// This can be used to do JMESPath matching by the authorization
+	// layer.
+	messageJSON, err := protojson.Marshal(message)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert authentication metadata to JSON")
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(messageJSON, &raw); err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot parse authentication metadata JSON")
+	}
 
-		tracingAttributes, err = otel.NewKeyValueListFromProto(message.TracingAttributes, "auth.")
-		if err != nil {
-			return nil, util.StatusWrap(err, "Cannot create tracing attributes")
-		}
+	tracingAttributes, err := otel.NewKeyValueListFromProto(message.GetTracingAttributes(), "auth.")
+	if err != nil {
+		return nil, util.StatusWrap(err, "Cannot create tracing attributes")
 	}
 
 	return &AuthenticationMetadata{
 		raw: raw,
 		proto: auth_pb.AuthenticationMetadata{
-			Public: public,
+			Public: message.GetPublic(),
 		},
 		tracingAttributes: tracingAttributes,
 	}, nil
 }
 
-// MustNewAuthenticationMetadata is identical to NewAuthenticationMetadata(),
-// except that it panics upon failure. This method is provided for
-// testing.
-func MustNewAuthenticationMetadata(raw any) *AuthenticationMetadata {
-	authenticationMetadata, err := NewAuthenticationMetadata(raw)
+// MustNewAuthenticationMetadataFromProto is identical to
+// NewAuthenticationMetadataFromProto(), except that it panics upon failure. This
+// method is provided for testing.
+func MustNewAuthenticationMetadataFromProto(message *auth_pb.AuthenticationMetadata) *AuthenticationMetadata {
+	authenticationMetadata, err := NewAuthenticationMetadataFromProto(message)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +66,7 @@ func MustNewAuthenticationMetadata(raw any) *AuthenticationMetadata {
 
 // GetRaw returns the original JSON-like value that was used to
 // construct the AuthenticationMetadata.
-func (am *AuthenticationMetadata) GetRaw() any {
+func (am *AuthenticationMetadata) GetRaw() map[string]any {
 	return am.raw
 }
 

@@ -11,27 +11,15 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/proto/otlp/common/v1"
 )
 
 func TestAuthenticationMetadata(t *testing.T) {
 	t.Run("Nil", func(t *testing.T) {
-		m, err := auth.NewAuthenticationMetadata(nil)
+		m, err := auth.NewAuthenticationMetadataFromProto(nil)
 		require.NoError(t, err)
 
-		require.Nil(t, m.GetRaw())
-
-		publicProto, shouldDisplay := m.GetPublicProto()
-		testutil.RequireEqualProto(t, &auth_pb.AuthenticationMetadata{}, publicProto)
-		require.False(t, shouldDisplay)
-
-		require.Empty(t, m.GetTracingAttributes())
-	})
-
-	t.Run("String", func(t *testing.T) {
-		m, err := auth.NewAuthenticationMetadata("Hello")
-		require.NoError(t, err)
-
-		require.Equal(t, "Hello", m.GetRaw())
+		require.Equal(t, map[string]any{}, m.GetRaw())
 
 		publicProto, shouldDisplay := m.GetPublicProto()
 		testutil.RequireEqualProto(t, &auth_pb.AuthenticationMetadata{}, publicProto)
@@ -41,8 +29,8 @@ func TestAuthenticationMetadata(t *testing.T) {
 	})
 
 	t.Run("PublicNull", func(t *testing.T) {
-		m, err := auth.NewAuthenticationMetadata(map[string]any{
-			"public": nil,
+		m, err := auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Public: structpb.NewNullValue(),
 		})
 		require.NoError(t, err)
 
@@ -60,24 +48,28 @@ func TestAuthenticationMetadata(t *testing.T) {
 	})
 
 	t.Run("PublicNonNull", func(t *testing.T) {
-		m, err := auth.NewAuthenticationMetadata(map[string]any{
-			"private": "top-secret",
-			"public": map[string]any{
-				"integer": 123,
-				"string":  "foo",
-				"list": []any{
-					7.5,
-					false,
-					"bar",
+		m, err := auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			Private: structpb.NewStringValue("top-secret"),
+			Public: structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"integer": structpb.NewNumberValue(123),
+					"string":  structpb.NewStringValue("foo"),
+					"list": structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{
+							structpb.NewNumberValue(7.5),
+							structpb.NewBoolValue(false),
+							structpb.NewStringValue("bar"),
+						},
+					}),
 				},
-			},
+			}),
 		})
 		require.NoError(t, err)
 
 		require.Equal(t, map[string]any{
 			"private": "top-secret",
 			"public": map[string]any{
-				"integer": 123,
+				"integer": 123.0,
 				"string":  "foo",
 				"list": []any{
 					7.5,
@@ -109,12 +101,14 @@ func TestAuthenticationMetadata(t *testing.T) {
 	})
 
 	t.Run("TracingAttributes", func(t *testing.T) {
-		m, err := auth.NewAuthenticationMetadata(map[string]any{
-			"tracingAttributes": []any{
-				map[string]any{
-					"key": "username",
-					"value": map[string]any{
-						"stringValue": "john_doe",
+		m, err := auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			TracingAttributes: []*v1.KeyValue{
+				{
+					Key: "username",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "john_doe",
+						},
 					},
 				},
 			},

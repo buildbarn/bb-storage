@@ -29,7 +29,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	}
 	switch policyKind := policy.Policy.(type) {
 	case *configuration.AuthenticationPolicy_Allow:
-		authenticationMetadata, err := auth.NewAuthenticationMetadata(policyKind.Allow.AsInterface())
+		authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(policyKind.Allow)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
 		}
@@ -51,7 +51,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
 			return nil, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
 		}
-		authenticationMetadata, err := auth.NewAuthenticationMetadata(policyKind.TlsClientCertificate.Metadata.AsInterface())
+		authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(policyKind.TlsClientCertificate.Metadata)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
 		}

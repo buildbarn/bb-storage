@@ -59,23 +59,24 @@ message AuthorizationHeaderParserConfiguration {
   // with code UNAUTHENTICATED; not PERMISSION_DENIED.
   string claims_validation_jmespath_expression = 5;
 
-  // JMESPath expression for converting claims to metadata. The
-  // resulting metadata can be used for purposes such as authorization.
+  // JMESPath expression for converting claims to a Protobuf message of
+  // type buildbarn.auth.AuthenticationMetadata. The resulting metadata
+  // can be used for purposes such as authorization.
   //
   // The following expression would cause all of the claims in the JSON
-  // Web Token's payload to become the metadata:
+  // Web Token's payload to become private authentication metadata:
   //
-  //     @
+  //     {"private": @}
   //
   // The following expression demonstrates how given a JSON Web Token
   // consisting of "given_name" and "family_name" fields can be
-  // transformed to metadata with a single "name" field.
+  // transformed to authentication metadata with a public "name" field.
   //
-  //     {"name": join(' ', [given_name, family_name])}
+  //     {"public": {"name": join(' ', [given_name, family_name])}}
   //
   // The following expression can be used if no metadata needs to be
   // extracted from the token:
   //
-  //     `null`
+  //     `{}`
   string metadata_extraction_jmespath_expression = 6;
 }

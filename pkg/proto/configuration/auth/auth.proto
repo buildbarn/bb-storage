@@ -25,8 +25,8 @@ message AuthorizerConfiguration {
     // following structure:
     //
     //     {
-    //         "authenticationMetadata": value,
-    //         "instanceName": string
+    //       "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
+    //       "instanceName": string
     //     }
     //
     // "authenticationMetadata" corresponds to the metadata that was
