@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"log"
 	"net"
 	"os"
 
@@ -32,8 +33,6 @@ func init() {
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
-	serveErrors := make(chan error)
-
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
@@ -116,16 +115,18 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// TCP sockets.
-		for _, listenAddress := range configuration.ListenAddresses {
+		for _, listenAddressIter := range configuration.ListenAddresses {
+			listenAddress := listenAddressIter
 			sock, err := net.Listen("tcp", listenAddress)
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenAddress)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenAddress, s.Serve(sock)) }()
 		}
 
 		// UNIX sockets.
-		for _, listenPath := range configuration.ListenPaths {
+		for _, listenPathIter := range configuration.ListenPaths {
+			listenPath := listenPathIter
 			if err := os.Remove(listenPath); err != nil && !os.IsNotExist(err) {
 				return util.StatusWrapf(err, "Could not remove stale socket %#v", listenPath)
 			}
@@ -133,8 +134,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenPath)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenPath, s.Serve(sock)) }()
 		}
 	}
-	return <-serveErrors
+	return nil
 }
