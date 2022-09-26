@@ -57,15 +57,13 @@ func main() {
 		log.Fatal("Failed to create replicator: ", err)
 	}
 
-	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
-			bb_grpc.NewServersFromConfigurationAndServe(
-				configuration.GrpcServers,
-				func(s grpc.ServiceRegistrar) {
-					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
-				}))
-	}()
+	if err := bb_grpc.NewServersFromConfigurationAndServe(
+		configuration.GrpcServers,
+		func(s grpc.ServiceRegistrar) {
+			replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
+		}); err != nil {
+		log.Fatal("gRPC server failure: ", err)
+	}
 
 	lifecycleState.MarkReadyAndWait()
 }

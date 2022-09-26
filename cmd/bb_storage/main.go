@@ -143,56 +143,54 @@ func main() {
 		capabilitiesProviders = append(capabilitiesProviders, buildQueue)
 	}
 
-	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
-			bb_grpc.NewServersFromConfigurationAndServe(
-				configuration.GrpcServers,
-				func(s grpc.ServiceRegistrar) {
-					if contentAddressableStorage != nil {
-						remoteexecution.RegisterContentAddressableStorageServer(
-							s,
-							grpcservers.NewContentAddressableStorageServer(
-								contentAddressableStorage,
-								configuration.MaximumMessageSizeBytes))
-						bytestream.RegisterByteStreamServer(
-							s,
-							grpcservers.NewByteStreamServer(
-								contentAddressableStorage,
-								1<<16))
-					}
-					if actionCache != nil {
-						remoteexecution.RegisterActionCacheServer(
-							s,
-							grpcservers.NewActionCacheServer(
-								actionCache,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if indirectContentAddressableStorage != nil {
-						icas.RegisterIndirectContentAddressableStorageServer(
-							s,
-							grpcservers.NewIndirectContentAddressableStorageServer(
-								indirectContentAddressableStorage,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if initialSizeClassCache != nil {
-						iscc.RegisterInitialSizeClassCacheServer(
-							s,
-							grpcservers.NewInitialSizeClassCacheServer(
-								initialSizeClassCache,
-								int(configuration.MaximumMessageSizeBytes)))
-					}
-					if buildQueue != nil {
-						remoteexecution.RegisterExecutionServer(s, buildQueue)
-					}
-					if len(capabilitiesProviders) > 0 {
-						remoteexecution.RegisterCapabilitiesServer(
-							s,
-							capabilities.NewServer(
-								capabilities.NewMergingProvider(capabilitiesProviders)))
-					}
-				}))
-	}()
+	if err := bb_grpc.NewServersFromConfigurationAndServe(
+		configuration.GrpcServers,
+		func(s grpc.ServiceRegistrar) {
+			if contentAddressableStorage != nil {
+				remoteexecution.RegisterContentAddressableStorageServer(
+					s,
+					grpcservers.NewContentAddressableStorageServer(
+						contentAddressableStorage,
+						configuration.MaximumMessageSizeBytes))
+				bytestream.RegisterByteStreamServer(
+					s,
+					grpcservers.NewByteStreamServer(
+						contentAddressableStorage,
+						1<<16))
+			}
+			if actionCache != nil {
+				remoteexecution.RegisterActionCacheServer(
+					s,
+					grpcservers.NewActionCacheServer(
+						actionCache,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if indirectContentAddressableStorage != nil {
+				icas.RegisterIndirectContentAddressableStorageServer(
+					s,
+					grpcservers.NewIndirectContentAddressableStorageServer(
+						indirectContentAddressableStorage,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if initialSizeClassCache != nil {
+				iscc.RegisterInitialSizeClassCacheServer(
+					s,
+					grpcservers.NewInitialSizeClassCacheServer(
+						initialSizeClassCache,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if buildQueue != nil {
+				remoteexecution.RegisterExecutionServer(s, buildQueue)
+			}
+			if len(capabilitiesProviders) > 0 {
+				remoteexecution.RegisterCapabilitiesServer(
+					s,
+					capabilities.NewServer(
+						capabilities.NewMergingProvider(capabilitiesProviders)))
+			}
+		}); err != nil {
+		log.Fatal("gRPC server failure: ", err)
+	}
 
 	lifecycleState.MarkReadyAndWait()
 }
