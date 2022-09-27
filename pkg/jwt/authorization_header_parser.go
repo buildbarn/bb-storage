@@ -12,10 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
-	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/jmespath/go-jmespath"
-
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Pattern of authorization headers from which to extract a JSON Web Token.
@@ -136,17 +133,7 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	if err != nil {
 		return unauthenticated
 	}
-	metadataJSON, err := json.Marshal(metadataRaw)
-	if err != nil {
-		log.Print("Failed to convert raw authentication metadata to JSON: ", err)
-		return unauthenticated
-	}
-	var metadataMessage auth_pb.AuthenticationMetadata
-	if err := protojson.Unmarshal(metadataJSON, &metadataMessage); err != nil {
-		log.Print("Failed to convert JSON authentication metadata to Protobuf message: ", err)
-		return unauthenticated
-	}
-	authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(&metadataMessage)
+	authenticationMetadata, err := auth.NewAuthenticationMetadataFromRaw(metadataRaw)
 	if err != nil {
 		log.Print("Failed to create authentication metadata: ", err)
 		return unauthenticated

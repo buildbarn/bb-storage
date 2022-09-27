@@ -53,6 +53,21 @@ func NewAuthenticationMetadataFromProto(message *auth_pb.AuthenticationMetadata)
 	}, nil
 }
 
+// NewAuthenticationMetadataFromRaw is identical to
+// NewAuthenticationMetadataFromProto, except that it takes the metadata
+// as a JSON-like value (i.e., a map[string]any).
+func NewAuthenticationMetadataFromRaw(metadataRaw any) (*AuthenticationMetadata, error) {
+	metadataJSON, err := json.Marshal(metadataRaw)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to convert raw authentication metadata to JSON")
+	}
+	var metadataMessage auth_pb.AuthenticationMetadata
+	if err := protojson.Unmarshal(metadataJSON, &metadataMessage); err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to convert JSON authentication metadata to Protobuf message")
+	}
+	return NewAuthenticationMetadataFromProto(&metadataMessage)
+}
+
 // MustNewAuthenticationMetadataFromProto is identical to
 // NewAuthenticationMetadataFromProto(), except that it panics upon failure. This
 // method is provided for testing.
