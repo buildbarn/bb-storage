@@ -62,9 +62,16 @@ go_library(
 go_test(
     name = "filesystem_test",
     srcs = [
-        "local_directory_darwin_test.go",
         "local_directory_test.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "local_directory_darwin_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "local_directory_darwin_test.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         ":filesystem",
         "//pkg/filesystem/path",
