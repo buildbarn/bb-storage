@@ -30,6 +30,9 @@ message PrometheusPushgatewayConfiguration {
 
   // Optional: Options to be used by the HTTP client.
   buildbarn.configuration.http.ClientConfiguration http_client = 6;
+
+  // Maximum amount of time that pushing metrics may take.
+  google.protobuf.Duration push_timeout = 7;
 }
 
 message TracingConfiguration {

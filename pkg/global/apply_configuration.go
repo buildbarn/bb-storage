@@ -276,9 +276,18 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}
 		pushIntervalDuration := pushInterval.AsDuration()
 
+		pushTimeout := pushgateway.PushTimeout
+		if err := pushTimeout.CheckValid(); err != nil {
+			return nil, nil, util.StatusWrap(err, "Failed to parse push timeout")
+		}
+		pushTimeoutDuration := pushTimeout.AsDuration()
+
 		go func() {
 			for {
-				if err := pusher.Push(); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), pushTimeoutDuration)
+				err := pusher.PushContext(ctx)
+				cancel()
+				if err != nil {
 					log.Print("Failed to push metrics to Prometheus Pushgateway: ", err)
 				}
 				time.Sleep(pushIntervalDuration)
