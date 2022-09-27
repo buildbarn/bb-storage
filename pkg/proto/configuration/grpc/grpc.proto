@@ -247,6 +247,23 @@ message AuthenticationPolicy {
     // Allow incoming requests in case they present an "Authorization"
     // header containing a JWT bearer token.
     buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration jwt = 5;
+
+    // Allow incoming requests in case they are performed over a UNIX
+    // socket. The JMESPath expression can be used to convert the
+    // credentials of the calling process to authentication metadata.
+    // The credentials have the following format:
+    //
+    //     {
+    //       "uid": number,
+    //       "groups": list<number>,
+    //     }
+    //
+    // On Linux, the credentials are extracted using socket option
+    // SO_PEERCRED. This option only returns the primary effective group
+    // ID of the client process. On BSD derived systems, socket option
+    // LOCAL_PEERCRED is used, which is typically capable of returning
+    // up to 16 group memberships.
+    string peer_credentials_jmespath_expression = 6;
   }
 }
 

@@ -19,6 +19,11 @@ go_library(
         "metadata_extracting_and_forwarding_interceptor.go",
         "metadata_forwarding_and_reusing_interceptor.go",
         "metadata_header_values.go",
+        "peer_credentials_authenticator.go",
+        "peer_transport_credentials.go",
+        "peer_transport_credentials_bsd.go",
+        "peer_transport_credentials_disabled.go",
+        "peer_transport_credentials_linux.go",
         "proto_trace_attributes_extractor.go",
         "proxy_dialer.go",
         "request_metadata_tracing_interceptor.go",
@@ -54,7 +59,24 @@ go_library(
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 go_test(
@@ -70,10 +92,28 @@ go_test(
         "metadata_adding_interceptor_test.go",
         "metadata_extracting_and_forwarding_interceptor_test.go",
         "metadata_forwarding_and_reusing_interceptor_test.go",
+        "peer_credentials_authenticator_test.go",
         "proto_trace_attributes_extractor_test.go",
         "request_metadata_tracing_interceptor_test.go",
         "tls_client_certificate_authenticator_test.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "peer_transport_credentials_test.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         ":grpc",
         "//internal/mock",

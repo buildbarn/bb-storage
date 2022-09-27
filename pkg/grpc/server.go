@@ -36,7 +36,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
+		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
 		if err != nil {
 			return err
 		}
@@ -68,11 +68,22 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			grpc.ChainStreamInterceptor(streamInterceptors...),
 		}
 
-		// Enable TLS if provided.
+		// Enable TLS transport credentials if provided.
+		hasCredsOption := false
 		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
 			return err
 		} else if tlsConfig != nil {
+			hasCredsOption = true
 			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		}
+
+		// Enable UNIX socket peer credentials if used in the
+		// authenticator configuration.
+		if needsPeerTransportCredentials {
+			if hasCredsOption {
+				return status.Error(codes.InvalidArgument, "Peer credentials authentication and TLS cannot be enabled at the same time")
+			}
+			serverOptions = append(serverOptions, grpc.Creds(PeerTransportCredentials))
 		}
 
 		if maxRecvMsgSize := configuration.MaximumReceivedMessageSizeBytes; maxRecvMsgSize != 0 {

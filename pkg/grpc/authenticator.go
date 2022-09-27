@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,50 +24,58 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy) (Authenticator, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy) (Authenticator, bool, error) {
 	if policy == nil {
-		return nil, status.Error(codes.InvalidArgument, "Authentication policy not specified")
+		return nil, false, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
 	switch policyKind := policy.Policy.(type) {
 	case *configuration.AuthenticationPolicy_Allow:
 		authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(policyKind.Allow)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
+			return nil, false, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
 		}
-		return NewAllowAuthenticator(authenticationMetadata), nil
+		return NewAllowAuthenticator(authenticationMetadata), false, nil
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
+		needsPeerTransportCredentials := false
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, err := NewAuthenticatorFromConfiguration(childConfiguration)
+			child, childNeedsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(childConfiguration)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			children = append(children, child)
+			needsPeerTransportCredentials = needsPeerTransportCredentials || childNeedsPeerTransportCredentials
 		}
-		return NewAnyAuthenticator(children), nil
+		return NewAnyAuthenticator(children), needsPeerTransportCredentials, nil
 	case *configuration.AuthenticationPolicy_Deny:
-		return NewDenyAuthenticator(policyKind.Deny), nil
+		return NewDenyAuthenticator(policyKind.Deny), false, nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:
 		clientCAs := x509.NewCertPool()
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
-			return nil, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
+			return nil, false, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
 		}
 		authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(policyKind.TlsClientCertificate.Metadata)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
+			return nil, false, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
 		}
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock,
 			authenticationMetadata,
-		), nil
+		), false, nil
 	case *configuration.AuthenticationPolicy_Jwt:
 		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)
 		if err != nil {
-			return nil, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
+			return nil, false, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
-		return NewJWTAuthenticator(authorizationHeaderParser), nil
+		return NewJWTAuthenticator(authorizationHeaderParser), false, nil
+	case *configuration.AuthenticationPolicy_PeerCredentialsJmespathExpression:
+		metadataExtractor, err := jmespath.Compile(policyKind.PeerCredentialsJmespathExpression)
+		if err != nil {
+			return nil, false, util.StatusWrap(err, "Failed to compile peer credentials metadata extraction JMESPath expression")
+		}
+		return NewPeerCredentialsAuthenticator(metadataExtractor), true, nil
 	default:
-		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
+		return nil, false, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}
 }
