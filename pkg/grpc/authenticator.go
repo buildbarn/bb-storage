@@ -54,14 +54,19 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
 			return nil, false, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
 		}
-		authenticationMetadata, err := auth.NewAuthenticationMetadataFromProto(policyKind.TlsClientCertificate.Metadata)
+		validator, err := jmespath.Compile(policyKind.TlsClientCertificate.ValidationJmespathExpression)
 		if err != nil {
-			return nil, false, status.Error(codes.InvalidArgument, "Failed to create authentication metadata")
+			return nil, false, util.StatusWrap(err, "Failed to compile validation JMESPath expression")
+		}
+		metadataExtractor, err := jmespath.Compile(policyKind.TlsClientCertificate.MetadataExtractionJmespathExpression)
+		if err != nil {
+			return nil, false, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
 		}
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock,
-			authenticationMetadata,
+			validator,
+			metadataExtractor,
 		), false, nil
 	case *configuration.AuthenticationPolicy_Jwt:
 		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)

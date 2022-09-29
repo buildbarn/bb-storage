@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -15,20 +16,22 @@ import (
 )
 
 type tlsClientCertificateAuthenticator struct {
-	clientCAs *x509.CertPool
-	clock     clock.Clock
-	metadata  *auth.AuthenticationMetadata
+	clientCAs         *x509.CertPool
+	clock             clock.Clock
+	validator         *jmespath.JMESPath
+	metadataExtractor *jmespath.JMESPath
 }
 
 // NewTLSClientCertificateAuthenticator creates an Authenticator that
 // only grants access in case the client connected to the gRPC server
 // using a TLS client certificate that can be validated against the
 // chain of CAs used by the server.
-func NewTLSClientCertificateAuthenticator(clientCAs *x509.CertPool, clock clock.Clock, metadata *auth.AuthenticationMetadata) Authenticator {
+func NewTLSClientCertificateAuthenticator(clientCAs *x509.CertPool, clock clock.Clock, validator, metadataExtractor *jmespath.JMESPath) Authenticator {
 	return &tlsClientCertificateAuthenticator{
-		clientCAs: clientCAs,
-		clock:     clock,
-		metadata:  metadata,
+		clientCAs:         clientCAs,
+		clock:             clock,
+		validator:         validator,
+		metadataExtractor: metadataExtractor,
 	}
 }
 
@@ -61,5 +64,46 @@ func (a *tlsClientCertificateAuthenticator) Authenticate(ctx context.Context) (*
 	if _, err := certs[0].Verify(opts); err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot validate TLS client certificate")
 	}
-	return a.metadata, nil
+
+	searchContext := getClientCertificateJMESPathSearchContext(certs[0])
+
+	// Validate the client cert matches our expectations.
+	validationResult, err := a.validator.Search(searchContext)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot validate TLS client certificate claims")
+	}
+	if validationResult != true {
+		return nil, status.Error(codes.Unauthenticated, "Rejected TLS client certificate claims")
+	}
+
+	// Extract metadata from the client cert.
+	metadataRaw, err := a.metadataExtractor.Search(searchContext)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.Unauthenticated, "Cannot extract metadata from TLS client certificate")
+	}
+
+	return auth.NewAuthenticationMetadataFromRaw(metadataRaw)
+}
+
+func getClientCertificateJMESPathSearchContext(cert *x509.Certificate) map[string]any {
+	// We have to go through this copying and json dance in order to
+	// ensure that we don't replace [] with null, and that we have the proper
+	// types needed for JMESPath to search over without typing failures.
+
+	dnsNames := make([]any, 0, len(cert.DNSNames))
+	for _, d := range cert.DNSNames {
+		dnsNames = append(dnsNames, d)
+	}
+	emailAddresses := make([]any, 0, len(cert.EmailAddresses))
+	for _, e := range cert.EmailAddresses {
+		emailAddresses = append(emailAddresses, e)
+	}
+
+	// The data structure that users can search over
+	searchContext := map[string]any{
+		"dnsNames":       dnsNames,
+		"emailAddresses": emailAddresses,
+	}
+
+	return searchContext
 }
