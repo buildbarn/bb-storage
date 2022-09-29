@@ -54,10 +54,19 @@ func NewProtoBufferFromByteSlice(m proto.Message, data []byte, source Source) Bu
 // Protobuf message object must be provided that corresponds with the
 // type of the data contained in the reader.
 func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, source Source) Buffer {
-	// Messages in the Action Cache are relatively small, so it's
-	// safe to keep them in memory. Read and store them in a byte
-	// slice buffer immediately. This permits implementing
-	// GetSizeBytes() properly.
+	// TODO: Right now we implement this function by aggressively
+	// reading data. This has a couple of downsides:
+	//
+	// - We don't reject messages that are too large.
+	// - It causes us to always unmarshal the message, even if we're
+	//   merely passing the message through.
+	// - Unmarshaling happens when the buffer is created. This means
+	//   that in the case of LocalBlobAccess, we read data from disk
+	//   while locks are held.
+	//
+	// Maybe we should provide a dedicated buffer type that defers
+	// unmarshaling, or potentially elides it. This may require the
+	// caller to provide the object's size.
 	data, err := io.ReadAll(r)
 	r.Close()
 	if err != nil {
