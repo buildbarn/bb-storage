@@ -90,7 +90,7 @@ message BlobAccessConfiguration {
     // lowest level that has a full view of the entire CAS.
     //
     // This decorator must be placed on the Action Cache.
-    BlobAccessConfiguration completeness_checking = 17;
+    CompletenessCheckingBlobAccessConfiguration completeness_checking = 17;
 
     // Fall back to reading data from a secondary backend when not found
     // in the primary backend. Data is never written to the latter.
@@ -701,6 +701,22 @@ message ExistenceCachingBlobAccessConfiguration {
   // decorator.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message CompletenessCheckingBlobAccessConfiguration {
+  // The Action Cache (AC) backend from which ActionResult messages are
+  // loaded.
+  BlobAccessConfiguration backend = 1;
+
+  // The maximum combined size of Tree objects that may be referenced by
+  // the ActionResult message. ActionResults having output directories
+  // whose combined size exceeds that exceeds this limit are suppressed
+  // (i.e., a NOT_FOUND error will be returned).
+  //
+  // This option places a limit on the amount of data that is read from
+  // the Content Addressable Storage (CAS) while processing a call to
+  // GetActionResult().
+  int64 maximum_total_tree_size_bytes = 2;
 }
 
 message ReadFallbackBlobAccessConfiguration {

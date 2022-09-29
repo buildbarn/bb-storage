@@ -85,7 +85,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 		if bac.contentAddressableStorage == nil {
 			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
 		}
-		base, err := nestedCreator.NewNestedBlobAccess(backend.CompletenessChecking, bac)
+		base, err := nestedCreator.NewNestedBlobAccess(backend.CompletenessChecking.Backend, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -94,7 +94,8 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 				base.BlobAccess,
 				bac.contentAddressableStorage.BlobAccess,
 				blobstore.RecommendedFindMissingDigestsCount,
-				bac.maximumMessageSizeBytes),
+				bac.maximumMessageSizeBytes,
+				backend.CompletenessChecking.MaximumTotalTreeSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
