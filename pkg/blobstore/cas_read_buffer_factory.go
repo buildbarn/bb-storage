@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -49,3 +50,11 @@ func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Messa
 	}
 	return blobDigest, nil
 }
+
+// The Protobuf field numbers of the REv2 Tree's "root" and "children"
+// fields. These are used in combination with util.VisitProtoBytesFields()
+// to be able to process REv2 Tree objects in a streaming manner.
+const (
+	TreeRootFieldNumber     protowire.Number = 1
+	TreeChildrenFieldNumber protowire.Number = 2
+)
