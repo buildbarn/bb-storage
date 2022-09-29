@@ -133,6 +133,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 	instanceName := treeDigest.GetInstanceName()
 	nr.enqueue(treeDigest, func(ctx context.Context, b buffer.Buffer) error {
+		// TODO: Let this use util.VisitProtoBytesFields().
 		treeMessage, err := b.ToProto(&remoteexecution.Tree{}, nr.maximumMessageSizeBytes)
 		if err != nil {
 			return err
