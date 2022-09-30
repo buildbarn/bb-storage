@@ -278,7 +278,7 @@ message TLSClientCertificateAuthenticationPolicy {
   string client_certificate_authorities = 1;
 
   // Was `metadata`, instead use `metadata_extraction_jmespath_expression`
-  // to provide static or dynamic metadata
+  // to provide static or dynamic metadata.
   reserved 2;
 
   // This option allows specifying a boolean JMESPath expression that
@@ -295,11 +295,11 @@ message TLSClientCertificateAuthenticationPolicy {
   //   "emailAddresses": ["me@example.com"]
   // }
   //
-  // You could enforce that the DNS name matches an expection:
+  // You could enforce that the DNS name matches an expression:
   //
   //     contains(dnsNames, "example.com")
   //
-  // Or to enforce that an expected email addresses is presented:
+  // Or to enforce that an expected email address is present:
   //
   //     length(emailAddresses[?ends_with(@, '@example.com')]) > `0`
   //
@@ -314,10 +314,10 @@ message TLSClientCertificateAuthenticationPolicy {
   // It is recommended that this feature is only used for making
   // authentication decisions; not authorization decisions. The reason
   // being that validation failures will cause gRPC requests to fail
-  // with code UNAUTHENTICATED; not PERMISSION_DENIED.
+  // with code UNAUTHENTICATED, not PERMISSION_DENIED.
   string validation_jmespath_expression = 3;
 
-  // JMESPath expression for converting Certificates information to a
+  // JMESPath expression for converting certificates information to a
   // Protobuf message of type buildbarn.auth.AuthenticationMetadata.
   // The resulting metadata can be used for purposes such as authorization.
   //
