@@ -2,12 +2,16 @@ package replication
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 type blobToReplicate struct {
@@ -133,30 +137,42 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 	instanceName := treeDigest.GetInstanceName()
 	nr.enqueue(treeDigest, func(ctx context.Context, b buffer.Buffer) error {
-		// TODO: Let this use util.VisitProtoBytesFields().
-		treeMessage, err := b.ToProto(&remoteexecution.Tree{}, nr.maximumMessageSizeBytes)
-		if err != nil {
+		r := b.ToReader()
+		defer r.Close()
+
+		// Gather digests of files contained in the directories.
+		childFileDigests := digest.NewSetBuilder()
+		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
+			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
+				directoryMessage, err := buffer.NewProtoBufferFromReader(
+					&remoteexecution.Directory{},
+					io.NopCloser(fieldReader),
+					buffer.UserProvided,
+				).ToProto(&remoteexecution.Directory{}, nr.maximumMessageSizeBytes)
+				if err != nil {
+					return err
+				}
+				directory := directoryMessage.(*remoteexecution.Directory)
+				for i, childFile := range directory.Files {
+					childFileDigest, err := instanceName.NewDigestFromProto(childFile.Digest)
+					if err != nil {
+						return util.StatusWrapf(err, "Invalid digest for file at index %d", i)
+					}
+					childFileDigests.Add(childFileDigest)
+				}
+			}
+			return nil
+		}); err != nil {
+			// Any errors generated above may be caused by
+			// data corruption on the Tree object. Force
+			// reading the Tree until completion, and prefer
+			// read errors over any errors generated above.
+			if _, copyErr := io.Copy(io.Discard, r); copyErr != nil {
+				return copyErr
+			}
 			return err
 		}
-		tree := treeMessage.(*remoteexecution.Tree)
 
-		childFileDigests := digest.NewSetBuilder()
-		for i, childFile := range tree.Root.GetFiles() {
-			childFileDigest, err := instanceName.NewDigestFromProto(childFile.Digest)
-			if err != nil {
-				return util.StatusWrapf(err, "Invalid digest for file at index %d in root directory", i)
-			}
-			childFileDigests.Add(childFileDigest)
-		}
-		for i, childDirectory := range tree.Children {
-			for j, childFile := range childDirectory.Files {
-				childFileDigest, err := instanceName.NewDigestFromProto(childFile.Digest)
-				if err != nil {
-					return util.StatusWrapf(err, "Invalid digest for file at index %d in directory at index %d", j, i)
-				}
-				childFileDigests.Add(childFileDigest)
-			}
-		}
 		if err := nr.replicator.ReplicateMultiple(ctx, childFileDigests.Build()); err != nil {
 			return util.StatusWrap(err, "Failed to replicate files")
 		}
