@@ -3,14 +3,37 @@ package util
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"sync"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var cipherSuiteIDs = map[string]uint16{}
+var (
+	cipherSuiteIDs = map[string]uint16{}
+
+	tlsServerPrometheusMetrics sync.Once
+
+	tlsServerCertificateNotBeforeTimeSeconds = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "buildbarn",
+			Subsystem: "tls",
+			Name:      "server_certificate_not_before_time_seconds",
+			Help:      "The value of the \"Not Before\" field of the TLS server certificate.",
+		},
+		[]string{"dns_name"})
+	tlsServerCertificateNotAfterTimeSeconds = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "buildbarn",
+			Subsystem: "tls",
+			Name:      "server_certificate_not_after_time_seconds",
+			Help:      "The value of the \"Not After\" field of the TLS server certificate.",
+		},
+		[]string{"dns_name"})
+)
 
 func init() {
 	// Initialize the map of cipher suite IDs based on the ciphers
@@ -79,6 +102,11 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 // with a TLS server. This Protobuf message is embedded in Buildbarn
 // configuration files.
 func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConfiguration) (*tls.Config, error) {
+	tlsServerPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(tlsServerCertificateNotBeforeTimeSeconds)
+		prometheus.MustRegister(tlsServerCertificateNotAfterTimeSeconds)
+	})
+
 	if configuration == nil {
 		return nil, nil
 	}
@@ -95,6 +123,16 @@ func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConf
 		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Invalid server certificate or private key")
 	}
 	tlsConfig.Certificates = []tls.Certificate{cert}
+
+	// Expose Prometheus metrics on certificate expiration.
+	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		return nil, err
+	}
+	for _, dnsName := range leaf.DNSNames {
+		tlsServerCertificateNotBeforeTimeSeconds.WithLabelValues(dnsName).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
+		tlsServerCertificateNotAfterTimeSeconds.WithLabelValues(dnsName).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+	}
 
 	return tlsConfig, nil
 }

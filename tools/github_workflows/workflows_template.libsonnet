@@ -55,8 +55,14 @@
   local getJobs(binaries, containers, doUpload) = {
     build_and_test: {
       'runs-on': 'ubuntu-latest',
-      container: 'docker://l.gcr.io/google/bazel:3.5.0',
       steps: [
+        // TODO: Switch back to l.gcr.io/google/bazel once updated
+        // container images get published once again.
+        // https://github.com/GoogleCloudPlatform/container-definitions/issues/12037
+        {
+          name: 'Installing Bazel',
+          run: 'curl -L https://github.com/bazelbuild/bazel/releases/download/5.0.0/bazel-5.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
+        },
         {
           name: 'Check out source code',
           uses: 'actions/checkout@v1',
@@ -76,15 +82,25 @@
         },
         {
           name: 'Gofmt',
-          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.15 -s -w -extra $(pwd)',
+          run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.18 -w -extra $(pwd)',
         },
         {
           name: 'Clang format',
-          run: "find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +",
+          run: "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +",
         },
         {
           name: 'GitHub workflows',
           run: 'bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows',
+        },
+        {
+          name: 'Protobuf generation',
+          run: |||
+            find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
+            bazel build $(bazel query 'kind("go_proto_library", //...)')
+            find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
+              cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')
+            done
+          |||,
         },
         {
           name: 'Test style conformance',
@@ -115,7 +131,8 @@
             [
               {
                 name: '%s: copy %s' % [platform.name, binary],
-                run: 'bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s%s' % [platform.name, binary, binary, platform.extension],
+                local executable = binary + platform.extension,
+                run: 'rm -f %s && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],
@@ -137,7 +154,7 @@
           [
             {
               name: 'Install Docker credentials',
-              run: 'mkdir ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json',
+              run: 'mkdir -p ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json',
               env: {
                 DOCKER_CONFIG_JSON: '${{ secrets.DOCKER_CONFIG_JSON }}',
               },

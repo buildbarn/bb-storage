@@ -1,8 +1,10 @@
+//go:build darwin || freebsd || linux
 // +build darwin freebsd linux
 
 package filesystem
 
 import (
+	"io"
 	"os"
 	"runtime"
 	"sort"
@@ -85,16 +87,51 @@ func (d *localDirectory) OpenAppend(name path.Component, creationMode CreationMo
 	return d.open(name, creationMode, os.O_APPEND|os.O_WRONLY)
 }
 
+type localFileReadWriter struct {
+	*os.File
+}
+
+func (f localFileReadWriter) GetNextRegionOffset(offset int64, regionType RegionType) (int64, error) {
+	defer runtime.KeepAlive(f)
+
+	var whence int
+	switch regionType {
+	case Data:
+		whence = unix.SEEK_DATA
+	case Hole:
+		whence = unix.SEEK_HOLE
+	default:
+		panic("Unknown region type")
+	}
+	nextOffset, err := unix.Seek(int(f.Fd()), offset, whence)
+	if err == syscall.ENXIO {
+		return 0, io.EOF
+	}
+	return nextOffset, err
+}
+
 func (d *localDirectory) OpenRead(name path.Component) (FileReader, error) {
-	return d.open(name, DontCreate, os.O_RDONLY)
+	f, err := d.open(name, DontCreate, os.O_RDONLY)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) OpenReadWrite(name path.Component, creationMode CreationMode) (FileReadWriter, error) {
-	return d.open(name, creationMode, os.O_RDWR)
+	f, err := d.open(name, creationMode, os.O_RDWR)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) OpenWrite(name path.Component, creationMode CreationMode) (FileWriter, error) {
-	return d.open(name, creationMode, os.O_WRONLY)
+	f, err := d.open(name, creationMode, os.O_WRONLY)
+	if err != nil {
+		return nil, err
+	}
+	return localFileReadWriter{File: f}, nil
 }
 
 func (d *localDirectory) Link(oldName path.Component, newDirectory Directory, newName path.Component) error {
@@ -115,25 +152,23 @@ func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Director
 	})
 }
 
-func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, error) {
+func (d *localDirectory) lstat(name path.Component) (FileType, rawDeviceNumber, bool, error) {
 	defer runtime.KeepAlive(d)
 
 	var stat unix.Stat_t
 	if err := unix.Fstatat(d.fd, name.String(), &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return FileTypeOther, 0, err
+		return FileTypeOther, 0, false, err
 	}
 	fileType := FileTypeOther
+	isExecutable := false
 	switch stat.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
 		fileType = FileTypeDirectory
 	case syscall.S_IFLNK:
 		fileType = FileTypeSymlink
 	case syscall.S_IFREG:
-		if stat.Mode&0o111 != 0 {
-			fileType = FileTypeExecutableFile
-		} else {
-			fileType = FileTypeRegularFile
-		}
+		fileType = FileTypeRegularFile
+		isExecutable = stat.Mode&0o111 != 0
 	case syscall.S_IFBLK:
 		fileType = FileTypeBlockDevice
 	case syscall.S_IFCHR:
@@ -143,15 +178,15 @@ func (d *localDirectory) lstat(name path.Component) (FileType, deviceNumber, err
 	case syscall.S_IFSOCK:
 		fileType = FileTypeSocket
 	}
-	return fileType, stat.Dev, nil
+	return fileType, stat.Dev, isExecutable, nil
 }
 
 func (d *localDirectory) Lstat(name path.Component) (FileInfo, error) {
-	fileType, _, err := d.lstat(name)
+	fileType, _, isExecutable, err := d.lstat(name)
 	if err != nil {
 		return FileInfo{}, err
 	}
-	return NewFileInfo(name, fileType), nil
+	return NewFileInfo(name, fileType, isExecutable), nil
 }
 
 func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
@@ -249,7 +284,7 @@ func (d *localDirectory) unmount(name path.Component) error {
 	return syscall.Unmount(name.String(), 0)
 }
 
-func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) error {
+func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) error {
 	defer runtime.KeepAlive(d)
 
 	names, err := d.readdirnames()
@@ -258,7 +293,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 	}
 	for _, name := range names {
 		component := path.MustNewComponent(name)
-		fileType, childDeviceNumber, err := d.lstat(component)
+		fileType, childDeviceNumber, _, err := d.lstat(component)
 		if err != nil {
 			return err
 		}
@@ -270,7 +305,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber deviceNumber) erro
 			if err := d.unmount(component); err != nil {
 				return err
 			}
-			fileType, childDeviceNumber, err = d.lstat(component)
+			fileType, childDeviceNumber, _, err = d.lstat(component)
 			if err != nil {
 				return err
 			}
@@ -367,14 +402,6 @@ func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) er
 	}
 	if ts[1], err = unix.TimeToTimespec(mtime); err != nil {
 		return util.StatusWrapWithCode(err, codes.InvalidArgument, "Cannot convert modification time")
-	}
-
-	// TODO: UtimesNanoAt() is a stub on Darwin, even though recent
-	// versions of Darwin support utimensat() perfectly fine. We
-	// should patch go-sys to have a functional UtimesNanoAt()
-	// implementation.
-	if runtime.GOOS == "darwin" {
-		return nil
 	}
 
 	return unix.UtimesNanoAt(d.fd, name.String(), ts[:], unix.AT_SYMLINK_NOFOLLOW)

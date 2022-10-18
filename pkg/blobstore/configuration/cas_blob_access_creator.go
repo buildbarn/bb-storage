@@ -2,14 +2,18 @@ package configuration
 
 import (
 	"net/http"
+	"sync"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
@@ -17,6 +21,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var casCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+	CacheCapabilities: &remoteexecution.CacheCapabilities{
+		DigestFunctions: digest.SupportedDigestFunctions,
+		// MaxBatchTotalSize: Not used by Bazel yet.
+	},
+})
 
 type casBlobAccessCreator struct {
 	casBlobReplicatorCreator
@@ -49,14 +60,22 @@ func (bac *casBlobAccessCreator) GetStorageTypeName() string {
 	return "cas"
 }
 
+func (bac *casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+	return casCapabilitiesProvider
+}
+
 func (bac *casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
-func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration) (BlobAccessInfo, string, error) {
+func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
+	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
+}
+
+func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
-		base, err := NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
+		base, err := nestedCreator.NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -86,7 +105,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		// location of a blob, not the blobs themselves. Create
 		// a new BlobAccessCreator to ensure data is loaded
 		// properly.
-		base, err := NewNestedBlobAccess(
+		base, err := nestedCreator.NewNestedBlobAccess(
 			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,
@@ -94,15 +113,21 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		sess, err := aws.NewSessionFromConfiguration(backend.ReferenceExpanding.AwsSession)
+		cfg, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
 		if err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS session")
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
+		}
+		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
+		if err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
-				http.DefaultClient,
-				s3.New(sess),
+				&http.Client{
+					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
+				},
+				s3.NewFromConfig(cfg),
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "reference_expanding", nil

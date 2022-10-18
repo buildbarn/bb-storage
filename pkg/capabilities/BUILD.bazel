@@ -1,0 +1,48 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "capabilities",
+    srcs = [
+        "action_cache_update_enabled_clearing_provider.go",
+        "authorizing_provider.go",
+        "merging_provider.go",
+        "provider.go",
+        "server.go",
+        "static_provider.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/capabilities",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/auth",
+        "//pkg/digest",
+        "//pkg/util",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_bazelbuild_remote_apis//build/bazel/semver",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "capabilities_test",
+    srcs = [
+        "action_cache_update_enabled_clearing_provider_test.go",
+        "merging_provider_test.go",
+        "server_test.go",
+        "static_provider_test.go",
+    ],
+    deps = [
+        ":capabilities",
+        "//internal/mock",
+        "//pkg/digest",
+        "//pkg/testutil",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@com_github_bazelbuild_remote_apis//build/bazel/semver",
+        "@com_github_golang_mock//gomock",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

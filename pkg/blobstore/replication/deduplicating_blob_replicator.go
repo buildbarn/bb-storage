@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -57,7 +58,18 @@ func (br *deduplicatingBlobReplicator) ReplicateSingle(ctx context.Context, blob
 	if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return br.sink.Get(ctx, blobDigest)
+	return buffer.WithErrorHandler(
+		br.sink.Get(ctx, blobDigest),
+		notFoundToInternalErrorHandler{})
+}
+
+func (br *deduplicatingBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
+		return buffer.NewBufferFromError(err)
+	}
+	return buffer.WithErrorHandler(
+		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
+		notFoundToInternalErrorHandler{})
 }
 
 func (br *deduplicatingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

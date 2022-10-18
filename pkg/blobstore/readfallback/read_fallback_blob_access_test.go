@@ -43,7 +43,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Primary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
 	})
 
 	t.Run("SecondarySuccess", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
@@ -83,6 +83,32 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
+	})
+}
+
+func TestReadFallbackBlobAccessGetFromComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	primary := mock.NewMockBlobAccess(ctrl)
+	secondary := mock.NewMockBlobAccess(ctrl)
+	replicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
+	parentDigest := digest.MustNewDigest("instance", "d20fb8dfa347cf895b38649410aeb3f8", 100)
+	childDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// We assume that tests for Get() provides coverage for other
+	// scenarios.
+
+	t.Run("SecondarySuccess", func(t *testing.T) {
+		primary.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
+			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		replicator.EXPECT().ReplicateComposite(ctx, parentDigest, childDigest, slicer).
+			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
 	})
 }
 
@@ -165,7 +191,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Primary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
 	})
 
 	t.Run("SecondaryFailure", func(t *testing.T) {
@@ -175,6 +201,6 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
-		require.Equal(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
 	})
 }

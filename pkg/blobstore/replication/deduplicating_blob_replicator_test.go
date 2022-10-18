@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -53,7 +54,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 	})
 
 	t.Run("ReplicateMultipleError", func(t *testing.T) {
@@ -61,7 +62,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		base.EXPECT().ReplicateMultiple(ctx, helloDigestSet).Return(status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Failed to replicate blob 8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to replicate blob 8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
 	})
 
 	t.Run("GetError", func(t *testing.T) {
@@ -69,7 +70,19 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().Get(ctx, helloDigest).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk I/O failure")))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk I/O failure"), err)
+	})
+
+	t.Run("GetNotFound", func(t *testing.T) {
+		// If the sink reports that the object is present, but a
+		// successive Get() call fails, the results from the
+		// sink are inconsistent. This should not cause
+		// NOT_FOUND errors to be returned to clients.
+		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, nil)
+		sink.EXPECT().Get(ctx, helloDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Key not found in bucket")))
+
+		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob absent from sink after replication: Key not found in bucket"), err)
 	})
 
 	t.Run("ParallelFailure", func(t *testing.T) {
@@ -88,7 +101,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			go func() {
 				_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-				require.Equal(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 
 				done <- struct{}{}
 			}()
@@ -128,6 +141,35 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			<-done
 		}
+	})
+}
+
+func TestDeduplicatingBlobReplicatorReplicateComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	base := mock.NewMockBlobReplicator(ctrl)
+	sink := mock.NewMockBlobAccess(ctrl)
+	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
+
+	parentDigest := digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentDigestSet := parentDigest.ToSingletonSet()
+	childDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// Only a single test for the success case is provided, as the
+	// tests for ReplicateSingle() provide enough coverage.
+
+	t.Run("SuccessReplication", func(t *testing.T) {
+		// If the sink reports the parent as absent, we should
+		// see a replication take place before reading the child
+		// blob from the sink.
+		sink.EXPECT().FindMissing(ctx, parentDigestSet).Return(parentDigestSet, nil)
+		base.EXPECT().ReplicateMultiple(ctx, parentDigestSet)
+		sink.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
 	})
 }
 

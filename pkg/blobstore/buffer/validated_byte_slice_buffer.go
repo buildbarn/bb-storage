@@ -3,7 +3,6 @@ package buffer
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -98,6 +97,15 @@ func (b validatedByteSliceBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b validatedByteSliceBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
+}
+
 func (b validatedByteSliceBuffer) Discard() {}
 
 func (b validatedByteSliceBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {
@@ -121,7 +129,7 @@ func (b validatedByteSliceBuffer) toUnvalidatedReader(off int64) io.ReadCloser {
 	if err := validateReaderOffset(int64(len(b.data)), off); err != nil {
 		return newErrorReader(err)
 	}
-	return ioutil.NopCloser(bytes.NewBuffer(b.data[off:]))
+	return io.NopCloser(bytes.NewBuffer(b.data[off:]))
 }
 
 type byteSliceChunkReader struct {

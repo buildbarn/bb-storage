@@ -20,7 +20,7 @@ var (
 			Help:      "Number of attempts it took for Get()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 6),
 		},
-		[]string{"name", "outcome"})
+		[]string{"storage_type", "outcome"})
 	hashingKeyLocationMapGetTooManyAttempts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -28,7 +28,7 @@ var (
 			Name:      "hashing_key_location_map_get_too_many_attempts_total",
 			Help:      "Number of times Get() took the maximum number of attempts and still did not find the entry, which may indicate the hash table is too small",
 		},
-		[]string{"name"})
+		[]string{"storage_type"})
 
 	hashingKeyLocationMapPutIterations = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -38,7 +38,7 @@ var (
 			Help:      "Number of iterations it took for Put()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
 		},
-		[]string{"name", "outcome"})
+		[]string{"storage_type", "outcome"})
 	hashingKeyLocationMapPutTooManyIterations = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -46,7 +46,7 @@ var (
 			Name:      "hashing_key_location_map_put_too_many_iterations_total",
 			Help:      "Number of times Put() discarded an entry, because it took the maximum number of iterations, which may indicate the hash table is too small",
 		},
-		[]string{"name"})
+		[]string{"storage_type"})
 )
 
 type hashingKeyLocationMap struct {
@@ -86,7 +86,7 @@ type hashingKeyLocationMap struct {
 // discarded once the upper bound is reached. Though this may sound
 // harmful, there is a very high probability that the entry being
 // discarded is one of the older ones.
-func NewHashingKeyLocationMap(recordArray LocationRecordArray, recordsCount int, hashInitialization uint64, maximumGetAttempts uint32, maximumPutAttempts int, name string) KeyLocationMap {
+func NewHashingKeyLocationMap(recordArray LocationRecordArray, recordsCount int, hashInitialization uint64, maximumGetAttempts uint32, maximumPutAttempts int, storageType string) KeyLocationMap {
 	hashingKeyLocationMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(hashingKeyLocationMapGetAttempts)
 		prometheus.MustRegister(hashingKeyLocationMapGetTooManyAttempts)
@@ -102,15 +102,15 @@ func NewHashingKeyLocationMap(recordArray LocationRecordArray, recordsCount int,
 		maximumGetAttempts: maximumGetAttempts,
 		maximumPutAttempts: maximumPutAttempts,
 
-		getNotFound:        hashingKeyLocationMapGetAttempts.WithLabelValues(name, "NotFound"),
-		getFound:           hashingKeyLocationMapGetAttempts.WithLabelValues(name, "Found"),
-		getTooManyAttempts: hashingKeyLocationMapGetTooManyAttempts.WithLabelValues(name),
+		getNotFound:        hashingKeyLocationMapGetAttempts.WithLabelValues(storageType, "NotFound"),
+		getFound:           hashingKeyLocationMapGetAttempts.WithLabelValues(storageType, "Found"),
+		getTooManyAttempts: hashingKeyLocationMapGetTooManyAttempts.WithLabelValues(storageType),
 
-		putInserted:          hashingKeyLocationMapPutIterations.WithLabelValues(name, "Inserted"),
-		putUpdated:           hashingKeyLocationMapPutIterations.WithLabelValues(name, "Updated"),
-		putIgnoredOlder:      hashingKeyLocationMapPutIterations.WithLabelValues(name, "IgnoredOlder"),
-		putTooManyAttempts:   hashingKeyLocationMapPutIterations.WithLabelValues(name, "TooManyAttempts"),
-		putTooManyIterations: hashingKeyLocationMapPutTooManyIterations.WithLabelValues(name),
+		putInserted:          hashingKeyLocationMapPutIterations.WithLabelValues(storageType, "Inserted"),
+		putUpdated:           hashingKeyLocationMapPutIterations.WithLabelValues(storageType, "Updated"),
+		putIgnoredOlder:      hashingKeyLocationMapPutIterations.WithLabelValues(storageType, "IgnoredOlder"),
+		putTooManyAttempts:   hashingKeyLocationMapPutIterations.WithLabelValues(storageType, "TooManyAttempts"),
+		putTooManyIterations: hashingKeyLocationMapPutTooManyIterations.WithLabelValues(storageType),
 	}
 }
 

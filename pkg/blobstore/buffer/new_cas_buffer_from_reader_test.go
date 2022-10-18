@@ -3,7 +3,6 @@ package buffer_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -38,7 +37,7 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		writer := bytes.NewBuffer(nil)
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
@@ -62,7 +61,7 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 			helloDigest,
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -77,7 +76,7 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 			helloDigest,
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 }
 
@@ -87,7 +86,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -112,11 +111,11 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -130,7 +129,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("ShortRead", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -145,7 +144,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	})
 
 	t.Run("SizeTooSmall", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Foo"))
+		reader := io.NopCloser(bytes.NewBufferString("Foo"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -155,11 +154,11 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("SizeTooLarge", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("FooBar"))
+		reader := io.NopCloser(bytes.NewBufferString("FooBar"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -169,11 +168,11 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Xyzzy"))
+		reader := io.NopCloser(bytes.NewBufferString("Xyzzy"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -183,7 +182,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
 
 	t.Run("IOFailure", func(t *testing.T) {
@@ -198,7 +197,7 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -206,7 +205,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	t.Run("SmallerThanMaximum", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
+		reader := io.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -220,7 +219,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 	})
 
 	t.Run("Exact", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
+		reader := io.NopCloser(bytes.NewBuffer(exampleActionResultBytes))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -243,11 +242,11 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 
 	t.Run("DataCorruption", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Foo"))
+		reader := io.NopCloser(bytes.NewBufferString("Foo"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -256,7 +255,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
 	})
 
 	t.Run("InvalidProtobuf", func(t *testing.T) {
@@ -264,7 +263,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		// should not be treated as a data integrity error if
 		// the hash of the object matches. That's an error on
 		// the consumption side.
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -288,7 +287,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 			reader,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 }
 
@@ -298,7 +297,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	// Only test the successful case, as other aspects are already
 	// covered by TestNewCASBufferFromReaderToProto.
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -312,7 +311,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 	})
 
 	t.Run("Empty", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBuffer(nil))
+		reader := io.NopCloser(bytes.NewBuffer(nil))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -335,7 +334,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		11)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -368,7 +367,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 	})
 
 	t.Run("AtTheEnd", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -397,7 +396,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 			/* offset = */ -1,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
 		r.Close()
 	})
 
@@ -413,12 +412,12 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 			/* offset = */ 12,
 			/* chunk size = */ 2)
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
 		r.Close()
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello worlf"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello worlf"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -434,9 +433,9 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello worl"), chunk)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		_, err = r.Read()
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		r.Close()
 	})
 }
@@ -447,7 +446,7 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello world"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -479,7 +478,7 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello worlf"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello worlf"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(false)
 
@@ -492,10 +491,10 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 		var p [20]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		n, err = r.Read(p[:])
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d46893336c594d884bb1b9b4f5299f4a, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"), err)
 		require.Nil(t, r.Close())
 	})
 }
@@ -509,7 +508,7 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		5)
 
 	t.Run("Success", func(t *testing.T) {
-		reader := ioutil.NopCloser(bytes.NewBufferString("Hello"))
+		reader := io.NopCloser(bytes.NewBufferString("Hello"))
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
@@ -539,10 +538,10 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
 	t.Run("ChecksumFailure", func(t *testing.T) {
@@ -558,10 +557,10 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 
 	t.Run("TooBig", func(t *testing.T) {
@@ -575,10 +574,10 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(4)
 
 		_, err := b1.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
 
 		_, err = b2.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)
 	})
 }
 

@@ -8,8 +8,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,7 +19,8 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	redisClient := mock.NewMockRedisClient(ctrl)
-	blobAccess := blobstore.NewRedisBlobAccess(redisClient, blobstore.CASReadBufferFactory, digest.KeyWithoutInstance, 0, 0)
+	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
+	blobAccess := blobstore.NewRedisBlobAccess(redisClient, blobstore.CASReadBufferFactory, digest.KeyWithoutInstance, 0, 0, capabilitiesProvider)
 
 	canceledCtx, cancel := context.WithCancel(ctx)
 	cancel()
@@ -34,11 +35,11 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 	// piece of code that calls into Redis multiple times would not
 	// have any cancelation points.
 	_, err := blobAccess.Get(canceledCtx, blobDigest).ToByteSlice(100)
-	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
+	testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "context canceled"), err)
 
 	err = blobAccess.Put(canceledCtx, blobDigest, buffer.NewValidatedBufferFromByteSlice(nil))
-	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
+	testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "context canceled"), err)
 
 	_, err = blobAccess.FindMissing(canceledCtx, digest.EmptySet)
-	require.Equal(t, err, status.Error(codes.Canceled, "context canceled"))
+	testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "context canceled"), err)
 }

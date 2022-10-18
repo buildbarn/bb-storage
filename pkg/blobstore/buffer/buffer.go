@@ -72,6 +72,15 @@ type Buffer interface {
 	// this may cause deadlocks. Contents are only returned when
 	// both buffers are accessed.
 	CloneStream() (Buffer, Buffer)
+	// Attach a task to buffer that needs to be completed while the
+	// buffer is being read. The error response of the task will be
+	// reported as a read error on the buffer.
+	//
+	// For trivial buffer types (e.g., buffers backed by errors or
+	// byte slices), the task will be executed synchronously. For
+	// complex buffer types, the task will be executed
+	// asynchronously.
+	WithTask(func() error) Buffer
 	// Release the object without reading its contents.
 	Discard()
 

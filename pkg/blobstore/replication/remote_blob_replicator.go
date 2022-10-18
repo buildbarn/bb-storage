@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/replicator"
 
@@ -28,9 +29,7 @@ func NewRemoteBlobReplicator(source blobstore.BlobAccess, client grpc.ClientConn
 }
 
 func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	b := br.source.Get(ctx, digest)
-	b, t := buffer.WithBackgroundTask(b)
-	go func() {
+	return br.source.Get(ctx, digest).WithTask(func() error {
 		// Let the remote replication service perform the
 		// replication while we stream data back to the client.
 		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
@@ -39,9 +38,20 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 				digest.GetProto(),
 			},
 		})
-		t.Finish(err)
-	}()
-	return b
+		return err
+	})
+}
+
+func (br *remoteBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer).WithTask(func() error {
+		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
+			InstanceName: parentDigest.GetInstanceName().String(),
+			BlobDigests: []*remoteexecution.Digest{
+				parentDigest.GetProto(),
+			},
+		})
+		return err
+	})
 }
 
 func (br *remoteBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

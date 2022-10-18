@@ -7,6 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ import (
 type casBlobAccess struct {
 	byteStreamClient                bytestream.ByteStreamClient
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
+	capabilitiesClient              remoteexecution.CapabilitiesClient
 	uuidGenerator                   util.UUIDGenerator
 	readChunkSize                   int
 }
@@ -31,6 +33,7 @@ func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGe
 	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
+		capabilitiesClient:              remoteexecution.NewCapabilitiesClient(client),
 		uuidGenerator:                   uuidGenerator,
 		readChunkSize:                   readChunkSize,
 	}
@@ -61,7 +64,7 @@ func (r *byteStreamChunkReader) Close() {
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	client, err := ba.byteStreamClient.Read(ctxWithCancel, &bytestream.ReadRequest{
-		ResourceName: digest.GetByteStreamReadPath(),
+		ResourceName: digest.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
 	})
 	if err != nil {
 		cancel()
@@ -71,6 +74,11 @@ func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.B
 		client: client,
 		cancel: cancel,
 	}, buffer.BackendProvided(buffer.Irreparable(digest)))
+}
+
+func (ba *casBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -84,7 +92,7 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 		return err
 	}
 
-	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()))
+	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()), remoteexecution.Compressor_IDENTITY)
 	writeOffset := int64(0)
 	for {
 		if data, err := r.Read(); err == nil {
@@ -154,4 +162,21 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 		}
 	}
 	return missingDigests.Build(), nil
+}
+
+func (ba *casBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	cacheCapabilities, err := getCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only return fields that pertain to the Content Addressable
+	// Storage. Don't set 'max_batch_total_size_bytes', as we don't
+	// issue batch operations. The same holds for fields related to
+	// compression support.
+	return &remoteexecution.ServerCapabilities{
+		CacheCapabilities: &remoteexecution.CacheCapabilities{
+			DigestFunctions: digest.RemoveUnsupportedDigestFunctions(cacheCapabilities.DigestFunctions),
+		},
+	}, nil
 }

@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package buildbarn.iscc;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/iscc";
+
+// The Initial Size Class Cache (ISCC) is a data store that can be used
+// by bb_scheduler to store outcomes of previous executions of an
+// action. This data is then used during successive actions of the same
+// shape to pick the initial size class on which the action needs to be
+// run.
+//
+// It generally only makes sense to use this data store in case
+// platforms are declared that have multiple size classes.
+service InitialSizeClassCache {
+  // GetPreviousExecutionStats() reads a single PreviousExecutionStats
+  // message from the ISCC.
+  rpc GetPreviousExecutionStats(GetPreviousExecutionStatsRequest)
+      returns (PreviousExecutionStats);
+
+  // UpdatePreviousExecutionStats() writes a single
+  // PreviousExecutionStats message to the ISCC.
+  rpc UpdatePreviousExecutionStats(UpdatePreviousExecutionStatsRequest)
+      returns (google.protobuf.Empty);
+}
+
+// The outcome of a single action at some point in the past.
+message PreviousExecution {
+  oneof outcome {
+    // Execution failed with an error.
+    google.protobuf.Empty failed = 1;
+
+    // Execution failed due to a timeout. The timeout value is stored.
+    google.protobuf.Duration timed_out = 2;
+
+    // Execution succeeded. The virtual execution duration is stored.
+    google.protobuf.Duration succeeded = 3;
+  }
+}
+
+// Outcomes of actions for a given size class.
+message PerSizeClassStats {
+  // The most recent outcomes for this size class, where the last entry
+  // corresponds to the most recent one.
+  repeated PreviousExecution previous_executions = 1;
+
+  reserved 2;
+
+  // An initial probability value to be used for PageRank computation.
+  // These values may correspond to outcomes of previous PageRank
+  // computations. Reloading them may make it possible to recompute
+  // future PageRank probabilities values more quickly.
+  double initial_page_rank_probability = 3;
+}
+
+message PreviousExecutionStats {
+  // Outcomes of previous executions of actions, per size class.
+  map<uint32, PerSizeClassStats> size_classes = 1;
+
+  // The time at which this action failed on the largest size class.
+  google.protobuf.Timestamp last_seen_failure = 2;
+}
+
+message GetPreviousExecutionStatsRequest {
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The digest of a trimmed down Action message for which statistics
+  // are requested. This digest is obtained by removing all fields from
+  // the original Action, except for 'command_digest' and 'platform'.
+  //
+  // This means that contents of the input root, the Action's timeout
+  // and the do_not_cache flag are ignored.
+  build.bazel.remote.execution.v2.Digest reduced_action_digest = 2;
+}
+
+message UpdatePreviousExecutionStatsRequest {
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The digest of a trimmed down Action message for which statistics
+  // are being stored.
+  build.bazel.remote.execution.v2.Digest reduced_action_digest = 2;
+
+  // The statistics to store.
+  PreviousExecutionStats previous_execution_stats = 3;
+}

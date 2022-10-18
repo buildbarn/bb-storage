@@ -3,14 +3,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "filesystem",
     srcs = [
+        "device_number_nonunix.go",
+        "device_number_unix.go",
         "directory.go",
         "file.go",
         "file_info.go",
         "local_directory_darwin.go",
-        "local_directory_disabled.go",
         "local_directory_freebsd.go",
         "local_directory_linux.go",
         "local_directory_unix.go",
+        "local_directory_windows.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem",
     visibility = ["//visibility:public"],
@@ -48,8 +50,10 @@ go_library(
             "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:windows": [
+            "//pkg/filesystem/windowsext",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
+            "@org_golang_x_sys//windows",
         ],
         "//conditions:default": [],
     }),
@@ -58,11 +62,18 @@ go_library(
 go_test(
     name = "filesystem_test",
     srcs = [
-        "local_directory_darwin_test.go",
         "local_directory_test.go",
-    ],
-    embed = [":filesystem"],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "local_directory_darwin_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "local_directory_darwin_test.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
+        ":filesystem",
         "//pkg/filesystem/path",
         "@com_github_stretchr_testify//require",
     ],

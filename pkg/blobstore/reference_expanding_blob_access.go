@@ -7,38 +7,35 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// HTTPClient is an interface around Go's standard HTTP client type. It
-// has been added to aid unit testing.
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-var _ HTTPClient = &http.Client{}
-
 type referenceExpandingBlobAccess struct {
 	blobAccess              BlobAccess
-	httpClient              HTTPClient
-	s3                      cloud_aws.S3
+	httpClient              *http.Client
+	s3Client                cloud_aws.S3Client
 	maximumMessageSizeBytes int
 }
 
 // getHTTPRangeHeader creates a HTTP Range header based on the offset
 // and size stored in an ICAS Reference.
 func getHTTPRangeHeader(reference *icas.Reference) string {
-	return fmt.Sprintf("bytes=%d-%d", reference.OffsetBytes, reference.OffsetBytes+reference.SizeBytes-1)
+	if sizeBytes := reference.SizeBytes; sizeBytes > 0 {
+		return fmt.Sprintf("bytes=%d-%d", reference.OffsetBytes, reference.OffsetBytes+sizeBytes-1)
+	}
+	return fmt.Sprintf("bytes=%d-", reference.OffsetBytes)
 }
 
 // NewReferenceExpandingBlobAccess takes an Indirect Content Addressable
@@ -46,11 +43,11 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient HTTPClient, s3 cloud_aws.S3, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, maximumMessageSizeBytes int) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		blobAccess:              blobAccess,
 		httpClient:              httpClient,
-		s3:                      s3,
+		s3Client:                s3Client,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
@@ -84,7 +81,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 		r = resp.Body
 	case *icas.Reference_S3_:
 		// Download the object from S3.
-		getObjectOutput, err := ba.s3.GetObjectWithContext(ctx, &s3.GetObjectInput{
+		getObjectOutput, err := ba.s3Client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(medium.S3.Bucket),
 			Key:    aws.String(medium.S3.Key),
 			Range:  aws.String(getHTTPRangeHeader(reference)),
@@ -98,9 +95,22 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 	}
 
 	// Apply a decompressor if needed.
-	// TODO: Add support for Zstandard.
 	switch reference.Decompressor {
 	case remoteexecution.Compressor_IDENTITY:
+	case remoteexecution.Compressor_ZSTD:
+		// Disable concurrency, as the default is to use
+		// GOMAXPROCS. We should just use a single thread,
+		// because many BlobAccess operations may run in
+		// parallel.
+		decoder, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
+		if err != nil {
+			r.Close()
+			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))
+		}
+		r = &zstdReader{
+			Decoder:          decoder,
+			underlyingReader: r,
+		}
 	case remoteexecution.Compressor_DEFLATE:
 		r = struct {
 			io.Reader
@@ -124,10 +134,31 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 	return buffer.NewCASBufferFromReader(digest, r, buffer.BackendProvided(buffer.Irreparable(digest)))
 }
 
+func (ba *referenceExpandingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
+}
+
 func (ba *referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	return status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data")
 }
 
+func (ba *referenceExpandingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	return nil, status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage cannot be queried for capabilities")
+}
+
 func (ba *referenceExpandingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return ba.blobAccess.FindMissing(ctx, digests)
+}
+
+// zstdReader is a decorator for zstd.Decoder that ensures both the
+// decoder and the underlying stream are closed upon completion.
+type zstdReader struct {
+	*zstd.Decoder
+	underlyingReader io.Closer
+}
+
+func (r *zstdReader) Close() error {
+	r.Decoder.Close()
+	return r.underlyingReader.Close()
 }

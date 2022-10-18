@@ -2,9 +2,9 @@ package local
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -24,7 +24,7 @@ var (
 			Name:      "old_new_current_location_blob_map_last_removed_old_block_insertion_time_seconds",
 			Help:      "Time at which the last removed block was inserted into the \"old\" queue, which is an indicator for the worst-case blob retention time",
 		},
-		[]string{"name"})
+		[]string{"storage_type"})
 )
 
 type oldBlockState struct {
@@ -51,27 +51,27 @@ type oldBlockState struct {
 // future, which is why it needs to be copied into the "new" group when
 // requested to be retained. Data in the "current" group is assumed to
 // remain present for the time being, which is why it is left in place.
-// This copying is performed by KeyBlobMapBackedBlobAccess.
+// This copying is performed by FlatBlobAccess.
 //
 // Below is an illustration of how the blocks of data may be laid out at
 // a given point in time. Every column of █ characters corresponds to a
 // single block. The number of characters indicates the amount of data
 // stored within.
 //
-//     ← Over time, blocks move from "new" to "current" to "old" ←
+//	← Over time, blocks move from "new" to "current" to "old" ←
 //
-//                   Old         Current        New
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █
-//                 █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █ █
-//                 ↓ ↓ ↓ ↓                     ↑ ↑ ↑ ↑
-//                 └─┴─┴─┴─────────────────────┴─┴─┴─┘
-//        Data gets copied from "old" to "new" when requested.
+//	              Old         Current        New
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █
+//	            █ █ █ █ │ █ █ █ █ █ █ █ █ │ █ █ █
+//	            ↓ ↓ ↓ ↓                     ↑ ↑ ↑ ↑
+//	            └─┴─┴─┴─────────────────────┴─┴─┴─┘
+//	   Data gets copied from "old" to "new" when requested.
 //
 // Blobs get stored in blocks in the "new" group with an inverse
 // exponential probability. This is done to reduce the probability of
@@ -129,7 +129,7 @@ func unixTime() float64 {
 
 // NewOldCurrentNewLocationBlobMap creates a new instance of
 // OldCurrentNewLocationBlobMap.
-func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy BlockListGrowthPolicy, errorLogger util.ErrorLogger, name string, blockSizeBytes int64, oldBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
+func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy BlockListGrowthPolicy, errorLogger util.ErrorLogger, storageType string, blockSizeBytes int64, oldBlocksCount, newBlocksCount, initialBlocksCount int) *OldCurrentNewLocationBlobMap {
 	oldCurrentNewLocationBlobMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime)
 	})
@@ -144,7 +144,7 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy 
 
 		allocationBlockIndex: -1,
 
-		lastRemovedOldBlockInsertionTime: oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime.WithLabelValues(name),
+		lastRemovedOldBlockInsertionTime: oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime.WithLabelValues(storageType),
 	}
 	now := unixTime()
 	lbm.lastRemovedOldBlockInsertionTime.Set(now)
@@ -170,7 +170,7 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy 
 		})
 	}
 	if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
-		lbm.totalBlocksToBeReleased.Initialize(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
+		lbm.totalBlocksToBeReleased.Store(uint64(len(lbm.oldBlocks) - lbm.desiredOldBlocksCount))
 	}
 	return lbm
 }

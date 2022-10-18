@@ -2,7 +2,6 @@ package local
 
 import (
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -54,7 +53,7 @@ func (pss directoryBackedPersistentStateStore) ReadPersistentState() (*pb.Persis
 	}
 	defer f.Close()
 
-	data, err := ioutil.ReadAll(io.NewSectionReader(f, 0, math.MaxInt64))
+	data, err := io.ReadAll(io.NewSectionReader(f, 0, math.MaxInt64))
 	if err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to read from file")
 	}

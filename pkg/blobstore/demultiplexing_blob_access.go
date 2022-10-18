@@ -3,7 +3,9 @@ package blobstore
 import (
 	"context"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -43,6 +45,16 @@ func (ba *demultiplexingBlobAccess) Get(ctx context.Context, digest digest.Diges
 	}
 	return buffer.WithErrorHandler(
 		backend.Get(ctx, patcher.PatchDigest(digest)),
+		backendNamePrefixingErrorHandler{backendName: backendName})
+}
+
+func (ba *demultiplexingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	backend, backendName, patcher, err := ba.getBackend(parentDigest.GetInstanceName())
+	if err != nil {
+		return buffer.NewBufferFromError(err)
+	}
+	return buffer.WithErrorHandler(
+		backend.GetFromComposite(ctx, patcher.PatchDigest(parentDigest), patcher.PatchDigest(childDigest), slicer),
 		backendNamePrefixingErrorHandler{backendName: backendName})
 }
 
@@ -111,6 +123,18 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 		}
 	}
 	return allMissing.Build(), nil
+}
+
+func (ba *demultiplexingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	backend, backendName, patcher, err := ba.getBackend(instanceName)
+	if err != nil {
+		return nil, err
+	}
+	capabilities, err := backend.GetCapabilities(ctx, patcher.PatchInstanceName(instanceName))
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Backend %#v", backendName)
+	}
+	return capabilities, err
 }
 
 type backendNamePrefixingErrorHandler struct {

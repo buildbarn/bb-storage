@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package buildbarn.configuration.jwt;
+
+import "pkg/proto/configuration/eviction/eviction.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt";
+
+message AuthorizationHeaderParserConfiguration {
+  oneof key {
+    // Accept signatures using algorithms "HS256", "HS384" and "HS512".
+    //
+    // This field contains the shared key secret to validate the
+    // signature.
+    bytes hmac_key = 1;
+
+    // Accept signatures using algorithms "ES256", "ES384", "ES512" or
+    // "EdDSA".
+    //
+    // This field contains the public key used to validate the
+    // signature. It should start with "-----BEGIN PUBLIC KEY-----".
+    // The public key type and curve size determine which exact
+    // algorithm is used.
+    string public_key = 2;
+  }
+
+  // Maximum number of validated tokens to cache in memory. This speeds
+  // up successive requests made with the same token.
+  int32 maximum_cache_size = 3;
+
+  // The cache replacement policy that should be applied to the token
+  // cache. It is advised that this is set to LEAST_RECENTLY_USED.
+  buildbarn.configuration.eviction.CacheReplacementPolicy
+      cache_replacement_policy = 4;
+
+  // This implementation requires that the current time lies between the
+  // "nbf" (Not Before) and "exp" (Expiration Time) claims stored in the
+  // token, if present.
+  //
+  // This option allows specifying a boolean JMESPath expression that
+  // can be used to place additional requirements on the presence of
+  // claims and their values. For example, it is possible to require
+  // that the "aud" (Audience) claim is equal to "MyBuildCluster" by
+  // using the following JMESPath expression:
+  //
+  //     aud == 'MyBuildCluster'
+  //
+  // In case no additional requirements against claims need to be made,
+  // it is possible to use the following JMESPath expression (including
+  // the backticks):
+  //
+  //     `true`
+  //
+  // More details about JMESPath can be found at https://jmespath.org/.
+  //
+  // It is recommended that this feature is only used for making
+  // authentication decisions; not authorization decisions. The reason
+  // being that validation failures will cause gRPC requests to fail
+  // with code UNAUTHENTICATED; not PERMISSION_DENIED.
+  string claims_validation_jmespath_expression = 5;
+
+  // JMESPath expression for converting claims to a Protobuf message of
+  // type buildbarn.auth.AuthenticationMetadata. The resulting metadata
+  // can be used for purposes such as authorization.
+  //
+  // The following expression would cause all of the claims in the JSON
+  // Web Token's payload to become private authentication metadata:
+  //
+  //     {"private": @}
+  //
+  // The following expression demonstrates how given a JSON Web Token
+  // consisting of "given_name" and "family_name" fields can be
+  // transformed to authentication metadata with a public "name" field.
+  //
+  //     {"public": {"name": join(' ', [given_name, family_name])}}
+  //
+  // The following expression can be used if no metadata needs to be
+  // extracted from the token:
+  //
+  //     `{}`
+  string metadata_extraction_jmespath_expression = 6;
+}

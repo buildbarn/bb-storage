@@ -1,0 +1,53 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "jwt",
+    srcs = [
+        "authorization_header_parser.go",
+        "configuration.go",
+        "ecdsa_sha_signature_generator.go",
+        "ecdsa_sha_signature_validator.go",
+        "ed25519_signature_validator.go",
+        "generate_authorization_header.go",
+        "hmac_sha_signature_validator.go",
+        "signature_generator.go",
+        "signature_validator.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/jwt",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/auth",
+        "//pkg/clock",
+        "//pkg/eviction",
+        "//pkg/proto/configuration/jwt",
+        "//pkg/random",
+        "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "jwt_test",
+    srcs = [
+        "authorization_header_parser_test.go",
+        "ecdsa_sha_signature_generator_test.go",
+        "ecdsa_sha_signature_validator_test.go",
+        "ed25519_signature_validator_test.go",
+        "generate_authorization_header_test.go",
+        "hmac_sha_signature_validator_test.go",
+    ],
+    deps = [
+        ":jwt",
+        "//internal/mock",
+        "//pkg/eviction",
+        "//pkg/random",
+        "//pkg/testutil",
+        "@com_github_golang_mock//gomock",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

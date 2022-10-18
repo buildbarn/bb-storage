@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -21,77 +22,63 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
-	t.Run("InvalidInstanceName", func(t *testing.T) {
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "hello/blobs/world",
-		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
-	})
-
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "Nonexistent backend",
-		})
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("Nonexistent backend"))
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "rhel7",
-		}).Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
+		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "ubuntu1804",
-		})
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "rhel7",
-		}).Return(&remoteexecution.ServerCapabilities{
-			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
-			},
-		}, nil)
+		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+			Return(&remoteexecution.ServerCapabilities{
+				CacheCapabilities: &remoteexecution.CacheCapabilities{
+					DigestFunctions: digest.SupportedDigestFunctions,
+				},
+			}, nil)
 
-		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
-			InstanceName: "ubuntu1804",
-		})
+		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunction: digest.SupportedDigestFunctions,
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, response)
 	})
 }
 
 func TestDemultiplexingBuildQueueExecute(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "hello/blobs/world",
@@ -100,16 +87,17 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid instance name \"hello/blobs/world\": Instance name contains reserved keyword \"blobs\""), err)
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "Nonexistent backend",
@@ -118,12 +106,12 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
@@ -136,6 +124,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			},
 		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "ubuntu1804",
@@ -144,12 +133,12 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				SizeBytes: 0,
 			},
 		}, executeServer)
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("foo/ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("foo/ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("foo"),
 			digest.MustNewInstanceName("rhel7"),
@@ -169,6 +158,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 				return nil
 			})
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
+		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 		executeServer.EXPECT().Send(&longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
@@ -191,36 +181,38 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 }
 
 func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	buildQueueGetter := mock.NewMockDemultiplexedBuildQueueGetter(ctrl)
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "This is an operation name that doesn't contain slash-operations-slash, meaning we can't demultiplex",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unable to extract instance name from operation name"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unable to extract instance name from operation name"), err)
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "Nonexistent backend/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
@@ -229,16 +221,17 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "ubuntu1804/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}, waitExecutionServer)
-		require.Equal(t, status.Error(codes.Unavailable, "Server not reachable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
 			buildQueue,
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
@@ -254,6 +247,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 				return nil
 			})
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
+		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 		waitExecutionServer.EXPECT().Send(&longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance

@@ -3,12 +3,12 @@ package buffer_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -37,7 +37,7 @@ func TestNewProtoBufferFromProtoReadAt(t *testing.T) {
 		var p [5]byte
 		n, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestNewProtoBufferFromProtoIntoWriter(t *testing.T) {
 		out := mock.NewMockWriter(ctrl)
 		out.EXPECT().Write(gomock.Any()).Return(0, status.Error(codes.Internal, "Storage backend unavailable"))
 		err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).IntoWriter(out)
-		require.Equal(t, status.Error(codes.Internal, "Storage backend unavailable"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend unavailable"), err)
 	})
 }
 
@@ -92,7 +92,7 @@ func TestNewProtoBufferFromProtoToProto(t *testing.T) {
 	t.Run("TooBig", func(t *testing.T) {
 		_, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 }
 
@@ -111,7 +111,7 @@ func TestNewProtoBufferFromProtoToByteSlice(t *testing.T) {
 
 	t.Run("TooBig", func(t *testing.T) {
 		_, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).ToByteSlice(len(exampleActionResultBytes) - 1)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
 }
 
@@ -155,7 +155,7 @@ func TestNewProtoBufferFromProtoToChunkReader(t *testing.T) {
 			/* chunk size = */ 1024)
 
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 
 		r.Close()
 	})
@@ -166,7 +166,7 @@ func TestNewProtoBufferFromProtoToChunkReader(t *testing.T) {
 			/* chunk size = */ 100)
 
 		_, err := r.Read()
-		require.Equal(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a read at offset 135 was requested"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a read at offset 135 was requested"), err)
 
 		r.Close()
 	})
@@ -175,7 +175,7 @@ func TestNewProtoBufferFromProtoToChunkReader(t *testing.T) {
 func TestNewProtoBufferFromProtoToReader(t *testing.T) {
 	r := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).ToReader()
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data)
 
@@ -192,6 +192,23 @@ func TestNewProtoBufferFromProtoCloneCopy(t *testing.T) {
 	data2, err := b2.ToByteSlice(len(exampleActionResultBytes))
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data2)
+}
+
+func TestNewProtoBufferFromProtoWithTask(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		data, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).
+			WithTask(func() error { return nil }).
+			ToByteSlice(len(exampleActionResultBytes))
+		require.NoError(t, err)
+		require.Equal(t, exampleActionResultBytes, data)
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		_, err := buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided).
+			WithTask(func() error { return status.Error(codes.Internal, "I/O error") }).
+			ToByteSlice(len(exampleActionResultBytes))
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "I/O error"), err)
+	})
 }
 
 func TestNewProtoBufferFromProtoCloneStream(t *testing.T) {

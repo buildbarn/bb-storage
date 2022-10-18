@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/go-redis/redis/v8"
@@ -23,6 +25,8 @@ type RedisClient interface {
 }
 
 type redisBlobAccess struct {
+	capabilities.Provider
+
 	redisClient        RedisClient
 	readBufferFactory  ReadBufferFactory
 	digestKeyFormat    digest.KeyFormat
@@ -32,8 +36,10 @@ type redisBlobAccess struct {
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, replicationCount int64, replicationTimeout time.Duration) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, replicationCount int64, replicationTimeout time.Duration, capabilitiesProvider capabilities.Provider) BlobAccess {
 	return &redisBlobAccess{
+		Provider: capabilitiesProvider,
+
 		redisClient:        redisClient,
 		readBufferFactory:  readBufferFactory,
 		digestKeyFormat:    digestKeyFormat,
@@ -65,6 +71,11 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 				}
 			}
 		})
+}
+
+func (ba *redisBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

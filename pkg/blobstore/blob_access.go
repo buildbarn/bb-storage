@@ -4,14 +4,19 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 // BlobAccess is an abstraction for a data store that can be used to
-// hold both a Bazel Action Cache (AC) and Content Addressable Storage
-// (CAS).
+// hold an Action Cache (AC), Content Addressable Storage (CAS), or any
+// other data store that uses keys in the form of digests.
 type BlobAccess interface {
+	capabilities.Provider
+
 	Get(ctx context.Context, digest digest.Digest) buffer.Buffer
+	GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer
 	Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)
 }

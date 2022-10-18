@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -49,14 +50,14 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				_, err := b.ToByteSlice(10)
-				require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 				return status.Error(codes.Internal, "Failed to read input: Server on fire")
 			})
 
 		// The error from the source should be returned to the caller.
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 
 	t.Run("SinkError", func(t *testing.T) {
@@ -74,7 +75,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		// be able to disambiguate from source errors.
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
 	})
 }
 
@@ -124,13 +125,13 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				_, err := b.ToByteSlice(10)
-				require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 				return status.Error(codes.Internal, "Failed to read input: Server on fire")
 			})
 
 		// Error messages should be prefixed with the digest of
 		// the object that was being replicated.
-		require.Equal(
+		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "8b1a9953c4611296a827abf8c47804d7-5-hello: Failed to read input: Server on fire"),
 			replicator.ReplicateMultiple(ctx, helloDigest.ToSingletonSet()))

@@ -58,9 +58,10 @@ message Reference {
   // composite objects (e.g., ZIP files).
   int64 offset_bytes = 3;
 
-  // The maximum amount of data that should be read from the source
-  // location. When decompressor == NONE, this value must be identical
-  // to the size stored in the Digest that identifies this reference.
+  // The amount of data that should be read from the source
+  // location. When left zero, data will be read until the end-of-file.
+  // When decompressor == IDENTITY, this value must be identical to the size
+  // stored in the Digest that identifies this reference.
   int64 size_bytes = 4;
 
   // Was 'decompressor', using its own enum type.

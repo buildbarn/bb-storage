@@ -9,14 +9,14 @@ import (
 
 // NewSetFromConfiguration creates a new cache replacement set using an
 // algorithm specified in a Protobuf enumeration value.
-func NewSetFromConfiguration(cacheReplacementPolicy pb.CacheReplacementPolicy) (Set, error) {
+func NewSetFromConfiguration[T comparable](cacheReplacementPolicy pb.CacheReplacementPolicy) (Set[T], error) {
 	switch cacheReplacementPolicy {
 	case pb.CacheReplacementPolicy_FIRST_IN_FIRST_OUT:
-		return NewFIFOSet(), nil
+		return NewFIFOSet[T](), nil
 	case pb.CacheReplacementPolicy_LEAST_RECENTLY_USED:
-		return NewLRUSet(), nil
+		return NewLRUSet[T](), nil
 	case pb.CacheReplacementPolicy_RANDOM_REPLACEMENT:
-		return NewRRSet(), nil
+		return NewRRSet[T](), nil
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "Unknown cache replacement policy")
 	}

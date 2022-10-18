@@ -1,7 +1,7 @@
 package util
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -20,9 +20,9 @@ func UnmarshalConfigurationFromFile(path string, configuration proto.Message) er
 	var jsonnetInput []byte
 	var err error
 	if path == "-" {
-		jsonnetInput, err = ioutil.ReadAll(os.Stdin)
+		jsonnetInput, err = io.ReadAll(os.Stdin)
 	} else {
-		jsonnetInput, err = ioutil.ReadFile(path)
+		jsonnetInput, err = os.ReadFile(path)
 	}
 	if err != nil {
 		return StatusWrapf(err, "Failed to read file contents")

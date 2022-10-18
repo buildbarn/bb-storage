@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"io"
-	"io/ioutil"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -63,7 +62,7 @@ func (b *casReaderBuffer) ReadAt(p []byte, off int64) (int, error) {
 
 	// Continue reading the rest of the chunk to force checksum
 	// validation.
-	if _, err := io.Copy(ioutil.Discard, r); err != nil {
+	if _, err := io.Copy(io.Discard, r); err != nil {
 		return 0, err
 	}
 	return n, nil
@@ -81,7 +80,7 @@ func (b *casReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {
 	if expectedSizeBytes > int64(maximumSizeBytes) {
 		return nil, status.Errorf(codes.InvalidArgument, "Buffer is %d bytes in size, while a maximum of %d bytes is permitted", expectedSizeBytes, maximumSizeBytes)
 	}
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func (b *casReaderBuffer) ToChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {
@@ -108,6 +107,10 @@ func (b *casReaderBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer) {
 
 func (b *casReaderBuffer) CloneStream() (Buffer, Buffer) {
 	return newCASClonedBuffer(b, b.digest, b.source).CloneStream()
+}
+
+func (b *casReaderBuffer) WithTask(task func() error) Buffer {
+	return newCASBufferWithBackgroundTask(b, b.digest, b.source, task)
 }
 
 func (b *casReaderBuffer) Discard() {

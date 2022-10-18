@@ -22,11 +22,11 @@ type ExistenceCache struct {
 
 	lock           sync.Mutex
 	insertionTimes map[string]time.Time
-	evictionSet    eviction.Set
+	evictionSet    eviction.Set[string]
 }
 
 // NewExistenceCache creates a new ExistenceCache that is empty.
-func NewExistenceCache(clock clock.Clock, keyFormat KeyFormat, cacheSize int, cacheDuration time.Duration, evictionSet eviction.Set) *ExistenceCache {
+func NewExistenceCache(clock clock.Clock, keyFormat KeyFormat, cacheSize int, cacheDuration time.Duration, evictionSet eviction.Set[string]) *ExistenceCache {
 	return &ExistenceCache{
 		clock:         clock,
 		keyFormat:     keyFormat,

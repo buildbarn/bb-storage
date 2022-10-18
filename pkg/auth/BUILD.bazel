@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "auth",
+    srcs = [
+        "any_authorizer.go",
+        "authentication_metadata.go",
+        "authorizer.go",
+        "authorizer_factory.go",
+        "jmespath_expression_authorizer.go",
+        "static_authorizer.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/auth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/digest",
+        "//pkg/otel",
+        "//pkg/proto/auth",
+        "//pkg/proto/configuration/auth",
+        "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@io_opentelemetry_go_otel//attribute",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)
+
+go_test(
+    name = "auth_test",
+    srcs = [
+        "any_authorizer_test.go",
+        "authentication_metadata_test.go",
+        "jmespath_expression_authorizer_test.go",
+        "static_authorizer_test.go",
+    ],
+    deps = [
+        ":auth",
+        "//internal/mock",
+        "//pkg/digest",
+        "//pkg/proto/auth",
+        "//pkg/testutil",
+        "@com_github_golang_mock//gomock",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@com_github_stretchr_testify//require",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_proto_otlp//common/v1:common",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

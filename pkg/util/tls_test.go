@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
@@ -135,7 +136,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 				ClientCertificate: "This is an invalid certificate",
 				ClientPrivateKey:  examplePrivateKey,
 			})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid client certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid client certificate or private key: tls: failed to find any PEM data in certificate input"), err)
 	})
 
 	t.Run("ServerCertificateAuthorities", func(t *testing.T) {
@@ -156,7 +157,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 			&configuration.ClientConfiguration{
 				ServerCertificateAuthorities: "This is an invalid certificate",
 			})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid server certificate authorities"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid server certificate authorities"), err)
 	})
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
@@ -189,7 +190,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 					"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385",
 				},
 			})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
 	})
 
 	t.Run("ServerName", func(t *testing.T) {
@@ -237,7 +238,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 				ServerCertificate: "This is an invalid certificate",
 				ServerPrivateKey:  examplePrivateKey,
 			})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Invalid server certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid server certificate or private key: tls: failed to find any PEM data in certificate input"), err)
 	})
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
@@ -277,6 +278,6 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 					"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385",
 				},
 			})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
 	})
 }

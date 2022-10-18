@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package buildbarn.auth;
+
+import "google/protobuf/struct.proto";
+import "opentelemetry/proto/common/v1/common.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/auth";
+
+// Protobuf equivalent of the AuthenticationMetadata structure that is
+// used by the auth framework to store information on an authenticated
+// user.
+message AuthenticationMetadata {
+  // Part of the authentication metadata that is safe to display
+  // publicly (e.g., as part of logs or bb_browser).
+  google.protobuf.Value public = 1;
+
+  // OpenTelemetry tracing attributes to add to spans in which the
+  // authentication took place (e.g., gRPC server call spans). All
+  // attributes will have "auth." prepended to their names
+  // automatically.
+  repeated opentelemetry.proto.common.v1.KeyValue tracing_attributes = 2;
+
+  // Part of the authentication metadata that should not be displayed
+  // publicly. This field is useful for propagating information from the
+  // authentication layer to the authorization layer, as this data can
+  // be accessed by JMESPathExpressionAuthorizer.
+  google.protobuf.Value private = 3;
+}

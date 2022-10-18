@@ -2,7 +2,9 @@ package grpc
 
 import (
 	"context"
-	"strings"
+
+	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,30 +18,34 @@ type anyAuthenticator struct {
 // instance. Access is granted only when one or more backing
 // Authenticators permit access, similar to Python's any() function.
 func NewAnyAuthenticator(authenticators []Authenticator) Authenticator {
-	if len(authenticators) == 1 {
+	switch len(authenticators) {
+	case 0:
+		return NewDenyAuthenticator("No authenticators configured")
+	case 1:
 		return authenticators[0]
-	}
-	return &anyAuthenticator{
-		authenticators: authenticators,
+	default:
+		return &anyAuthenticator{
+			authenticators: authenticators,
+		}
 	}
 }
 
-func (a *anyAuthenticator) Authenticate(ctx context.Context) error {
-	var unauthenticatedErrs []string
+func (a *anyAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
+	var unauthenticatedErrs []error
 	var otherErr error
 	for _, authenticator := range a.authenticators {
-		err := authenticator.Authenticate(ctx)
+		metadata, err := authenticator.Authenticate(ctx)
 		if err == nil {
-			return nil
+			return metadata, nil
 		}
-		if s := status.Convert(err); s.Code() == codes.Unauthenticated {
-			unauthenticatedErrs = append(unauthenticatedErrs, s.Message())
+		if status.Code(err) == codes.Unauthenticated {
+			unauthenticatedErrs = append(unauthenticatedErrs, err)
 		} else if otherErr == nil {
 			otherErr = err
 		}
 	}
 	if otherErr != nil {
-		return otherErr
+		return nil, otherErr
 	}
-	return status.Error(codes.Unauthenticated, strings.Join(unauthenticatedErrs, ", "))
+	return nil, util.StatusFromMultiple(unauthenticatedErrs)
 }

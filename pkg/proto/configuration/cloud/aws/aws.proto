@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.cloud.aws;
 
+import "pkg/proto/configuration/http/http.proto";
+
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws";
 
 message StaticCredentials {
@@ -12,22 +14,46 @@ message StaticCredentials {
   string secret_access_key = 2;
 }
 
+message WebIdentityRoleCredentials {
+  // IAM role ARN to assume.
+  string role_arn = 1;
+
+  // Path of a file containing an identity token.
+  string token_file = 2;
+}
+
 message SessionConfiguration {
-  // URL of the API endpoint (e.g., "http://localhost:9000" when using Minio).
-  string endpoint = 1;
+  // Was 'endpoint'.
+  reserved 1;
 
   // AWS region (e.g., "eu-west-1").
   string region = 2;
 
-  // Whether SSL should be disabled.
-  bool disable_ssl = 3;
+  // Was 'disable_ssl'.
+  reserved 3;
 
-  // Whether S3 should be accessed using old path-style URLs. More details:
-  // https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/
-  bool s3_force_path_style = 4;
+  // Was 's3_force_path_style'.
+  reserved 4;
 
-  // Static credentials to use for all requests. If unspecified, AWS
-  // will search the default credential provider chain (e.g.,
-  // environment variables, EC2 instance IAM roles).
-  StaticCredentials static_credentials = 5;
+  // Credentials to use for all requests. If unspecified, AWS will
+  // search the default credential provider chain (e.g., environment
+  // variables, EC2 instance IAM roles).
+  oneof credentials {
+    // Static credentials.
+    //
+    // More details:
+    // https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
+    StaticCredentials static_credentials = 5;
+
+    // Web identity role credentials. This mechanism is used when IAM
+    // roles are associated with a Kubernetes service account.
+    //
+    // More details:
+    // https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html
+    // https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+    WebIdentityRoleCredentials web_identity_role_credentials = 7;
+  }
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 6;
 }

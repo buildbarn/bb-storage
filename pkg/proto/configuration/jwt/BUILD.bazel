@@ -1,0 +1,25 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "jwt_proto",
+    srcs = ["jwt.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/eviction:eviction_proto"],
+)
+
+go_proto_library(
+    name = "jwt_go_proto",
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt",
+    proto = ":jwt_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/eviction"],
+)
+
+go_library(
+    name = "jwt",
+    embed = [":jwt_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt",
+    visibility = ["//visibility:public"],
+)

@@ -1,11 +1,11 @@
 package eviction
 
-// Set of string values that need to be retained according to a cache
+// Set of values that need to be retained according to a cache
 // replacement policy. This set does not permit concurrent access.
-type Set interface {
+type Set[T any] interface {
 	// Insert a value into the set. The value may not already be
 	// present within the set.
-	Insert(value string)
+	Insert(value T)
 
 	// Touch the element stored in the set corresponding with the
 	// provided value. Touching is used to indicate that the object
@@ -17,11 +17,11 @@ type Set interface {
 	// such as Random Replacement (RR), this function has no effect.
 	//
 	// The value must already be present within the set.
-	Touch(value string)
+	Touch(value T)
 
 	// Peek at the element that needs to be removed from cache
 	// first. This function may not be called on empty sets.
-	Peek() string
+	Peek() T
 
 	// Remove the element from the set that was last returned by
 	// Peek().

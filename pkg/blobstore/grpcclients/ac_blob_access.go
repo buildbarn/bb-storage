@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc"
@@ -13,8 +14,22 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func getCacheCapabilities(ctx context.Context, capabilitiesClient remoteexecution.CapabilitiesClient, instanceName digest.InstanceName) (*remoteexecution.CacheCapabilities, error) {
+	serverCapabilities, err := capabilitiesClient.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
+		InstanceName: instanceName.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if cacheCapabilities := serverCapabilities.CacheCapabilities; cacheCapabilities != nil {
+		return cacheCapabilities, nil
+	}
+	return nil, status.Errorf(codes.InvalidArgument, "Instance name %#v does not support remote caching", instanceName.String())
+}
+
 type acBlobAccess struct {
 	actionCacheClient       remoteexecution.ActionCacheClient
+	capabilitiesClient      remoteexecution.CapabilitiesClient
 	maximumMessageSizeBytes int
 }
 
@@ -25,6 +40,7 @@ type acBlobAccess struct {
 func NewACBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess {
 	return &acBlobAccess{
 		actionCacheClient:       remoteexecution.NewActionCacheClient(client),
+		capabilitiesClient:      remoteexecution.NewCapabilitiesClient(client),
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
@@ -38,6 +54,11 @@ func (ba *acBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Bu
 		return buffer.NewBufferFromError(err)
 	}
 	return buffer.NewProtoBufferFromProto(actionResult, buffer.BackendProvided(buffer.Irreparable(digest)))
+}
+
+func (ba *acBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }
 
 func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -55,4 +76,23 @@ func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.
 
 func (ba *acBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
+}
+
+func (ba *acBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	cacheCapabilities, err := getCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only return fields that pertain to the Action Cache. Even though
+	// 'cache_priority_capabilities' also applies to objects stored
+	// in the Content Addressable Storage, it can only be set
+	// through UpdateActionResult() and Execute() calls.
+	return &remoteexecution.ServerCapabilities{
+		CacheCapabilities: &remoteexecution.CacheCapabilities{
+			ActionCacheUpdateCapabilities: cacheCapabilities.ActionCacheUpdateCapabilities,
+			CachePriorityCapabilities:     cacheCapabilities.CachePriorityCapabilities,
+			SymlinkAbsolutePathStrategy:   cacheCapabilities.SymlinkAbsolutePathStrategy,
+		},
+	}, nil
 }

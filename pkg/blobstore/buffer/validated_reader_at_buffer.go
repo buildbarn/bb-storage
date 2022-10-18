@@ -2,9 +2,7 @@ package buffer
 
 import (
 	"io"
-	"io/ioutil"
-
-	"github.com/buildbarn/bb-storage/pkg/atomic"
+	"sync/atomic"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -69,7 +67,7 @@ func (b *validatedReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error
 	if b.sizeBytes > int64(maximumSizeBytes) {
 		return nil, status.Errorf(codes.InvalidArgument, "Buffer is %d bytes in size, while a maximum of %d bytes is permitted", b.sizeBytes, maximumSizeBytes)
 	}
-	return ioutil.ReadAll(io.NewSectionReader(b.r, 0, b.sizeBytes))
+	return io.ReadAll(io.NewSectionReader(b.r, 0, b.sizeBytes))
 }
 
 func (b *validatedReaderBuffer) ToChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {
@@ -91,6 +89,15 @@ func (b *validatedReaderBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer)
 func (b *validatedReaderBuffer) CloneStream() (Buffer, Buffer) {
 	b.cloneCount.Add(1)
 	return b, b
+}
+
+func (b *validatedReaderBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
 }
 
 func (b *validatedReaderBuffer) Discard() {

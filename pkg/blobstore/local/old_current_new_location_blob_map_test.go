@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -110,7 +111,7 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	})
 	require.False(t, needsRefresh)
 	_, err := locationBlobGetter(helloDigest).ToByteSlice(10)
-	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 
 	// Get() is not capable of releasing blocks immediately due to
 	// locking constraints. Still, we should make sure that further
@@ -157,7 +158,7 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
 		func(b buffer.Buffer) local.BlockListPutFinalizer {
 			_, err := b.ToByteSlice(10)
-			require.Equal(t, status.Error(codes.Unknown, "Client hung up"), err)
+			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 			return blockListPutFinalizer.Call
 		})
 	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
@@ -165,5 +166,5 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	locationBlobPutWriter, err := locationBlobMap.Put(5)
 	require.NoError(t, err)
 	_, err = locationBlobPutWriter(buffer.NewBufferFromError(status.Error(codes.Unknown, "Client hung up")))()
-	require.Equal(t, status.Error(codes.Unknown, "Client hung up"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 }

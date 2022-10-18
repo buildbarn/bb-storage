@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Active OpenTelemetry spans</title>
+		<style>{{stylesheet}}</style>
+	</head>
+	<body>
+		<nav class="navbar navbar-dark bg-primary">
+			<div class="container-fluid">
+				<span class="navbar-brand">Active OpenTelemetry spans</span>
+			</div>
+		</nav>
+
+		<div class="mx-3">
+			{{define "event_card_body"}}
+				<div class="card-body">
+					<table class="table table-sm">
+						<thead>
+							<tr>
+								<th>Timestamp</th>
+								<td>{{timestamp_rfc3339 .Timestamp}}</td>
+							</tr>
+						</thead>
+						{{with .Attributes}}
+							<tbody>
+								{{range .}}
+									<tr>
+										<th>{{.Key}}</th>
+										<td>{{.Value.Emit}}</td>
+									</tr>
+								{{end}}
+							</tbody>
+						{{end}}
+					</table>
+				</div>
+			{{end}}
+			{{block "list_spans" .}}
+				{{range .}}
+					<div class="card my-3">
+						<h5 class="bg-dark card-header text-white">Span "{{.Name}}"</h5>
+						<div class="card-body">
+							<table class="table table-sm">
+								<thead>
+									<tr>
+										<th>Start timestamp</th>
+										<td>{{timestamp_rfc3339 .StartTimestamp}}</td>
+									</tr>
+									{{if not .EndTimestamp.IsZero}}
+										<tr>
+											<th>End timestamp</th>
+											<td>{{timestamp_rfc3339 .EndTimestamp}}</td>
+										</tr>
+									{{end}}
+									<tr>
+										<th>Instrumentation name</th>
+										<td>{{.InstrumentationName}}</td>
+									</tr>
+									{{with .Status}}
+										<tr>
+											<th>Status</th>
+											<td>
+												{{if .IsError}}
+													<span class="badge bg-danger">Error</span>
+												{{else}}
+													<span class="badge bg-success">OK</span>
+												{{end}}
+												{{.Description}}
+											</td>
+										</tr>
+									{{end}}
+									{{with .SpanContext}}
+										{{if .HasTraceID}}
+											<tr>
+												<th>Trace ID</th>
+												<td>{{.TraceID}}</td>
+											</tr>
+										{{end}}
+										{{if .HasSpanID}}
+											<tr>
+												<th>Span ID</th>
+												<td>{{.SpanID}}</td>
+											</tr>
+										{{end}}
+										<tr>
+											<th>Is remote</th>
+											<td>{{.IsRemote}}</td>
+										</tr>
+										<tr>
+											<th>Is sampled</th>
+											<td>{{.IsSampled}}</td>
+										</tr>
+									{{end}}
+								</thead>
+								{{with .Attributes}}
+									<tbody>
+										{{range $key, $value := .}}
+											<tr>
+												<th>{{$key}}</th>
+												<td>{{$value.Emit}}</td>
+											</tr>
+										{{end}}
+									</tbody>
+								{{end}}
+							</table>
+
+							{{with .LastEvent}}
+								<div class="card my-3">
+									<h5 class="bg-primary card-header text-white">Last event "{{.Name}}"</h5>
+									{{template "event_card_body" .EventConfig}}
+								</div>
+							{{end}}
+
+							{{with .LastError}}
+								<div class="card my-3">
+									<h5 class="bg-danger card-header text-white">Last error "{{.Err}}"</h5>
+									{{template "event_card_body" .EventConfig}}
+								</div>
+							{{end}}
+
+							{{template "list_spans" .Children}}
+						</div>
+					</div>
+				{{end}}
+			{{end}}
+		</div>
+	</body>
+</html>

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
@@ -56,7 +56,7 @@ type blockDeviceBackedBlockAllocator struct {
 	blockDevice       blockdevice.BlockDevice
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
-	blockSizeBytes    int64
+	blockSectorCount  int64
 
 	lock        sync.Mutex
 	freeOffsets []int64
@@ -88,7 +88,7 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 		blockDevice:       blockDevice,
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
-		blockSizeBytes:    blockSectorCount * int64(sectorSizeBytes),
+		blockSectorCount:  blockSectorCount,
 	}
 	for i := 0; i < blockCount; i++ {
 		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
@@ -96,14 +96,22 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 	return pa
 }
 
-func (pa *blockDeviceBackedBlockAllocator) newBlockObject(offset int64) Block {
+func (pa *blockDeviceBackedBlockAllocator) newBlockObject(deviceOffsetSectors, writeOffsetSectors int64) Block {
 	blockDeviceBackedBlockAllocatorAllocations.Inc()
 	pb := &blockDeviceBackedBlock{
-		blockAllocator: pa,
-		offset:         offset,
+		blockAllocator:      pa,
+		deviceOffsetSectors: deviceOffsetSectors,
+		writeOffsetSectors:  writeOffsetSectors,
 	}
-	pb.usecount.Initialize(1)
+	pb.usecount.Store(1)
 	return pb
+}
+
+func (pa *blockDeviceBackedBlockAllocator) getBlockLocationMessage(deviceOffsetSectors int64) *pb.BlockLocation {
+	return &pb.BlockLocation{
+		OffsetBytes: deviceOffsetSectors * int64(pa.sectorSizeBytes),
+		SizeBytes:   pa.blockSectorCount * int64(pa.sectorSizeBytes),
+	}
 }
 
 func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
@@ -111,37 +119,47 @@ func (pa *blockDeviceBackedBlockAllocator) NewBlock() (Block, *pb.BlockLocation,
 	defer pa.lock.Unlock()
 
 	if len(pa.freeOffsets) == 0 {
-		return nil, nil, status.Error(codes.ResourceExhausted, "No unused blocks available")
+		return nil, nil, status.Error(codes.Unavailable, "No unused blocks available")
 	}
-	offset := pa.freeOffsets[0]
+	deviceOffsetSectors := pa.freeOffsets[0]
 	pa.freeOffsets = pa.freeOffsets[1:]
-	return pa.newBlockObject(offset), &pb.BlockLocation{
-		OffsetBytes: offset * int64(pa.sectorSizeBytes),
-		SizeBytes:   pa.blockSizeBytes,
-	}, nil
+	return pa.newBlockObject(deviceOffsetSectors, 0), pa.getBlockLocationMessage(deviceOffsetSectors), nil
 }
 
-func (pa *blockDeviceBackedBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation) (Block, bool) {
+func (pa *blockDeviceBackedBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation, writeOffsetBytes int64) (Block, bool) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
-	for i, offset := range pa.freeOffsets {
-		if proto.Equal(&pb.BlockLocation{
-			OffsetBytes: offset * int64(pa.sectorSizeBytes),
-			SizeBytes:   pa.blockSizeBytes,
-		}, location) {
+	for i, deviceOffsetSectors := range pa.freeOffsets {
+		if proto.Equal(pa.getBlockLocationMessage(deviceOffsetSectors), location) {
 			pa.freeOffsets[i] = pa.freeOffsets[len(pa.freeOffsets)-1]
 			pa.freeOffsets = pa.freeOffsets[:len(pa.freeOffsets)-1]
-			return pa.newBlockObject(offset), true
+			return pa.newBlockObject(
+				deviceOffsetSectors,
+				(writeOffsetBytes+int64(pa.sectorSizeBytes)-1)/int64(pa.sectorSizeBytes),
+			), true
 		}
 	}
 	return nil, false
 }
 
+// sharedSector contains the bookkeeping of a single sector of storage
+// that stores data belonging to more than one object. Calls to
+// WriteAt() against such a sector must be synchronized, so that
+// subsequent calls don't erase data that was written previously.
+type sharedSector struct {
+	writeOffsetBytes int
+
+	lock sync.Mutex
+	data []byte
+}
+
 type blockDeviceBackedBlock struct {
-	usecount       atomic.Int64
-	blockAllocator *blockDeviceBackedBlockAllocator
-	offset         int64
+	usecount            atomic.Int64
+	blockAllocator      *blockDeviceBackedBlockAllocator
+	deviceOffsetSectors int64
+	writeOffsetSectors  int64
+	sharedSector        *sharedSector
 }
 
 func (pb *blockDeviceBackedBlock) Release() {
@@ -152,7 +170,7 @@ func (pb *blockDeviceBackedBlock) Release() {
 		// storage to be reused for new data.
 		pa := pb.blockAllocator
 		pa.lock.Lock()
-		pa.freeOffsets = append(pa.freeOffsets, pb.offset)
+		pa.freeOffsets = append(pa.freeOffsets, pb.deviceOffsetSectors)
 		pa.lock.Unlock()
 		blockDeviceBackedBlockAllocatorReleases.Inc()
 	}
@@ -169,7 +187,7 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 		&blockDeviceBackedBlockReader{
 			SectionReader: *io.NewSectionReader(
 				pb.blockAllocator.blockDevice,
-				pb.offset*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
+				pb.deviceOffsetSectors*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
 				sizeBytes),
 			block: pb,
 		},
@@ -177,26 +195,73 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 		dataIntegrityCallback)
 }
 
-func (pb *blockDeviceBackedBlock) Put(offsetBytes int64, b buffer.Buffer) error {
-	if pb.usecount.Load() <= 0 {
-		panic("Attempted to store buffer in unused block")
+func (pb *blockDeviceBackedBlock) HasSpace(sizeBytes int64) bool {
+	pa := pb.blockAllocator
+	remainingSizeBytes := (pa.blockSectorCount - pb.writeOffsetSectors) * int64(pa.sectorSizeBytes)
+	if pb.sharedSector != nil {
+		// Don't allow overwriting the leading space of the
+		// first sector that has already been handed out to the
+		// previous object.
+		remainingSizeBytes -= int64(pb.sharedSector.writeOffsetBytes)
+	}
+	return remainingSizeBytes >= sizeBytes
+}
+
+func (pb *blockDeviceBackedBlock) Put(sizeBytes int64) BlockPutWriter {
+	if c := pb.usecount.Add(1); c <= 1 {
+		panic(fmt.Sprintf("Put(): Block has invalid reference count %d", c))
 	}
 
-	sectorSizeBytes := pb.blockAllocator.sectorSizeBytes
-	if offsetBytes%int64(sectorSizeBytes) != 0 {
-		panic("Attempted to store buffer at unaligned location")
-	}
-
+	// Construct writer.
+	pa := pb.blockAllocator
 	w := &blockDeviceBackedBlockWriter{
-		w:             pb.blockAllocator.blockDevice,
-		partialSector: make([]byte, 0, pb.blockAllocator.sectorSizeBytes),
-		offset:        pb.offset + offsetBytes/int64(sectorSizeBytes),
+		blockAllocator: pa,
+		offsetSectors:  pb.deviceOffsetSectors + pb.writeOffsetSectors,
+		firstSector:    pb.sharedSector,
 	}
 
-	if err := b.IntoWriter(w); err != nil {
-		return err
+	// Determine at which offset within the block the object is
+	// going to be placed.
+	writeOffsetBytes := pb.writeOffsetSectors * int64(pa.sectorSizeBytes)
+	if firstSector := pb.sharedSector; firstSector != nil {
+		writeOffsetBytes += int64(firstSector.writeOffsetBytes)
+		w.firstSectorOffsetBytes = firstSector.writeOffsetBytes
 	}
-	return w.flush()
+
+	// Allocate the desired number of sectors.
+	endOffsetBytes := int64(w.firstSectorOffsetBytes) + sizeBytes
+	sectorCount := endOffsetBytes / int64(pa.sectorSizeBytes)
+	pb.writeOffsetSectors += sectorCount
+
+	if lastSectorOffsetBytes := int(endOffsetBytes % int64(pa.sectorSizeBytes)); lastSectorOffsetBytes == 0 {
+		// Allocation ends at a sector boundary. This means that
+		// the next object can be stored without coordinating
+		// with us on calls to WriteAt().
+		pb.sharedSector = nil
+	} else {
+		// Allocation ends within a sector. Create a new shared
+		// sector, only if it's different from the existing one.
+		if pb.sharedSector == nil || sectorCount > 0 {
+			pb.sharedSector = &sharedSector{
+				data: make([]byte, pb.blockAllocator.sectorSizeBytes),
+			}
+		}
+		pb.sharedSector.writeOffsetBytes = lastSectorOffsetBytes
+	}
+	w.lastSector = pb.sharedSector
+
+	return func(b buffer.Buffer) BlockPutFinalizer {
+		// Ingest the data.
+		err := b.IntoWriter(w)
+		if err == nil {
+			err = w.flush()
+		}
+		pb.Release()
+
+		return func() (int64, error) {
+			return writeOffsetBytes, err
+		}
+	}
 }
 
 // blockDeviceBackedBlockReader reads a blob from underlying storage at
@@ -218,61 +283,113 @@ func (r *blockDeviceBackedBlockReader) Close() error {
 // the right offset. It could simply have used an io.SectionWriter if
 // that had existed.
 type blockDeviceBackedBlockWriter struct {
-	w             io.WriterAt
+	blockAllocator *blockDeviceBackedBlockAllocator
+
+	// Sector on the block device against which the next WriteAt()
+	// operation needs to be performed.
+	offsetSectors int64
+
+	// First sector of data that is shared with previous objects.
+	firstSector            *sharedSector
+	firstSectorOffsetBytes int
+
+	// Sectors in the middle of the object that aren't completed yet.
 	partialSector []byte
-	offset        int64
+
+	// Last sector of data that is shared with successive objects.
+	lastSector *sharedSector
 }
 
 func (w *blockDeviceBackedBlockWriter) Write(p []byte) (int, error) {
-	sectorSizeBytes := cap(w.partialSector)
+	pa := w.blockAllocator
+	pOriginalSizeBytes := len(p)
+	if firstSector := w.firstSector; firstSector != nil {
+		// We're still writing data into the first sector. These
+		// need to be coordinated with the object that came
+		// before it.
+		firstSector.lock.Lock()
+		copiedSizeBytes := copy(firstSector.data[w.firstSectorOffsetBytes:], p)
+		p = p[copiedSizeBytes:]
+		w.firstSectorOffsetBytes += copiedSizeBytes
 
-	leadingSize := 0
+		if w.firstSectorOffsetBytes < pa.sectorSizeBytes {
+			// First sector is still not completed. Wait for
+			// more data to arrive to complete it.
+			firstSector.lock.Unlock()
+			return pOriginalSizeBytes - len(p), nil
+		}
+
+		// First sector completed.
+		_, err := pa.blockDevice.WriteAt(firstSector.data, w.offsetSectors*int64(pa.sectorSizeBytes))
+		firstSector.lock.Unlock()
+		if err != nil {
+			return pOriginalSizeBytes - len(p), err
+		}
+		w.firstSector = nil
+		w.offsetSectors++
+	}
+
 	if len(w.partialSector) > 0 {
-		// Copy the leading part of the data into the partial
-		// sector that was created previously.
-		leadingSize = len(p)
-		if remaining := sectorSizeBytes - len(w.partialSector); leadingSize > remaining {
-			leadingSize = remaining
+		// We're writing data into a consecutive sector, for
+		// which we've received partial data previously.
+		copiedSizeBytes := len(p)
+		if max := pa.sectorSizeBytes - len(w.partialSector); copiedSizeBytes > max {
+			copiedSizeBytes = max
 		}
-		w.partialSector = append(w.partialSector, p[:leadingSize]...)
-		if len(w.partialSector) < sectorSizeBytes {
-			return leadingSize, nil
+		w.partialSector = append(w.partialSector, p[:copiedSizeBytes]...)
+		p = p[copiedSizeBytes:]
+
+		if len(w.partialSector) < pa.sectorSizeBytes {
+			// Partial sector is still not completed. Wait
+			// for more data to arrive to complete it.
+			return pOriginalSizeBytes - len(p), nil
 		}
 
-		// The partial sector has become full. Write it out to
-		// storage.
-		if _, err := w.w.WriteAt(w.partialSector, w.offset*int64(sectorSizeBytes)); err != nil {
-			return leadingSize, err
+		// Partial sector completed.
+		if _, err := pa.blockDevice.WriteAt(w.partialSector, w.offsetSectors*int64(pa.sectorSizeBytes)); err != nil {
+			return pOriginalSizeBytes - len(p), err
 		}
 		w.partialSector = w.partialSector[:0]
-		w.offset++
+		w.offsetSectors++
 	}
 
-	// Write as many sectors as possible to storage directly,
-	// without copying into a partial sector.
-	alignedSize := (len(p) - leadingSize) / sectorSizeBytes * sectorSizeBytes
-	n, err := w.w.WriteAt(p[leadingSize:leadingSize+alignedSize], w.offset*int64(sectorSizeBytes))
-	writtenSectors := n / sectorSizeBytes
-	w.offset += int64(writtenSectors)
-	if err != nil {
-		return leadingSize + writtenSectors*sectorSizeBytes, err
+	if alignedSize := len(p) / pa.sectorSizeBytes * pa.sectorSizeBytes; alignedSize > 0 {
+		// Write as many sectors as possible to storage directly,
+		// without copying into a partial sector.
+		nWritten, err := pa.blockDevice.WriteAt(p[:alignedSize], w.offsetSectors*int64(pa.sectorSizeBytes))
+		writtenSectors := nWritten / pa.sectorSizeBytes
+		writtenSizeBytes := writtenSectors * pa.sectorSizeBytes
+		p = p[writtenSizeBytes:]
+		w.offsetSectors += int64(writtenSectors)
+		if err != nil {
+			return pOriginalSizeBytes - len(p), err
+		}
 	}
 
-	// Copy trailing data into a new partial sector.
-	w.partialSector = append(w.partialSector, p[leadingSize+alignedSize:]...)
-	return len(p), nil
+	if len(p) > 0 {
+		// Copy trailing data into a new partial sector.
+		if w.partialSector == nil {
+			w.partialSector = make([]byte, 0, pa.sectorSizeBytes)
+		}
+		w.partialSector = append(w.partialSector, p...)
+	}
+	return pOriginalSizeBytes, nil
 }
 
 func (w *blockDeviceBackedBlockWriter) flush() error {
-	if len(w.partialSector) == 0 {
+	lastSector := w.lastSector
+	if lastSector == nil {
+		// Write already finished at sector boundary.
 		return nil
 	}
 
-	// Add zero padding to the final sector and write it to storage.
-	// Adding the padding ensures that no attempt is made to load
-	// the original sector from storage.
-	sectorSizeBytes := cap(w.partialSector)
-	w.partialSector = append(w.partialSector, make([]byte, sectorSizeBytes-len(w.partialSector))...)
-	_, err := w.w.WriteAt(w.partialSector, w.offset*int64(sectorSizeBytes))
+	lastSector.lock.Lock()
+	defer lastSector.lock.Unlock()
+
+	// Combine trailing data with the sector that contains the start
+	// of the next object.
+	copy(lastSector.data, w.partialSector)
+	pa := w.blockAllocator
+	_, err := pa.blockDevice.WriteAt(lastSector.data, w.offsetSectors*int64(len(w.lastSector.data)))
 	return err
 }

@@ -20,7 +20,7 @@ func TestExistenceCachingBlobAccessFindMissing(t *testing.T) {
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewExistenceCachingBlobAccess(
 		baseBlobAccess,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 
 	bothDigests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).

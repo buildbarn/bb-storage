@@ -1,6 +1,7 @@
 package filesystem_test
 
 import (
+	"io"
 	"os"
 	"runtime"
 	"syscall"
@@ -87,12 +88,18 @@ func TestLocalDirectoryLinkTargetExists(t *testing.T) {
 }
 
 func TestLocalDirectoryLinkSuccess(t *testing.T) {
-	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
+	d1 := openTmpDir(t)
+	require.NoError(t, d1.Mkdir(path.MustNewComponent("subdir"), 0o777))
+	d2, err := d1.EnterDirectory(path.MustNewComponent("subdir"))
+	require.NoError(t, err)
+	require.NoError(t, d1.Close())
+	f, err := d2.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	require.NoError(t, d.Link(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
-	require.NoError(t, d.Close())
+	d3 := openTmpDir(t)
+	require.NoError(t, d2.Link(path.MustNewComponent("source"), d3, path.MustNewComponent("target")))
+	require.NoError(t, d2.Close())
+	require.NoError(t, d3.Close())
 }
 
 func TestLocalDirectoryLstatNonExistent(t *testing.T) {
@@ -248,6 +255,8 @@ func TestLocalDirectoryRemoveDirectory(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
 	require.NoError(t, d.Remove(path.MustNewComponent("directory")))
+	_, err := d.EnterDirectory(path.MustNewComponent("directory"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -257,6 +266,8 @@ func TestLocalDirectoryRemoveFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Remove(path.MustNewComponent("file")))
+	_, err = d.OpenRead(path.MustNewComponent("file"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -264,6 +275,8 @@ func TestLocalDirectoryRemoveSymlink(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
 	require.NoError(t, d.Remove(path.MustNewComponent("symlink")))
+	_, err := d.OpenRead(path.MustNewComponent("symlink"))
+	require.True(t, os.IsNotExist(err))
 	require.NoError(t, d.Close())
 }
 
@@ -275,10 +288,13 @@ func TestLocalDirectoryRenameNotFound(t *testing.T) {
 
 func TestLocalDirectoryRenameSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	f, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
+	f1, err := d.OpenWrite(path.MustNewComponent("source"), filesystem.CreateExcl(0o666))
 	require.NoError(t, err)
-	require.NoError(t, f.Close())
+	require.NoError(t, f1.Close())
 	require.NoError(t, d.Rename(path.MustNewComponent("source"), d, path.MustNewComponent("target")))
+	f2, err := d.OpenRead(path.MustNewComponent("target"))
+	require.NoError(t, err)
+	require.NoError(t, f2.Close())
 	require.NoError(t, d.Close())
 }
 
@@ -313,10 +329,94 @@ func TestLocalDirectoryChtimes(t *testing.T) {
 
 // TODO(edsch): Add testing coverage for RemoveAll().
 
+func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
+	// Test the behavior on empty files.
+	d := openTmpDir(t)
+	f, err := d.OpenReadWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o444))
+	require.NoError(t, err)
+
+	_, err = f.GetNextRegionOffset(0, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(0, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	_, err = f.GetNextRegionOffset(1, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(1, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	// Test the behavior on a sparse file that starts with a hole
+	// and ends with data.
+	n, err := f.WriteAt([]byte("Hello"), 1024*1024)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+
+	nextOffset, err := f.GetNextRegionOffset(0, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(0, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024-1, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024-1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024-1), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+5), nextOffset)
+
+	nextOffset, err = f.GetNextRegionOffset(1024*1024+4, filesystem.Data)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+4), nextOffset)
+	nextOffset, err = f.GetNextRegionOffset(1024*1024+4, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+5), nextOffset)
+
+	_, err = f.GetNextRegionOffset(1024*1024+5, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(1024*1024+5, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	// Test the behavior on a sparse file that ends with a hole.
+	require.NoError(t, f.Truncate(384*1024*1024))
+
+	_, err = f.GetNextRegionOffset(256*1024*1024, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	nextOffset, err = f.GetNextRegionOffset(256*1024*1024, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(256*1024*1024), nextOffset)
+
+	_, err = f.GetNextRegionOffset(384*1024*1024-1, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	nextOffset, err = f.GetNextRegionOffset(384*1024*1024-1, filesystem.Hole)
+	require.NoError(t, err)
+	require.Equal(t, int64(384*1024*1024-1), nextOffset)
+
+	_, err = f.GetNextRegionOffset(384*1024*1024, filesystem.Data)
+	require.Equal(t, io.EOF, err)
+	_, err = f.GetNextRegionOffset(384*1024*1024, filesystem.Hole)
+	require.Equal(t, io.EOF, err)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Close())
+}
+
 func TestLocalDirectoryIsWritable(t *testing.T) {
-	// TODO: This test is broken when run on GitHub Actions, due to
-	// it not implementing file permissions.
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "windows" {
 		return
 	}
 
@@ -340,9 +440,7 @@ func TestLocalDirectoryIsWritable(t *testing.T) {
 }
 
 func TestLocalDirectoryIsWritableChild(t *testing.T) {
-	// TODO: This test is broken when run on GitHub Actions, due to
-	// it not implementing file permissions.
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "windows" {
 		return
 	}
 

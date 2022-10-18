@@ -14,8 +14,11 @@ proto_library(
     srcs = ["global.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/proto/configuration/grpc:grpc_proto",
+        "//pkg/proto/configuration/http:http_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
+        "@io_opentelemetry_proto//:common_proto",
     ],
 )
 
@@ -24,4 +27,9 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global",
     proto = ":global_proto",
     visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/grpc",
+        "//pkg/proto/configuration/http",
+        "@io_opentelemetry_go_proto_otlp//common/v1:common",
+    ],
 )

@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type emptyBlobInjectingBlobAccess struct {
-	base BlobAccess
+	BlobAccess
 }
 
 // NewEmptyBlobInjectingBlobAccess is a decorator for BlobAccess that
@@ -33,7 +34,7 @@ type emptyBlobInjectingBlobAccess struct {
 // More details: https://github.com/bazelbuild/bazel/issues/11063
 func NewEmptyBlobInjectingBlobAccess(base BlobAccess) BlobAccess {
 	return &emptyBlobInjectingBlobAccess{
-		base: base,
+		BlobAccess: base,
 	}
 }
 
@@ -41,7 +42,14 @@ func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.D
 	if digest.GetSizeBytes() == 0 {
 		return buffer.NewCASBufferFromByteSlice(digest, nil, buffer.UserProvided)
 	}
-	return ba.base.Get(ctx, digest)
+	return ba.BlobAccess.Get(ctx, digest)
+}
+
+func (ba *emptyBlobInjectingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	if childDigest.GetSizeBytes() == 0 {
+		return buffer.NewCASBufferFromByteSlice(childDigest, nil, buffer.UserProvided)
+	}
+	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
@@ -49,9 +57,9 @@ func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.D
 		_, err := b.ToByteSlice(0)
 		return err
 	}
-	return ba.base.Put(ctx, digest, b)
+	return ba.BlobAccess.Put(ctx, digest, b)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	return ba.base.FindMissing(ctx, digests.RemoveEmptyBlob())
+	return ba.BlobAccess.FindMissing(ctx, digests.RemoveEmptyBlob())
 }

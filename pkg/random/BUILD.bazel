@@ -16,6 +16,8 @@ go_library(
 go_test(
     name = "random_test",
     srcs = ["single_threaded_generator_test.go"],
-    embed = [":random"],
-    deps = ["@com_github_stretchr_testify//require"],
+    deps = [
+        ":random",
+        "@com_github_stretchr_testify//require",
+    ],
 )

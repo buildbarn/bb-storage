@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"log"
 	"net"
 	"os"
 
@@ -17,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"go.opencensus.io/plugin/ocgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 func init() {
@@ -31,32 +32,57 @@ func init() {
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(*grpc.Server)) error {
-	serveErrors := make(chan error)
-
+func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
+		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
 		if err != nil {
 			return err
 		}
 
 		// Default server options.
-		serverOptions := []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(
-				grpc_prometheus.UnaryServerInterceptor,
-				NewAuthenticatingUnaryInterceptor(authenticator)),
-			grpc.ChainStreamInterceptor(
-				grpc_prometheus.StreamServerInterceptor,
-				NewAuthenticatingStreamInterceptor(authenticator)),
-			grpc.StatsHandler(NewRequestMetadataFetchingStatsHandler(&ocgrpc.ServerHandler{})),
+		unaryInterceptors := []grpc.UnaryServerInterceptor{
+			grpc_prometheus.UnaryServerInterceptor,
+			otelgrpc.UnaryServerInterceptor(),
+			RequestMetadataTracingUnaryInterceptor,
+		}
+		streamInterceptors := []grpc.StreamServerInterceptor{
+			grpc_prometheus.StreamServerInterceptor,
+			otelgrpc.StreamServerInterceptor(),
+			RequestMetadataTracingStreamInterceptor,
 		}
 
-		// Enable TLS if provided.
+		// Optional: Tracing attributes.
+		if tracing := configuration.Tracing; len(tracing) > 0 {
+			extractor := NewProtoTraceAttributesExtractor(tracing, util.DefaultErrorLogger)
+			unaryInterceptors = append(unaryInterceptors, extractor.InterceptUnaryServer)
+			streamInterceptors = append(streamInterceptors, extractor.InterceptStreamServer)
+		}
+
+		unaryInterceptors = append(unaryInterceptors, NewAuthenticatingUnaryInterceptor(authenticator))
+		streamInterceptors = append(streamInterceptors, NewAuthenticatingStreamInterceptor(authenticator))
+
+		serverOptions := []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(unaryInterceptors...),
+			grpc.ChainStreamInterceptor(streamInterceptors...),
+		}
+
+		// Enable TLS transport credentials if provided.
+		hasCredsOption := false
 		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
 			return err
 		} else if tlsConfig != nil {
+			hasCredsOption = true
 			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		}
+
+		// Enable UNIX socket peer credentials if used in the
+		// authenticator configuration.
+		if needsPeerTransportCredentials {
+			if hasCredsOption {
+				return status.Error(codes.InvalidArgument, "Peer credentials authentication and TLS cannot be enabled at the same time")
+			}
+			serverOptions = append(serverOptions, grpc.Creds(PeerTransportCredentials))
 		}
 
 		if maxRecvMsgSize := configuration.MaximumReceivedMessageSizeBytes; maxRecvMsgSize != 0 {
@@ -100,16 +126,18 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// TCP sockets.
-		for _, listenAddress := range configuration.ListenAddresses {
+		for _, listenAddressIter := range configuration.ListenAddresses {
+			listenAddress := listenAddressIter
 			sock, err := net.Listen("tcp", listenAddress)
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenAddress)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenAddress, s.Serve(sock)) }()
 		}
 
 		// UNIX sockets.
-		for _, listenPath := range configuration.ListenPaths {
+		for _, listenPathIter := range configuration.ListenPaths {
+			listenPath := listenPathIter
 			if err := os.Remove(listenPath); err != nil && !os.IsNotExist(err) {
 				return util.StatusWrapf(err, "Could not remove stale socket %#v", listenPath)
 			}
@@ -117,8 +145,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenPath)
 			}
-			go func() { serveErrors <- s.Serve(sock) }()
+			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenPath, s.Serve(sock)) }()
 		}
 	}
-	return <-serveErrors
+	return nil
 }

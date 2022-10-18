@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +27,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
 	helloDigests := helloDigest.ToSingletonSet()
 
@@ -78,7 +79,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 
 		// Because replication did succeed, a second call should
 		// not trigger another replication.
@@ -88,7 +89,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b = replicator.ReplicateSingle(ctx, helloDigest)
 		_, err = b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 
 	t.Run("ReplicationError", func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b := replicator.ReplicateSingle(ctx, helloDigest)
 		_, err := b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
 
 		// Replication failures should not be cached. Another
 		// replication should be triggered.
@@ -112,7 +113,65 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		b = replicator.ReplicateSingle(ctx, helloDigest)
 		_, err = b.ToByteSlice(10)
-		require.Equal(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Replication failed: Server on fire"), err)
+	})
+}
+
+func TestQueuedBlobReplicatorReplicateComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	source := mock.NewMockBlobAccess(ctrl)
+	baseReplicator := mock.NewMockBlobReplicator(ctrl)
+	clock := mock.NewMockClock(ctrl)
+	replicator := replication.NewQueuedBlobReplicator(
+		source,
+		baseReplicator,
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
+
+	parentDigest := digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentDigests := parentDigest.ToSingletonSet()
+	childDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	// Only a single test for the success case is provided, as the
+	// tests for ReplicateSingle() provide enough coverage.
+
+	t.Run("Success", func(t *testing.T) {
+		// The first time the object is requested, it should be
+		// replicated in the background.
+		source.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		clock.EXPECT().Now().Return(time.Unix(1000, 0)).Times(3)
+		baseReplicator.EXPECT().ReplicateMultiple(ctx, parentDigests).Return(nil)
+
+		b := replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer)
+		data, err := b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+
+		// The fact that the object has been replicated should
+		// be cached. We should only perform the load during the
+		// second attempt.
+		source.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		clock.EXPECT().Now().Return(time.Unix(1060, 0))
+
+		b = replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer)
+		data, err = b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+
+		// A third request after the cache entry has expired
+		// should trigger a replication once again.
+		source.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		clock.EXPECT().Now().Return(time.Unix(1060, 1)).Times(3)
+		baseReplicator.EXPECT().ReplicateMultiple(ctx, parentDigests).Return(nil)
+
+		b = replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer)
+		data, err = b.ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
 	})
 }
 
@@ -125,7 +184,7 @@ func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 	replicator := replication.NewQueuedBlobReplicator(
 		source,
 		baseReplicator,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 	helloDigests := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {

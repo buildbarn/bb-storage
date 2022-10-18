@@ -115,6 +115,10 @@ func (b *casErrorHandlingBuffer) CloneStream() (Buffer, Buffer) {
 	return newCASClonedBuffer(b, b.digest, b.source).CloneStream()
 }
 
+func (b *casErrorHandlingBuffer) WithTask(task func() error) Buffer {
+	return newCASBufferWithBackgroundTask(b, b.digest, b.source, task)
+}
+
 func (b *casErrorHandlingBuffer) Discard() {
 	b.errorHandler.Done()
 	b.base.Discard()

@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"io"
-	"io/ioutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -55,11 +54,20 @@ func NewProtoBufferFromByteSlice(m proto.Message, data []byte, source Source) Bu
 // Protobuf message object must be provided that corresponds with the
 // type of the data contained in the reader.
 func NewProtoBufferFromReader(m proto.Message, r io.ReadCloser, source Source) Buffer {
-	// Messages in the Action Cache are relatively small, so it's
-	// safe to keep them in memory. Read and store them in a byte
-	// slice buffer immediately. This permits implementing
-	// GetSizeBytes() properly.
-	data, err := ioutil.ReadAll(r)
+	// TODO: Right now we implement this function by aggressively
+	// reading data. This has a couple of downsides:
+	//
+	// - We don't reject messages that are too large.
+	// - It causes us to always unmarshal the message, even if we're
+	//   merely passing the message through.
+	// - Unmarshaling happens when the buffer is created. This means
+	//   that in the case of LocalBlobAccess, we read data from disk
+	//   while locks are held.
+	//
+	// Maybe we should provide a dedicated buffer type that defers
+	// unmarshaling, or potentially elides it. This may require the
+	// caller to provide the object's size.
+	data, err := io.ReadAll(r)
 	r.Close()
 	if err != nil {
 		return NewBufferFromError(err)
@@ -80,6 +88,15 @@ func (b *protoBuffer) CloneCopy(maximumSizeBytes int) (Buffer, Buffer) {
 
 func (b *protoBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
+}
+
+func (b *protoBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground.
+	if err := task(); err != nil {
+		return NewBufferFromError(err)
+	}
+	return b
 }
 
 func (b *protoBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {

@@ -1,9 +1,12 @@
 {
    "jobs": {
       "build_and_test": {
-         "container": "docker://l.gcr.io/google/bazel:3.5.0",
          "runs-on": "ubuntu-latest",
          "steps": [
+            {
+               "name": "Installing Bazel",
+               "run": "curl -L https://github.com/bazelbuild/bazel/releases/download/5.0.0/bazel-5.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
+            },
             {
                "name": "Check out source code",
                "uses": "actions/checkout@v1"
@@ -26,15 +29,19 @@
             },
             {
                "name": "Gofmt",
-               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.15 -s -w -extra $(pwd)"
+               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.18 -w -extra $(pwd)"
             },
             {
                "name": "Clang format",
-               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain//:bin/clang-format -- -i {} +"
+               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +"
             },
             {
                "name": "GitHub workflows",
                "run": "bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows"
+            },
+            {
+               "name": "Protobuf generation",
+               "run": "find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true\nbazel build $(bazel query 'kind(\"go_proto_library\", //...)')\nfind bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\ndone\n"
             },
             {
                "name": "Test style conformance",
@@ -74,7 +81,7 @@
             },
             {
                "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator //cmd/bb_storage"
+               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
             },
             {
                "name": "windows_amd64: build and test",

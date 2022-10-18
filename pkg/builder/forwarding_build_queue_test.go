@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/builder"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -18,7 +20,92 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestForwardingBuildQueue(t *testing.T) {
+func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	buildQueue := builder.NewForwardingBuildQueue(client)
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).Return(status.Error(codes.Unavailable, "Server offline"))
+
+		_, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server offline"), err)
+	})
+
+	t.Run("OnlyCaching", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
+			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
+				CacheCapabilities: &remoteexecution.CacheCapabilities{
+					DigestFunctions: []remoteexecution.DigestFunction_Value{
+						remoteexecution.DigestFunction_SHA256,
+						remoteexecution.DigestFunction_VSO,
+					},
+					ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+						UpdateEnabled: true,
+					},
+					MaxBatchTotalSizeBytes:      1 << 20,
+					SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
+					SupportedCompressors: []remoteexecution.Compressor_Value{
+						remoteexecution.Compressor_ZSTD,
+					},
+				},
+				LowApiVersion:  &semver.SemVer{Major: 2},
+				HighApiVersion: &semver.SemVer{Major: 2},
+			})
+			return nil
+		})
+
+		_, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Instance name \"hello/world\" does not support remote execution"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
+			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
+				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+					DigestFunction: remoteexecution.DigestFunction_SHA256,
+					ExecEnabled:    true,
+				},
+				LowApiVersion:  &semver.SemVer{Major: 2},
+				HighApiVersion: &semver.SemVer{Major: 2},
+			})
+			return nil
+		})
+
+		serverCapabilities, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+				DigestFunction: remoteexecution.DigestFunction_SHA256,
+				ExecEnabled:    true,
+			},
+		}, serverCapabilities)
+	})
+}
+
+func TestForwardingBuildQueueExecute(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)

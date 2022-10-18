@@ -3,10 +3,12 @@ package blobstore
 import (
 	"context"
 	"io"
+	"math"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -33,20 +35,26 @@ var CASReadBufferFactory ReadBufferFactory = casReadBufferFactory{}
 // message and stores it under that key. The digest is then returned, so
 // that the object may be referenced.
 func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Message, digestFunction digest.Function) (digest.Digest, error) {
-	data, err := proto.Marshal(message)
-	if err != nil {
-		return digest.BadDigest, err
-	}
+	bDigest, bPut := buffer.NewProtoBufferFromProto(message, buffer.UserProvided).CloneCopy(math.MaxInt)
 
 	// Compute new digest of data.
 	digestGenerator := digestFunction.NewGenerator()
-	if _, err := digestGenerator.Write(data); err != nil {
-		panic(err)
+	if err := bDigest.IntoWriter(digestGenerator); err != nil {
+		bPut.Discard()
+		return digest.BadDigest, err
 	}
 	blobDigest := digestGenerator.Sum()
 
-	if err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice(data)); err != nil {
+	if err := blobAccess.Put(ctx, blobDigest, bPut); err != nil {
 		return digest.BadDigest, err
 	}
 	return blobDigest, nil
 }
+
+// The Protobuf field numbers of the REv2 Tree's "root" and "children"
+// fields. These are used in combination with util.VisitProtoBytesFields()
+// to be able to process REv2 Tree objects in a streaming manner.
+const (
+	TreeRootFieldNumber     protowire.Number = 1
+	TreeChildrenFieldNumber protowire.Number = 2
+)

@@ -108,13 +108,13 @@ type VirtualRootScopeWalkerFactory struct {
 // aliases == {"/alias": "target"}, then paths on the outer ScopeWalker
 // resolve to the following locations in the underlying ScopeWalker:
 //
-//                 "hello"        -> "hello"
-//                 "/root"        -> "/"
-//                 "/root/hello"  -> "/hello"
-//                 "/alias"       -> "/target"
-//                 "/alias/hello" -> "/target/hello"
-//                 "/"            -> Nothing
-//                 "/hello"       -> Nothing
+//	"hello"        -> "hello"
+//	"/root"        -> "/"
+//	"/root/hello"  -> "/hello"
+//	"/alias"       -> "/target"
+//	"/alias/hello" -> "/target/hello"
+//	"/"            -> Nothing
+//	"/hello"       -> Nothing
 func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string) (*VirtualRootScopeWalkerFactory, error) {
 	wf := &VirtualRootScopeWalkerFactory{
 		rootNode: namelessVirtualRootNode{

@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"context"
+
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder"
@@ -13,7 +15,7 @@ import (
 // NewDemultiplexingBuildQueueFromConfiguration creates a
 // DemultiplexingBuildQueue that forwards traffic to schedulers
 // specified in the configuration file.
-func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, grpcClientFactory grpc.ClientFactory, nonExecutableInstanceNames digest.InstanceNameMatcher) (BuildQueue, error) {
+func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, grpcClientFactory grpc.ClientFactory) (BuildQueue, error) {
 	buildQueuesTrie := digest.NewInstanceNameTrie()
 	type buildQueueInfo struct {
 		backend             BuildQueue
@@ -44,23 +46,11 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 		})
 	}
 
-	return NewDemultiplexingBuildQueue(func(instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error) {
-		if idx := buildQueuesTrie.Get(instanceName); idx >= 0 {
-			// The instance name corresponds to a scheduler
-			// to which we can forward requests.
-			return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
+	return NewDemultiplexingBuildQueue(func(ctx context.Context, instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error) {
+		idx := buildQueuesTrie.GetLongestPrefix(instanceName)
+		if idx < 0 {
+			return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, status.Errorf(codes.InvalidArgument, "Unknown instance name: %#v", instanceName.String())
 		}
-		if nonExecutableInstanceNames(instanceName) {
-			// The instance name does not correspond to a
-			// scheduler, but we should at least announce
-			// its existence.
-			//
-			// This is used when bb_storage is set up to do
-			// plain remote caching. Because we don't have a
-			// scheduler, we need to handle GetCapabilities()
-			// requests ourselves.
-			return NonExecutableBuildQueue, instanceName, instanceName, nil
-		}
-		return nil, digest.EmptyInstanceName, digest.EmptyInstanceName, status.Errorf(codes.InvalidArgument, "Unknown instance name")
+		return buildQueues[idx].backend, buildQueues[idx].backendName, buildQueues[idx].instanceNamePatcher.PatchInstanceName(instanceName), nil
 	}), nil
 }

@@ -2,10 +2,12 @@ package grpc
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -13,26 +15,23 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
-
-	"go.opencensus.io/plugin/ocgrpc"
 )
 
-func init() {
-	// Add Prometheus timing metrics.
-	grpc_prometheus.EnableClientHandlingTimeHistogram(
-		grpc_prometheus.WithHistogramBuckets(
-			util.DecimalExponentialBuckets(-3, 6, 2)))
-}
-
 type baseClientFactory struct {
-	dialer ClientDialer
+	dialer             ClientDialer
+	unaryInterceptors  []grpc.UnaryClientInterceptor
+	streamInterceptors []grpc.StreamClientInterceptor
 }
 
 // NewBaseClientFactory creates factory for gRPC clients that calls into
 // ClientDialer to construct the actual client.
-func NewBaseClientFactory(dialer ClientDialer) ClientFactory {
+func NewBaseClientFactory(dialer ClientDialer, unaryInterceptors []grpc.UnaryClientInterceptor, streamInterceptors []grpc.StreamClientInterceptor) ClientFactory {
+	// Limit slice capacity to length, so that any appending
+	// additional interceptors always triggers a copy.
 	return baseClientFactory{
-		dialer: dialer,
+		dialer:             dialer,
+		unaryInterceptors:  unaryInterceptors[:len(unaryInterceptors):len(unaryInterceptors)],
+		streamInterceptors: streamInterceptors[:len(streamInterceptors):len(streamInterceptors)],
 	}
 }
 
@@ -41,14 +40,15 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
-	dialOptions := []grpc.DialOption{
-		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}),
-	}
-	unaryInterceptors := []grpc.UnaryClientInterceptor{
-		grpc_prometheus.UnaryClientInterceptor,
-	}
-	streamInterceptors := []grpc.StreamClientInterceptor{
-		grpc_prometheus.StreamClientInterceptor,
+	var dialOptions []grpc.DialOption
+	unaryInterceptors := cf.unaryInterceptors
+	streamInterceptors := cf.streamInterceptors
+
+	// Optional: Tracing attributes.
+	if tracing := config.Tracing; len(tracing) > 0 {
+		extractor := NewProtoTraceAttributesExtractor(tracing, util.DefaultErrorLogger)
+		unaryInterceptors = append(unaryInterceptors, extractor.InterceptUnaryClient)
+		streamInterceptors = append(streamInterceptors, extractor.InterceptStreamClient)
 	}
 
 	// Optional: TLS.
@@ -104,16 +104,6 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		}))
 	}
 
-	// Optional: metadata forwarding.
-	if headers := config.ForwardMetadata; len(headers) > 0 {
-		unaryInterceptors = append(
-			unaryInterceptors,
-			NewMetadataForwardingUnaryClientInterceptor(headers))
-		streamInterceptors = append(
-			streamInterceptors,
-			NewMetadataForwardingStreamClientInterceptor(headers))
-	}
-
 	// Optional: add metadata.
 	if headers := config.AddMetadata; len(headers) > 0 {
 		var headerValues MetadataHeaderValues
@@ -128,11 +118,34 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 			NewMetadataAddingStreamClientInterceptor(headerValues))
 	}
 
-	// Optional: metadata forwarding with reuse.
-	if headers := config.ForwardAndReuseMetadata; len(headers) > 0 {
-		interceptor := NewMetadataForwardingAndReusingInterceptor(headers)
-		unaryInterceptors = append(unaryInterceptors, interceptor.InterceptUnaryClient)
-		streamInterceptors = append(streamInterceptors, interceptor.InterceptStreamClient)
+	// Optional: proxying.
+	if proxyURL := config.ProxyUrl; proxyURL != "" {
+		parsedProxyURL, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse proxy URL")
+		}
+		proxyDialer := proxyDialer{
+			httpProxy: http.ProxyURL(parsedProxyURL),
+		}
+		dialOptions = append(dialOptions, grpc.WithContextDialer(proxyDialer.proxyDial))
+	}
+
+	// Optional: metadata extraction.
+	if jmesExpression := config.AddMetadataJmespathExpression; jmesExpression != "" {
+		expr, err := jmespath.Compile(jmesExpression)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to compile JMESPath expression")
+		}
+		extractor, err := NewJMESPathMetadataExtractor(expr)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create JMESPath extractor")
+		}
+		unaryInterceptors = append(
+			unaryInterceptors,
+			NewMetadataExtractingAndForwardingUnaryClientInterceptor(extractor))
+		streamInterceptors = append(
+			streamInterceptors,
+			NewMetadataExtractingAndForwardingStreamClientInterceptor(extractor))
 	}
 
 	dialOptions = append(

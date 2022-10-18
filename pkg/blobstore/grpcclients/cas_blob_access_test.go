@@ -5,6 +5,8 @@ import (
 	"io"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -18,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestCASBlobAccessPut(t *testing.T) {
@@ -154,5 +157,96 @@ func TestCASBlobAccessPut(t *testing.T) {
 		testutil.RequireEqualStatus(t,
 			status.Error(codes.Unavailable, "Lost connection to server"),
 			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 5)))
+	})
+}
+
+func TestCASBlobAccessGetCapabilities(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
+	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10)
+
+	t.Run("BackendFailure", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).Return(status.Error(codes.Unavailable, "Server offline"))
+
+		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server offline"), err)
+	})
+
+	t.Run("OnlyExecution", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
+			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
+				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+					DigestFunction: remoteexecution.DigestFunction_SHA256,
+					ExecEnabled:    true,
+				},
+				LowApiVersion:  &semver.SemVer{Major: 2},
+				HighApiVersion: &semver.SemVer{Major: 2},
+			})
+			return nil
+		})
+
+		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Instance name \"hello/world\" does not support remote caching"), err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		client.EXPECT().Invoke(
+			ctx,
+			"/build.bazel.remote.execution.v2.Capabilities/GetCapabilities",
+			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
+				InstanceName: "hello/world",
+			}),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
+			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
+				CacheCapabilities: &remoteexecution.CacheCapabilities{
+					DigestFunctions: []remoteexecution.DigestFunction_Value{
+						remoteexecution.DigestFunction_SHA256,
+						remoteexecution.DigestFunction_VSO,
+					},
+					ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+						UpdateEnabled: true,
+					},
+					MaxBatchTotalSizeBytes:      1 << 20,
+					SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
+					SupportedCompressors: []remoteexecution.Compressor_Value{
+						remoteexecution.Compressor_ZSTD,
+					},
+				},
+				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
+					DigestFunction: remoteexecution.DigestFunction_SHA256,
+					ExecEnabled:    true,
+				},
+				LowApiVersion:  &semver.SemVer{Major: 2},
+				HighApiVersion: &semver.SemVer{Major: 2},
+			})
+			return nil
+		})
+
+		serverCapabilities, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
+			CacheCapabilities: &remoteexecution.CacheCapabilities{
+				DigestFunctions: []remoteexecution.DigestFunction_Value{
+					remoteexecution.DigestFunction_SHA256,
+				},
+			},
+		}, serverCapabilities)
 	})
 }

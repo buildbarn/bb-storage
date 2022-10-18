@@ -5,6 +5,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
@@ -14,102 +15,149 @@ import (
 
 func TestNewDigestFromByteStreamReadPath(t *testing.T) {
 	t.Run("Empty", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamReadPath("")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+		_, _, err := digest.NewDigestFromByteStreamReadPath("")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("BlabsInsteadOfBlobs", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamReadPath("blabs/8b1a9953c4611296a827abf8c47804d7/123")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+		_, _, err := digest.NewDigestFromByteStreamReadPath("blabs/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("NonIntegerSize", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/five")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""))
+		_, _, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/five")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""), err)
 	})
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamReadPath("x/operations/y/blobs/8b1a9953c4611296a827abf8c47804d7/123")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""))
+		_, _, err := digest.NewDigestFromByteStreamReadPath("x/operations/y/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""), err)
+	})
+
+	t.Run("UnknownCompressionMethod", func(t *testing.T) {
+		_, _, err := digest.NewDigestFromByteStreamReadPath("x/compressed-blobs/xyzzy/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "Unsupported compression scheme \"xyzzy\""), err)
 	})
 
 	t.Run("NoInstanceName", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("InstanceNameOneComponent", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamReadPath("hello/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("hello/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamReadPath("hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("RedundantSlashes", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamReadPath("//hello//world//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("//hello//world//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+	})
+
+	t.Run("Zstandard", func(t *testing.T) {
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("hello/world/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_ZSTD, compressor)
+	})
+
+	t.Run("Deflate", func(t *testing.T) {
+		d, compressor, err := digest.NewDigestFromByteStreamReadPath("hello/world/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_DEFLATE, compressor)
 	})
 }
 
 func TestNewDigestFromByteStreamWritePath(t *testing.T) {
 	t.Run("Empty", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamWritePath("")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+		_, _, err := digest.NewDigestFromByteStreamWritePath("")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("DownloadsInsteadOfUploads", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamWritePath("downloads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"))
+		_, _, err := digest.NewDigestFromByteStreamWritePath("downloads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid resource naming scheme"), err)
 	})
 
 	t.Run("NonIntegerSize", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/five")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""))
+		_, _, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/five")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid blob size \"five\""), err)
 	})
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
-		_, err := digest.NewDigestFromByteStreamWritePath("x/operations/y/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""))
+		_, _, err := digest.NewDigestFromByteStreamWritePath("x/operations/y/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid instance name \"x/operations/y\": Instance name contains reserved keyword \"operations\""), err)
+	})
+
+	t.Run("UnknownCompressionMethod", func(t *testing.T) {
+		_, _, err := digest.NewDigestFromByteStreamWritePath("x/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/compressed-blobs/xyzzy/8b1a9953c4611296a827abf8c47804d7/123")
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "Unsupported compression scheme \"xyzzy\""), err)
 	})
 
 	t.Run("NoInstanceName", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("InstanceNameOneComponent", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamWritePath("hello/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("hello/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("RedundantSlashes", func(t *testing.T) {
-		d, err := digest.NewDigestFromByteStreamWritePath("//hello//world//uploads//da2f1135-326b-4956-b920-1646cdd6cb53//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("//hello//world//uploads//da2f1135-326b-4956-b920-1646cdd6cb53//blobs//8b1a9953c4611296a827abf8c47804d7//123//")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 	})
 
 	t.Run("TrailingPath", func(t *testing.T) {
 		// Upload paths may contain a trailing filename that the
 		// implementation can use to attach a name to the
 		// object. This implementation ignores that information.
-		d, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123/this/file/is/called/foo.txt")
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123/this/file/is/called/foo.txt")
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+	})
+
+	t.Run("Zstandard", func(t *testing.T) {
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_ZSTD, compressor)
+	})
+
+	t.Run("Deflate", func(t *testing.T) {
+		d, compressor, err := digest.NewDigestFromByteStreamWritePath("hello/world/uploads/da2f1135-326b-4956-b920-1646cdd6cb53/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123")
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 123), d)
+		require.Equal(t, remoteexecution.Compressor_DEFLATE, compressor)
 	})
 }
 
@@ -121,7 +169,7 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 			digest.MustNewDigest(
 				"",
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamReadPath())
+				123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
 	})
 
 	t.Run("InstanceNameOneComponent", func(t *testing.T) {
@@ -131,17 +179,27 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 			digest.MustNewDigest(
 				"hello",
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamReadPath())
+				123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		d := digest.MustNewDigest(
+			"hello/world",
+			"8b1a9953c4611296a827abf8c47804d7",
+			123)
+
 		require.Equal(
 			t,
 			"hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			digest.MustNewDigest(
-				"hello/world",
-				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamReadPath())
+			d.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+		require.Equal(
+			t,
+			"hello/world/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123",
+			d.GetByteStreamReadPath(remoteexecution.Compressor_ZSTD))
+		require.Equal(
+			t,
+			"hello/world/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
+			d.GetByteStreamReadPath(remoteexecution.Compressor_DEFLATE))
 	})
 }
 
@@ -155,7 +213,7 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 			digest.MustNewDigest(
 				"",
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamWritePath(uuid))
+				123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
 	})
 
 	t.Run("InstanceNameOneComponent", func(t *testing.T) {
@@ -165,17 +223,27 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 			digest.MustNewDigest(
 				"hello",
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamWritePath(uuid))
+				123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
+		d := digest.MustNewDigest(
+			"hello/world",
+			"8b1a9953c4611296a827abf8c47804d7",
+			123)
+
 		require.Equal(
 			t,
 			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			digest.MustNewDigest(
-				"hello/world",
-				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamWritePath(uuid))
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+		require.Equal(
+			t,
+			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123",
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_ZSTD))
+		require.Equal(
+			t,
+			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_DEFLATE))
 	})
 }
 
@@ -275,4 +343,75 @@ func TestKeyFormatCombine(t *testing.T) {
 	require.Equal(t, digest.KeyWithInstance, digest.KeyWithoutInstance.Combine(digest.KeyWithInstance))
 	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithoutInstance))
 	require.Equal(t, digest.KeyWithInstance, digest.KeyWithInstance.Combine(digest.KeyWithInstance))
+}
+
+func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+
+	require.Equal(
+		t,
+		[]digest.Digest{
+			digest.MustNewDigest("", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+			digest.MustNewDigest("hello/world/cup", "3d6b0f4e4ba25243c43e045dfe23845a", 123),
+		},
+		digest.MustNewDigest("hello/world/cup", "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+}
+
+func TestRemoveUnsupportedDigestFunctions(t *testing.T) {
+	require.Equal(
+		t,
+		[]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_MD5,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_SHA256,
+		},
+		digest.RemoveUnsupportedDigestFunctions([]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_MD5,
+			remoteexecution.DigestFunction_SHA256,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_VSO,
+		}))
+}
+
+func TestDigestGetCompactBinary(t *testing.T) {
+	d := digest.MustNewDigest("hello", "18c17f53df2fcd1f8271bc1c0e55df71b1a796eaa74ff45a68900f04e3f4c7a2", 124982395)
+	require.Equal(
+		t,
+		[]byte{
+			// Length of hash.
+			0x20,
+			// Hash.
+			0x18, 0xc1, 0x7f, 0x53, 0xdf, 0x2f, 0xcd, 0x1f,
+			0x82, 0x71, 0xbc, 0x1c, 0x0e, 0x55, 0xdf, 0x71,
+			0xb1, 0xa7, 0x96, 0xea, 0xa7, 0x4f, 0xf4, 0x5a,
+			0x68, 0x90, 0x0f, 0x04, 0xe3, 0xf4, 0xc7, 0xa2,
+			// Size.
+			0xf6, 0xd1, 0x98, 0x77,
+		},
+		d.GetCompactBinary())
 }

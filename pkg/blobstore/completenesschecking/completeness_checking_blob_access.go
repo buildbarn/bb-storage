@@ -2,15 +2,18 @@ package completenesschecking
 
 import (
 	"context"
+	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // findMissingQueue is a helper for calling BlobAccess.FindMissing() in
@@ -56,20 +59,6 @@ func (q *findMissingQueue) add(blobDigest *remoteexecution.Digest) error {
 	return nil
 }
 
-// AddDirectory adds all digests contained with a directory to the list
-// of digests pending to be checked for existence.
-func (q *findMissingQueue) addDirectory(directory *remoteexecution.Directory) error {
-	if directory == nil {
-		return nil
-	}
-	for _, child := range directory.Files {
-		if err := q.add(child.Digest); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Finalize by checking the last batch of digests for existence.
 func (q *findMissingQueue) finalize() error {
 	missing, err := q.contentAddressableStorage.FindMissing(q.context, q.pending.Build())
@@ -87,6 +76,7 @@ type completenessCheckingBlobAccess struct {
 	contentAddressableStorage blobstore.BlobAccess
 	batchSize                 int
 	maximumMessageSizeBytes   int
+	maximumTotalTreeSizeBytes int64
 }
 
 // NewCompletenessCheckingBlobAccess creates a wrapper around
@@ -103,12 +93,13 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, batchSize, maximumMessageSizeBytes int) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		contentAddressableStorage: contentAddressableStorage,
 		batchSize:                 batchSize,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		maximumTotalTreeSizeBytes: maximumTotalTreeSizeBytes,
 	}
 }
 
@@ -146,24 +137,49 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	// Iterate over all remoteexecution.Digest fields contained
 	// within output directories (remoteexecution.Tree objects)
 	// referenced by the ActionResult.
+	remainingTreeSizeBytes := ba.maximumTotalTreeSizeBytes
 	for _, outputDirectory := range actionResult.OutputDirectories {
 		treeDigest, err := findMissingQueue.deriveDigest(outputDirectory.TreeDigest)
 		if err != nil {
 			return err
 		}
-		treeMessage, err := ba.contentAddressableStorage.Get(ctx, treeDigest).ToProto(&remoteexecution.Tree{}, ba.maximumMessageSizeBytes)
-		if err != nil {
-			return util.StatusWrapf(err, "Failed to fetch output directory %#v", outputDirectory.Path)
+		sizeBytes := treeDigest.GetSizeBytes()
+		if sizeBytes > remainingTreeSizeBytes {
+			return status.Errorf(codes.NotFound, "Combined size of all output directories exceeds maximum limit of %d bytes", ba.maximumTotalTreeSizeBytes)
 		}
-		tree := treeMessage.(*remoteexecution.Tree)
-		if err := findMissingQueue.addDirectory(tree.Root); err != nil {
-			return err
-		}
-		for _, child := range tree.Children {
-			if err := findMissingQueue.addDirectory(child); err != nil {
-				return err
+		remainingTreeSizeBytes -= sizeBytes
+
+		r := ba.contentAddressableStorage.Get(ctx, treeDigest).ToReader()
+		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
+			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
+				directoryMessage, err := buffer.NewProtoBufferFromReader(
+					&remoteexecution.Directory{},
+					io.NopCloser(fieldReader),
+					buffer.UserProvided,
+				).ToProto(&remoteexecution.Directory{}, ba.maximumMessageSizeBytes)
+				if err != nil {
+					return err
+				}
+				directory := directoryMessage.(*remoteexecution.Directory)
+				for _, child := range directory.Files {
+					if err := findMissingQueue.add(child.Digest); err != nil {
+						return err
+					}
+				}
 			}
+			return nil
+		}); err != nil {
+			// Any errors generated above may be caused by
+			// data corruption on the Tree object. Force
+			// reading the Tree until completion, and prefer
+			// read errors over any errors generated above.
+			if _, copyErr := io.Copy(io.Discard, r); copyErr != nil {
+				err = copyErr
+			}
+			r.Close()
+			return util.StatusWrapf(err, "Output directory %#v", outputDirectory.Path)
 		}
+		r.Close()
 	}
 	return findMissingQueue.finalize()
 }
@@ -180,4 +196,9 @@ func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest
 		return buffer.NewBufferFromError(err)
 	}
 	return b2
+}
+
+func (ba *completenessCheckingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
+	return b
 }

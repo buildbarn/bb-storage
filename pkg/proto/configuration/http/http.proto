@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package buildbarn.configuration.http;
+
+import "pkg/proto/configuration/tls/tls.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http";
+
+message ClientConfiguration {
+  // TLS client configuration, in case resources are requested through
+  // https://. The system-wide certificate authorities and no client
+  // certificate will be used when left unset.
+  buildbarn.configuration.tls.ClientConfiguration tls = 1;
+
+  // If set, forward all traffic through a proxy with a given URL.
+  string proxy_url = 2;
+
+  message HeaderValues {
+    string header = 1;
+    repeated string values = 2;
+  }
+
+  // HTTP headers to attach to every outgoing request.
+  //
+  // This option can, amongst other things, be used to perform HTTP
+  // basic access authentication, by providing an "Authorization" header
+  // with value:
+  //
+  //         "Basic " + std.base64(username + ":" + password)
+  repeated HeaderValues add_headers = 5;
+}

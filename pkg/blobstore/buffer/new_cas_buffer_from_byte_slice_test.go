@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +58,7 @@ func TestNewCASBufferFromByteSliceSizeMismatch(t *testing.T) {
 		digest,
 		[]byte("Hello"),
 		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
-	require.Equal(t, status.Error(codes.Internal, "Buffer is 5 bytes in size, while 6 bytes were expected"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 5 bytes in size, while 6 bytes were expected"), err)
 }
 
 func TestNewCASBufferFromByteSliceHashMismatch(t *testing.T) {
@@ -71,5 +72,5 @@ func TestNewCASBufferFromByteSliceHashMismatch(t *testing.T) {
 		digest,
 		[]byte("Hello"),
 		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
-	require.Equal(t, status.Error(codes.Internal, "Buffer has checksum 8b1a9953c4611296a827abf8c47804d7, while d41d8cd98f00b204e9800998ecf8427e was expected"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 8b1a9953c4611296a827abf8c47804d7, while d41d8cd98f00b204e9800998ecf8427e was expected"), err)
 }

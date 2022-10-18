@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -15,41 +16,41 @@ import (
 func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 	t.Run("InvalidRootPath", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory("foo", map[string]string{})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve root path \"foo\": Path is relative, while an absolute path was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve root path \"foo\": Path is relative, while an absolute path was expected"), err)
 	})
 
 	t.Run("InvalidAliasPath", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
 			"bar": "baz",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"bar\": Path is relative, while an absolute path was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"bar\": Path is relative, while an absolute path was expected"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
 			"/foo": "baz",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides at or below an already registered path"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides at or below an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
 			"/foo/bar": "baz",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo/bar\": Path resides at or below an already registered path"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo/bar\": Path resides at or below an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory("/foo/bar", map[string]string{
 			"/foo": "baz",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides above an already registered path"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides above an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
 			"/bar/..": ".",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/bar/..\": Last component is not a valid filename"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/bar/..\": Last component is not a valid filename"), err)
 	})
 
 	t.Run("InvalidAliasTarget", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
 			"/bar": "/qux",
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Failed to resolve alias target \"/qux\": Path is absolute, while a relative path was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias target \"/qux\": Path is absolute, while a relative path was expected"), err)
 	})
 }
 

@@ -23,21 +23,26 @@ func main() {
 	if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 		log.Fatalf("Failed to read configuration from %s: %s", os.Args[1], err)
 	}
-	lifecycleState, err := global.ApplyConfiguration(configuration.Global)
+	lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
 	if err != nil {
 		log.Fatal("Failed to apply global configuration options: ", err)
 	}
+	terminationContext, terminationGroup := global.InstallGracefulTerminationHandler()
 
 	blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
-		bb_grpc.DefaultClientFactory,
+		grpcClientFactory,
 		int(configuration.MaximumMessageSizeBytes))
 	source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Source,
 		blobAccessCreator)
 	if err != nil {
 		log.Fatal("Failed to create source: ", err)
 	}
 	sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		terminationContext,
+		terminationGroup,
 		configuration.Sink,
 		blobAccessCreator)
 	if err != nil {
@@ -47,20 +52,18 @@ func main() {
 		configuration.Replicator,
 		source.BlobAccess,
 		sink,
-		blobstore_configuration.NewCASBlobReplicatorCreator(bb_grpc.DefaultClientFactory))
+		blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory))
 	if err != nil {
 		log.Fatal("Failed to create replicator: ", err)
 	}
 
-	go func() {
-		log.Fatal(
-			"gRPC server failure: ",
-			bb_grpc.NewServersFromConfigurationAndServe(
-				configuration.GrpcServers,
-				func(s *grpc.Server) {
-					replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
-				}))
-	}()
+	if err := bb_grpc.NewServersFromConfigurationAndServe(
+		configuration.GrpcServers,
+		func(s grpc.ServiceRegistrar) {
+			replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
+		}); err != nil {
+		log.Fatal("gRPC server failure: ", err)
+	}
 
 	lifecycleState.MarkReadyAndWait()
 }

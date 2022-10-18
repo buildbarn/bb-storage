@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"io"
-	"io/ioutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,7 +15,7 @@ func discardFromReader(r io.Reader, off int64) error {
 	if off < 0 {
 		return status.Errorf(codes.InvalidArgument, "Negative read offset: %d", off)
 	}
-	_, err := io.CopyN(ioutil.Discard, r, off)
+	_, err := io.CopyN(io.Discard, r, off)
 	return err
 }
 

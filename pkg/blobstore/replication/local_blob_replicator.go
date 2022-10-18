@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -33,15 +34,25 @@ func NewLocalBlobReplicator(source, sink blobstore.BlobAccess) BlobReplicator {
 
 func (br *localBlobReplicator) ReplicateSingle(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	b1, b2 := br.source.Get(ctx, digest).CloneStream()
-	b1, t := buffer.WithBackgroundTask(b1)
-	go func() {
-		err := br.sink.Put(ctx, digest, b2)
-		if err != nil {
-			err = util.StatusWrap(err, "Replication failed")
+	return b1.WithTask(func() error {
+		if err := br.sink.Put(ctx, digest, b2); err != nil {
+			return util.StatusWrap(err, "Replication failed")
 		}
-		t.Finish(err)
-	}()
-	return b1
+		return nil
+	})
+}
+
+func (br *localBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+	// First replicate the object to the sink, and then read it back
+	// again. Even though cloning like in ReplicateSingle() is more
+	// optimal in terms of bandwidth, it would require us to do the
+	// slicing here. This may cause slicing information to get lost.
+	if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
+		return buffer.NewBufferFromError(err)
+	}
+	return buffer.WithErrorHandler(
+		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
+		notFoundToInternalErrorHandler{})
 }
 
 func (br *localBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

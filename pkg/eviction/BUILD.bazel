@@ -28,6 +28,8 @@ go_test(
         "lru_set_test.go",
         "rr_set_test.go",
     ],
-    embed = [":eviction"],
-    deps = ["@com_github_stretchr_testify//require"],
+    deps = [
+        ":eviction",
+        "@com_github_stretchr_testify//require",
+    ],
 )

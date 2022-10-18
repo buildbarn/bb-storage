@@ -6,23 +6,25 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/mirrored",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/atomic",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/replication",
+        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/util",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_x_sync//errgroup",
     ],
 )
 
 go_test(
     name = "mirrored_test",
     srcs = ["mirrored_blob_access_test.go"],
-    embed = [":mirrored"],
     deps = [
+        ":mirrored",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

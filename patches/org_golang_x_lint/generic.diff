@@ -1,0 +1,35 @@
+diff --git lint.go lint.go
+index 7d813e0..6453496 100644
+--- lint.go
++++ lint.go
+@@ -1453,16 +1453,22 @@ func (f *file) containsComments(start, end token.Pos) bool {
+ // receiverType returns the named type of the method receiver, sans "*",
+ // or "invalid-type" if fn.Recv is ill formed.
+ func receiverType(fn *ast.FuncDecl) string {
+-	switch e := fn.Recv.List[0].Type.(type) {
+-	case *ast.Ident:
+-		return e.Name
+-	case *ast.StarExpr:
+-		if id, ok := e.X.(*ast.Ident); ok {
+-			return id.Name
++	e := fn.Recv.List[0].Type
++	for {
++		switch et := e.(type) {
++		case *ast.Ident:
++			return et.Name
++		case *ast.StarExpr:
++			e = et.X
++		case *ast.IndexExpr:
++			e = et.X
++		case *ast.IndexListExpr:
++			e = et.X
++		default:
++			// The parser accepts much more than just the legal forms.
++			return "invalid-type"
+ 		}
+ 	}
+-	// The parser accepts much more than just the legal forms.
+-	return "invalid-type"
+ }
+ 
+ func (f *file) walk(fn func(ast.Node) bool) {

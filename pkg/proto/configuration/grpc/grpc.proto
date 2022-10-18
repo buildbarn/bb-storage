@@ -4,6 +4,8 @@ package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "pkg/proto/auth/auth.proto";
+import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
@@ -27,8 +29,44 @@ message ClientConfiguration {
   // correct.
   ClientKeepaliveConfiguration keepalive = 3;
 
-  // List of gRPC metadata headers to forward from the calling context.
-  // Valid header names include:
+  // Was forward_metadata, folded into add_metadata_jmespath_expression.
+  // For instance, to forward the `authorization` header, you would use the
+  // expression:
+  //
+  // {"authorization": incomingGRPCMetadata.authorization}
+  //
+  // Incoming metadata names containing dots must be quoted, e.g.
+  //
+  // {"build.bazel.remote.execution.v2.requestmetadata-bin":
+  //     incomingGRPCMetadata."build.bazel.remote.execution.v2.requestmetadata-bin"}
+  reserved 4;
+
+  message HeaderValues {
+    string header = 1;
+    repeated string values = 2;
+  }
+
+  // Map of gRPC metadata headers to set in client connection.
+  // Header names must be lower case.
+  // TODO: Remove this and replace it with uses of
+  //  add_metadata_jmespath_expression.
+  repeated HeaderValues add_metadata = 5;
+
+  // JMESPath expression used to add headers to outgoing requests.
+  // The JMESPath should evaluate to a map<string, repeated string> with keys
+  // representing header names and values the header values.
+  //
+  // Header names must be lower case.
+  //
+  // The JMESPath expression is called against a JSON object with the following
+  // structure:
+  //
+  //  {
+  //    "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
+  //    "incomingGRPCMetadata": map<string, repeated string>
+  //  }
+  //
+  // Some known headers that may be expected in incomingGRPCMetadata:
   //
   // - "authorization":
   //   The bearer token (e.g. an OAuth2 access token) of the client.
@@ -40,41 +78,22 @@ message ClientConfiguration {
   //   Name and version of the low-level transport library used by the
   //   client.
   //
-  // Header names must be lower case.
-  //
-  // Note: Keep in mind that this option can only be used to forward
-  // metadata from incoming calls on gRPC servers to outgoing calls on
-  // gRPC clients. This means that this option cannot be used to let
+  // Note: Keep in mind that this option can only be used to send
+  // metadata to outgoing calls on gRPC clients.
+  // This means that this option cannot be used to let
   // bb-scheduler forward client provided credentials to workers. That
   // would only be possible if bb-scheduler made outgoing connections to
   // workers, which is not the case.
-  repeated string forward_metadata = 4;
-
-  message HeaderValues {
-    string header = 1;
-    repeated string values = 2;
-  }
-
-  // Map of gRPC metadata headers to set in client connection.
-  // Header names must be lower case.
-  repeated HeaderValues add_metadata = 5;
+  string add_metadata_jmespath_expression = 12;
 
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
   ClientOAuthConfiguration oauth = 6;
 
-  // List of gRPC metadata headers to forward from the calling context,
-  // and to reuse in successive requests.
-  //
-  // This option is useful when bb_storage is used as a personal proxy.
-  // It allows clients (e.g., Bazel) to inject credentials into
-  // bb_storage, thereby allowing other clients to access backends
-  // without any further authentication.
-  //
-  // NOTE: Using this option in networked and multi-user environments is
-  // strongly discouraged, as it allows users to hijack each other's
-  // credentials.
-  repeated string forward_and_reuse_metadata = 7;
+  // Was 'forward_and_reuse_metadata'. This option has been moved to
+  // 'global.grpc_forward_and_reuse_metadata', so that headers are
+  // attached to all gRPC clients.
+  reserved 7;
 
   // The gRPC connection's initial stream window size.  See grpc-go
   // WithInitialWindowSize
@@ -83,6 +102,20 @@ message ClientConfiguration {
   // The gRPC connection's initial connection window size.  See grpc-go
   // WithInitialConnWindowSize
   int32 initial_conn_window_size_bytes = 9;
+
+  // If set, forward all traffic through a proxy with a given URL.
+  string proxy_url = 10;
+
+  // Add fields contained in Protobuf request and response messages as
+  // attributes of OpenTelemetry trace spans. The key of this map
+  // corresponds to the full gRPC method name. Examples of valid names
+  // include:
+  //
+  // /build.bazel.remote.execution.v2.ActionCache/UpdateActionResult
+  // /build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs
+  // /build.bazel.remote.execution.v2.Execution/Execute
+  // /google.bytestream.ByteStream/Read
+  map<string, TracingMethodConfiguration> tracing = 11;
 }
 
 message ClientKeepaliveConfiguration {
@@ -135,6 +168,11 @@ message ServerConfiguration {
   buildbarn.configuration.tls.ServerConfiguration tls = 3;
 
   // Policy for authenticating clients against the gRPC server.
+  //
+  // Each authentication policy yields a Protobuf message of type
+  // buildbarn.auth.AuthenticationMetadata object that is passed on to
+  // the authorization layer. The authentication metadata may be used to
+  // store the username or sets of permissions.
   AuthenticationPolicy authentication_policy = 4;
 
   // Maximum size of a Protobuf message that may be received by this
@@ -159,6 +197,17 @@ message ServerConfiguration {
   // The gRPC connection's initial connection window size.  See grpc-go
   // InitialConnWindowSize
   int32 initial_conn_window_size_bytes = 9;
+
+  // Add fields contained in Protobuf request and response messages as
+  // attributes of OpenTelemetry trace spans. The key of this map
+  // corresponds to the full gRPC method name. Examples of valid names
+  // include:
+  //
+  // /build.bazel.remote.execution.v2.ActionCache/UpdateActionResult
+  // /build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs
+  // /build.bazel.remote.execution.v2.Execution/Execute
+  // /google.bytestream.ByteStream/Read
+  map<string, TracingMethodConfiguration> tracing = 10;
 }
 
 message ServerKeepaliveEnforcementPolicy {
@@ -176,10 +225,15 @@ message ServerKeepaliveEnforcementPolicy {
 message AuthenticationPolicy {
   oneof policy {
     // Allow all incoming requests.
-    google.protobuf.Empty allow = 1;
+    //
+    // The value of this field is used as authentication metadata in
+    // literal form.
+    buildbarn.auth.AuthenticationMetadata allow = 1;
 
     // Allow incoming requests if one of multiple authentication
     // policies allows it, similar to Python's any() function.
+    //
+    // The authentication metadata of the first matching policy is used.
     AnyAuthenticationPolicy any = 2;
 
     // Deny all incoming requests, returning a fixed error message back
@@ -189,6 +243,27 @@ message AuthenticationPolicy {
     // Allow incoming requests in case they present a valid TLS
     // certificate.
     TLSClientCertificateAuthenticationPolicy tls_client_certificate = 4;
+
+    // Allow incoming requests in case they present an "Authorization"
+    // header containing a JWT bearer token.
+    buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration jwt = 5;
+
+    // Allow incoming requests in case they are performed over a UNIX
+    // socket. The JMESPath expression can be used to convert the
+    // credentials of the calling process to authentication metadata.
+    // The credentials have the following format:
+    //
+    //     {
+    //       "uid": number,
+    //       "groups": list<number>,
+    //     }
+    //
+    // On Linux, the credentials are extracted using socket option
+    // SO_PEERCRED. This option only returns the primary effective group
+    // ID of the client process. On BSD derived systems, socket option
+    // LOCAL_PEERCRED is used, which is typically capable of returning
+    // up to 16 group memberships.
+    string peer_credentials_jmespath_expression = 6;
   }
 }
 
@@ -201,4 +276,90 @@ message TLSClientCertificateAuthenticationPolicy {
   // PEM data for the certificate authorities that should be used to
   // validate the remote TLS client.
   string client_certificate_authorities = 1;
+
+  // Was `metadata`, instead use `metadata_extraction_jmespath_expression`
+  // to provide static or dynamic metadata.
+  reserved 2;
+
+  // This option allows specifying a boolean JMESPath expression that
+  // can be used to place additional requirements on alt names within
+  // the client certificates.
+  //
+  // The context data has the following structure:
+  //
+  // {
+  //    // Contains every DNS Subject Alt Name provided.
+  //   "dnsNames": ["example.com", "*.sub.example.com"],
+  //
+  //   // Contains every Email Subject Alt Name provided.
+  //   "emailAddresses": ["me@example.com"]
+  // }
+  //
+  // You could enforce that the DNS name matches an expression:
+  //
+  //     contains(dnsNames, "example.com")
+  //
+  // Or to enforce that an expected email address is present:
+  //
+  //     length(emailAddresses[?ends_with(@, '@example.com')]) > `0`
+  //
+  //
+  // In case no additional requirements need to be made, it is possible to
+  // use the following JMESPath expression (including the backticks):
+  //
+  //     `true`
+  //
+  // More details about JMESPath can be found at https://jmespath.org/.
+  //
+  // It is recommended that this feature is only used for making
+  // authentication decisions; not authorization decisions. The reason
+  // being that validation failures will cause gRPC requests to fail
+  // with code UNAUTHENTICATED, not PERMISSION_DENIED.
+  string validation_jmespath_expression = 3;
+
+  // JMESPath expression for converting certificates information to a
+  // Protobuf message of type buildbarn.auth.AuthenticationMetadata.
+  // The resulting metadata can be used for purposes such as authorization.
+  //
+  // The context data has the same structure seen in
+  // `validation_jmespath_expression`.
+  //
+  // The following expression can be used if no metadata needs to be
+  // extracted from the token:
+  //
+  //     `{}`
+  string metadata_extraction_jmespath_expression = 4;
+}
+
+message TracingMethodConfiguration {
+  // Names of fields to extract from the request message of an RPC, and
+  // convert into trace span attributes. The resulting attributes will
+  // have "request." prepended to their names. If the RPC is client
+  // streaming, the value is extracted from the first message.
+  //
+  // Lookups are performed against the names used in the Protobuf
+  // schema; not the Protobuf JSON encoding. Nested fields can be
+  // accessed by using "." as a separator. It is only valid to refer to
+  // fields that use boolean, enumeration, floating point, signed
+  // integer or string types. Fields may be singular or repeated, but
+  // not maps.
+  //
+  // For example, using value "action_digest.hash" for RPC method
+  // "build.bazel.remote.execution.v2.ActionCache/GetActionResult" will
+  // cause attribute "request.action_digest.hash" to be attached to the
+  // trace span, being of type string, containing the value of
+  // Digest.hash, contained in the GetActionResultRequest.action_digest.
+  //
+  // Attributes will not be attached to trace spans if one of the parent
+  // messages of the field that is referenced is not set.
+  repeated string attributes_from_first_request_message = 1;
+
+  // Names of fields to extract from the response message of an RPC, and
+  // convert into trace span attributes. The resulting attributes will
+  // have "response." prepended to their names. If the RPC is server
+  // streaming, the value is extracted from the first message.
+  //
+  // Lookups are performed using the same rules as those for
+  // 'attributes_from_first_request_message'.
+  repeated string attributes_from_first_response_message = 2;
 }

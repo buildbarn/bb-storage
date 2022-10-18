@@ -9,6 +9,7 @@ import "pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "pkg/proto/configuration/cloud/aws/aws.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
+import "pkg/proto/configuration/http/http.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
@@ -27,8 +28,9 @@ message BlobAccessConfiguration {
     // Read objects from/write objects to a Redis server.
     RedisBlobAccessConfiguration redis = 2;
 
-    // Read objects from/write objects to a Bazel remote build cache server.
-    RemoteBlobAccessConfiguration remote = 3;
+    // Read objects from/write objects to a server that supports
+    // Bazel's HTTP caching protocol.
+    HTTPBlobAccessConfiguration http = 3;
 
     // Cache reads from a slow remote storage backend into a fast
     // local storage backend.
@@ -88,7 +90,7 @@ message BlobAccessConfiguration {
     // lowest level that has a full view of the entire CAS.
     //
     // This decorator must be placed on the Action Cache.
-    BlobAccessConfiguration completeness_checking = 17;
+    CompletenessCheckingBlobAccessConfiguration completeness_checking = 17;
 
     // Fall back to reading data from a secondary backend when not found
     // in the primary backend. Data is never written to the latter.
@@ -114,6 +116,90 @@ message BlobAccessConfiguration {
     // 'schedulers' configuration option. Please refer to that
     // configuration option for more details.
     DemultiplexingBlobAccessConfiguration demultiplexing = 20;
+
+    // Read objects using instance names in a hierarchical fashion. This
+    // means that if an object is written using instance name "foo/bar",
+    // it will be possible to read it using instance names "foo/bar",
+    // "foo/bar/baz", "foo/bar/baz/qux", but not instance names "",
+    // "foo", "foo/xyzzy". In other words, non-empty instance names will
+    // have contents inherited from their parent instance names. In case
+    // multiple instance names contain an object of a given digest, the
+    // one with the longest instance name is preferred.
+    //
+    // For the Action Cache (AC), it is recommended that this decorator
+    // is placed above CompletenessCheckingBlobAccess. This ensures that
+    // resolution continues, even if one or more instance names store an
+    // incomplete ActionResult.
+    //
+    // For every read operation, this decorator may generate a linear
+    // number of operations against the backend, based on the number of
+    // components in the instance name. This is acceptable for
+    // low-throughput data stores such as the Action Cache (AC) and
+    // Initial Size Class Cache (ISCC). For the Content Addressable
+    // Storage (CAS), this approach tends to be too inefficient. For the
+    // CAS, it would also be better to prefer the object with the
+    // shortest instance name, so that sharing of data between instance
+    // names is maximised. This is why this implementation does not
+    // allow enabling this option for the CAS. It is recommended that
+    // the LocalBlobAccessConfiguration.hierarchical_instance_names
+    // option is used instead.
+    BlobAccessConfiguration hierarchical_instance_names = 21;
+
+    // Hide ActionResult messages in the Action Cache (AC) where the
+    // 'worker_completed_timestamp' field in the ExecutedActionMetadata
+    // is too far in the past. This decorator can be used to ensure that
+    // all targets are rebuilt periodically.
+    ActionResultExpiringBlobAccessConfiguration action_result_expiring = 22;
+
+    // Send read traffic to a read-only replica, while sending write
+    // traffic to a source of truth. Read traffic may be sent to the
+    // source of truth if the replica is unavailable.
+    //
+    // By default, all requests are sent to the source. For read
+    // requests, this backend periodically sends a single canary request
+    // to the replica. Upon success, all subsequent read requests are
+    // sent to the replica as well. Upon failure, all requests will
+    // continue to go to the source.
+    //
+    // Only infrastructure errors (RPCs failing with INTERNAL,
+    // UNAVAILABLE and UNKNOWN) are considered failures.
+    ReadCanaryingBlobAccessConfiguration read_canarying = 23;
+
+    // Read objects from a ZIP file. Example use cases of this backend
+    // include the following:
+    //
+    // - When used in combination with ReadFallbackBlobAccess, it may be
+    //   used to augment a data store with a set of objects that are
+    //   guaranteed to remain present.
+    // - It may be used to access historical build actions that have
+    //   been archived, so that they can be inspected or rerun.
+    //
+    // If this backend is used as a Content Addressable Storage (CAS),
+    // it will search for files named "${hash}-${sizeBytes}". For other
+    // storage types it will search for files named
+    // "${hash}-${sizeBytes}-${instanceName}".
+    ZIPBlobAccessConfiguration zip_reading = 24;
+
+    // Write objects to an uncompressed ZIP file. The resulting ZIP
+    // files can be read back using the 'zip_reading' option.
+    //
+    // This backend does not support reopening existing ZIP files. ZIP
+    // files will always be truncated upon startup. The trailing central
+    // directory is only written upon graceful termination, meaning that
+    // interrupting execution will create a malformed ZIP file.
+    ZIPBlobAccessConfiguration zip_writing = 25;
+
+    // Prevent repetition in the BlobAccess configuration by introducing
+    // one or more BlobAccess objects that can later be referred to
+    // using string labels.
+    //
+    // This option does not introduce new kind of actual backend; it's
+    // merely present to allow creating BlobAccess setups that are DAG
+    // (Directed Acyclic Graph) shaped, as opposed to just trees.
+    WithLabelsBlobAccessConfiguration with_labels = 26;
+
+    // Refer to a BlobAccess object declared through 'with_labels'.
+    string label = 27;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -238,9 +324,12 @@ message RedisBlobAccessConfiguration {
   google.protobuf.Duration write_timeout = 12;
 }
 
-message RemoteBlobAccessConfiguration {
+message HTTPBlobAccessConfiguration {
   // URL of the remote build cache (e.g., "http://localhost:8080/").
   string address = 1;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration client = 2;
 }
 
 message ShardingBlobAccessConfiguration {
@@ -543,12 +632,12 @@ message LocalBlobAccessConfiguration {
     // Care should be taken that this value is not set too low. Every
     // epoch that still references valid data consumes 16 bytes of
     // memory and increases the size of the state file by a similar
-    // amount. This means that if this option is set to 5m, epoch
+    // amount. This means that if this option is set to '300s', epoch
     // bookkeeping consumes up to 12*24*365*16 B = ~1.68 MB of space if
     // the system were to operate for a full year without blocks being
-    // released. Setting this to 1s would blow this up by a factor 300.
+    // released. Setting this to '1s' blows this up by a factor 300.
     //
-    // Recommended value: 5m
+    // Recommended value: '300s'
     google.protobuf.Duration minimum_epoch_interval = 2;
   }
 
@@ -561,6 +650,45 @@ message LocalBlobAccessConfiguration {
   // key-location map and data in blocks will be ignored, even if their
   // contents are valid.
   Persistent persistent = 13;
+
+  // For all data stores except for the Content Addressable Storage
+  // (CAS), this storage backend always fully respects the REv2 instance
+  // name. This means that every instance name may store a separate copy
+  // of an object. Reads and writes are fully isolated.
+  //
+  // For the Content Addressable Storage, this option determines to what
+  // extent the instance name should be respected. When set to false,
+  // the instance name is completely ignored, meaning that all instance
+  // names share all objects. This is great from a performance point of
+  // view, as it means that users of multi-tenant setups need to upload
+  // objects less frequently, and that storage space usage is minimised.
+  // Unfortunately, it does mean that all tenants can access each
+  // other's objects once they get their hands on their digests.
+  //
+  // When this option is set to true, the instance name is respected in
+  // a hierarchical fashion. This means that if an object is written
+  // using instance name "foo/bar", it will be possible to read it using
+  // instance names "foo/bar", "foo/bar/baz", "foo/bar/baz/qux", but not
+  // instance names "", "foo", "foo/xyzzy". In other words, non-empty
+  // instance names will have Content Addressable Storage contents
+  // inherited from their parent instance names.
+  //
+  // This feature is implemented in such a way that object contents are
+  // still shared across all instance names. Enabling this option does
+  // not cause more data to be written into blocks, as uploads for
+  // objects that already exist under another instance name are treated
+  // as no-ops. It does cause at least a twofold increase in
+  // key-location map usage to track which instance name prefixes may
+  // access an object, proportional to the number of instance names
+  // used.
+  //
+  // This option is only supported for the Content Addressable Storage,
+  // as only for this data store it is safe to provide such behaviour at
+  // the individual storage node level. For the Action Cache, you may
+  // only want to do hierarchical instance name matching at a higher
+  // level, e.g., on top of CompletenessCheckingBlobAccess. This can be
+  // achieved by using HierarchicalInstanceNamesBlobAccess.
+  bool hierarchical_instance_names = 14;
 }
 
 message ExistenceCachingBlobAccessConfiguration {
@@ -573,6 +701,22 @@ message ExistenceCachingBlobAccessConfiguration {
   // decorator.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message CompletenessCheckingBlobAccessConfiguration {
+  // The Action Cache (AC) backend from which ActionResult messages are
+  // loaded.
+  BlobAccessConfiguration backend = 1;
+
+  // The maximum combined size of Tree objects that may be referenced by
+  // the ActionResult message. ActionResults having output directories
+  // whose combined size exceeds that exceeds this limit are suppressed
+  // (i.e., a NOT_FOUND error will be returned).
+  //
+  // This option places a limit on the amount of data that is read from
+  // the Content Addressable Storage (CAS) while processing a call to
+  // GetActionResult().
+  int64 maximum_total_tree_size_bytes = 2;
 }
 
 message ReadFallbackBlobAccessConfiguration {
@@ -597,6 +741,9 @@ message ReferenceExpandingBlobAccessConfiguration {
   // Optional: AWS access options and credentials for objects loaded
   // from S3.
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 2;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 3;
 }
 
 message BlobReplicatorConfiguration {
@@ -639,6 +786,11 @@ message BlobReplicatorConfiguration {
     // of pressure placed on storage nodes is bounded. By letting a
     // dedicated bb_replicator instance use this strategy, replication
     // throughput is bounded globally.
+    //
+    // TODO: This backend shares some overlap with 'deduplicating' and
+    // 'concurrency_limiting'. Should it be removed in favor of those?
+    // Right now this backend is more efficient for remote sinks,
+    // because it doesn't decompose requests for multiple objects.
     QueuedBlobReplicatorConfiguration queued = 3;
 
     // No replication will be performed. This can be useful when one
@@ -665,6 +817,21 @@ message BlobReplicatorConfiguration {
     // LocalBlobAccess that is embedded into the same process, and blobs
     // are expected to be consumed locally.
     BlobReplicatorConfiguration deduplicating = 5;
+
+    // Ensure that the total number of concurrent replication requests
+    // remains bounded by a constant. By limiting the number of
+    // concurrent requests issues against a source, network starvation
+    // may be prevented.
+    //
+    // If this replicator is used in combination with 'deduplicating',
+    // it is recommended that 'deduplicating' is placed on the outside.
+    // More concretely:
+    //
+    //     { deduplicating: { concurrencyLimiting: { ... } }
+    //
+    // Otherwise, the concurrency limit will be applied against requests
+    // that haven't been deduplicated yet, leading to lower concurrency.
+    ConcurrencyLimitingBlobReplicatorConfiguration concurrency_limiting = 6;
   }
 }
 
@@ -676,6 +843,15 @@ message QueuedBlobReplicatorConfiguration {
   // deduplicate replication operations.
   buildbarn.configuration.digest.ExistenceCacheConfiguration existence_cache =
       2;
+}
+
+message ConcurrencyLimitingBlobReplicatorConfiguration {
+  // Base replication strategy to which calls should be forwarded.
+  BlobReplicatorConfiguration base = 1;
+
+  // The maximum number of concurrent replication requests that are
+  // forwarded to the base replication strategy.
+  int64 maximum_concurrency = 2;
 }
 
 message DemultiplexingBlobAccessConfiguration {
@@ -690,4 +866,70 @@ message DemultiplexedBlobAccessConfiguration {
   // Add a prefix to the instance name of all requests forwarded to this
   // backend.
   string add_instance_name_prefix = 2;
+}
+
+message ActionResultExpiringBlobAccessConfiguration {
+  // The backend to which requests are forwarded.
+  BlobAccessConfiguration backend = 1;
+
+  // The minimum amount of time to pass before an ActionResult expires.
+  google.protobuf.Duration minimum_validity = 2;
+
+  // Maximum amount of jitter to be added to the expiration time. This
+  // ensures that actions that were built at around the same time don't
+  // also expire at around the same time, therefore amortizing the rate
+  // at which actions are rebuilt.
+  //
+  // The process for computing the jitter is deterministic, meaning that
+  // subsequent requests for the same ActionResult still yield the same
+  // expiration time.
+  google.protobuf.Duration maximum_validity_jitter = 3;
+}
+
+message ReadCanaryingBlobAccessConfiguration {
+  // The backend that is the source of truth.
+  BlobAccessConfiguration source = 1;
+
+  // The backend that contains a read-only replica of the source.
+  BlobAccessConfiguration replica = 2;
+
+  // Size of the cache that is used to track the availability of the
+  // replica on a per REv2 instance name basis. This ensures that if the
+  // replica uses features authoriation and demultiplexing based on
+  // instance names, availability is tracked accurately.
+  //
+  // Recommended value: 256
+  int32 maximum_cache_size = 3;
+
+  // The validity duration of cache entries. This controls how much time
+  // may pass without any read traffic before the backend falls back to
+  // the default state.
+  //
+  // Recommended value: 300s
+  google.protobuf.Duration maximum_cache_duration = 4;
+}
+
+message ZIPBlobAccessConfiguration {
+  // Path of the ZIP file.
+  string path = 1;
+
+  // When set, temporarily cache the integrity of data after it's been
+  // read from the ZIP file. Once cached, uncompressed files in the ZIP
+  // file (i.e., ones stored with compression method STORE) may be
+  // randomly accessed quickly.
+  //
+  // The disadvantage of enabling this option is that data corruption in
+  // the ZIP file may not be detected. It is therefore recommended to
+  // set the cache duration to a limited value (e.g., "4h").
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      data_integrity_validation_cache = 2;
+}
+
+message WithLabelsBlobAccessConfiguration {
+  // The backend that should be created, having access to the declared
+  // labels.
+  BlobAccessConfiguration backend = 1;
+
+  // A map of string labels to backends that can be referenced.
+  map<string, BlobAccessConfiguration> labels = 2;
 }

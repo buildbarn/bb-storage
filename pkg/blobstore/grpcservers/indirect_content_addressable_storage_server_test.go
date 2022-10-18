@@ -35,7 +35,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 				},
 			},
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 				},
 			},
 		})
-		require.Equal(t, status.Error(codes.Internal, "Hardware failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Hardware failure"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -213,7 +213,7 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 				SizeBytes: 123,
 			},
 		})
-		require.Equal(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -230,7 +230,7 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 				SizeBytes: 5,
 			},
 		})
-		require.Equal(t, status.Error(codes.Internal, "Hardware failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Hardware failure"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

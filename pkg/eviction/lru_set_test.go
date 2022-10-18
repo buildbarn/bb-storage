@@ -8,7 +8,7 @@ import (
 )
 
 func TestLRUSetExample(t *testing.T) {
-	set := eviction.NewLRUSet()
+	set := eviction.NewLRUSet[string]()
 
 	// Insert a set of words.
 	words := []string{

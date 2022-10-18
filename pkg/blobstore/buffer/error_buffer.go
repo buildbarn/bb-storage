@@ -54,6 +54,14 @@ func (b errorBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b errorBuffer) WithTask(task func() error) Buffer {
+	// This buffer is trivially cloneable, so we can run the task in
+	// the foreground. Discard the error response, because this
+	// buffer is already in an error state.
+	task()
+	return b
+}
+
 func (b errorBuffer) Discard() {}
 
 func (b errorBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {

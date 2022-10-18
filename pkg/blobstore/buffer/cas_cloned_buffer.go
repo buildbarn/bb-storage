@@ -126,6 +126,10 @@ func (b *casClonedBuffer) CloneStream() (Buffer, Buffer) {
 	return b, b
 }
 
+func (b *casClonedBuffer) WithTask(task func() error) Buffer {
+	return newCASBufferWithBackgroundTask(b, b.digest, b.source, task)
+}
+
 func (b *casClonedBuffer) Discard() {
 	b.toChunkReader(false, defaultChunkSizeBytes).Close()
 }

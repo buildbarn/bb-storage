@@ -9,6 +9,7 @@ go_library(
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/replication",
+        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/util",
         "@org_golang_google_grpc//codes",
@@ -19,8 +20,8 @@ go_library(
 go_test(
     name = "readfallback_test",
     srcs = ["read_fallback_blob_access_test.go"],
-    embed = [":readfallback"],
     deps = [
+        ":readfallback",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",

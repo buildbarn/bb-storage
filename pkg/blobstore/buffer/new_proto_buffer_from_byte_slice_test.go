@@ -2,7 +2,6 @@ package buffer_test
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -75,7 +74,7 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 			exampleActionResultBytes,
 			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
-		require.Equal(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
 
 	t.Run("ReadBeyondEOF", func(t *testing.T) {
@@ -202,7 +201,7 @@ func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 		exampleActionResultBytes,
 		buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data)
 

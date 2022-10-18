@@ -1,22 +1,23 @@
 package blobstore_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -28,9 +29,13 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		&http.Client{Transport: roundTripper},
+		s3Client,
+		100)
 	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("BackendError", func(t *testing.T) {
@@ -39,7 +44,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Failed to load reference: I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to load reference: I/O error"), err)
 	})
 
 	t.Run("InvalidReference", func(t *testing.T) {
@@ -51,7 +56,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Unimplemented, "Reference uses an unsupported medium"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "Reference uses an unsupported medium"), err)
 	})
 
 	t.Run("HTTPInvalidURL", func(t *testing.T) {
@@ -69,7 +74,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Failed to create HTTP request: parse \"\\x00\": net/url: invalid control character in URL"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to create HTTP request: parse \"\\x00\": net/url: invalid control character in URL"), err)
 	})
 
 	t.Run("HTTPRequestFailed", func(t *testing.T) {
@@ -84,14 +89,10 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:   5,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
-		httpClient.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
-			Op:  "Get",
-			URL: "http://example.com/file.txt",
-			Err: errors.New("dial tcp 1.2.3.4:80: connect: connection refused"),
-		})
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(nil, errors.New("dial tcp 1.2.3.4:80: connect: connection refused"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "HTTP request failed: Get \"http://example.com/file.txt\": dial tcp 1.2.3.4:80: connect: connection refused"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "HTTP request failed: Get \"http://example.com/file.txt\": dial tcp 1.2.3.4:80: connect: connection refused"), err)
 	})
 
 	t.Run("HTTPBadStatusCode", func(t *testing.T) {
@@ -108,7 +109,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "404 Not Found",
 			StatusCode: 404,
 			Body:       body,
@@ -116,7 +117,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		body.EXPECT().Close()
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "HTTP request failed with status \"404 Not Found\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "HTTP request failed with status \"404 Not Found\""), err)
 	})
 
 	t.Run("HTTPChecksumFailure", func(t *testing.T) {
@@ -133,7 +134,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "206 Partial Content",
 			StatusCode: 206,
 			Body:       body,
@@ -145,7 +146,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		body.EXPECT().Close()
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "Buffer has checksum d1bf93299de1b68e6d382c893bf1215f, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum d1bf93299de1b68e6d382c893bf1215f, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
 
 	t.Run("HTTPSuccessPlain", func(t *testing.T) {
@@ -161,7 +162,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		httpClient.EXPECT().Do(gomock.Any()).DoAndReturn(
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(
 			func(req *http.Request) (*http.Response, error) {
 				require.Equal(t, "GET", req.Method)
 				require.Equal(t, "http://example.com/file.txt", req.URL.String())
@@ -199,14 +200,16 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=100-110"),
-		}).Return(nil, awserr.New("NoSuchKey", "The specified key does not exist. status code: 404, request id: ..., host id: ...", nil))
+		}).Return(nil, &types.NoSuchKey{
+			Message: aws.String("The specified key does not exist. status code: 404, request id: ..., host id: ..."),
+		})
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
-		require.Equal(t, status.Error(codes.Internal, "S3 request failed: NoSuchKey: The specified key does not exist. status code: 404, request id: ..., host id: ..."), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "S3 request failed: NoSuchKey: The specified key does not exist. status code: 404, request id: ..., host id: ..."), err)
 	})
 
 	t.Run("S3DeflateError", func(t *testing.T) {
@@ -226,7 +229,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
 			Range:  aws.String("bytes=100-110"),
@@ -255,15 +258,14 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 						},
 					},
 					OffsetBytes:  100,
-					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
 		body := mock.NewMockReadCloser(ctrl)
-		s3Client.EXPECT().GetObjectWithContext(ctx, &s3.GetObjectInput{
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
-			Range:  aws.String("bytes=100-110"),
+			Range:  aws.String("bytes=100-"),
 		}).Return(&s3.GetObjectOutput{
 			Body: body,
 		}, nil)
@@ -278,15 +280,61 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 	})
+
+	t.Run("S3SuccessZstandard", func(t *testing.T) {
+		// The S3 service returns valid data compressed using
+		// the Zstandard algorithm.
+		aaaDigest := digest.MustNewDigest("foo", "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
+		baseBlobAccess.EXPECT().Get(ctx, aaaDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  0,
+					SizeBytes:    21,
+					Decompressor: remoteexecution.Compressor_ZSTD,
+				},
+				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
+		body := mock.NewMockReadCloser(ctrl)
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("bytes=0-20"),
+		}).Return(&s3.GetObjectOutput{
+			Body: body,
+		}, nil)
+		body.EXPECT().Read(gomock.Any()).
+			DoAndReturn(bytes.NewBuffer([]byte{
+				// 21 bytes of Zstandard compressed data
+				// that decompress to fifty 'a' bytes.
+				0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x45,
+				0x00, 0x00, 0x10, 0x61, 0x61, 0x01, 0x00,
+				0x45, 0x00, 0x0b, 0x23, 0x9f, 0x0f, 0x9a,
+			}).Read).
+			AnyTimes()
+		body.EXPECT().Close()
+
+		data, err := blobAccess.Get(ctx, aaaDigest).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
+	})
 }
 
 func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		&http.Client{Transport: roundTripper},
+		s3Client,
+		100)
 
 	t.Run("Failure", func(t *testing.T) {
 		// It is not possible to write objects using
@@ -309,9 +357,13 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	httpClient := mock.NewMockHTTPClient(ctrl)
-	s3Client := mock.NewMockS3(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(baseBlobAccess, httpClient, s3Client, 100)
+	roundTripper := mock.NewMockRoundTripper(ctrl)
+	s3Client := mock.NewMockS3Client(ctrl)
+	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+		baseBlobAccess,
+		&http.Client{Transport: roundTripper},
+		s3Client,
+		100)
 
 	digests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)).
@@ -337,6 +389,6 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "Network error"))
 
 		_, err := blobAccess.FindMissing(ctx, digests)
-		require.Equal(t, status.Error(codes.Internal, "Network error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Network error"), err)
 	})
 }

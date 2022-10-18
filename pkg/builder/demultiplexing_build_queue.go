@@ -16,7 +16,7 @@ import (
 // DemultiplexedBuildQueueGetter is the callback invoked by the
 // demultiplexing build queue to obtain a backend that matches the
 // instance name that is provided.
-type DemultiplexedBuildQueueGetter func(instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error)
+type DemultiplexedBuildQueueGetter func(ctx context.Context, instanceName digest.InstanceName) (BuildQueue, digest.InstanceName, digest.InstanceName, error)
 
 type demultiplexingBuildQueue struct {
 	getBackend DemultiplexedBuildQueueGetter
@@ -39,19 +39,12 @@ func NewDemultiplexingBuildQueue(getBackend DemultiplexedBuildQueueGetter) Build
 	}
 }
 
-func (bq *demultiplexingBuildQueue) GetCapabilities(ctx context.Context, in *remoteexecution.GetCapabilitiesRequest) (*remoteexecution.ServerCapabilities, error) {
-	instanceName, err := digest.NewInstanceName(in.InstanceName)
-	if err != nil {
-		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
-	}
-	backend, _, newInstanceName, err := bq.getBackend(instanceName)
+func (bq *demultiplexingBuildQueue) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	backend, _, newInstanceName, err := bq.getBackend(ctx, instanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
 	}
-
-	requestCopy := *in
-	requestCopy.InstanceName = newInstanceName.String()
-	return backend.GetCapabilities(ctx, &requestCopy)
+	return backend.GetCapabilities(ctx, newInstanceName)
 }
 
 func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
@@ -59,7 +52,7 @@ func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, 
 	if err != nil {
 		return util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	backend, backendName, newInstanceName, err := bq.getBackend(instanceName)
+	backend, backendName, newInstanceName, err := bq.getBackend(out.Context(), instanceName)
 	if err != nil {
 		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
 	}
@@ -81,7 +74,7 @@ func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecut
 	if err != nil {
 		return util.StatusWrapf(err, "Invalid instance name %#v", target[0])
 	}
-	backend, _, _, err := bq.getBackend(instanceName)
+	backend, _, _, err := bq.getBackend(out.Context(), instanceName)
 	if err != nil {
 		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
 	}

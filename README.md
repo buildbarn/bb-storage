@@ -41,8 +41,8 @@ This container image can then be launched using Docker as follows:
 ```
 $ cat config/bb_storage.jsonnet
 {
-  blobstore: {
-    contentAddressableStorage: {
+  contentAddressableStorage: {
+    backend: {
       'local': {
         keyLocationMapOnBlockDevice: {
           file: {
@@ -70,7 +70,12 @@ $ cat config/bb_storage.jsonnet
         },
       },
     },
-    actionCache: {
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { allow: {} },
+    findMissingAuthorizer: { allow: {} },
+  },
+  actionCache: {
+    backend: {
       completenessChecking: {
         'local': {
           keyLocationMapOnBlockDevice: {
@@ -100,6 +105,10 @@ $ cat config/bb_storage.jsonnet
         },
       },
     },
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { instanceNamePrefix: {
+      allowedInstanceNamePrefixes: ['foo'],
+    } },
   },
   global: { diagnosticsHttpServer: {
     listenAddress: ':9980',
@@ -113,7 +122,7 @@ $ cat config/bb_storage.jsonnet
   schedulers: {
     bar: { endpoint: { address: 'bar-scheduler:8981' } },
   },
-  allowAcUpdatesForInstanceNamePrefixes: ['foo'],
+  executeAuthorizer: { allow: {} },
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
 $ mkdir -p storage-{ac,cas}/persistent_state
@@ -130,7 +139,7 @@ $ docker run \
 In the example above, the daemon is configured to store a single on-disk
 CAS. Two ACs are made, corresponding with instance names `foo` and
 `bar`. The former is intended just for remote caching, which is why it's
-made client-writable by adding `allowAcUpdatesForInstances` in the
+made client-writable through `actionCacheAuthorizers` in the
 configuration file. The latter is intended for remote execution, which
 is why `schedulers` is used to forward build action execution requests
 to a separate scheduler service at address `bar-scheduler:8981`.
@@ -162,9 +171,14 @@ support those who have issues or questions, sometimes organisations need more
 dedicated support. The following is a list of community members who you can
 contact if you require commercial support. Please submit a PR if you wish to
 have your name listed here. Having a name listed is not necessarily an
-endorsement. 
+endorsement.
 
-[Finn Ball](mailto:finn.ball@codificasolutions.com) - Freelance Consultant
+- [Finn Ball](mailto:finn.ball@codificasolutions.com) - Freelance Consultant
+- [Fredrik Medley](mailto:fredrik@meroton.com) - Consultant
+
+## Commercial Hosting and Professional Services
+
+[Meroton](https://www.meroton.com/services/) - Cloud Hosted Buildbarn and Services
 
 Buildbarn does not encourage commercial forks and is willing to engage with
 organisations to merge changes upstream in order to be maintained by the

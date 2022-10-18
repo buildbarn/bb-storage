@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,4 +45,36 @@ func StatusFromContext(ctx context.Context) error {
 		return s.Err()
 	}
 	return nil
+}
+
+// IsInfrastructureError returns true if an error is caused by a failure
+// of the infrastructure, as opposed to it being caused by a parameter
+// provided by the caller.
+//
+// This function may, for example, be used to determine whether a call
+// should be retried.
+func IsInfrastructureError(err error) bool {
+	code := status.Code(err)
+	return code == codes.Internal || code == codes.Unavailable || code == codes.Unknown
+}
+
+// StatusFromMultiple creates a single error object based on multiple
+// errors. The status code and metadata from the first error is used,
+// while the messages are all concatenated and comma separated.
+func StatusFromMultiple(errs []error) error {
+	p := status.Convert(errs[0]).Proto()
+	messages := append(make([]string, 0, len(errs)), p.Message)
+	observedMessages := make(map[string]struct{}, len(errs))
+	observedMessages[p.Message] = struct{}{}
+
+	for _, err := range errs[1:] {
+		message := status.Convert(err).Message()
+		if _, ok := observedMessages[message]; !ok {
+			messages = append(messages, message)
+			observedMessages[message] = struct{}{}
+		}
+	}
+
+	p.Message = strings.Join(messages, ", ")
+	return status.ErrorProto(p)
 }

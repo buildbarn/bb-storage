@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +41,7 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 				status.Error(codes.Internal, "Server on fire")))
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(1)
-		require.Equal(t, err, status.Error(codes.Internal, "Server on fire"))
+		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
 	})
 
 	t.Run("EmptySuccess", func(t *testing.T) {
@@ -53,7 +54,51 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 	t.Run("EmptyInvalid", func(t *testing.T) {
 		// Validation should still be performed on empty blobs.
 		_, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 0)).ToByteSlice(0)
-		require.Equal(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
+		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
+	})
+}
+
+func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
+	parentDigest := digest.MustNewDigest("hello", "d0607e3f454f88e2925ef995f549503b7f67541dc7ac0dcf4662265aed7a749f", 1000)
+	slicer := mock.NewMockBlobSlicer(ctrl)
+
+	t.Run("NonEmptySuccess", func(t *testing.T) {
+		// Requests for non-empty blobs should be forwarded.
+		childDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
+			buffer.NewValidatedBufferFromByteSlice([]byte("A")))
+
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
+		require.NoError(t, err)
+		require.Equal(t, []byte("A"), data)
+	})
+
+	t.Run("NonEmptyFailure", func(t *testing.T) {
+		// Errors from the backend should be propagated.
+		childDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
+			buffer.NewBufferFromError(
+				status.Error(codes.Internal, "Server on fire")))
+
+		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
+		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
+	})
+
+	t.Run("EmptySuccess", func(t *testing.T) {
+		// Requests for the empty blob should be processed directly.
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0), slicer).ToByteSlice(0)
+		require.NoError(t, err)
+		require.Empty(t, data)
+	})
+
+	t.Run("EmptyInvalid", func(t *testing.T) {
+		// Validation should still be performed on empty blobs.
+		_, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 0), slicer).ToByteSlice(0)
+		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
 	})
 }
 
@@ -158,6 +203,6 @@ func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 			Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, unfilteredInputSet)
-		require.Equal(t, status.Error(codes.Internal, "Server on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 	})
 }

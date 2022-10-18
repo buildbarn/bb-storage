@@ -3,8 +3,8 @@ package grpc
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/atomic"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"

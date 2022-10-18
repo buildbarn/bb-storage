@@ -4,40 +4,11 @@ package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "opentelemetry/proto/common/v1/common.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+import "pkg/proto/configuration/http/http.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
-
-message JaegerConfiguration {
-  // Jaeger agent endpoint.
-  string agent_endpoint = 1;
-
-  // Jaeger collector endpoint.
-  string collector_endpoint = 2;
-
-  // OpenTracing service name.
-  string service_name = 3;
-}
-
-message StackdriverConfiguration {
-  // GCP project to which trace data is sent.
-  // Can be left blank if in GCP, automatically determined from metadata server.
-  string project_id = 1;
-
-  // Location is the identifier of the GCP or AWS cloud region/zone in which
-  // the data for a resource is stored. (defaults to info from metadata server)
-  string location = 2;
-
-  // Additional attributes to add to all spans by default.
-  map<string, string> default_trace_attributes = 3;
-}
-
-message BasicAuthenticationConfiguration {
-  // Username to store in the "Authorization: Basic" header.
-  string username = 1;
-
-  // Password to store in the "Authorization: Basic" header.
-  string password = 2;
-}
 
 message PrometheusPushgatewayConfiguration {
   // URL of the Prometheus Pushgateway server. Do not include the
@@ -47,38 +18,176 @@ message PrometheusPushgatewayConfiguration {
   // Name of the job to announce to the Prometheus Pushgateway.
   string job = 2;
 
-  // If set, enable the use of HTTP basic authentication.
-  BasicAuthenticationConfiguration basic_authentication = 3;
+  // Was 'basic_authentication'. Credentials can now be provided in the
+  // form of a HTTP header through 'http_client.add_headers'.
+  reserved 3;
 
   // Label pairs to use as the grouping key.
   map<string, string> grouping = 4;
 
   // Interval between metrics pushes.
   google.protobuf.Duration push_interval = 5;
+
+  // Optional: Options to be used by the HTTP client.
+  buildbarn.configuration.http.ClientConfiguration http_client = 6;
+
+  // Maximum amount of time that pushing metrics may take.
+  google.protobuf.Duration push_timeout = 7;
 }
 
 message TracingConfiguration {
-  // Jaeger configuration for tracing.
-  JaegerConfiguration jaeger = 1;
+  message Backend {
+    message JaegerCollectorSpanExporter {
+      // The URL of the Jaeger collector to which spans are sent.
+      //
+      // This option overrides any value set for the
+      // OTEL_EXPORTER_JAEGER_ENDPOINT environment variable. If this
+      // option is not passed and the environment variable is not set,
+      // "http://localhost:14268/api/traces" will be used by default.
+      string endpoint = 1;
 
-  // Stackdriver Trace configuration for tracing.
-  StackdriverConfiguration stackdriver = 2;
+      // Optional: Options to be used by the HTTP client.
+      buildbarn.configuration.http.ClientConfiguration http_client = 2;
 
-  // Export stats on traces to Prometheus.
-  bool enable_prometheus = 3;
+      // The password to be used in the authorization header sent for
+      // all requests to the collector.
+      //
+      // This option overrides any value set for the
+      // OTEL_EXPORTER_JAEGER_PASSWORD environment variable. If this
+      // option is not passed and the environment variable is not set,
+      // no password will be set.
+      string password = 3;
 
-  // Policy to use to decide to sample traces.
-  oneof sampling_policy {
-    // Sample all traces.
-    google.protobuf.Empty sample_always = 5;
+      // The username to be used in the authorization header sent for
+      // all requests to the collector.
+      //
+      // This option overrides any value set for the
+      // OTEL_EXPORTER_JAEGER_USER environment variable. If this option
+      // is not passed and the environment variable is not set, no
+      // username will be set.
+      string username = 4;
+    }
 
-    // Never sample traces.
-    google.protobuf.Empty sample_never = 6;
+    oneof span_exporter {
+      // Export spans to a Jaeger collector using jaeger.thrift over
+      // HTTP.
+      //
+      // NOTE: This option is deprecated, as Jaeger 1.35 and later
+      // provide native support for the OpenTelemetry protocol:
+      // https://medium.com/jaegertracing/introducing-native-support-for-opentelemetry-in-jaeger-eb661be8183c
+      JaegerCollectorSpanExporter jaeger_collector_span_exporter = 1;
 
-    // Probability in range [0, 1.0] with which to sample a trace.
-    // (Traces with a parent trace will also be sampled.)
-    double sample_probability = 7;
+      // Export spans over gRPC using the OpenTelemetry protocol.
+      buildbarn.configuration.grpc.ClientConfiguration otlp_span_exporter = 4;
+    }
+
+    message BatchSpanProcessor {
+      // The maximum duration for constructing a batch. The processor
+      // forcefully sends available spans when the timeout is reached.
+      //
+      // When not set, OpenTelemetry's default value is used.
+      google.protobuf.Duration batch_timeout = 1;
+
+      // Block if the queue is full. This option should be used
+      // carefully, as it can severely affect the performance of the
+      // application.
+      bool blocking = 2;
+
+      // The maximum duration for exporting spans. If the timeout is
+      // reached, the exported will be canceled.
+      //
+      // When not set, OpenTelemetry's default value is used.
+      google.protobuf.Duration export_timeout = 3;
+
+      // Maximum number of spans to process in a single batch. If there
+      // are more than one batch worth of spans, then it processes
+      // multiple batches of spans, one batch after the other, without
+      // any delay.
+      //
+      // When not set, OpenTelemetry's default value is used.
+      int64 max_export_batch_size = 4;
+
+      // Maximum queue size to buffer spans for delayed processing. If
+      // the queue gets full, it drops the spans.
+      //
+      // When not set, OpenTelemetry's default value is used.
+      int64 max_queue_size = 5;
+    }
+
+    oneof span_processor {
+      // Use a span processor that will synchronously send completed
+      // spans to the exporter immediately.
+      google.protobuf.Empty simple_span_processor = 2;
+
+      // Use a span processor that will send completed span batches to
+      // the exporter.
+      BatchSpanProcessor batch_span_processor = 3;
+    }
   }
+
+  // The backends to which to submit trace spans.
+  repeated Backend backends = 1;
+
+  // Resource attributes to announce to backends. These can be used to
+  // uniquely identify processes to the tracing system. Conventions
+  // about the naming of attributes exist. For example, an attribute
+  // with key "service.name" is generally required.
+  //
+  // More details can be found on the following pages:
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/sdk.md
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md
+  // https://pkg.go.dev/go.opentelemetry.io/otel/semconv/v1.4.0
+  repeated opentelemetry.proto.common.v1.KeyValue resource_attributes = 2;
+
+  message Sampler {
+    message ParentBased {
+      // The sampler to use in case no parent span exists.
+      Sampler no_parent = 1;
+
+      // The sampler for the case of local parent which is not sampled.
+      Sampler local_parent_not_sampled = 2;
+
+      // The sampler for the case of sampled local parent.
+      Sampler local_parent_sampled = 3;
+
+      // The sampler for the case of remote parent which is not sampled.
+      Sampler remote_parent_not_sampled = 4;
+
+      // The sampler for the case of sampled remote parent.
+      Sampler remote_parent_sampled = 5;
+    }
+
+    message MaximumRate {
+      // The number of traces sample within a single epoch.
+      int64 samples_per_epoch = 1;
+
+      // The duration of an epoch.
+      google.protobuf.Duration epoch_duration = 2;
+    }
+
+    oneof policy {
+      // Sample all traces.
+      google.protobuf.Empty always = 1;
+
+      // Don't sample any traces.
+      google.protobuf.Empty never = 2;
+
+      // Let the presence or absence of a parent span, and whether it is
+      // sampled determine whether sampling takes place,
+      ParentBased parent_based = 3;
+
+      // Sample a given fraction of traces. Fractions >= 1 will always
+      // sample. Fractions < 0 are treated as zero.
+      double trace_id_ratio_based = 4;
+
+      // Sample traces at a maximum rate. This ensures that load on the
+      // tracing infrastructure remains bounded.
+      MaximumRate maximum_rate = 5;
+    }
+  }
+
+  // The policy to determine how many traces are sampled.
+  Sampler sampler = 3;
 }
 
 message SetUmaskConfiguration {
@@ -87,7 +196,7 @@ message SetUmaskConfiguration {
 }
 
 message Configuration {
-  // Configuration for sending tracing data to various services.
+  // Configuration for sending tracing data using OpenTelemetry.
   TracingConfiguration tracing = 1;
 
   // Sets the runtime.SetMutexProfileFraction(), so that the HTTP debug
@@ -116,6 +225,19 @@ message Configuration {
   //
   // This option may only be set on POSIX-like systems.
   SetUmaskConfiguration set_umask = 7;
+
+  // List of gRPC metadata headers to forward from gRPC clients to gRPC
+  // servers, and to reuse in successive requests.
+  //
+  // This option is useful when bb_storage is used as a personal proxy.
+  // It allows clients (e.g., Bazel) to inject credentials into
+  // bb_storage, thereby allowing other clients to access backends
+  // without any further authentication.
+  //
+  // NOTE: Using this option in networked and multi-user environments is
+  // strongly discouraged, as it allows users to hijack each other's
+  // credentials.
+  repeated string grpc_forward_and_reuse_metadata = 8;
 }
 
 message DiagnosticsHTTPServerConfiguration {
@@ -131,4 +253,10 @@ message DiagnosticsHTTPServerConfiguration {
   // Enables endpoints:
   // - /metrics: Metrics that can be scraped by Prometheus.
   bool enable_prometheus = 3;
+
+  // Enables endpoints:
+  // - /active_spans: List of active OpenTelemetry spans. This endpoint
+  //                  can be used independent of whether Configuration's
+  //                  'tracing' option is enabled.
+  bool enable_active_spans = 4;
 }
