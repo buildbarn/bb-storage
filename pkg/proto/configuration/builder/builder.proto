@@ -6,8 +6,9 @@ import "pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder";
 
-// We have to remap the java outer classname, as by default it will be 'Builder', which collides with the 
-// auto-generated Builder class for the proto.
+// We have to remap the java outer classname, as by default it will be
+// 'Builder', which collides with the auto-generated Builder class for the
+// proto.
 option java_outer_classname = "ConfigBuilder";
 
 message SchedulerConfiguration {
