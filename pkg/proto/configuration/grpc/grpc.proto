@@ -164,8 +164,8 @@ message ServerConfiguration {
   // inside directories that have access controls set up properly.
   repeated string listen_paths = 2;
 
-  // TLS configuration. TLS is not enabled when left unset.
-  buildbarn.configuration.tls.ServerConfiguration tls = 3;
+  // was TLS, moved tl TLS option in transport_credentials.
+  reserved 3;
 
   // Policy for authenticating clients against the gRPC server.
   //
@@ -208,6 +208,15 @@ message ServerConfiguration {
   // /build.bazel.remote.execution.v2.Execution/Execute
   // /google.bytestream.ByteStream/Read
   map<string, TracingMethodConfiguration> tracing = 10;
+
+  // Specify a set of transport credentials
+  oneof transport_credentials {
+    // Static TLS configuration.
+    buildbarn.configuration.tls.ServerConfiguration tls = 11;
+
+    // Use xDS provisioned TLS.
+    google.protobuf.Empty xds = 12;
+  }
 }
 
 message ServerKeepaliveEnforcementPolicy {

@@ -5,18 +5,20 @@ import (
 	"net"
 	"os"
 
-	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/xds"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
@@ -32,7 +34,7 @@ func init() {
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
+func NewServersFromConfigurationAndServe(configurations []*pb.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
@@ -67,13 +69,25 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			grpc.ChainStreamInterceptor(streamInterceptors...),
 		}
 
-		// Enable TLS transport credentials if provided.
+		// Enable transport credentials if provided, via static TLS or xDS
 		hasCredsOption := false
-		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
-			return err
-		} else if tlsConfig != nil {
-			hasCredsOption = true
-			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		useXDS := false
+		switch transportCredentials := configuration.TransportCredentials.(type) {
+		case *pb.ServerConfiguration_Tls:
+			if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(transportCredentials.Tls); err != nil {
+				return err
+			} else if tlsConfig != nil {
+				hasCredsOption = true
+				serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+			}
+		case *pb.ServerConfiguration_Xds:
+			if tlsConfig, err := xdscreds.NewServerCredentials(xdscreds.ServerOptions{}); err != nil {
+				return err
+			} else if tlsConfig != nil {
+				useXDS = true
+				hasCredsOption = true
+				serverOptions = append(serverOptions, grpc.Creds(tlsConfig))
+			}
 		}
 
 		// Enable UNIX socket peer credentials if used in the
@@ -109,7 +123,17 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		// Create server.
-		s := grpc.NewServer(serverOptions...)
+		var s interface {
+			grpc.ServiceRegistrar
+			GetServiceInfo() map[string]grpc.ServiceInfo
+			Serve(net.Listener) error
+		}
+		if useXDS {
+			s = xds.NewGRPCServer(serverOptions...)
+		} else {
+			s = grpc.NewServer(serverOptions...)
+		}
+
 		registrationFunc(s)
 
 		// Enable default services.

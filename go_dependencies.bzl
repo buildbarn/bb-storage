@@ -252,6 +252,7 @@ def go_dependencies():
     )
     go_repository(
         name = "com_github_envoyproxy_protoc_gen_validate",
+        build_naming_convention = "go_default_library",
         importpath = "github.com/envoyproxy/protoc-gen-validate",
         sum = "h1:EQciDnbrYxy13PgWoY8AqoxGiPrpgBZ1R8UNe3ddc+A=",
         version = "v0.1.0",
@@ -463,7 +464,10 @@ def go_dependencies():
     go_repository(
         name = "com_github_grpc_ecosystem_go_grpc_prometheus",
         importpath = "github.com/grpc-ecosystem/go-grpc-prometheus",
-        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
+        patches = [
+            "@com_github_buildbarn_bb_storage//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff",
+            "@com_github_buildbarn_bb_storage//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/grpc-server-register-pr102.diff",
+        ],
         sum = "h1:Ovs26xHkKqVztRpIrF/92BcuyuQ/YW4NSIpoGtfXNho=",
         version = "v1.2.0",
     )
