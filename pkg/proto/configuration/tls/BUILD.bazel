@@ -6,6 +6,9 @@ proto_library(
     name = "tls_proto",
     srcs = ["tls.proto"],
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_protobuf//:duration_proto",
+    ],
 )
 
 go_proto_library(

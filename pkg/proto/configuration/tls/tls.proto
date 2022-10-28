@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.tls;
 
+import "google/protobuf/duration.proto";
+
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls";
 
 message ClientConfiguration {
@@ -10,13 +12,13 @@ message ClientConfiguration {
   // authorities are used when left unset.
   string server_certificate_authorities = 1;
 
-  // PEM data for the certificate used by the TLS client. No client
-  // certificate/private key is used when left unset.
-  string client_certificate = 2;
+  // Was `client_certificate`, now use `client_key_pair.inline.certificate`
+  // or `client_key_pair.files.certificate_path`.
+  reserved 2;
 
-  // PEM data for the private key used by the TLS client. No client
-  // certificate/private key is used when left unset.
-  string client_private_key = 3;
+  // Was `client_private_key`, now use `client_key_pair.inline.private_key`
+  // or `client_key_pair.files.private_key_path`.
+  reserved 3;
 
   // List of supported cipher suites for TLS versions up to TLS 1.2. If
   // empty, a default list of cipher suites is used. Note that TLS 1.3
@@ -36,14 +38,20 @@ message ClientConfiguration {
   // addresses. This field can be used to specify the expected DNS name
   // of the server certificate.
   string server_name = 5;
+
+  // x509 Key-Pair to use for client TLS. No client
+  // certificate/private key is used when left unset.
+  X509KeyPair client_key_pair = 6;
 }
 
 message ServerConfiguration {
-  // PEM data for the certificate used by the TLS server.
-  string server_certificate = 1;
+  // Was `server_certificate`, now use `server_key_pair.inline.certificate`
+  // or `server_key_pair.files.certificate_path`.
+  reserved 1;
 
-  // PEM data for the private key used by the TLS server.
-  string server_private_key = 2;
+  // Was `server_private_key`, now use `server_key_pair.inline.private_key`
+  // or `server_key_pair.files.private_key_path`.
+  reserved 2;
 
   // List of supported cipher suites for TLS versions up to TLS 1.2. If
   // empty, a default list of cipher suites is used. Note that TLS 1.3
@@ -52,4 +60,36 @@ message ServerConfiguration {
   // Valid cipher suite names may be found here:
   // https://golang.org/pkg/crypto/tls/#pkg-constants
   repeated string cipher_suites = 3;
+
+  // x509 Key-Pair to use for server TLS.
+  X509KeyPair server_key_pair = 4;
+}
+
+message X509KeyPair {
+  message Inline {
+    // PEM data for the certificate used for TLS.
+    string certificate = 1;
+    // PEM data for the private key used for TLS.
+    string private_key = 2;
+  }
+
+  message Files {
+    // PEM file path for the certificate used for TLS.
+    string certificate_path = 1;
+    // PEM file path for the private key used for TLS.
+    string private_key_path = 2;
+
+    // Interval at which to refresh PEM files.
+    // Dependent on your expectate refresh interval and
+    // expiry times on the certificates.
+    google.protobuf.Duration refresh_interval = 4;
+  }
+
+  oneof key_pair {
+    // Use inline data for the key-pair.
+    Inline inline = 1;
+
+    // Load key pair from referenced files, with a refresh interval.
+    Files files = 2;
+  }
 }

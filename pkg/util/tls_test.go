@@ -2,7 +2,10 @@ package util_test
 
 import (
 	"crypto/tls"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -11,6 +14,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -101,6 +105,14 @@ ecgKVpPvVNRL4/3RQYXPEdErkwCshVk=
 )
 
 func TestTLSConfigFromClientConfiguration(t *testing.T) {
+	tempDir := t.TempDir()
+	exampleCertFile := filepath.Join(tempDir, "example-cert.pem")
+	exampleKeyFile := filepath.Join(tempDir, "example-key.pem")
+	exampleInvalidCertFile := filepath.Join(tempDir, "example-invalid-cert.pem")
+	os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
+	os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
+	os.WriteFile(exampleInvalidCertFile, []byte("This is an invalid certificate"), os.FileMode(0o600))
+
 	t.Run("Disabled", func(t *testing.T) {
 		// When the TLS configuration is nil, TLS should be left
 		// disabled.
@@ -120,23 +132,72 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 		}, tlsConfig)
 	})
 
-	t.Run("ClientCertificate", func(t *testing.T) {
+	t.Run("ClientCertificateInline", func(t *testing.T) {
 		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
-				ClientCertificate: exampleCertificate,
-				ClientPrivateKey:  examplePrivateKey,
+				ClientKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: exampleCertificate,
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 			})
 		require.NoError(t, err)
-		require.Len(t, tlsConfig.Certificates, 1)
+		cert, err := tlsConfig.GetClientCertificate(nil)
+		require.NoError(t, err)
+		require.Len(t, cert.Certificate, 1)
 	})
 
-	t.Run("InvalidClientCertificate", func(t *testing.T) {
+	t.Run("ClientCertificateFiles", func(t *testing.T) {
+		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+			&configuration.ClientConfiguration{
+				ClientKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Files_{
+						Files: &configuration.X509KeyPair_Files{
+							CertificatePath: exampleCertFile,
+							PrivateKeyPath:  exampleKeyFile,
+							RefreshInterval: durationpb.New(time.Hour),
+						},
+					},
+				},
+			})
+		require.NoError(t, err)
+		cert, err := tlsConfig.GetClientCertificate(nil)
+		require.NoError(t, err)
+		require.Len(t, cert.Certificate, 1)
+	})
+
+	t.Run("InvalidClientCertificateInline", func(t *testing.T) {
 		_, err := util.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
-				ClientCertificate: "This is an invalid certificate",
-				ClientPrivateKey:  examplePrivateKey,
+				ClientKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: "This is an invalid certificate",
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 			})
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid client certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure client TLS: Invalid certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+	})
+
+	t.Run("InvalidClientCertificateFiles", func(t *testing.T) {
+		_, err := util.NewTLSConfigFromClientConfiguration(
+			&configuration.ClientConfiguration{
+				ClientKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Files_{
+						Files: &configuration.X509KeyPair_Files{
+							CertificatePath: exampleInvalidCertFile,
+							PrivateKeyPath:  exampleKeyFile,
+							RefreshInterval: durationpb.New(time.Hour),
+						},
+					},
+				},
+			})
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure client TLS: Failed to initialize certificate: Invalid certificate file or private key file: tls: failed to find any PEM data in certificate input"), err)
 	})
 
 	t.Run("ServerCertificateAuthorities", func(t *testing.T) {
@@ -207,6 +268,14 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 }
 
 func TestTLSConfigFromServerConfiguration(t *testing.T) {
+	tempDir := t.TempDir()
+	exampleCertFile := filepath.Join(tempDir, "example-cert.pem")
+	exampleKeyFile := filepath.Join(tempDir, "example-key.pem")
+	exampleInvalidCertFile := filepath.Join(tempDir, "example-invalid-cert.pem")
+	os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
+	os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
+	os.WriteFile(exampleInvalidCertFile, []byte("This is an invalid certificate"), os.FileMode(0o600))
+
 	t.Run("Disabled", func(t *testing.T) {
 		// When the TLS configuration is nil, TLS should be left
 		// disabled.
@@ -215,38 +284,116 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 		require.Nil(t, tlsConfig)
 	})
 
-	t.Run("Default", func(t *testing.T) {
+	t.Run("DefaultCertInline", func(t *testing.T) {
 		// The default configuration should enforce the use of
 		// TLS 1.2 or higher.
 		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
-				ServerCertificate: exampleCertificate,
-				ServerPrivateKey:  examplePrivateKey,
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: exampleCertificate,
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 			})
 		require.NoError(t, err)
-		require.Len(t, tlsConfig.Certificates, 1)
-		tlsConfig.Certificates = nil
+		cert, err := tlsConfig.GetCertificate(nil)
+		require.NoError(t, err)
+		require.Len(t, cert.Certificate, 1)
+		tlsConfig.GetCertificate = nil
 		require.Equal(t, &tls.Config{
 			MinVersion: tls.VersionTLS12,
 			ClientAuth: tls.RequestClientCert,
 		}, tlsConfig)
 	})
 
-	t.Run("InvalidServerCertificate", func(t *testing.T) {
+	t.Run("DefaultCertFiles", func(t *testing.T) {
+		// The default configuration should enforce the use of
+		// TLS 1.2 or higher.
+		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+			&configuration.ServerConfiguration{
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Files_{
+						Files: &configuration.X509KeyPair_Files{
+							CertificatePath: exampleCertFile,
+							PrivateKeyPath:  exampleKeyFile,
+							RefreshInterval: durationpb.New(time.Hour),
+						},
+					},
+				},
+			})
+		require.NoError(t, err)
+		cert, err := tlsConfig.GetCertificate(nil)
+		require.NoError(t, err)
+		require.Len(t, cert.Certificate, 1)
+		tlsConfig.GetCertificate = nil
+		require.Equal(t, &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ClientAuth: tls.RequestClientCert,
+		}, tlsConfig)
+	})
+
+	t.Run("InvalidServerCertificateInline", func(t *testing.T) {
 		_, err := util.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
-				ServerCertificate: "This is an invalid certificate",
-				ServerPrivateKey:  examplePrivateKey,
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: "This is an invalid certificate",
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 			})
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid server certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Invalid certificate or private key: tls: failed to find any PEM data in certificate input"), err)
+	})
+
+	t.Run("InvalidServerCertificateFiles", func(t *testing.T) {
+		_, err := util.NewTLSConfigFromServerConfiguration(
+			&configuration.ServerConfiguration{
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Files_{
+						Files: &configuration.X509KeyPair_Files{
+							CertificatePath: exampleInvalidCertFile,
+							PrivateKeyPath:  exampleKeyFile,
+							RefreshInterval: durationpb.New(time.Hour),
+						},
+					},
+				},
+			})
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Invalid certificate file or private key file: tls: failed to find any PEM data in certificate input"), err)
+	})
+
+	t.Run("MissingServerCertificateFiles", func(t *testing.T) {
+		_, err := util.NewTLSConfigFromServerConfiguration(
+			&configuration.ServerConfiguration{
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Files_{
+						Files: &configuration.X509KeyPair_Files{
+							CertificatePath: "/missing-cert.pem",
+							PrivateKeyPath:  "/missing-key.pem",
+							RefreshInterval: durationpb.New(time.Hour),
+						},
+					},
+				},
+			})
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Failed to read certificate file: open /missing-cert.pem: no such file or directory"), err)
 	})
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
 		// Custom cipher suites should be respected.
 		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
-				ServerCertificate: exampleCertificate,
-				ServerPrivateKey:  examplePrivateKey,
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: exampleCertificate,
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 				CipherSuites: []string{
 					"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 					"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
@@ -255,8 +402,10 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 				},
 			})
 		require.NoError(t, err)
-		require.Len(t, tlsConfig.Certificates, 1)
-		tlsConfig.Certificates = nil
+		cert, err := tlsConfig.GetCertificate(nil)
+		require.NoError(t, err)
+		require.Len(t, cert.Certificate, 1)
+		tlsConfig.GetCertificate = nil
 		require.Equal(t, &tls.Config{
 			MinVersion: tls.VersionTLS12,
 			ClientAuth: tls.RequestClientCert,
@@ -272,8 +421,14 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	t.Run("InvalidCipherSuite", func(t *testing.T) {
 		_, err := util.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
-				ServerCertificate: exampleCertificate,
-				ServerPrivateKey:  examplePrivateKey,
+				ServerKeyPair: &configuration.X509KeyPair{
+					KeyPair: &configuration.X509KeyPair_Inline_{
+						Inline: &configuration.X509KeyPair_Inline{
+							Certificate: exampleCertificate,
+							PrivateKey:  examplePrivateKey,
+						},
+					},
+				},
 				CipherSuites: []string{
 					"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385",
 				},

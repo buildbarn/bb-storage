@@ -3,36 +3,43 @@ package util
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"log"
 	"sync"
+	"time"
 
-	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 var (
 	cipherSuiteIDs = map[string]uint16{}
 
-	tlsServerPrometheusMetrics sync.Once
+	tlsPrometheusMetrics sync.Once
 
-	tlsServerCertificateNotBeforeTimeSeconds = prometheus.NewGaugeVec(
+	tlsCertificateUsageClient = "client"
+	tlsCertificateUsageServer = "server"
+
+	tlsCertificateNotBeforeTimeSeconds = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "buildbarn",
 			Subsystem: "tls",
-			Name:      "server_certificate_not_before_time_seconds",
-			Help:      "The value of the \"Not Before\" field of the TLS server certificate.",
+			Name:      "certificate_not_before_time_seconds",
+			Help:      "The value of the \"Not Before\" field of the TLS certificate.",
 		},
-		[]string{"dns_name"})
-	tlsServerCertificateNotAfterTimeSeconds = prometheus.NewGaugeVec(
+		[]string{"dns_name", "certificate_usage"})
+	tlsCertificateNotAfterTimeSeconds = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "buildbarn",
 			Subsystem: "tls",
-			Name:      "server_certificate_not_after_time_seconds",
-			Help:      "The value of the \"Not After\" field of the TLS server certificate.",
+			Name:      "certificate_not_after_time_seconds",
+			Help:      "The value of the \"Not After\" field of the TLS certificate.",
 		},
-		[]string{"dns_name"})
+		[]string{"dns_name", "certificate_usage"})
 )
 
 func init() {
@@ -60,11 +67,78 @@ func getBaseTLSConfig(cipherSuites []string) (*tls.Config, error) {
 	return &tlsConfig, nil
 }
 
+func updateTLSCertificateExpiry(cert *tls.Certificate, certificateUsage string) error {
+	// Expose Prometheus metrics on certificate expiration.
+	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		return err
+	}
+	for _, dnsName := range leaf.DNSNames {
+		tlsCertificateNotBeforeTimeSeconds.WithLabelValues(dnsName, certificateUsage).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
+		tlsCertificateNotAfterTimeSeconds.WithLabelValues(dnsName, certificateUsage).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+	}
+	return nil
+}
+
+func refreshTLSCertOnInterval(cert *RotatingTLSCertificate, refreshInterval *durationpb.Duration, certificateUsage string) error {
+	if err := cert.LoadCertificate(); err != nil {
+		return err
+	}
+	updateTLSCertificateExpiry(cert.GetCertificate(), certificateUsage)
+
+	if err := refreshInterval.CheckValid(); err != nil {
+		return StatusWrap(err, "Failed to parse refresh interval")
+	}
+
+	go func() {
+		t := time.NewTicker(refreshInterval.AsDuration())
+		for {
+			<-t.C
+			if err := cert.LoadCertificate(); err != nil {
+				// Don't fail or break the existing TLS creds, since it is likely still functioning.
+				// Hope that at the next refresh interval the certificate may be valid.
+				log.Printf("Failed to reload %s certificate: %v", certificateUsage, err)
+			} else {
+				// Update expiry when we load a new certificate
+				updateTLSCertificateExpiry(cert.GetCertificate(), certificateUsage)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func registerTLSCertificate(tlsKeyPair *pb.X509KeyPair, certificateUsage string) (func() *tls.Certificate, error) {
+	switch keyPair := tlsKeyPair.KeyPair.(type) {
+	case *pb.X509KeyPair_Inline_:
+		cert, err := tls.X509KeyPair([]byte(keyPair.Inline.Certificate), []byte(keyPair.Inline.PrivateKey))
+		if err != nil {
+			return nil, StatusWrap(err, "Invalid certificate or private key")
+		}
+		updateTLSCertificateExpiry(&cert, certificateUsage)
+		return func() *tls.Certificate { return &cert }, nil
+
+	case *pb.X509KeyPair_Files_:
+		cert := NewRotatingTLSCertificate(keyPair.Files.CertificatePath, keyPair.Files.PrivateKeyPath)
+		if err := refreshTLSCertOnInterval(cert, keyPair.Files.RefreshInterval, certificateUsage); err != nil {
+			return nil, StatusWrap(err, "Failed to initialize certificate")
+		}
+		return cert.GetCertificate, nil
+	default:
+		return nil, errors.New("unexpected key-pair type")
+	}
+}
+
 // NewTLSConfigFromClientConfiguration creates a TLS configuration
 // object based on parameters specified in a Protobuf message for use
 // with a TLS client. This Protobuf message is embedded in Buildbarn
 // configuration files.
-func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConfiguration) (*tls.Config, error) {
+func NewTLSConfigFromClientConfiguration(configuration *pb.ClientConfiguration) (*tls.Config, error) {
+	tlsPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(tlsCertificateNotAfterTimeSeconds)
+		prometheus.MustRegister(tlsCertificateNotBeforeTimeSeconds)
+	})
+
 	if configuration == nil {
 		return nil, nil
 	}
@@ -75,13 +149,15 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 	}
 	tlsConfig.ServerName = configuration.ServerName
 
-	if configuration.ClientCertificate != "" && configuration.ClientPrivateKey != "" {
-		// Serve a client certificate when provided.
-		cert, err := tls.X509KeyPair([]byte(configuration.ClientCertificate), []byte(configuration.ClientPrivateKey))
+	// No client TLS is used when this is unset.
+	if configuration.ClientKeyPair != nil {
+		getLatestCert, err := registerTLSCertificate(configuration.ClientKeyPair, tlsCertificateUsageClient)
 		if err != nil {
-			return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Invalid client certificate or private key")
+			return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Failed to configure client TLS")
 		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
+		tlsConfig.GetClientCertificate = func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return getLatestCert(), nil
+		}
 	}
 
 	if serverCAs := configuration.ServerCertificateAuthorities; serverCAs != "" {
@@ -101,10 +177,10 @@ func NewTLSConfigFromClientConfiguration(configuration *configuration.ClientConf
 // object based on parameters specified in a Protobuf message for use
 // with a TLS server. This Protobuf message is embedded in Buildbarn
 // configuration files.
-func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConfiguration) (*tls.Config, error) {
-	tlsServerPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(tlsServerCertificateNotBeforeTimeSeconds)
-		prometheus.MustRegister(tlsServerCertificateNotAfterTimeSeconds)
+func NewTLSConfigFromServerConfiguration(configuration *pb.ServerConfiguration) (*tls.Config, error) {
+	tlsPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(tlsCertificateNotAfterTimeSeconds)
+		prometheus.MustRegister(tlsCertificateNotBeforeTimeSeconds)
 	})
 
 	if configuration == nil {
@@ -117,21 +193,17 @@ func NewTLSConfigFromServerConfiguration(configuration *configuration.ServerConf
 	}
 	tlsConfig.ClientAuth = tls.RequestClientCert
 
-	// Require the use of server-side certificates.
-	cert, err := tls.X509KeyPair([]byte(configuration.ServerCertificate), []byte(configuration.ServerPrivateKey))
-	if err != nil {
-		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Invalid server certificate or private key")
+	if configuration.ServerKeyPair == nil {
+		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Missing server_key_pair configuration")
 	}
-	tlsConfig.Certificates = []tls.Certificate{cert}
 
-	// Expose Prometheus metrics on certificate expiration.
-	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	// Require the use of server-side certificates.
+	getLatestCert, err := registerTLSCertificate(configuration.ServerKeyPair, tlsCertificateUsageServer)
 	if err != nil {
-		return nil, err
+		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Failed to configure server TLS")
 	}
-	for _, dnsName := range leaf.DNSNames {
-		tlsServerCertificateNotBeforeTimeSeconds.WithLabelValues(dnsName).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
-		tlsServerCertificateNotAfterTimeSeconds.WithLabelValues(dnsName).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+	tlsConfig.GetCertificate = func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return getLatestCert(), nil
 	}
 
 	return tlsConfig, nil
