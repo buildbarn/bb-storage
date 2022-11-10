@@ -435,48 +435,17 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumb
 }
 
 func readdirnames(handle windows.Handle) ([]string, error) {
-	outBufferSize := uint32(512)
-	outBuffer := make([]byte, outBufferSize)
-	firstIteration := true
-	for {
-		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
-			&outBuffer[0], outBufferSize)
-		if err == nil {
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
-			if firstIteration {
-				return []string{}, nil
-			}
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_MORE_DATA {
-			outBufferSize *= 2
-			outBuffer = make([]byte, outBufferSize)
-		} else {
-			return nil, err
-		}
-		firstIteration = false
+	dirpath, err := getPathFromHandle(handle)
+	if err != nil {
+		return []string{}, err
+	}
+	files, err := os.ReadDir(dirpath)
+	if err != nil {
+		return []string{}, err
 	}
 	names := make([]string, 0)
-	offset := ^(uint32(0))
-	dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
-	for offset != 0 {
-		offset = dirInfoPtr.NextEntryOffset
-		fileNameLen := int(dirInfoPtr.FileNameLength) / 2
-		fileNameUTF16 := make([]uint16, fileNameLen)
-		targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
-		for i := 0; i < fileNameLen; i++ {
-			fileNameUTF16[i] = *(*uint16)(targetPtr)
-			targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
-		}
-		dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
-
-		fileName := windows.UTF16ToString(fileNameUTF16)
-		if fileName == "." || fileName == ".." {
-			continue
-		}
-		names = append(names, fileName)
+	for _, file := range files {
+		names = append(names, file.Name())
 	}
 	return names, nil
 }
@@ -543,45 +512,11 @@ func (d *localDirectory) Readlink(name path.Component) (string, error) {
 }
 
 func (d *localDirectory) Remove(name path.Component) error {
-	isDir := false
-	var handle windows.Handle
-	err := ntCreateFile(&handle, windows.DELETE, d.handle, name.String(),
-		windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT|windows.FILE_NON_DIRECTORY_FILE)
+	fpath, err := getPathFromHandle(d.handle)
 	if err != nil {
-		if err == syscall.EISDIR {
-			isDir = true
-		} else {
-			return err
-		}
+		return err
 	}
-	if isDir {
-		err = ntCreateFile(&handle, windows.FILE_GENERIC_READ|windows.DELETE, d.handle, name.String(),
-			windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
-		if err != nil {
-			return err
-		}
-		isReparsePoint, _, err := isReparsePointByHandle(handle)
-		if err != nil {
-			return err
-		}
-		if !isReparsePoint {
-			names, err := readdirnames(handle)
-			if err != nil {
-				return err
-			}
-			if len(names) != 0 {
-				return syscall.ENOTEMPTY
-			}
-		}
-	}
-	defer windows.CloseHandle(handle)
-	fileDispInfo := windowsext.FILE_DISPOSITION_INFORMATION_EX{
-		Flags: windows.FILE_DISPOSITION_DELETE | windows.FILE_DISPOSITION_POSIX_SEMANTICS,
-	}
-	var iosb windows.IO_STATUS_BLOCK
-	err = windows.NtSetInformationFile(handle, &iosb, (*byte)(unsafe.Pointer(&fileDispInfo)),
-		uint32(unsafe.Sizeof(fileDispInfo)), windows.FileDispositionInformationEx)
-	return err
+	return os.Remove(filepath.Join(fpath, name.String()))
 }
 
 // On NTFS mount point is a reparse point, no need to unmount.
@@ -619,19 +554,12 @@ func (d *localDirectory) RemoveAllChildren() error {
 
 func (d *localDirectory) RemoveAll(name path.Component) error {
 	defer runtime.KeepAlive(d)
-
-	if subdirectory, err := d.EnterDirectory(name); err == nil {
-		err := subdirectory.RemoveAllChildren()
-		subdirectory.Close()
-		if err != nil {
-			return err
-		}
-		return d.Remove(name)
-	} else if err == syscall.ENOTDIR {
-		return d.Remove(name)
-	} else {
+	fpath, err := getPathFromHandle(d.handle)
+	if err != nil {
 		return err
 	}
+	fpath = filepath.Join(fpath, name.String())
+	return os.RemoveAll(fpath)
 }
 
 func (d *localDirectory) Rename(oldName path.Component, newDirectory Directory, newName path.Component) error {
@@ -837,33 +765,11 @@ func buildFileLinkInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 }
 
 func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle windows.Handle, newName string) error {
-	var handle windows.Handle
-	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ|windows.FILE_GENERIC_WRITE, oldHandle, oldName, windows.FILE_OPEN, 0)
-	if err != nil {
-		return err
-	}
-	defer windows.CloseHandle(handle)
-	newNameUTF16, err := windows.UTF16FromString(newName)
-	if err != nil {
-		return err
-	}
-	var linkRoot windows.Handle
-	areSame, err := haveSameUnderlyingFile(oldHandle, newHandle)
-	if err != nil {
-		return err
-	}
-	if areSame {
-		linkRoot = windows.Handle(uintptr(0))
-	} else {
-		linkRoot = newHandle
-	}
-	fileLinkInfo, bufferSize := buildFileLinkInfo(linkRoot, newNameUTF16)
-	var iosb windows.IO_STATUS_BLOCK
-	ntstatus := windows.NtSetInformationFile(handle, &iosb, &fileLinkInfo[0], bufferSize, windows.FileLinkInformation)
-	if ntstatus != nil {
-		return ntstatus.(windows.NTStatus).Errno()
-	}
-	return nil
+	op, _ := getPathFromHandle(oldHandle)
+	np, _ := getPathFromHandle(newHandle)
+	op = filepath.Join(op, oldName)
+	np = filepath.Join(np, newName)
+	return os.Link(op, np)
 }
 
 func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSame bool, err error) {
@@ -964,6 +870,22 @@ type localDirectoryRename struct {
 	oldHandle windows.Handle
 	oldName   path.Component
 	newName   path.Component
+}
+
+func getPathFromHandle(handle windows.Handle) (string, error) {
+	buf := make([]uint16, 100)
+	for {
+		n, err := windows.GetFinalPathNameByHandle(handle, &buf[0], uint32(len(buf)), 0x0)
+		if err != nil {
+			return "", err
+		}
+		if n < uint32(len(buf)) {
+			break
+		}
+		buf = make([]uint16, n)
+	}
+	var dirp = syscall.UTF16ToString(buf)
+	return dirp, nil
 }
 
 func (d *localDirectory) Apply(arg interface{}) error {
