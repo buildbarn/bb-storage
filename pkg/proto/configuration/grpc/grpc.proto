@@ -208,6 +208,10 @@ message ServerConfiguration {
   // /build.bazel.remote.execution.v2.Execution/Execute
   // /google.bytestream.ByteStream/Read
   map<string, TracingMethodConfiguration> tracing = 10;
+
+  // Parameters to set keepalive and max-age parameters server-side.
+  // The default policy is used if this field is unset
+  ServerKeepaliveParameters keepalive_parameters = 11;
 }
 
 message ServerKeepaliveEnforcementPolicy {
@@ -220,6 +224,39 @@ message ServerKeepaliveEnforcementPolicy {
   // are no active streams, server will send GOAWAY and close the
   // connection.
   bool permit_without_stream = 2;
+}
+
+message ServerKeepaliveParameters {
+  // MaxConnectionIdle is a duration for the amount of time after which an
+  // idle connection would be closed by sending a GoAway. Idleness duration is
+  // defined since the most recent time the number of outstanding RPCs became
+  // zero or the connection establishment.
+  // The current default value is infinity.
+  google.protobuf.Duration max_connection_idle = 1;
+
+  // MaxConnectionAge is a duration for the maximum amount of time a
+  // connection may exist before it will be closed by sending a GoAway. A
+  // random jitter of +/-10% will be added to MaxConnectionAge to spread out
+  // connection storms.
+  // The current default value is infinity.
+  google.protobuf.Duration max_connection_age = 2;
+
+  // MaxConnection_age_grace is an additive period after MaxConnectionAge after
+  // which the connection will be forcibly closed.
+  // The current default value is infinity.
+  google.protobuf.Duration max_connection_age_grace = 3;
+
+  // After a duration of this time if the server doesn't see any activity it
+  // pings the client to see if the transport is still alive.
+  // If set below 1s, a minimum value of 1s will be used instead.
+  // The current default value is 2 hours.
+  google.protobuf.Duration time = 4;
+
+  // After having pinged for keepalive check, the server waits for a duration
+  // of Timeout and if no activity is seen even after that the connection is
+  // closed.
+  // The current default value is 20 seconds.
+  google.protobuf.Duration timeout = 5;
 }
 
 message AuthenticationPolicy {

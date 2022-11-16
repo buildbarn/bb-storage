@@ -108,6 +108,36 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}))
 		}
 
+		if keepaliveParams := configuration.KeepaliveParameters; keepaliveParams != nil {
+			maxConnectionIdle := keepaliveParams.MaxConnectionIdle
+			if err := maxConnectionIdle.CheckValid(); err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive server parameter max connection idle")
+			}
+			maxConnectionAge := keepaliveParams.MaxConnectionAge
+			if err := maxConnectionAge.CheckValid(); err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive server parameter max connection age")
+			}
+			maxConnectionAgeGrace := keepaliveParams.MaxConnectionAgeGrace
+			if err := maxConnectionAgeGrace.CheckValid(); err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive server parameter max connection age grace")
+			}
+			time := keepaliveParams.Time
+			if err := time.CheckValid(); err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive server parameter time")
+			}
+			timeout := keepaliveParams.Timeout
+			if err := timeout.CheckValid(); err != nil {
+				return util.StatusWrap(err, "Failed to parse keepalive server parameter timeout")
+			}
+			serverOptions = append(serverOptions, grpc.KeepaliveParams(keepalive.ServerParameters{
+				MaxConnectionIdle:     maxConnectionIdle.AsDuration(),
+				MaxConnectionAge:      maxConnectionAge.AsDuration(),
+				MaxConnectionAgeGrace: maxConnectionAgeGrace.AsDuration(),
+				Time:                  time.AsDuration(),
+				Timeout:               timeout.AsDuration(),
+			}))
+		}
+
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
 		registrationFunc(s)
