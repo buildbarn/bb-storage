@@ -21,35 +21,38 @@ import (
 var (
 	blockDeviceBackedBlockAllocatorPrometheusMetrics sync.Once
 
-	blockDeviceBackedBlockAllocatorAllocations = prometheus.NewCounter(
+	blockDeviceBackedBlockAllocatorAllocations = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "block_device_backed_block_allocator_allocations_total",
 			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were allocated",
-		})
-	blockDeviceBackedBlockAllocatorReleases = prometheus.NewCounter(
+		},
+		[]string{"storage_type"})
+	blockDeviceBackedBlockAllocatorReleases = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "block_device_backed_block_allocator_releases_total",
 			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were released",
-		})
-
-	blockDeviceBackedBlockAllocatorGetsStarted = prometheus.NewCounter(
+		},
+		[]string{"storage_type"})
+	blockDeviceBackedBlockAllocatorGetsStarted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "block_device_backed_block_allocator_gets_started_total",
 			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were started",
-		})
-	blockDeviceBackedBlockAllocatorGetsCompleted = prometheus.NewCounter(
+		},
+		[]string{"storage_type"})
+	blockDeviceBackedBlockAllocatorGetsCompleted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "block_device_backed_block_allocator_gets_completed_total",
 			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were completed",
-		})
+		},
+		[]string{"storage_type"})
 )
 
 type blockDeviceBackedBlockAllocator struct {
@@ -57,6 +60,11 @@ type blockDeviceBackedBlockAllocator struct {
 	readBufferFactory blobstore.ReadBufferFactory
 	sectorSizeBytes   int
 	blockSectorCount  int64
+
+	blockAllocatorAllocations   prometheus.Counter
+	blockAllocatorReleases      prometheus.Counter
+	blockAllocatorGetsStarted   prometheus.Counter
+	blockAllocatorGetsCompleted prometheus.Counter
 
 	lock        sync.Mutex
 	freeOffsets []int64
@@ -75,7 +83,7 @@ type blockDeviceBackedBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int) BlockAllocator {
+func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int, storageType string) BlockAllocator {
 	blockDeviceBackedBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(blockDeviceBackedBlockAllocatorAllocations)
 		prometheus.MustRegister(blockDeviceBackedBlockAllocatorReleases)
@@ -89,6 +97,11 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 		readBufferFactory: readBufferFactory,
 		sectorSizeBytes:   sectorSizeBytes,
 		blockSectorCount:  blockSectorCount,
+
+		blockAllocatorAllocations:   blockDeviceBackedBlockAllocatorAllocations.WithLabelValues(storageType),
+		blockAllocatorReleases:      blockDeviceBackedBlockAllocatorReleases.WithLabelValues(storageType),
+		blockAllocatorGetsStarted:   blockDeviceBackedBlockAllocatorGetsStarted.WithLabelValues(storageType),
+		blockAllocatorGetsCompleted: blockDeviceBackedBlockAllocatorGetsCompleted.WithLabelValues(storageType),
 	}
 	for i := 0; i < blockCount; i++ {
 		pa.freeOffsets = append(pa.freeOffsets, int64(i)*blockSectorCount)
@@ -97,7 +110,7 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 }
 
 func (pa *blockDeviceBackedBlockAllocator) newBlockObject(deviceOffsetSectors, writeOffsetSectors int64) Block {
-	blockDeviceBackedBlockAllocatorAllocations.Inc()
+	pa.blockAllocatorAllocations.Inc()
 	pb := &blockDeviceBackedBlock{
 		blockAllocator:      pa,
 		deviceOffsetSectors: deviceOffsetSectors,
@@ -172,7 +185,7 @@ func (pb *blockDeviceBackedBlock) Release() {
 		pa.lock.Lock()
 		pa.freeOffsets = append(pa.freeOffsets, pb.deviceOffsetSectors)
 		pa.lock.Unlock()
-		blockDeviceBackedBlockAllocatorReleases.Inc()
+		pa.blockAllocatorReleases.Inc()
 	}
 }
 
@@ -180,7 +193,7 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 	if c := pb.usecount.Add(1); c <= 1 {
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}
-	blockDeviceBackedBlockAllocatorGetsStarted.Inc()
+	pb.blockAllocator.blockAllocatorGetsStarted.Inc()
 
 	return pb.blockAllocator.readBufferFactory.NewBufferFromReaderAt(
 		digest,
@@ -273,9 +286,10 @@ type blockDeviceBackedBlockReader struct {
 }
 
 func (r *blockDeviceBackedBlockReader) Close() error {
+	pa := r.block.blockAllocator
 	r.block.Release()
 	r.block = nil
-	blockDeviceBackedBlockAllocatorGetsCompleted.Inc()
+	pa.blockAllocatorGetsCompleted.Inc()
 	return nil
 }
 
