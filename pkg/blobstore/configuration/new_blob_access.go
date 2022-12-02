@@ -338,7 +338,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				cachedReadBufferFactory,
 				sectorSizeBytes,
 				blockSectorCount,
-				int(blockCount))
+				int(blockCount),
+				storageTypeName)
 		default:
 			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Blocks backend not specified")
 		}

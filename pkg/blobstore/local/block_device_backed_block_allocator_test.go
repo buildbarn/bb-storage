@@ -21,7 +21,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
-	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10)
+	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10, "cas")
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
@@ -143,7 +143,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
-	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 16, 100, 1)
+	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 16, 100, 1, "cas")
 
 	block, location, err := pa.NewBlock()
 	require.NoError(t, err)
