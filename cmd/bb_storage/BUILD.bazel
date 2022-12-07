@@ -36,8 +36,8 @@ go_binary(
 
 go_image(
     name = "bb_storage_container",
+    base = "@go_debug_image_static//image",
     embed = [":bb_storage_lib"],
-    pure = "on",
     visibility = ["//visibility:public"],
 )
 
