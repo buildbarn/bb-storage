@@ -5,7 +5,7 @@
          "steps": [
             {
                "name": "Installing Bazel",
-               "run": "curl -L https://github.com/bazelbuild/bazel/releases/download/5.0.0/bazel-5.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
+               "run": "curl -L https://github.com/bazelbuild/bazel/releases/download/6.0.0/bazel-6.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
             },
             {
                "name": "Check out source code",
@@ -29,7 +29,7 @@
             },
             {
                "name": "Gofmt",
-               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.18 -w -extra $(pwd)"
+               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -lang 1.19 -w -extra $(pwd)"
             },
             {
                "name": "Clang format",
