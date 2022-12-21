@@ -162,7 +162,7 @@
           ] + [
             {
               name: 'Push container %s' % container,
-              run: 'bazel run //cmd/%s_container_push' % container,
+              run: 'bazel run --stamp //cmd/%s_container_push' % container,
             }
             for container in containers
           ]
