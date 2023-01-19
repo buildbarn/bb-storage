@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
@@ -28,7 +29,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 		source,
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
-	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	helloDigests := helloDigest.ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
@@ -128,9 +129,9 @@ func TestQueuedBlobReplicatorReplicateComposite(t *testing.T) {
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 
-	parentDigest := digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	parentDigests := parentDigest.ToSingletonSet()
-	childDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	// Only a single test for the success case is provided, as the
@@ -185,7 +186,7 @@ func TestQueuedBlobReplicatorReplicateMultiple(t *testing.T) {
 		source,
 		baseReplicator,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
-	helloDigests := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet()
+	helloDigests := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// The object should be replicated when requested initially.

@@ -41,4 +41,7 @@ message ApplicationConfiguration {
   // objects stored in the Content Addressable Storage (e.g., Directory
   // objects pointing to children).
   int32 traversal_concurrency = 10;
+
+  // The digest function of the objects that need to be copied.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 11;
 }

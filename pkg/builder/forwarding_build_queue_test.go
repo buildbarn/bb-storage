@@ -85,8 +85,9 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 				LowApiVersion:  &semver.SemVer{Major: 2},
 				HighApiVersion: &semver.SemVer{Major: 2},
@@ -98,8 +99,9 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				DigestFunction: remoteexecution.DigestFunction_SHA256,
-				ExecEnabled:    true,
+				DigestFunction:  remoteexecution.DigestFunction_SHA256,
+				DigestFunctions: digest.SupportedDigestFunctions,
+				ExecEnabled:     true,
 			},
 		}, serverCapabilities)
 	})

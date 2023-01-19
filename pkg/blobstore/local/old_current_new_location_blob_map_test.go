@@ -3,6 +3,7 @@ package local_test
 import (
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -97,7 +98,7 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	// will trigger a data integrity error, as the digest
 	// corresponds with "Hello", not "xyzzy". This should cause the
 	// first two blocks to be marked for immediate release.
-	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	blockList.EXPECT().Get(2, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
 		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))

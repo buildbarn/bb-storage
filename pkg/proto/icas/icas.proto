@@ -78,7 +78,8 @@ message BatchUpdateReferencesRequest {
   // A request corresponding to a single reference that the client wants
   // to upload.
   message Request {
-    // Hash and size of the object when fetched.
+    // Hash and size of the object when fetched. All digests MUST use
+    // the same digest function.
     build.bazel.remote.execution.v2.Digest digest = 1;
 
     // Location where the object can be found.
@@ -90,6 +91,10 @@ message BatchUpdateReferencesRequest {
 
   // The individual upload requests.
   repeated Request requests = 2;
+
+  // The digest function that was used to compute the digest of the
+  // objects to update.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 3;
 }
 
 // Request message of GetReference(). This message is similar to REv2's
@@ -100,4 +105,8 @@ message GetReferenceRequest {
 
   // The digest of the Reference that is requested.
   build.bazel.remote.execution.v2.Digest digest = 2;
+
+  // The digest function that was used to compute the digest of the
+  // Reference.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 3;
 }

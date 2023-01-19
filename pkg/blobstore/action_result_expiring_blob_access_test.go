@@ -26,7 +26,7 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewActionResultExpiringBlobAccess(baseBlobAccess, clock, 10000, 28*24*time.Hour, 28*24*time.Hour)
 
-	blobDigest := digest.MustNewDigest("hello", "09b6c5db18b5e8db9ca5400c5ced1a0f", 123)
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "09b6c5db18b5e8db9ca5400c5ced1a0f", 123)
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Failures from the backend should be propagated in

@@ -1,0 +1,183 @@
+#include "textflag.h"
+
+// The initial hash state for parent nodes.
+DATA iv_parent<>+0(SB)/4, $0xcbbb9d5d
+DATA iv_parent<>+4(SB)/4, $0x629a292a
+DATA iv_parent<>+8(SB)/4, $0x9159015a
+DATA iv_parent<>+12(SB)/4, $0x152fecd8
+DATA iv_parent<>+16(SB)/4, $0x67332667
+DATA iv_parent<>+20(SB)/4, $0x8eb44a87
+DATA iv_parent<>+24(SB)/4, $0xdb0c2e0d
+DATA iv_parent<>+28(SB)/4, $0x47b5481d
+GLOBL iv_parent<>(SB), RODATA|NOPTR, $32
+
+// TODO: Any way we can share with the K table in compress_parent.go?
+DATA k<>+0(SB)/4, $0x428a2f98
+DATA k<>+4(SB)/4, $0x71374491
+DATA k<>+8(SB)/4, $0xb5c0fbcf
+DATA k<>+12(SB)/4, $0xe9b5dba5
+DATA k<>+16(SB)/4, $0x3956c25b
+DATA k<>+20(SB)/4, $0x59f111f1
+DATA k<>+24(SB)/4, $0x923f82a4
+DATA k<>+28(SB)/4, $0xab1c5ed5
+DATA k<>+32(SB)/4, $0xd807aa98
+DATA k<>+36(SB)/4, $0x12835b01
+DATA k<>+40(SB)/4, $0x243185be
+DATA k<>+44(SB)/4, $0x550c7dc3
+DATA k<>+48(SB)/4, $0x72be5d74
+DATA k<>+52(SB)/4, $0x80deb1fe
+DATA k<>+56(SB)/4, $0x9bdc06a7
+DATA k<>+60(SB)/4, $0xc19bf174
+DATA k<>+64(SB)/4, $0xe49b69c1
+DATA k<>+68(SB)/4, $0xefbe4786
+DATA k<>+72(SB)/4, $0x0fc19dc6
+DATA k<>+76(SB)/4, $0x240ca1cc
+DATA k<>+80(SB)/4, $0x2de92c6f
+DATA k<>+84(SB)/4, $0x4a7484aa
+DATA k<>+88(SB)/4, $0x5cb0a9dc
+DATA k<>+92(SB)/4, $0x76f988da
+DATA k<>+96(SB)/4, $0x983e5152
+DATA k<>+100(SB)/4, $0xa831c66d
+DATA k<>+104(SB)/4, $0xb00327c8
+DATA k<>+108(SB)/4, $0xbf597fc7
+DATA k<>+112(SB)/4, $0xc6e00bf3
+DATA k<>+116(SB)/4, $0xd5a79147
+DATA k<>+120(SB)/4, $0x06ca6351
+DATA k<>+124(SB)/4, $0x14292967
+DATA k<>+128(SB)/4, $0x27b70a85
+DATA k<>+132(SB)/4, $0x2e1b2138
+DATA k<>+136(SB)/4, $0x4d2c6dfc
+DATA k<>+140(SB)/4, $0x53380d13
+DATA k<>+144(SB)/4, $0x650a7354
+DATA k<>+148(SB)/4, $0x766a0abb
+DATA k<>+152(SB)/4, $0x81c2c92e
+DATA k<>+156(SB)/4, $0x92722c85
+DATA k<>+160(SB)/4, $0xa2bfe8a1
+DATA k<>+164(SB)/4, $0xa81a664b
+DATA k<>+168(SB)/4, $0xc24b8b70
+DATA k<>+172(SB)/4, $0xc76c51a3
+DATA k<>+176(SB)/4, $0xd192e819
+DATA k<>+180(SB)/4, $0xd6990624
+DATA k<>+184(SB)/4, $0xf40e3585
+DATA k<>+188(SB)/4, $0x106aa070
+DATA k<>+192(SB)/4, $0x19a4c116
+DATA k<>+196(SB)/4, $0x1e376c08
+DATA k<>+200(SB)/4, $0x2748774c
+DATA k<>+204(SB)/4, $0x34b0bcb5
+DATA k<>+208(SB)/4, $0x391c0cb3
+DATA k<>+212(SB)/4, $0x4ed8aa4a
+DATA k<>+216(SB)/4, $0x5b9cca4f
+DATA k<>+220(SB)/4, $0x682e6ff3
+DATA k<>+224(SB)/4, $0x748f82ee
+DATA k<>+228(SB)/4, $0x78a5636f
+DATA k<>+232(SB)/4, $0x84c87814
+DATA k<>+236(SB)/4, $0x8cc70208
+DATA k<>+240(SB)/4, $0x90befffa
+DATA k<>+244(SB)/4, $0xa4506ceb
+DATA k<>+248(SB)/4, $0xbef9a3f7
+DATA k<>+252(SB)/4, $0xc67178f2
+GLOBL k<>(SB), RODATA|NOPTR, $256
+
+#define PERFORM_4_ROUNDS \
+	VMOV		V20.B16, V22.B16	\
+	SHA256H		V23.S4, V21, V20	\
+	SHA256H2	V23.S4, V22, V21
+
+// func compressParentARM64(left, right, output *[8]uint32)
+TEXT ·compressParentARM64(SB),NOSPLIT,$0
+	// Load all constants K into V0 to V15.
+	MOVD		$k<>(SB), R0
+	VLD1.P		64(R0), [V0.S4, V1.S4, V2.S4, V3.S4]
+	VLD1.P		64(R0), [V4.S4, V5.S4, V6.S4, V7.S4]
+	VLD1.P		64(R0), [V8.S4, V9.S4, V10.S4, V11.S4]
+	VLD1.P		64(R0), [V12.S4, V13.S4, V14.S4, V15.S4]
+
+	// Load the input message into V16 to V19.
+	MOVD		left+0(FP), R0
+	VLD1		(R0), [V16.B16, V17.B16]
+	MOVD		right+8(FP), R0
+	VLD1		(R0), [V18.B16, V19.B16]
+
+	// Load hash state h into V20 and V21.
+	MOVD		$iv_parent<>(SB), R0
+	VLD1		(R0), [V20.S4, V21.S4]
+
+	// Perform rounds. The VADD instructions compute W[i] + K[i] to
+	// W[i+3] + K[i+3], where i is the current round. The SHA256SU*
+	// instructions compute W[j], where 16 <= j < 64.
+	VADD		V0.S4, V16.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V17.S4, V16.S4
+
+	VADD		V1.S4, V17.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V18.S4, V17.S4
+	SHA256SU1	V19.S4, V18.S4, V16.S4
+
+	VADD		V2.S4, V18.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V19.S4, V18.S4
+	SHA256SU1	V16.S4, V19.S4, V17.S4
+
+	VADD		V3.S4, V19.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V16.S4, V19.S4
+	SHA256SU1	V17.S4, V16.S4, V18.S4
+
+	VADD		V4.S4, V16.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V17.S4, V16.S4
+	SHA256SU1	V18.S4, V17.S4, V19.S4
+
+	VADD		V5.S4, V17.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V18.S4, V17.S4
+	SHA256SU1	V19.S4, V18.S4, V16.S4
+
+	VADD		V6.S4, V18.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V19.S4, V18.S4
+	SHA256SU1	V16.S4, V19.S4, V17.S4
+
+	VADD		V7.S4, V19.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V16.S4, V19.S4
+	SHA256SU1	V17.S4, V16.S4, V18.S4
+
+	VADD		V8.S4, V16.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V17.S4, V16.S4
+	SHA256SU1	V18.S4, V17.S4, V19.S4
+
+	VADD		V9.S4, V17.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V18.S4, V17.S4
+	SHA256SU1	V19.S4, V18.S4, V16.S4
+
+	VADD		V10.S4, V18.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V19.S4, V18.S4
+	SHA256SU1	V16.S4, V19.S4, V17.S4
+
+	VADD		V11.S4, V19.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU0	V16.S4, V19.S4
+	SHA256SU1	V17.S4, V16.S4, V18.S4
+
+	VADD		V12.S4, V16.S4, V23.S4
+	PERFORM_4_ROUNDS
+	SHA256SU1	V18.S4, V17.S4, V19.S4
+
+	VADD		V13.S4, V17.S4, V23.S4
+	PERFORM_4_ROUNDS
+
+	VADD		V14.S4, V18.S4, V23.S4
+	PERFORM_4_ROUNDS
+
+	VADD		V15.S4, V19.S4, V23.S4
+	PERFORM_4_ROUNDS
+
+	// Store the results.
+	MOVD		output+16(FP), R0
+	VST1		[V20.S4, V21.S4], (R0)
+	RET

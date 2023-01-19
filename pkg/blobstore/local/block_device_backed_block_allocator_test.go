@@ -3,6 +3,7 @@ package local_test
 import (
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -54,7 +55,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 	dataIntegrityCallback.EXPECT().Call(true)
 	b := blocks[7].Get(
-		digest.MustNewDigest("some-instance", "8b1a9953c4611296a827abf8c47804d7", 5),
+		digest.MustNewDigest("some-instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		25,
 		5,
 		dataIntegrityCallback.Call)

@@ -20,7 +20,7 @@ import (
 // batches, as opposed to calling it for individual digests.
 type findMissingQueue struct {
 	context                   context.Context
-	instanceName              digest.InstanceName
+	digestFunction            digest.Function
 	contentAddressableStorage blobstore.BlobAccess
 	batchSize                 int
 
@@ -32,7 +32,7 @@ type findMissingQueue struct {
 // assume that some data corruption has occurred. In that case, we
 // should destroy the action result.
 func (q *findMissingQueue) deriveDigest(blobDigest *remoteexecution.Digest) (digest.Digest, error) {
-	derivedDigest, err := q.instanceName.NewDigestFromProto(blobDigest)
+	derivedDigest, err := q.digestFunction.NewDigestFromProto(blobDigest)
 	if err != nil {
 		return digest.BadDigest, util.StatusWrapWithCode(err, codes.NotFound, "Action result contained malformed digest")
 	}
@@ -103,10 +103,10 @@ func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage bl
 	}
 }
 
-func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, instanceName digest.InstanceName, actionResult *remoteexecution.ActionResult) error {
+func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, digestFunction digest.Function, actionResult *remoteexecution.ActionResult) error {
 	findMissingQueue := findMissingQueue{
 		context:                   ctx,
-		instanceName:              instanceName,
+		digestFunction:            digestFunction,
 		contentAddressableStorage: ba.contentAddressableStorage,
 		batchSize:                 ba.batchSize,
 		pending:                   digest.NewSetBuilder(),
@@ -191,7 +191,7 @@ func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest
 		b2.Discard()
 		return buffer.NewBufferFromError(err)
 	}
-	if err := ba.checkCompleteness(ctx, digest.GetInstanceName(), actionResult.(*remoteexecution.ActionResult)); err != nil {
+	if err := ba.checkCompleteness(ctx, digest.GetDigestFunction(), actionResult.(*remoteexecution.ActionResult)); err != nil {
 		b2.Discard()
 		return buffer.NewBufferFromError(err)
 	}

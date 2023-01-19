@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
@@ -23,7 +24,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 	secondary := mock.NewMockBlobAccess(ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
-	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("PrimarySuccess", func(t *testing.T) {
 		// The primary backend is able to serve the object.
@@ -93,8 +94,8 @@ func TestReadFallbackBlobAccessGetFromComposite(t *testing.T) {
 	secondary := mock.NewMockBlobAccess(ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
-	parentDigest := digest.MustNewDigest("instance", "d20fb8dfa347cf895b38649410aeb3f8", 100)
-	childDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	parentDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d20fb8dfa347cf895b38649410aeb3f8", 100)
+	childDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	// We assume that tests for Get() provides coverage for other
@@ -118,7 +119,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
-	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		// Writes should always go to the primary backend. The
@@ -161,15 +162,15 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
 
 	allDigests := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000000", 100)).
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000001", 101)).
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000002", 102)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 102)).
 		Build()
 	missingFromPrimary := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000000", 100)).
-		Add(digest.MustNewDigest("instance", "00000000000000000000000000000001", 101)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)).
 		Build()
-	missingFromBoth := digest.MustNewDigest("instance", "00000000000000000000000000000000", 100).ToSingletonSet()
+	missingFromBoth := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// Both backends should be queried. Only the missing

@@ -23,7 +23,7 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewActionResultTimestampInjectingBlobAccess(baseBlobAccess, clock, 1000)
-	blobDigest := digest.MustNewDigest("hello", "d3b7ed68c99422eaa8ab8184949cba84dd46ddb1b7cf8c777547866d54ebb081", 123)
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "d3b7ed68c99422eaa8ab8184949cba84dd46ddb1b7cf8c777547866d54ebb081", 123)
 
 	t.Run("NoMetadata", func(t *testing.T) {
 		// If the ActionResult contains no execution metadata,

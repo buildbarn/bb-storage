@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -24,7 +25,7 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
-		blobDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
 			buffer.NewValidatedBufferFromByteSlice([]byte("A")))
 
@@ -35,7 +36,7 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 
 	t.Run("NonEmptyFailure", func(t *testing.T) {
 		// Errors from the backend should be propagated.
-		blobDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
 			buffer.NewBufferFromError(
 				status.Error(codes.Internal, "Server on fire")))
@@ -46,14 +47,14 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 
 	t.Run("EmptySuccess", func(t *testing.T) {
 		// Requests for the empty blob should be processed directly.
-		data, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0)).ToByteSlice(0)
+		data, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).ToByteSlice(0)
 		require.NoError(t, err)
 		require.Empty(t, data)
 	})
 
 	t.Run("EmptyInvalid", func(t *testing.T) {
 		// Validation should still be performed on empty blobs.
-		_, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 0)).ToByteSlice(0)
+		_, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 0)).ToByteSlice(0)
 		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
 	})
 }
@@ -63,12 +64,12 @@ func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
-	parentDigest := digest.MustNewDigest("hello", "d0607e3f454f88e2925ef995f549503b7f67541dc7ac0dcf4662265aed7a749f", 1000)
+	parentDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "d0607e3f454f88e2925ef995f549503b7f67541dc7ac0dcf4662265aed7a749f", 1000)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
-		childDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
 			buffer.NewValidatedBufferFromByteSlice([]byte("A")))
 
@@ -79,7 +80,7 @@ func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
 
 	t.Run("NonEmptyFailure", func(t *testing.T) {
 		// Errors from the backend should be propagated.
-		childDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
 			buffer.NewBufferFromError(
 				status.Error(codes.Internal, "Server on fire")))
@@ -90,14 +91,14 @@ func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
 
 	t.Run("EmptySuccess", func(t *testing.T) {
 		// Requests for the empty blob should be processed directly.
-		data, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0), slicer).ToByteSlice(0)
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0), slicer).ToByteSlice(0)
 		require.NoError(t, err)
 		require.Empty(t, data)
 	})
 
 	t.Run("EmptyInvalid", func(t *testing.T) {
 		// Validation should still be performed on empty blobs.
-		_, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 0), slicer).ToByteSlice(0)
+		_, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 0), slicer).ToByteSlice(0)
 		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
 	})
 }
@@ -110,7 +111,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
-		blobDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(1)
@@ -129,7 +130,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 
 	t.Run("NonEmptyFailure", func(t *testing.T) {
 		// Errors from the backend should be propagated.
-		blobDigest := digest.MustNewDigest("hello", "7fc56270e7a70fa81a5935b72eacbe29", 1)
+		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
@@ -151,7 +152,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			t,
 			blobAccess.Put(
 				ctx,
-				digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0),
+				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
 				buffer.NewValidatedBufferFromByteSlice(nil)))
 	})
 
@@ -164,7 +165,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			status.Error(codes.Internal, "Server on fire"),
 			blobAccess.Put(
 				ctx,
-				digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0),
+				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
 				buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire"))))
 	})
 }
@@ -176,15 +177,15 @@ func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	unfilteredInputSet := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 0)).
-		Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-		Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).
+		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 		Build()
 	filteredInputSet := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-		Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 		Build()
-	outputSet := digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet()
+	outputSet := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// Digests of empty blobs should be filtered from the

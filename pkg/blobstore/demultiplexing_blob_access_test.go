@@ -33,7 +33,7 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 
 		_, err := blobAccess.Get(
 			ctx,
-			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
 	})
@@ -48,12 +48,12 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 				digest.MustNewInstanceName("hello"),
 				digest.MustNewInstanceName("goodbye")),
 			nil)
-		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
 
 		_, err := blobAccess.Get(
 			ctx,
-			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
 	})
@@ -67,12 +67,12 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 				digest.MustNewInstanceName("hello"),
 				digest.MustNewInstanceName("goodbye")),
 			nil)
-		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
+		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
 		data, err := blobAccess.Get(
 			ctx,
-			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).ToByteSlice(100)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
@@ -96,8 +96,8 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 
 		_, err := blobAccess.GetFromComposite(
 			ctx,
-			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("unknown", "3123059c1c816471780539f6b6b738dc", 3),
+			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
 			blobSlicer,
 		).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
@@ -116,15 +116,15 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 		blobSlicer := mock.NewMockBlobSlicer(ctrl)
 		baseBlobAccess.EXPECT().GetFromComposite(
 			ctx,
-			digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("goodbye/world", "3123059c1c816471780539f6b6b738dc", 3),
+			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
 			blobSlicer,
 		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
 
 		_, err := blobAccess.GetFromComposite(
 			ctx,
-			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("hello/world", "3123059c1c816471780539f6b6b738dc", 3),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
 			blobSlicer,
 		).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
@@ -142,15 +142,15 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 		blobSlicer := mock.NewMockBlobSlicer(ctrl)
 		baseBlobAccess.EXPECT().GetFromComposite(
 			ctx,
-			digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("goodbye/world", "3123059c1c816471780539f6b6b738dc", 3),
+			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
 			blobSlicer,
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell")))
 
 		data, err := blobAccess.GetFromComposite(
 			ctx,
-			digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("hello/world", "3123059c1c816471780539f6b6b738dc", 3),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
 			blobSlicer,
 		).ToByteSlice(100)
 		require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			status.Error(codes.InvalidArgument, "Unknown instance name"),
 			blobAccess.Put(
 				ctx,
-				digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5),
+				digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
 
@@ -191,7 +191,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 				digest.MustNewInstanceName("hello"),
 				digest.MustNewInstanceName("goodbye")),
 			nil)
-		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
+		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "I/O error")
@@ -202,7 +202,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			status.Error(codes.Internal, "Backend \"Primary\": I/O error"),
 			blobAccess.Put(
 				ctx,
-				digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
 
@@ -215,7 +215,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 				digest.MustNewInstanceName("hello"),
 				digest.MustNewInstanceName("goodbye")),
 			nil)
-		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
+		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(100)
 				require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			t,
 			blobAccess.Put(
 				ctx,
-				digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5),
+				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
 }
@@ -248,7 +248,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.MustNewDigest("unknown", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet())
+			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet())
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
 	})
 
@@ -265,16 +265,16 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 		baseBlobAccess.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("goodbye/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("goodbye/world", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello/world", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("hello/world", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build())
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": I/O error"), err)
 	})
@@ -318,52 +318,52 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 		baseBlobAccessA.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("A", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("A", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Add(digest.MustNewDigest("A/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("A/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("A", "8b1a9953c4611296a827abf8c47804d7", 5)).
-					Add(digest.MustNewDigest("A/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
 				nil)
 		baseBlobAccessB.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("B", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("B", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Add(digest.MustNewDigest("B/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("B/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("B", "8b1a9953c4611296a827abf8c47804d7", 5)).
-					Add(digest.MustNewDigest("B/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+					Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
 				nil)
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("a", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Add(digest.MustNewDigest("a/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("a/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Add(digest.MustNewDigest("b", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("b", "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Add(digest.MustNewDigest("b/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("b/x", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("a/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build())
 		require.NoError(t, err)
 		require.Equal(
 			t,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("a/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("b", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("b/x", "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("a/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Build(),
 			missing)
 	})

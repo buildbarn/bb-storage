@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -24,7 +25,7 @@ func TestRedisBlobAccessContextCanceled(t *testing.T) {
 
 	canceledCtx, cancel := context.WithCancel(ctx)
 	cancel()
-	blobDigest := digest.MustNewDigest("example", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
+	blobDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
 
 	// Calls to Get(), Put() and FindMissing() should not yield
 	// calls into the Redis client if the context associated with

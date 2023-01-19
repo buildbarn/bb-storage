@@ -72,7 +72,7 @@ func (nr *NestedBlobReplicator) maybeWakeUpLocked() {
 // EnqueueAction enqueues an REv2 Action to be replicated. The
 // referenced input root and Command message will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
-	instanceName := actionDigest.GetInstanceName()
+	digestFunction := actionDigest.GetDigestFunction()
 	nr.enqueue(actionDigest, func(ctx context.Context, b buffer.Buffer) error {
 		actionMessage, err := b.ToProto(&remoteexecution.Action{}, nr.maximumMessageSizeBytes)
 		if err != nil {
@@ -80,13 +80,13 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 		}
 		action := actionMessage.(*remoteexecution.Action)
 
-		inputRootDigest, err := instanceName.NewDigestFromProto(action.InputRootDigest)
+		inputRootDigest, err := digestFunction.NewDigestFromProto(action.InputRootDigest)
 		if err != nil {
 			return util.StatusWrap(err, "Invalid input root digest")
 		}
 		nr.EnqueueDirectory(inputRootDigest)
 
-		commandDigest, err := instanceName.NewDigestFromProto(action.CommandDigest)
+		commandDigest, err := digestFunction.NewDigestFromProto(action.CommandDigest)
 		if err != nil {
 			return util.StatusWrap(err, "Invalid command digest")
 		}
@@ -101,7 +101,7 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 // referenced file or child Directory message will be replicated as
 // well, recursively.
 func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) {
-	instanceName := directoryDigest.GetInstanceName()
+	digestFunction := directoryDigest.GetDigestFunction()
 	nr.enqueue(directoryDigest, func(ctx context.Context, b buffer.Buffer) error {
 		directoryMessage, err := b.ToProto(&remoteexecution.Directory{}, nr.maximumMessageSizeBytes)
 		if err != nil {
@@ -110,7 +110,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 		directory := directoryMessage.(*remoteexecution.Directory)
 
 		for i, childDirectory := range directory.Directories {
-			childDigest, err := instanceName.NewDigestFromProto(childDirectory.Digest)
+			childDigest, err := digestFunction.NewDigestFromProto(childDirectory.Digest)
 			if err != nil {
 				return util.StatusWrapf(err, "Invalid digest for directory at index %d", i)
 			}
@@ -119,7 +119,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 
 		childFileDigests := digest.NewSetBuilder()
 		for i, childFile := range directory.Files {
-			childFileDigest, err := instanceName.NewDigestFromProto(childFile.Digest)
+			childFileDigest, err := digestFunction.NewDigestFromProto(childFile.Digest)
 			if err != nil {
 				return util.StatusWrapf(err, "Invalid digest for file at index %d", i)
 			}
@@ -135,7 +135,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 // EnqueueTree enqueues an REv2 Tree to be replicated. Any referenced
 // file will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
-	instanceName := treeDigest.GetInstanceName()
+	digestFunction := treeDigest.GetDigestFunction()
 	nr.enqueue(treeDigest, func(ctx context.Context, b buffer.Buffer) error {
 		r := b.ToReader()
 		defer r.Close()
@@ -154,7 +154,7 @@ func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 				}
 				directory := directoryMessage.(*remoteexecution.Directory)
 				for i, childFile := range directory.Files {
-					childFileDigest, err := instanceName.NewDigestFromProto(childFile.Digest)
+					childFileDigest, err := digestFunction.NewDigestFromProto(childFile.Digest)
 					if err != nil {
 						return util.StatusWrapf(err, "Invalid digest for file at index %d", i)
 					}

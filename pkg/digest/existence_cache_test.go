@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -18,9 +19,9 @@ func TestExistenceCache(t *testing.T) {
 	existenceCache := digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 2, time.Minute, eviction.NewLRUSet[string]())
 
 	digests := []digest.Digest{
-		digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 5),
-		digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7),
-		digest.MustNewDigest("hello", "ebbbb099e9d2f7892d97ab3640ae8283", 9),
+		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 5),
+		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
+		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9),
 	}
 	allDigests := digest.NewSetBuilder().
 		Add(digests[0]).

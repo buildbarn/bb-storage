@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -24,8 +25,8 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 	putAuthorizer := mock.NewMockAuthorizer(ctrl)
 	findMissingAuthorizer := mock.NewMockAuthorizer(ctrl)
 	ba := blobstore.NewAuthorizingBlobAccess(baseBlobAccess, getAuthorizer, putAuthorizer, findMissingAuthorizer)
-	d := digest.MustNewDigest("beep", "693d8db7b05e99c6b7a7c0616456039d89c555029026936248085193559a0b5d", 16)
-	d2 := digest.MustNewDigest("bop/bip", "da95ccd92a874d2169839cd90d9045be61d17df779fb28fe520a7465c6063723", 3)
+	d := digest.MustNewDigest("beep", remoteexecution.DigestFunction_SHA256, "693d8db7b05e99c6b7a7c0616456039d89c555029026936248085193559a0b5d", 16)
+	d2 := digest.MustNewDigest("bop/bip", remoteexecution.DigestFunction_SHA256, "da95ccd92a874d2169839cd90d9045be61d17df779fb28fe520a7465c6063723", 3)
 	digests := digest.GetUnion([]digest.Set{d.ToSingletonSet(), d2.ToSingletonSet()})
 	wantBytes := []byte("European Burmese")
 	wantBuf := buffer.NewValidatedBufferFromByteSlice(wantBytes)

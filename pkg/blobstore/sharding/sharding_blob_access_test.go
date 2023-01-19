@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -29,12 +30,12 @@ func TestShardingBlobAccess(t *testing.T) {
 		nil, // Shard that is explicitly drained.
 	}, shardPermuter, 0x62994904405896a1)
 
-	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
-	llDigest := digest.MustNewDigest("example", "5b54c0a045f179bcbbbc9abcb8b5cd4c", 2)
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	llDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5b54c0a045f179bcbbbc9abcb8b5cd4c", 2)
 
 	t.Run("GetFailure", func(t *testing.T) {
 		// Errors should be prefixed with a shard number.
-		shardPermuter.EXPECT().GetShard(uint64(0xa0230a77da24e99d), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x7118d6877ee9ee3d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.True(t, selector(2))
 				require.False(t, selector(1))
@@ -47,7 +48,7 @@ func TestShardingBlobAccess(t *testing.T) {
 	})
 
 	t.Run("GetSuccess", func(t *testing.T) {
-		shardPermuter.EXPECT().GetShard(uint64(0xa0230a77da24e99d), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x7118d6877ee9ee3d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
@@ -63,7 +64,7 @@ func TestShardingBlobAccess(t *testing.T) {
 		// For reads from composite objects, the sharding needs
 		// to be based on the parent digest. That digest was
 		// used to upload the object to storage.
-		shardPermuter.EXPECT().GetShard(uint64(0xa0230a77da24e99d), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x7118d6877ee9ee3d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
@@ -78,7 +79,7 @@ func TestShardingBlobAccess(t *testing.T) {
 
 	t.Run("PutFailure", func(t *testing.T) {
 		// Errors should be prefixed with a shard number.
-		shardPermuter.EXPECT().GetShard(uint64(0xa0230a77da24e99d), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x7118d6877ee9ee3d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.True(t, selector(2))
 				require.False(t, selector(1))
@@ -96,7 +97,7 @@ func TestShardingBlobAccess(t *testing.T) {
 	})
 
 	t.Run("PutSuccess", func(t *testing.T) {
-		shardPermuter.EXPECT().GetShard(uint64(0xa0230a77da24e99d), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x7118d6877ee9ee3d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
@@ -111,10 +112,10 @@ func TestShardingBlobAccess(t *testing.T) {
 		require.NoError(t, blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
 
-	digest1 := digest.MustNewDigest("", "21f843aefbfb88627ec2cad9e8f1f49a", 1)
-	digest2 := digest.MustNewDigest("", "48f2503cf369373b0631da97fb9de1c1", 2)
-	digest3 := digest.MustNewDigest("", "942a5b4164c26ae5d57a4f9526dcfca4", 3)
-	digest4 := digest.MustNewDigest("", "f8f3da00ff2862082bddbb15300343f6", 4)
+	digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "21f843aefbfb88627ec2cad9e8f1f49a", 1)
+	digest2 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "48f2503cf369373b0631da97fb9de1c1", 2)
+	digest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "942a5b4164c26ae5d57a4f9526dcfca4", 3)
+	digest4 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "f8f3da00ff2862082bddbb15300343f6", 4)
 
 	t.Run("FindMissingFailure", func(t *testing.T) {
 		// Digests provided to FindMissing() are partitioned,
@@ -122,11 +123,11 @@ func TestShardingBlobAccess(t *testing.T) {
 		// backends reports failure, we immediately cancel the
 		// context for remaining requests, and return the first
 		// error that occurred.
-		shardPermuter.EXPECT().GetShard(uint64(15126689533404788141), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0xe4780eee2c3e5c4d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
-		shardPermuter.EXPECT().GetShard(uint64(6509308913848440562), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0xb1e63d21c14e3f12), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(1))
 			})
@@ -151,19 +152,19 @@ func TestShardingBlobAccess(t *testing.T) {
 	})
 
 	t.Run("FindMissingSuccess", func(t *testing.T) {
-		shardPermuter.EXPECT().GetShard(uint64(15126689533404788141), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0xe4780eee2c3e5c4d), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
-		shardPermuter.EXPECT().GetShard(uint64(6509308913848440562), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0xb1e63d21c14e3f12), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(0))
 			})
-		shardPermuter.EXPECT().GetShard(uint64(15403851060071172425), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0x71fb8268edc4f6e9), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(1))
 			})
-		shardPermuter.EXPECT().GetShard(uint64(14906121609955927349), gomock.Any()).Do(
+		shardPermuter.EXPECT().GetShard(uint64(0xc7a206e6fcdfda55), gomock.Any()).Do(
 			func(hash uint64, selector sharding.ShardSelector) {
 				require.False(t, selector(1))
 			})

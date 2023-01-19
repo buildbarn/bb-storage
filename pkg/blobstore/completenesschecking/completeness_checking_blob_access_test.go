@@ -31,7 +31,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		/* maximumMessageSizeBytes = */ 1000,
 		/* maximumTotalTreeSizeBytes = */ 10000)
 
-	actionDigest := digest.MustNewDigest("hello", "d41d8cd98f00b204e9800998ecf8427e", 123)
+	actionDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 123)
 
 	t.Run("ActionCacheFailure", func(t *testing.T) {
 		// Errors on the backing action cache should be passed
@@ -60,7 +60,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result contained malformed digest: Unknown digest hash length: 24 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result contained malformed digest: Hash has length 24, while 32 characters were expected"), err)
 	})
 
 	t.Run("MissingInput", func(t *testing.T) {
@@ -87,15 +87,15 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build(),
 		).Return(
-			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
+			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
 			nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object 8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object 3-8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"), err)
 	})
 
 	t.Run("FindMissingError", func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.MustNewDigest("hello", "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet(),
+			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet(),
 		).Return(digest.EmptySet, status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
@@ -140,7 +140,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
-			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hard disk has a case of the Mondays")))
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
@@ -247,19 +247,19 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		treeReader.EXPECT().Close()
 		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback2.EXPECT().Call(false)
-		treeDigest := digest.MustNewDigest("hello", "8f0450aa5f4602d93968daba6f2e7611", 4000)
+		treeDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8f0450aa5f4602d93968daba6f2e7611", 4000)
 		contentAddressableStorage.EXPECT().Get(ctx, treeDigest).Return(
 			buffer.NewCASBufferFromReader(treeDigest, treeReader, buffer.BackendProvided(dataIntegrityCallback2.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(treeDigest).
-				Add(digest.MustNewDigest("hello", "024ced29f1fdef2f644f34a071ade5be", 1)).
-				Add(digest.MustNewDigest("hello", "8b3b146b1c4df062a2dc35168cbf4ce6", 2)).
-				Add(digest.MustNewDigest("hello", "4a4a6ebb3f8b062653cb957cbdc047d9", 3)).
-				Add(digest.MustNewDigest("hello", "69778ed3e4dcf4e0c40df49e4ca5bd37", 4)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "024ced29f1fdef2f644f34a071ade5be", 1)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b3b146b1c4df062a2dc35168cbf4ce6", 2)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "69778ed3e4dcf4e0c40df49e4ca5bd37", 4)).
 				Build(),
-		).Return(digest.MustNewDigest("hello", "4a4a6ebb3f8b062653cb957cbdc047d9", 3).ToSingletonSet(), nil)
+		).Return(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3).ToSingletonSet(), nil)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Output directory \"bazel-out/foo\": Buffer is 210 bytes in size, while 4000 bytes were expected"), err)
@@ -317,7 +317,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		dataIntegrityCallback2.EXPECT().Call(true)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
-			digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).Return(buffer.NewProtoBufferFromProto(&remoteexecution.Tree{
 			Root: &remoteexecution.Directory{
 				// Directory digests should not be part of
@@ -357,18 +357,18 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello", "38837949e2518a6e8a912ffb29942788", 10)).
-				Add(digest.MustNewDigest("hello", "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
-				Add(digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("hello", "136de6de72514772b9302d4776e5c3d2", 4)).
-				Add(digest.MustNewDigest("hello", "41d7247285b686496aa91b56b4c48395", 11)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "38837949e2518a6e8a912ffb29942788", 10)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "136de6de72514772b9302d4776e5c3d2", 4)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "41d7247285b686496aa91b56b4c48395", 11)).
 				Build(),
 		).Return(digest.EmptySet, nil)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("hello", "eda14e187a768b38eda999457c9cca1e", 6)).
-				Add(digest.MustNewDigest("hello", "6c396013ff0ebff6a2a96cdc20a4ba4c", 5)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "eda14e187a768b38eda999457c9cca1e", 6)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6c396013ff0ebff6a2a96cdc20a4ba4c", 5)).
 				Build(),
 		).Return(digest.EmptySet, nil)
 

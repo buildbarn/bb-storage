@@ -134,18 +134,19 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 	// Partition all digests by instance name, as the
 	// FindMissingBlobs() RPC can only process digests for a single
 	// instance.
-	perInstanceDigests := map[digest.InstanceName][]*remoteexecution.Digest{}
+	perInstanceDigests := map[digest.Function][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
-		instanceName := digest.GetInstanceName()
-		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetProto())
+		digestFunction := digest.GetDigestFunction()
+		perInstanceDigests[digestFunction] = append(perInstanceDigests[digestFunction], digest.GetProto())
 	}
 
 	missingDigests := digest.NewSetBuilder()
-	for instanceName, blobDigests := range perInstanceDigests {
+	for digestFunction, blobDigests := range perInstanceDigests {
 		// Call FindMissingBlobs() for each instance.
 		request := remoteexecution.FindMissingBlobsRequest{
-			InstanceName: instanceName.String(),
-			BlobDigests:  blobDigests,
+			InstanceName:   digestFunction.GetInstanceName().String(),
+			BlobDigests:    blobDigests,
+			DigestFunction: digestFunction.GetEnumValue(),
 		}
 		response, err := ba.contentAddressableStorageClient.FindMissingBlobs(ctx, &request)
 		if err != nil {
@@ -154,7 +155,7 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 
 		// Convert results back.
 		for _, proto := range response.MissingBlobDigests {
-			blobDigest, err := instanceName.NewDigestFromProto(proto)
+			blobDigest, err := digestFunction.NewDigestFromProto(proto)
 			if err != nil {
 				return digest.EmptySet, err
 			}

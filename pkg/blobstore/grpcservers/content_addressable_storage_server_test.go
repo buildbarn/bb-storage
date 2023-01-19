@@ -21,9 +21,9 @@ import (
 func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	digest1 := digest.MustNewDigest("ubuntu1804", "409a7f83ac6b31dc8c77e3ec18038f209bd2f545e0f4177c2e2381aa4e067b49", 123)
-	digest2 := digest.MustNewDigest("ubuntu1804", "0479688f99e8cbc70291ce272876ff8e0db71a0889daf2752884b0996056b4a0", 234)
-	digest3 := digest.MustNewDigest("ubuntu1804", "7821919ee052d21515cf4e36788138a301c18c36931290270aece8d79ea2cca6", 345)
+	digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_SHA256, "409a7f83ac6b31dc8c77e3ec18038f209bd2f545e0f4177c2e2381aa4e067b49", 123)
+	digest2 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_SHA256, "0479688f99e8cbc70291ce272876ff8e0db71a0889daf2752884b0996056b4a0", 234)
+	digest3 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_SHA256, "7821919ee052d21515cf4e36788138a301c18c36931290270aece8d79ea2cca6", 345)
 
 	request := &remoteexecution.BatchReadBlobsRequest{
 		Digests: []*remoteexecution.Digest{

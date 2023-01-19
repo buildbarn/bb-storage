@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "digest",
     srcs = [
+        "bare_function.go",
         "configuration.go",
         "digest.go",
         "existence_cache.go",
@@ -17,6 +18,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/clock",
+        "//pkg/digest/sha256tree",
         "//pkg/eviction",
         "//pkg/proto/configuration/digest",
         "//pkg/util",
@@ -32,6 +34,7 @@ go_test(
     srcs = [
         "digest_test.go",
         "existence_cache_test.go",
+        "generator_test.go",
         "instance_name_patcher_test.go",
         "instance_name_test.go",
         "instance_name_trie_test.go",

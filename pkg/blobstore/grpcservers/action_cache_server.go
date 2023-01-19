@@ -29,7 +29,11 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digest, err := instanceName.NewDigestFromProto(in.ActionDigest)
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.ActionDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	digest, err := digestFunction.NewDigestFromProto(in.ActionDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +51,11 @@ func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteex
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digest, err := instanceName.NewDigestFromProto(in.ActionDigest)
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.ActionDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	digest, err := digestFunction.NewDigestFromProto(in.ActionDigest)
 	if err != nil {
 		return nil, err
 	}

@@ -14,8 +14,9 @@ import (
 func TestStaticProvider(t *testing.T) {
 	provider := capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 		ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-			DigestFunction: remoteexecution.DigestFunction_SHA256,
-			ExecEnabled:    true,
+			DigestFunction:  remoteexecution.DigestFunction_SHA256,
+			DigestFunctions: digest.SupportedDigestFunctions,
+			ExecEnabled:     true,
 		},
 	})
 
@@ -23,8 +24,9 @@ func TestStaticProvider(t *testing.T) {
 	require.NoError(t, err)
 	testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 		ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-			DigestFunction: remoteexecution.DigestFunction_SHA256,
-			ExecEnabled:    true,
+			DigestFunction:  remoteexecution.DigestFunction_SHA256,
+			DigestFunctions: digest.SupportedDigestFunctions,
+			ExecEnabled:     true,
 		},
 	}, serverCapabilities)
 }

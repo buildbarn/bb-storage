@@ -77,6 +77,9 @@ message GetPreviousExecutionStatsRequest {
   // This means that contents of the input root, the Action's timeout
   // and the do_not_cache flag are ignored.
   build.bazel.remote.execution.v2.Digest reduced_action_digest = 2;
+
+  // The digest function that was used to compute the reduced action digest.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 3;
 }
 
 message UpdatePreviousExecutionStatsRequest {
@@ -89,4 +92,7 @@ message UpdatePreviousExecutionStatsRequest {
 
   // The statistics to store.
   PreviousExecutionStats previous_execution_stats = 3;
+
+  // The digest function that was used to compute the reduced action digest.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 4;
 }

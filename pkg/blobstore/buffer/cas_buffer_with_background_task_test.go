@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -19,7 +20,7 @@ import (
 func TestCASBufferWithBackgroundTaskGetSizeBytes(t *testing.T) {
 	done := make(chan struct{})
 	b := buffer.NewCASBufferFromReader(
-		digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+		digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 		io.NopCloser(bytes.NewBufferString("Hello, world")),
 		buffer.UserProvided,
 	).WithTask(func() error {
@@ -40,7 +41,7 @@ func TestCASBufferWithBackgroundTaskGetSizeBytes(t *testing.T) {
 func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
@@ -52,7 +53,7 @@ func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
@@ -65,7 +66,7 @@ func TestCASBufferWithBackgroundTaskToByteSlice(t *testing.T) {
 func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
@@ -89,7 +90,7 @@ func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 			io.NopCloser(bytes.NewBufferString("Hello")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
@@ -112,7 +113,7 @@ func TestCASBufferWithBackgroundTaskToChunkReader(t *testing.T) {
 func TestCASBufferWithBackgroundTaskToReader(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 			io.NopCloser(bytes.NewBufferString("Hello, world")),
 			buffer.UserProvided,
 		).WithTask(func() error { return nil })
@@ -126,7 +127,7 @@ func TestCASBufferWithBackgroundTaskToReader(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		b := buffer.NewCASBufferFromReader(
-			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 			io.NopCloser(bytes.NewBufferString("Hello")),
 			buffer.UserProvided,
 		).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })
@@ -152,7 +153,7 @@ func TestCASBufferWithBackgroundTaskWithErrorHandler(t *testing.T) {
 	r.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.NotFound, "Object not found"))
 	r.EXPECT().Close()
 	b := buffer.NewCASBufferFromReader(
-		digest.MustNewDigest("example", "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
+		digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "bc6e6f16b8a077ef5fbc8d59d0b931b9", 12),
 		r,
 		buffer.UserProvided,
 	).WithTask(func() error { return status.Error(codes.Internal, "Synchronization failed") })

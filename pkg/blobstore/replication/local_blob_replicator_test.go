@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
@@ -22,7 +23,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)
 	replicator := replication.NewLocalBlobReplicator(source, sink)
-	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		// Data should be read from the source and written into
@@ -85,8 +86,8 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 	source := mock.NewMockBlobAccess(ctrl)
 	sink := mock.NewMockBlobAccess(ctrl)
 	replicator := replication.NewLocalBlobReplicator(source, sink)
-	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
-	worldDigest := digest.MustNewDigest("world", "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
+	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	worldDigest := digest.MustNewDigest("world", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
@@ -133,7 +134,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		// the object that was being replicated.
 		testutil.RequireEqualStatus(
 			t,
-			status.Error(codes.Internal, "8b1a9953c4611296a827abf8c47804d7-5-hello: Failed to read input: Server on fire"),
+			status.Error(codes.Internal, "3-8b1a9953c4611296a827abf8c47804d7-5-hello: Failed to read input: Server on fire"),
 			replicator.ReplicateMultiple(ctx, helloDigest.ToSingletonSet()))
 	})
 }

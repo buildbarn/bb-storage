@@ -35,7 +35,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 				},
 			},
 		})
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest function"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -43,8 +43,8 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 		blobAccess.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("example", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(digest.EmptySet, status.Error(codes.Internal, "Hardware failure"))
 
@@ -68,10 +68,10 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 		blobAccess.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
-				Add(digest.MustNewDigest("example", "6fc422233a40a75a1f028e11c3cd1140", 7)).
+				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
-			Return(digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(), nil)
+			Return(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(), nil)
 
 		resp, err := s.FindMissingReferences(ctx, &remoteexecution.FindMissingBlobsRequest{
 			InstanceName: "example",
@@ -111,7 +111,7 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 		// can be written successfully.
 		blobAccess.EXPECT().Put(
 			ctx,
-			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 			gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
@@ -119,7 +119,7 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 			})
 		blobAccess.EXPECT().Put(
 			ctx,
-			digest.MustNewDigest("example", "6fc422233a40a75a1f028e11c3cd1140", 7),
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
 			gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				m, err := b.ToProto(&icas.Reference{}, 1000)
@@ -133,7 +133,8 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 			})
 
 		resp, err := s.BatchUpdateReferences(ctx, &icas.BatchUpdateReferencesRequest{
-			InstanceName: "example",
+			InstanceName:   "example",
+			DigestFunction: remoteexecution.DigestFunction_MD5,
 			Requests: []*icas.BatchUpdateReferencesRequest_Request{
 				{
 					Digest: &remoteexecution.Digest{
@@ -178,7 +179,7 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 						Hash:      "This is not a valid hash",
 						SizeBytes: 123,
 					},
-					Status: status.New(codes.InvalidArgument, "Unknown digest hash length: 24 characters").Proto(),
+					Status: status.New(codes.InvalidArgument, "Hash has length 24, while 32 characters were expected").Proto(),
 				},
 				{
 					Digest: &remoteexecution.Digest{
@@ -213,14 +214,14 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 				SizeBytes: 123,
 			},
 		})
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest hash length: 24 characters"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest function"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Errors returned by the backend should be forwarded.
 		blobAccess.EXPECT().Get(
 			ctx,
-			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hardware failure")))
 
 		_, err := s.GetReference(ctx, &icas.GetReferenceRequest{
@@ -238,7 +239,7 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 		dataIntegrityCallback.EXPECT().Call(true)
 		blobAccess.EXPECT().Get(
 			ctx,
-			digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)).
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{

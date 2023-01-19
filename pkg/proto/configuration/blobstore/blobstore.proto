@@ -175,9 +175,13 @@ message BlobAccessConfiguration {
     //   been archived, so that they can be inspected or rerun.
     //
     // If this backend is used as a Content Addressable Storage (CAS),
-    // it will search for files named "${hash}-${sizeBytes}". For other
-    // storage types it will search for files named
-    // "${hash}-${sizeBytes}-${instanceName}".
+    // it will search for files named:
+    //
+    //     ${digestFunction}-${hash}-${sizeBytes}
+    //
+    // For other storage types it will search for files named:
+    //
+    //     ${digestFunction}-${hash}-${sizeBytes}-${instanceName}
     ZIPBlobAccessConfiguration zip_reading = 24;
 
     // Write objects to an uncompressed ZIP file. The resulting ZIP

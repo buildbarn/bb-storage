@@ -80,7 +80,7 @@ func (ip *actualInstanceNamePatcher) PatchInstanceName(i InstanceName) InstanceN
 }
 
 func patchDigest(d Digest, oldPrefixWithSlashLength int, newPrefixWithSlash, newPrefixWithoutSlash string) Digest {
-	_, _, sizeBytesEnd := d.unpack()
+	_, _, _, sizeBytesEnd := d.unpack()
 	instanceNameStart := sizeBytesEnd + 1
 	return Digest{
 		value: d.value[:instanceNameStart] + patchInstanceName(d.value[instanceNameStart:], oldPrefixWithSlashLength, newPrefixWithSlash, newPrefixWithoutSlash),

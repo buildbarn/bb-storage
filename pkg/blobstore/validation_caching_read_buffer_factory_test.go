@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -26,7 +27,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
-	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.
 	// All calls should be forwarded to the base ReadBufferFactory,
@@ -117,7 +118,7 @@ func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
-	helloDigest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.
 	// All calls should be forwarded to the base ReadBufferFactory,

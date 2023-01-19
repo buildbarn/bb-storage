@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -25,8 +26,8 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -196,12 +197,12 @@ func TestFlatBlobAccessGetFromComposite(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
-	parentDigest := digest.MustNewDigest("example", "3e25960a79dbc69b674cd4ec67a72c62", 11)
-	parentKey := local.NewKeyFromString("3e25960a79dbc69b674cd4ec67a72c62-11")
-	child1Digest := digest.MustNewDigest("example", "8b1a9953c4611296a827abf8c47804d7", 5)
-	child1Key := local.NewKeyFromString("8b1a9953c4611296a827abf8c47804d7-5")
-	child2Digest := digest.MustNewDigest("example", "7d793037a0760186574b0282f2f435e7", 5)
-	child2Key := local.NewKeyFromString("7d793037a0760186574b0282f2f435e7-5")
+	parentDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentKey := local.NewKeyFromString("3-3e25960a79dbc69b674cd4ec67a72c62-11")
+	child1Digest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	child1Key := local.NewKeyFromString("3-8b1a9953c4611296a827abf8c47804d7-5")
+	child2Digest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "7d793037a0760186574b0282f2f435e7", 5)
+	child2Key := local.NewKeyFromString("3-7d793037a0760186574b0282f2f435e7-5")
 	slicer := mock.NewMockBlobSlicer(ctrl)
 	location1 := local.Location{
 		BlockIndex:  7,
@@ -363,7 +364,7 @@ func TestFlatBlobAccessGetFromComposite(t *testing.T) {
 		}).Return(status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.GetFromComposite(ctx, parentDigest, child1Digest, slicer).ToByteSlice(10)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to create child blob \"8b1a9953c4611296a827abf8c47804d7-5-example\": I/O error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to create child blob \"3-8b1a9953c4611296a827abf8c47804d7-5-example\": I/O error"), err)
 	})
 
 	t.Run("SlicingSuccess", func(t *testing.T) {
@@ -474,8 +475,8 @@ func TestFlatBlobAccessPut(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -549,8 +550,8 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	helloKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -567,7 +568,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase1NotFound", func(t *testing.T) {
@@ -601,7 +602,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2PutFailure", func(t *testing.T) {
@@ -621,7 +622,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(nil, status.Error(codes.Internal, "No space left to store data"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": No space left to store data"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": No space left to store data"), err)
 	})
 
 	t.Run("Phase2FinalizeFailure", func(t *testing.T) {
@@ -651,7 +652,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Write error"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example\": Write error"), err)
 	})
 
 	t.Run("Phase2NotFound", func(t *testing.T) {

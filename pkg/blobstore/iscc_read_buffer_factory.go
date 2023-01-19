@@ -47,7 +47,7 @@ func ISCCGetReducedActionDigest(digestFunction digest.Function, action *remoteex
 		return digest.BadDigest, err
 	}
 
-	digestGenerator := digestFunction.NewGenerator()
+	digestGenerator := digestFunction.NewGenerator(int64(len(data)))
 	if _, err := digestGenerator.Write(data); err != nil {
 		panic(err)
 	}

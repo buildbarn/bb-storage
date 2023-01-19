@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -25,12 +26,12 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("some/instance/name", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	lookupKey1 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
-	lookupKey2 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
-	lookupKey3 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance")
-	lookupKey4 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name")
-	canonicalKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	helloDigest := digest.MustNewDigest("some/instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	lookupKey1 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
+	lookupKey2 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
+	lookupKey3 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance")
+	lookupKey4 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name")
+	canonicalKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -165,9 +166,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("example", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	canonicalKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
-	mostSpecificLookupKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example")
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	canonicalKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	mostSpecificLookupKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example")
 	location1 := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -341,12 +342,12 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
-	helloDigest := digest.MustNewDigest("some/instance/name", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-	lookupKey1 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
-	lookupKey2 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
-	lookupKey3 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance")
-	lookupKey4 := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name")
-	canonicalKey := local.NewKeyFromString("185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
+	helloDigest := digest.MustNewDigest("some/instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+	lookupKey1 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
+	lookupKey2 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
+	lookupKey3 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance")
+	lookupKey4 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name")
+	canonicalKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
 		BlockIndex:  7,
 		OffsetBytes: 42,
@@ -363,7 +364,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase1NotFound", func(t *testing.T) {
@@ -412,7 +413,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to get blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2GetCanonicalFailure", func(t *testing.T) {
@@ -430,7 +431,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2SyncWithCanonicalFailure", func(t *testing.T) {
@@ -455,7 +456,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 			Return(status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2SyncWithCanonicalSuccess", func(t *testing.T) {
@@ -505,7 +506,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 		reader.EXPECT().Close()
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2RefreshFailure2", func(t *testing.T) {
@@ -539,7 +540,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 		})
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Call canceled by client"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Call canceled by client"), err)
 	})
 
 	t.Run("Phase2RefreshFailure3", func(t *testing.T) {
@@ -579,7 +580,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 			Return(status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to refresh blob \"1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some/instance/name\": Disk on fire"), err)
 	})
 
 	t.Run("Phase2RefreshSuccess", func(t *testing.T) {

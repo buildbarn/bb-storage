@@ -44,8 +44,9 @@ func TestServer(t *testing.T) {
 		provider.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("hello/world")).
 			Return(&remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 			}, nil)
 
@@ -55,8 +56,9 @@ func TestServer(t *testing.T) {
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				DigestFunction: remoteexecution.DigestFunction_SHA256,
-				ExecEnabled:    true,
+				DigestFunction:  remoteexecution.DigestFunction_SHA256,
+				DigestFunctions: digest.SupportedDigestFunctions,
+				ExecEnabled:     true,
 			},
 			LowApiVersion:  &semver.SemVer{Major: 2},
 			HighApiVersion: &semver.SemVer{Major: 2},

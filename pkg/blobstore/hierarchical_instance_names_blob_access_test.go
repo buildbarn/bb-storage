@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -22,9 +23,9 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
-	helloDigest1 := digest.MustNewDigest("a/b", "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest2 := digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest3 := digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest2 := digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Failure", func(t *testing.T) {
 		// Errors from backends should be propagated. The
@@ -74,12 +75,12 @@ func TestHierarchicalInstanceNamesBlobAccessGetFromComposite(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
-	helloDigest1 := digest.MustNewDigest("a/b", "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest2 := digest.MustNewDigest("a", "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest3 := digest.MustNewDigest("", "8b1a9953c4611296a827abf8c47804d7", 5)
-	ellDigest1 := digest.MustNewDigest("a/b", "3123059c1c816471780539f6b6b738dc", 5)
-	ellDigest2 := digest.MustNewDigest("a", "3123059c1c816471780539f6b6b738dc", 5)
-	ellDigest3 := digest.MustNewDigest("", "3123059c1c816471780539f6b6b738dc", 5)
+	helloDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest2 := digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	ellDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
+	ellDigest2 := digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
+	ellDigest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	t.Run("Failure", func(t *testing.T) {
@@ -134,9 +135,9 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 		// Errors that occur both during the initial call to
 		// FindMissing() and successive ones should be propagated.
 		digests := digest.NewSetBuilder().
-			Add(digest.MustNewDigest("a", "00000000000000000000000000000001", 1)).
-			Add(digest.MustNewDigest("b", "00000000000000000000000000000002", 2)).
-			Add(digest.MustNewDigest("c", "00000000000000000000000000000003", 3)).
+			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
+			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
+			Add(digest.MustNewDigest("c", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000003", 3)).
 			Build()
 		baseBlobAccess.EXPECT().FindMissing(ctx, digests).
 			Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire"))
@@ -147,20 +148,20 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("SuccessiveFailure", func(t *testing.T) {
 		digests := digest.NewSetBuilder().
-			Add(digest.MustNewDigest("a", "00000000000000000000000000000001", 1)).
-			Add(digest.MustNewDigest("b", "00000000000000000000000000000002", 2)).
-			Add(digest.MustNewDigest("c", "00000000000000000000000000000003", 3)).
+			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
+			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
+			Add(digest.MustNewDigest("c", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000003", 3)).
 			Build()
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().FindMissing(ctx, digests).Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("b", "00000000000000000000000000000002", 2)).
+					Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("", "00000000000000000000000000000002", 2)).
+					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
 			).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire")))
 
@@ -181,46 +182,46 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 		// whether they are going to be accessed.
 		digests := digest.NewSetBuilder().
 			// Empty instance name.
-			Add(digest.MustNewDigest("", "00000000000000000000000000000001", 1)).
-			Add(digest.MustNewDigest("", "00000000000000000000000000000002", 2)).
+			Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
+			Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 			// Single component instance name.
-			Add(digest.MustNewDigest("a", "10000000000000000000000000000001", 3)).
-			Add(digest.MustNewDigest("a", "20000000000000000000000000000001", 4)).
-			Add(digest.MustNewDigest("b", "10000000000000000000000000000001", 3)).
-			Add(digest.MustNewDigest("b", "20000000000000000000000000000001", 4)).
+			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
+			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "20000000000000000000000000000001", 4)).
+			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
+			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "20000000000000000000000000000001", 4)).
 			// Double component instance name.
-			Add(digest.MustNewDigest("x/y", "30000000000000000000000000000001", 3)).
-			Add(digest.MustNewDigest("x/y", "40000000000000000000000000000001", 4)).
-			Add(digest.MustNewDigest("x/z", "30000000000000000000000000000001", 3)).
-			Add(digest.MustNewDigest("x/z", "40000000000000000000000000000001", 4)).
+			Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
+			Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "40000000000000000000000000000001", 4)).
+			Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
+			Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "40000000000000000000000000000001", 4)).
 			Build()
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().FindMissing(ctx, digests).Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("", "00000000000000000000000000000001", 1)).
-					Add(digest.MustNewDigest("a", "10000000000000000000000000000001", 3)).
-					Add(digest.MustNewDigest("b", "10000000000000000000000000000001", 3)).
-					Add(digest.MustNewDigest("x/y", "30000000000000000000000000000001", 3)).
-					Add(digest.MustNewDigest("x/z", "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
+					Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("", "10000000000000000000000000000001", 3)).
-					Add(digest.MustNewDigest("x", "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build()).Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("x", "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("", "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build()).Return(
 				digest.NewSetBuilder().
-					Add(digest.MustNewDigest("", "30000000000000000000000000000001", 3)).
+					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
 				nil))
 
@@ -229,9 +230,9 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 		require.Equal(
 			t,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("", "00000000000000000000000000000001", 1)).
-				Add(digest.MustNewDigest("x/y", "30000000000000000000000000000001", 3)).
-				Add(digest.MustNewDigest("x/z", "30000000000000000000000000000001", 3)).
+				Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
+				Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
+				Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 				Build(),
 			missing)
 	})

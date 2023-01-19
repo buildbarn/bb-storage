@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -23,10 +24,10 @@ func TestExistenceCachingBlobAccessFindMissing(t *testing.T) {
 		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
 
 	bothDigests := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).
-		Add(digest.MustNewDigest("instance", "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_SHA256, "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5)).
 		Build()
-	nonExistingDigests := digest.MustNewDigest("instance", "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5).ToSingletonSet()
+	nonExistingDigests := digest.MustNewDigest("instance", remoteexecution.DigestFunction_SHA256, "78ae647dc5544d227130a0682a51e30bc7777fbb6d8a8f17007463a3ecd1d524", 5).ToSingletonSet()
 
 	// As the cache is empty upon initialization, the first request
 	// should cause both digests to be queried on the backend.

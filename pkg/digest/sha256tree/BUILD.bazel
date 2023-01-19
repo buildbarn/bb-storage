@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "sha256tree",
+    srcs = [
+        "compress_parent.go",
+        "compress_parent_arm64.go",
+        "compress_parent_arm64.s",
+        "hasher.go",
+        "new_amd64.go",
+        "new_other.go",
+        "vectorized_hasher.go",
+        "vectorized_hasher_amd64.s",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/digest/sha256tree",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:amd64": [
+            "@org_golang_x_sys//cpu",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_test(
+    name = "sha256tree_test",
+    srcs = ["hasher_test.go"],
+    deps = [
+        ":sha256tree",
+        "@com_github_stretchr_testify//require",
+    ],
+)

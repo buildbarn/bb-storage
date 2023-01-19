@@ -20,7 +20,7 @@ import (
 func TestNewCASBufferFromReaderGetSizeBytes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	reader := mock.NewMockReadCloser(ctrl)
 	reader.EXPECT().Close()
 
@@ -34,7 +34,7 @@ func TestNewCASBufferFromReaderGetSizeBytes(t *testing.T) {
 func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		reader := io.NopCloser(bytes.NewBufferString("Hello"))
@@ -83,7 +83,7 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Success", func(t *testing.T) {
 		reader := io.NopCloser(bytes.NewBufferString("Hello"))
@@ -267,7 +267,7 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
-		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
+		helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		_, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
@@ -301,7 +301,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
-		helloDigest := digest.MustNewDigest("foo", "8b1a9953c4611296a827abf8c47804d7", 5)
+		helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		data, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
@@ -315,7 +315,7 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback.EXPECT().Call(true)
 
-		emptyDigest := digest.MustNewDigest("empty", "d41d8cd98f00b204e9800998ecf8427e", 0)
+		emptyDigest := digest.MustNewDigest("empty", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 		data, err := buffer.NewCASBufferFromReader(
 			emptyDigest,
 			reader,
@@ -330,6 +330,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 
 	helloDigest := digest.MustNewDigest(
 		"foo",
+		remoteexecution.DigestFunction_MD5,
 		"3e25960a79dbc69b674cd4ec67a72c62",
 		11)
 
@@ -443,7 +444,7 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 func TestNewCASBufferFromReaderToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	helloDigest := digest.MustNewDigest("foo", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("Success", func(t *testing.T) {
 		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
@@ -504,6 +505,7 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 
 	helloDigest := digest.MustNewDigest(
 		"foo",
+		remoteexecution.DigestFunction_MD5,
 		"8b1a9953c4611296a827abf8c47804d7",
 		5)
 

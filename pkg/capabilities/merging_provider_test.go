@@ -37,8 +37,9 @@ func TestMergingProviderOne(t *testing.T) {
 		baseProvider.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(&remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 			}, nil)
 
@@ -46,8 +47,9 @@ func TestMergingProviderOne(t *testing.T) {
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				DigestFunction: remoteexecution.DigestFunction_SHA256,
-				ExecEnabled:    true,
+				DigestFunction:  remoteexecution.DigestFunction_SHA256,
+				DigestFunctions: digest.SupportedDigestFunctions,
+				ExecEnabled:     true,
 			},
 		}, serverCapabilities)
 	})
@@ -150,8 +152,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 		scheduler.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(&remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 			}, nil)
 
@@ -167,8 +170,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 				},
 			},
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-				DigestFunction: remoteexecution.DigestFunction_SHA256,
-				ExecEnabled:    true,
+				DigestFunction:  remoteexecution.DigestFunction_SHA256,
+				DigestFunctions: digest.SupportedDigestFunctions,
+				ExecEnabled:     true,
 			},
 		}, serverCapabilities)
 	})

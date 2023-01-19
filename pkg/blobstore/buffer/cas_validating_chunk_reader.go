@@ -24,13 +24,14 @@ type casValidatingChunkReader struct {
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
 func newCASValidatingChunkReader(r ChunkReader, digest digest.Digest, source Source) ChunkReader {
+	sizeBytes := digest.GetSizeBytes()
 	return &casValidatingChunkReader{
 		ChunkReader: r,
 		digest:      digest,
 		source:      source,
 
-		hasher:         digest.NewHasher(),
-		bytesRemaining: digest.GetSizeBytes(),
+		hasher:         digest.NewHasher(sizeBytes),
+		bytesRemaining: sizeBytes,
 	}
 }
 

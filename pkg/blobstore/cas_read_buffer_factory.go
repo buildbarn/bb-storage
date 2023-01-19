@@ -35,10 +35,16 @@ var CASReadBufferFactory ReadBufferFactory = casReadBufferFactory{}
 // message and stores it under that key. The digest is then returned, so
 // that the object may be referenced.
 func CASPutProto(ctx context.Context, blobAccess BlobAccess, message proto.Message, digestFunction digest.Function) (digest.Digest, error) {
-	bDigest, bPut := buffer.NewProtoBufferFromProto(message, buffer.UserProvided).CloneCopy(math.MaxInt)
+	b := buffer.NewProtoBufferFromProto(message, buffer.UserProvided)
+	sizeBytes, err := b.GetSizeBytes()
+	if err != nil {
+		b.Discard()
+		return digest.BadDigest, err
+	}
 
 	// Compute new digest of data.
-	digestGenerator := digestFunction.NewGenerator()
+	digestGenerator := digestFunction.NewGenerator(sizeBytes)
+	bDigest, bPut := b.CloneCopy(math.MaxInt)
 	if err := bDigest.IntoWriter(digestGenerator); err != nil {
 		bPut.Discard()
 		return digest.BadDigest, err

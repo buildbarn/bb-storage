@@ -30,7 +30,7 @@ func TestCASBlobAccessPut(t *testing.T) {
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
 	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10)
 
-	blobDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	uuid := uuid.Must(uuid.Parse("7d659e5f-0e4b-48f0-ad9f-3489db6e103b"))
 
 	t.Run("InitialFailure", func(t *testing.T) {
@@ -192,8 +192,9 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 				LowApiVersion:  &semver.SemVer{Major: 2},
 				HighApiVersion: &semver.SemVer{Major: 2},
@@ -230,8 +231,9 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 					},
 				},
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
-					DigestFunction: remoteexecution.DigestFunction_SHA256,
-					ExecEnabled:    true,
+					DigestFunction:  remoteexecution.DigestFunction_SHA256,
+					DigestFunctions: digest.SupportedDigestFunctions,
+					ExecEnabled:     true,
 				},
 				LowApiVersion:  &semver.SemVer{Major: 2},
 				HighApiVersion: &semver.SemVer{Major: 2},

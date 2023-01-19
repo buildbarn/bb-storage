@@ -36,7 +36,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		&http.Client{Transport: roundTripper},
 		s3Client,
 		100)
-	helloDigest := digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("BackendError", func(t *testing.T) {
 		// The ICAS backend returning an error.
@@ -284,7 +284,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	t.Run("S3SuccessZstandard", func(t *testing.T) {
 		// The S3 service returns valid data compressed using
 		// the Zstandard algorithm.
-		aaaDigest := digest.MustNewDigest("foo", "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
+		aaaDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_SHA256, "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
 		baseBlobAccess.EXPECT().Get(ctx, aaaDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
@@ -347,6 +347,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 				ctx,
 				digest.MustNewDigest(
 					"instance",
+					remoteexecution.DigestFunction_MD5,
 					"8b1a9953c4611296a827abf8c47804d7",
 					5),
 				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
@@ -366,8 +367,8 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		100)
 
 	digests := digest.NewSetBuilder().
-		Add(digest.MustNewDigest("instance", "8b1a9953c4611296a827abf8c47804d7", 5)).
-		Add(digest.MustNewDigest("instance", "f5a7924e621e84c9280a9a27e1bcb7f6", 5)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)).
 		Build()
 
 	t.Run("Success", func(t *testing.T) {

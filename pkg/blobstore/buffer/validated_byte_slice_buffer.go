@@ -36,7 +36,7 @@ func NewCASBufferFromByteSlice(digest digest.Digest, data []byte, source Source)
 
 	// Compare the blob's checksum.
 	expectedChecksum := digest.GetHashBytes()
-	hasher := digest.NewHasher()
+	hasher := digest.NewHasher(actualSizeBytes)
 	hasher.Write(data)
 	actualChecksum := hasher.Sum(nil)
 	if bytes.Compare(expectedChecksum, actualChecksum) != 0 {

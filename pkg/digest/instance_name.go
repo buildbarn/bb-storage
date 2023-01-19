@@ -1,14 +1,8 @@
 package digest
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
-	"hash"
 	"io"
 	"strings"
 
@@ -94,50 +88,22 @@ func MustNewInstanceName(value string) InstanceName {
 	return instanceName
 }
 
-// NewDigest constructs a Digest object from an instance name, hash and
-// object size. The object returned by this function is guaranteed to be
-// non-degenerate.
-func (in InstanceName) NewDigest(hash string, sizeBytes int64) (Digest, error) {
-	// Validate the hash.
-	if l := len(hash); l != md5.Size*2 && l != sha1.Size*2 &&
-		l != sha256.Size*2 && l != sha512.Size384*2 && l != sha512.Size*2 {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Unknown digest hash length: %d characters", l)
-	}
-	for _, c := range hash {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-			return BadDigest, status.Errorf(codes.InvalidArgument, "Non-hexadecimal character in digest hash: %#U", c)
-		}
-	}
-
-	// Validate the size.
-	if sizeBytes < 0 {
-		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid digest size: %d bytes", sizeBytes)
-	}
-
-	return in.newDigestUnchecked(hash, sizeBytes), nil
-}
-
-// NewDigestFromProto constructs a Digest object from an instance name
-// and a protocol-level digest object. The object returned by this
-// function is guaranteed to be non-degenerate.
-func (in InstanceName) NewDigestFromProto(digest *remoteexecution.Digest) (Digest, error) {
-	if digest == nil {
-		return BadDigest, status.Error(codes.InvalidArgument, "No digest provided")
-	}
-	return in.NewDigest(digest.Hash, digest.SizeBytes)
-}
-
 // NewDigestFromCompactBinary constructs a Digest object by reading data
 // from a ByteReader that contains data that was generated using
 // Digest.GetCompactBinary().
 func (in InstanceName) NewDigestFromCompactBinary(r io.ByteReader) (Digest, error) {
-	hashLength, err := r.ReadByte()
+	digestFunctionEnum, err := r.ReadByte()
+	if err != nil {
+		return BadDigest, err
+	}
+	digestFunction, err := in.GetDigestFunction(remoteexecution.DigestFunction_Value(digestFunctionEnum), 0)
 	if err != nil {
 		return BadDigest, err
 	}
 
-	hash := make([]byte, 0, hashLength)
-	for i := 0; i < int(hashLength); i++ {
+	hashBytesSize := digestFunction.bareFunction.hashBytesSize
+	hash := make([]byte, 0, hashBytesSize)
+	for i := 0; i < hashBytesSize; i++ {
 		b, err := r.ReadByte()
 		if err != nil {
 			return BadDigest, err
@@ -150,15 +116,7 @@ func (in InstanceName) NewDigestFromCompactBinary(r io.ByteReader) (Digest, erro
 		return BadDigest, err
 	}
 
-	return in.NewDigest(hex.EncodeToString(hash), sizeBytes)
-}
-
-// newDigestUnchecked constructs a Digest object from an instance name,
-// hash and object size without validating its contents.
-func (in InstanceName) newDigestUnchecked(hash string, sizeBytes int64) Digest {
-	return Digest{
-		value: fmt.Sprintf("%s-%d-%s", hash, sizeBytes, in.value),
-	}
+	return digestFunction.NewDigest(hex.EncodeToString(hash), sizeBytes)
 }
 
 func (in InstanceName) String() string {
@@ -181,31 +139,13 @@ func (in InstanceName) GetComponents() []string {
 // used when digests need to be generated outside of such contexts
 // (e.g., on a client that is uploading actions into the Content
 // Addressable Storage).
-func (in InstanceName) GetDigestFunction(digestFunction remoteexecution.DigestFunction_Value) (Function, error) {
-	var hasherFactory func() hash.Hash
-	var hashLength int
-	switch digestFunction {
-	case remoteexecution.DigestFunction_MD5:
-		hasherFactory = md5.New
-		hashLength = md5.Size * 2
-	case remoteexecution.DigestFunction_SHA1:
-		hasherFactory = sha1.New
-		hashLength = sha1.Size * 2
-	case remoteexecution.DigestFunction_SHA256:
-		hasherFactory = sha256.New
-		hashLength = sha256.Size * 2
-	case remoteexecution.DigestFunction_SHA384:
-		hasherFactory = sha512.New384
-		hashLength = sha512.Size384 * 2
-	case remoteexecution.DigestFunction_SHA512:
-		hasherFactory = sha512.New
-		hashLength = sha512.Size * 2
-	default:
+func (in InstanceName) GetDigestFunction(digestFunction remoteexecution.DigestFunction_Value, fallbackHashLength int) (Function, error) {
+	bareFunction := getBareFunction(digestFunction, fallbackHashLength)
+	if bareFunction == nil {
 		return Function{}, status.Error(codes.InvalidArgument, "Unknown digest function")
 	}
 	return Function{
-		instanceName:  in,
-		hasherFactory: hasherFactory,
-		hashLength:    hashLength,
+		instanceName: in,
+		bareFunction: bareFunction,
 	}, nil
 }

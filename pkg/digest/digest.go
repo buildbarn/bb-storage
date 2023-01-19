@@ -1,10 +1,6 @@
 package digest
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
 	"hash"
@@ -20,6 +16,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// The offset within the digest string at which the hash starts. We
+// currently assume that all supported digest functions have an
+// enumeration value below 10, meaning all digests starts with "[0-9]-".
+const hashStart = 2
+
 // Automatically register all compression algorithms that are part of
 // the protocol.
 var (
@@ -27,15 +28,30 @@ var (
 		remoteexecution.Compressor_IDENTITY: "blobs",
 	}
 	compressorNameToEnum = map[string]remoteexecution.Compressor_Value{}
+
+	digestFunctionEnumToMidfix       = map[remoteexecution.DigestFunction_Value]string{}
+	digestFunctionNameToBareFunction = map[string]*bareFunction{}
 )
 
 func init() {
+	// Generate Bytestream path midfixes for compressor functions.
 	for value, name := range remoteexecution.Compressor_Value_name {
 		enum := remoteexecution.Compressor_Value(value)
 		if enum != remoteexecution.Compressor_IDENTITY {
 			lowerName := strings.ToLower(name)
 			compressorEnumToMidfix[enum] = "compressed-blobs/" + lowerName
 			compressorNameToEnum[lowerName] = enum
+		}
+	}
+
+	// Generate Bytestream path midfixes for digest functions. For
+	// compatibility, these should only be added for digest
+	// functions exceeding enumeration value 7.
+	for _, digestFunction := range SupportedDigestFunctions {
+		if digestFunction > 7 {
+			lowerName := strings.ToLower(digestFunction.String())
+			digestFunctionEnumToMidfix[digestFunction] = lowerName
+			digestFunctionNameToBareFunction[lowerName] = getBareFunction(digestFunction, 0)
 		}
 	}
 }
@@ -68,17 +84,6 @@ type Digest struct {
 // used as a function return value for error cases.
 var BadDigest Digest
 
-// SupportedDigestFunctions is the list of digest functions supported by
-// digest.Digest, using the enumeration values that are part of the
-// Remote Execution protocol.
-var SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
-	remoteexecution.DigestFunction_MD5,
-	remoteexecution.DigestFunction_SHA1,
-	remoteexecution.DigestFunction_SHA256,
-	remoteexecution.DigestFunction_SHA384,
-	remoteexecution.DigestFunction_SHA512,
-}
-
 // RemoveUnsupportedDigestFunctions returns the intersection between a
 // list of provided digest functions and ones supported by this
 // implementation. Results are guaranteed to be deduplicated and in
@@ -101,9 +106,9 @@ func RemoveUnsupportedDigestFunctions(reported []remoteexecution.DigestFunction_
 
 // Unpack the individual hash, size and instance name fields from the
 // string representation stored inside the Digest object.
-func (d Digest) unpack() (int, int64, int) {
+func (d Digest) unpack() (remoteexecution.DigestFunction_Value, int, int64, int) {
 	// Extract the leading hash.
-	hashEnd := md5.Size * 2
+	hashEnd := shortestSupportedHashStringSize
 	for d.value[hashEnd] != '-' {
 		hashEnd++
 	}
@@ -116,18 +121,15 @@ func (d Digest) unpack() (int, int64, int) {
 		sizeBytesEnd++
 	}
 
-	return hashEnd, sizeBytes, sizeBytesEnd
+	return remoteexecution.DigestFunction_Value(d.value[0] - '0'), hashEnd, sizeBytes, sizeBytesEnd
 }
 
 // MustNewDigest constructs a Digest similar to NewDigest, but never
 // returns an error. Instead, execution will abort if the resulting
 // instance would be degenerate. Useful for unit testing.
-func MustNewDigest(instanceName, hash string, sizeBytes int64) Digest {
-	in, err := NewInstanceName(instanceName)
-	if err != nil {
-		panic(err)
-	}
-	d, err := in.NewDigest(hash, sizeBytes)
+func MustNewDigest(instanceName string, digestFunctionEnum remoteexecution.DigestFunction_Value, hash string, sizeBytes int64) Digest {
+	digestFunction := MustNewFunction(instanceName, digestFunctionEnum)
+	d, err := digestFunction.NewDigest(hash, sizeBytes)
 	if err != nil {
 		panic(err)
 	}
@@ -137,8 +139,8 @@ func MustNewDigest(instanceName, hash string, sizeBytes int64) Digest {
 // NewDigestFromByteStreamReadPath creates a Digest from a string having
 // one of the following formats:
 //
-// - ${instanceName}/blobs/${hash}/${size}
-// - ${instanceName}/compressed-blobs/${compressor}/${hash}/${size}
+// - ${instanceName}/blobs/${digestFunction}/${hash}/${size}
+// - ${instanceName}/compressed-blobs/${compressor}/${digestFunction}/${hash}/${size}
 //
 // This notation is used to read files through the ByteStream service.
 func NewDigestFromByteStreamReadPath(path string) (Digest, remoteexecution.Compressor_Value, error) {
@@ -146,13 +148,13 @@ func NewDigestFromByteStreamReadPath(path string) (Digest, remoteexecution.Compr
 	if len(fields) < 3 {
 		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 	}
-	split := len(fields) - 3
-	if fields[split] != "blobs" {
-		// Second from last component may be a compression method.
-		if len(fields) < 4 {
+	// Determine the end of the instance name.
+	split := 0
+	for fields[split] != "blobs" && fields[split] != "compressed-blobs" {
+		split++
+		if split > len(fields)-3 {
 			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
 		}
-		split = len(fields) - 4
 	}
 	return newDigestFromByteStreamPathCommon(fields[:split], fields[split:])
 }
@@ -160,8 +162,8 @@ func NewDigestFromByteStreamReadPath(path string) (Digest, remoteexecution.Compr
 // NewDigestFromByteStreamWritePath creates a Digest from a string
 // having one of the following formats:
 //
-// - ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}/${path}
-// - ${instanceName}/uploads/${uuid}/compressed-blobs/${compressor}/${hash}/${size}/${path}
+// - ${instanceName}/uploads/${uuid}/blobs/${digestFunction}/${hash}/${size}/${path}
+// - ${instanceName}/uploads/${uuid}/compressed-blobs/${compressor}/${digestFunction}/${hash}/${size}/${path}
 //
 // This notation is used to write files through the ByteStream service.
 func NewDigestFromByteStreamWritePath(path string) (Digest, remoteexecution.Compressor_Value, error) {
@@ -184,6 +186,11 @@ func NewDigestFromByteStreamWritePath(path string) (Digest, remoteexecution.Comp
 }
 
 func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, remoteexecution.Compressor_Value, error) {
+	instanceName, err := NewInstanceNameFromComponents(header)
+	if err != nil {
+		return BadDigest, remoteexecution.Compressor_IDENTITY, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
+	}
+
 	// Remove the leading compression scheme name.
 	var compressor remoteexecution.Compressor_Value
 	switch trailer[0] {
@@ -197,54 +204,68 @@ func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, remote
 			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Errorf(codes.Unimplemented, "Unsupported compression scheme %#v", trailer[1])
 		}
 		trailer = trailer[2:]
-		if len(trailer) < 2 {
-			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
-		}
 	}
 
+	bareFunction, ok := digestFunctionNameToBareFunction[trailer[0]]
+	if ok {
+		// Explicit digest function name provided.
+		trailer = trailer[1:]
+	} else {
+		// Infer digest function from the hash length.
+		bareFunction = getBareFunction(remoteexecution.DigestFunction_UNKNOWN, len(trailer[0]))
+		if bareFunction == nil {
+			return BadDigest, remoteexecution.Compressor_IDENTITY, status.Errorf(codes.InvalidArgument, "Unsupported digest function %#v", trailer[0])
+		}
+	}
+	digestFunction := Function{
+		instanceName: instanceName,
+		bareFunction: bareFunction,
+	}
+
+	if len(trailer) < 2 {
+		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Error(codes.InvalidArgument, "Invalid resource naming scheme")
+	}
 	sizeBytes, err := strconv.ParseInt(trailer[1], 10, 64)
 	if err != nil {
 		return BadDigest, remoteexecution.Compressor_IDENTITY, status.Errorf(codes.InvalidArgument, "Invalid blob size %#v", trailer[1])
 	}
-	instanceName, err := NewInstanceNameFromComponents(header)
-	if err != nil {
-		return BadDigest, remoteexecution.Compressor_IDENTITY, util.StatusWrapf(err, "Invalid instance name %#v", strings.Join(header, "/"))
-	}
-	d, err := instanceName.NewDigest(trailer[0], sizeBytes)
+	d, err := digestFunction.NewDigest(trailer[0], sizeBytes)
 	return d, compressor, err
 }
 
 // GetByteStreamReadPath converts the Digest to a string having
 // one of the following formats:
 //
-// - ${instanceName}/blobs/${hash}/${size}
-// - ${instanceName}/compressed-blobs/${compressor}/${hash}/${size}
+// - ${instanceName}/blobs/${digestFunction}/${hash}/${size}
+// - ${instanceName}/compressed-blobs/${compressor}/${digestFunction}/${hash}/${size}
 //
 // This notation is used to read files through the ByteStream service.
 func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Value) string {
-	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	digestFunction, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
 		compressorEnumToMidfix[compressor],
-		d.value[:hashEnd],
+		digestFunctionEnumToMidfix[digestFunction],
+		d.value[hashStart:hashEnd],
 		strconv.FormatInt(sizeBytes, 10))
 }
 
 // GetByteStreamWritePath converts the Digest to a string having one of
 // the following formats:
 //
-// - ${instanceName}/uploads/${uuid}/blobs/${hash}/${size}
-// - ${instanceName}/uploads/${uuid}/compressed-blobs/${compressor}/${hash}/${size}
+// - ${instanceName}/uploads/${uuid}/blobs/${digestFunction}/${hash}/${size}
+// - ${instanceName}/uploads/${uuid}/compressed-blobs/${digestFunction}/${compressor}/${hash}/${size}
 //
 // This notation is used to write files through the ByteStream service.
 func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecution.Compressor_Value) string {
-	hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	digestFunction, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
 		"uploads",
 		uuid.String(),
 		compressorEnumToMidfix[compressor],
-		d.value[:hashEnd],
+		digestFunctionEnumToMidfix[digestFunction],
+		d.value[hashStart:hashEnd],
 		strconv.FormatInt(sizeBytes, 10))
 }
 
@@ -252,16 +273,16 @@ func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecutio
 // execution protocol, so that it may be stored in messages returned to
 // the client.
 func (d Digest) GetProto() *remoteexecution.Digest {
-	hashEnd, sizeBytes, _ := d.unpack()
+	_, hashEnd, sizeBytes, _ := d.unpack()
 	return &remoteexecution.Digest{
-		Hash:      d.value[:hashEnd],
+		Hash:      d.value[hashStart:hashEnd],
 		SizeBytes: sizeBytes,
 	}
 }
 
 // GetInstanceName returns the instance name of the object.
 func (d Digest) GetInstanceName() InstanceName {
-	_, _, sizeBytesEnd := d.unpack()
+	_, _, _, sizeBytesEnd := d.unpack()
 	return InstanceName{
 		value: d.value[sizeBytesEnd+1:],
 	}
@@ -269,7 +290,8 @@ func (d Digest) GetInstanceName() InstanceName {
 
 // GetHashBytes returns the hash of the object as a slice of bytes.
 func (d Digest) GetHashBytes() []byte {
-	hash, err := hex.DecodeString(d.GetHashString())
+	_, hashEnd, _, _ := d.unpack()
+	hash, err := hex.DecodeString(d.value[hashStart:hashEnd])
 	if err != nil {
 		panic("Failed to decode digest hash, even though its contents have already been validated")
 	}
@@ -278,13 +300,13 @@ func (d Digest) GetHashBytes() []byte {
 
 // GetHashString returns the hash of the object as a string.
 func (d Digest) GetHashString() string {
-	hashEnd, _, _ := d.unpack()
-	return d.value[:hashEnd]
+	_, hashEnd, _, _ := d.unpack()
+	return d.value[hashStart:hashEnd]
 }
 
 // GetSizeBytes returns the size of the object, in bytes.
 func (d Digest) GetSizeBytes() int64 {
-	_, sizeBytes, _ := d.unpack()
+	_, _, sizeBytes, _ := d.unpack()
 	return sizeBytes
 }
 
@@ -320,7 +342,7 @@ const (
 func (d Digest) GetKey(format KeyFormat) string {
 	switch format {
 	case KeyWithoutInstance:
-		_, _, sizeBytesEnd := d.unpack()
+		_, _, _, sizeBytesEnd := d.unpack()
 		return d.value[:sizeBytesEnd]
 	case KeyWithInstance:
 		return d.value
@@ -341,30 +363,16 @@ func (d Digest) ToSingletonSet() Set {
 	}
 }
 
-func getHasherFactory(hashLength int) func() hash.Hash {
-	switch hashLength {
-	case md5.Size * 2:
-		return md5.New
-	case sha1.Size * 2:
-		return sha1.New
-	case sha256.Size * 2:
-		return sha256.New
-	case sha512.Size384 * 2:
-		return sha512.New384
-	case sha512.Size * 2:
-		return sha512.New
-	default:
-		panic("Digest hash is of unknown type")
-	}
-}
-
 // NewHasher creates a standard hash.Hash object that may be used to
 // compute a checksum of data. The hash.Hash object uses the same
 // algorithm as the one that was used to create the digest, making it
 // possible to validate data against a digest.
-func (d Digest) NewHasher() hash.Hash {
-	hashEnd, _, _ := d.unpack()
-	return getHasherFactory(hashEnd)()
+//
+// The expected size can be used as a hint to create an appropriately
+// sized hasher. If the expected size is unknown, provide math.MaxInt64.
+func (d Digest) NewHasher(expectedSizeBytes int64) hash.Hash {
+	digestFunction, _, _, _ := d.unpack()
+	return getBareFunction(digestFunction, 0).hasherFactory(expectedSizeBytes)
 }
 
 // GetDigestFunction returns a Function object that can be used to
@@ -373,13 +381,12 @@ func (d Digest) NewHasher() hash.Hash {
 // to be derived based on an existing instance. For example, to generate
 // a digest of an output file of a build action, given an action digest.
 func (d Digest) GetDigestFunction() Function {
-	hashEnd, _, sizeBytesEnd := d.unpack()
+	digestFunction, _, _, sizeBytesEnd := d.unpack()
 	return Function{
 		instanceName: InstanceName{
 			value: d.value[sizeBytesEnd+1:],
 		},
-		hasherFactory: getHasherFactory(hashEnd),
-		hashLength:    hashEnd,
+		bareFunction: getBareFunction(digestFunction, 0),
 	}
 }
 
@@ -387,8 +394,8 @@ func (d Digest) GetDigestFunction() Function {
 // name and uses the same hashing algorithm as a provided Function
 // object.
 func (d Digest) UsesDigestFunction(f Function) bool {
-	hashEnd, _, sizeBytesEnd := d.unpack()
-	return hashEnd == f.hashLength && d.value[sizeBytesEnd+1:] == f.instanceName.value
+	digestFunction, _, _, sizeBytesEnd := d.unpack()
+	return digestFunction == f.bareFunction.enumValue && d.value[sizeBytesEnd+1:] == f.instanceName.value
 }
 
 // GetDigestsWithParentInstanceNames returns a list of Digest objects
@@ -400,7 +407,7 @@ func (d Digest) UsesDigestFunction(f Function) bool {
 // list of six digests, having instance names "", "this", "this/is",
 // "this/is/an", "this/is/an/instance" and "this/is/an/instance/name".
 func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
-	_, _, sizeBytesEnd := d.unpack()
+	_, _, _, sizeBytesEnd := d.unpack()
 	instanceNameStart := sizeBytesEnd + 1
 	digestWithoutInstanceName := Digest{
 		value: d.value[:instanceNameStart],
@@ -444,9 +451,9 @@ func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
 // This representation is used by the NFSv4 server, as it needs to
 // encode digests in file handles.
 func (d Digest) GetCompactBinary() []byte {
-	hashEnd, sizeBytes, _ := d.unpack()
+	digestFunction, hashEnd, sizeBytes, _ := d.unpack()
 
-	hash, err := hex.DecodeString(d.value[:hashEnd])
+	hash, err := hex.DecodeString(d.value[hashStart:hashEnd])
 	if err != nil {
 		panic("Failed to decode digest hash, even though its contents have already been validated")
 	}
@@ -454,5 +461,5 @@ func (d Digest) GetCompactBinary() []byte {
 	var encodedSize [binary.MaxVarintLen64]byte
 	encodedSizeLength := binary.PutVarint(encodedSize[:], sizeBytes)
 
-	return append(append([]byte{byte(len(hash))}, hash...), encodedSize[:encodedSizeLength]...)
+	return append(append([]byte{byte(digestFunction)}, hash...), encodedSize[:encodedSizeLength]...)
 }

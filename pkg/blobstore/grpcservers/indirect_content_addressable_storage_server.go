@@ -30,14 +30,21 @@ func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess,
 }
 
 func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
+	if len(in.BlobDigests) == 0 {
+		return &remoteexecution.FindMissingBlobsResponse{}, nil
+	}
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigests[0].GetHash()))
+	if err != nil {
+		return nil, err
+	}
 
 	inDigests := digest.NewSetBuilder()
 	for _, partialDigest := range in.BlobDigests {
-		digest, err := instanceName.NewDigestFromProto(partialDigest)
+		digest, err := digestFunction.NewDigestFromProto(partialDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -57,14 +64,21 @@ func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx cont
 }
 
 func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx context.Context, in *icas.BatchUpdateReferencesRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
+	if len(in.Requests) == 0 {
+		return &remoteexecution.BatchUpdateBlobsResponse{}, nil
+	}
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.Requests[0].Digest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
 
 	responses := make([]*remoteexecution.BatchUpdateBlobsResponse_Response, 0, len(in.Requests))
 	for _, request := range in.Requests {
-		digest, err := instanceName.NewDigestFromProto(request.Digest)
+		digest, err := digestFunction.NewDigestFromProto(request.Digest)
 		if err == nil {
 			err = s.blobAccess.Put(
 				ctx,
@@ -87,8 +101,12 @@ func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Conte
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.Digest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
 
-	digest, err := instanceName.NewDigestFromProto(in.Digest)
+	digest, err := digestFunction.NewDigestFromProto(in.Digest)
 	if err != nil {
 		return nil, err
 	}

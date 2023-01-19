@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
@@ -23,7 +24,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 	sink := mock.NewMockBlobAccess(ctrl)
 	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
 
-	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	helloDigestSet := helloDigest.ToSingletonSet()
 
 	t.Run("SuccessNoop", func(t *testing.T) {
@@ -54,7 +55,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 3-8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 	})
 
 	t.Run("ReplicateMultipleError", func(t *testing.T) {
@@ -62,7 +63,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		base.EXPECT().ReplicateMultiple(ctx, helloDigestSet).Return(status.Error(codes.Internal, "Disk I/O failure"))
 
 		_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to replicate blob 8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to replicate blob 3-8b1a9953c4611296a827abf8c47804d7-5-hello: Disk I/O failure"), err)
 	})
 
 	t.Run("GetError", func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			go func() {
 				_, err := replicator.ReplicateSingle(ctx, helloDigest).ToByteSlice(10)
-				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
+				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to check for the existence of blob 3-8b1a9953c4611296a827abf8c47804d7-5-hello prior to replicating: Disk I/O failure"), err)
 
 				done <- struct{}{}
 			}()
@@ -151,9 +152,9 @@ func TestDeduplicatingBlobReplicatorReplicateComposite(t *testing.T) {
 	sink := mock.NewMockBlobAccess(ctrl)
 	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
 
-	parentDigest := digest.MustNewDigest("hello", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	parentDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	parentDigestSet := parentDigest.ToSingletonSet()
-	childDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	// Only a single test for the success case is provided, as the
@@ -180,9 +181,9 @@ func TestDeduplicatingBlobReplicatorReplicateMultiple(t *testing.T) {
 	sink := mock.NewMockBlobAccess(ctrl)
 	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
 
-	helloDigest := digest.MustNewDigest("hello", "8b1a9953c4611296a827abf8c47804d7", 5)
+	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	helloDigestSet := helloDigest.ToSingletonSet()
-	worldDigest := digest.MustNewDigest("world", "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
+	worldDigest := digest.MustNewDigest("world", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 	worldDigestSet := worldDigest.ToSingletonSet()
 	allDigests := digest.NewSetBuilder().Add(helloDigest).Add(worldDigest).Build()
 

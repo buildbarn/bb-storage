@@ -85,7 +85,7 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 	// immediate ErrorHandler evaluation. It is sufficient to only
 	// test ToByteSlice().
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("ImmediateSuccess", func(t *testing.T) {
 		errorHandler := mock.NewMockErrorHandler(ctrl)
@@ -131,7 +131,7 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 func TestWithErrorHandlerOnCASBuffersIntoWriter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -313,7 +313,7 @@ func TestWithErrorHandlerOnCASBuffersToByteSlice(t *testing.T) {
 func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -409,7 +409,7 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
@@ -488,7 +488,7 @@ func TestWithErrorHandlerOnCASBuffersToReader(t *testing.T) {
 func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)
@@ -513,7 +513,7 @@ func TestWithErrorHandlerOnCASBuffersCloneCopy(t *testing.T) {
 func TestWithErrorHandlerOnCASBuffersCloneStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	digest := digest.MustNewDigest("instance", "3e25960a79dbc69b674cd4ec67a72c62", 11)
+	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	reader1 := mock.NewMockReadCloser(ctrl)
 	reader1.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Connection closed"))
 	reader1.EXPECT().Close().Return(nil)

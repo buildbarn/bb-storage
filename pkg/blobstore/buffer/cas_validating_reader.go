@@ -24,13 +24,14 @@ type casValidatingReader struct {
 // way that it does not allow access to the full stream's contents in
 // case of size or checksum mismatches.
 func newCASValidatingReader(r io.ReadCloser, digest digest.Digest, source Source) io.ReadCloser {
+	sizeBytes := digest.GetSizeBytes()
 	return &casValidatingReader{
 		ReadCloser: r,
 		digest:     digest,
 		source:     source,
 
-		hasher:         digest.NewHasher(),
-		bytesRemaining: digest.GetSizeBytes(),
+		hasher:         digest.NewHasher(sizeBytes),
+		bytesRemaining: sizeBytes,
 	}
 }
 

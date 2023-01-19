@@ -29,6 +29,7 @@ go_test(
         "//pkg/blobstore/buffer",
         "//pkg/digest",
         "//pkg/testutil",
+        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",

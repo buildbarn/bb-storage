@@ -78,17 +78,21 @@ func main() {
 	if err != nil {
 		log.Fatal("Invalid instance name: ", err)
 	}
+	digestFunction, err := instanceName.GetDigestFunction(configuration.DigestFunction, 0)
+	if err != nil {
+		log.Fatal("Invalid digest function: ", err)
+	}
 
 	// Enqueue objects for replication.
 	for i, action := range configuration.Actions {
-		actionDigest, err := instanceName.NewDigestFromProto(action)
+		actionDigest, err := digestFunction.NewDigestFromProto(action)
 		if err != nil {
 			log.Fatal("Invalid action digest at index %d: %s", i, err)
 		}
 		nestedReplicator.EnqueueAction(actionDigest)
 	}
 	for i, blob := range configuration.Blobs {
-		blobDigest, err := instanceName.NewDigestFromProto(blob)
+		blobDigest, err := digestFunction.NewDigestFromProto(blob)
 		if err != nil {
 			log.Fatal("Invalid blob digest at index %d: %s", i, err)
 		}
@@ -97,14 +101,14 @@ func main() {
 		}
 	}
 	for i, directory := range configuration.Directories {
-		directoryDigest, err := instanceName.NewDigestFromProto(directory)
+		directoryDigest, err := digestFunction.NewDigestFromProto(directory)
 		if err != nil {
 			log.Fatal("Invalid directory digest at index %d: %s", i, err)
 		}
 		nestedReplicator.EnqueueDirectory(directoryDigest)
 	}
 	for i, tree := range configuration.Trees {
-		treeDigest, err := instanceName.NewDigestFromProto(tree)
+		treeDigest, err := digestFunction.NewDigestFromProto(tree)
 		if err != nil {
 			log.Fatalf("Invalid tree digest at index %d: %s", i, err)
 		}

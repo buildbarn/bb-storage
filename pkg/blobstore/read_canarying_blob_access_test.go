@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -37,7 +38,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// Writes should always go to the source backend. There
 		// is no point in writing objects to a replica, as it
 		// would need to replicate it to the source anyway.
-		blobDigest := digest.MustNewDigest("put", "8b1a9953c4611296a827abf8c47804d7", 5)
+		blobDigest := digest.MustNewDigest("put", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		sourceBackend.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(100)
@@ -50,7 +51,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		blobDigest := digest.MustNewDigest("get", "8b1a9953c4611296a827abf8c47804d7", 5)
+		blobDigest := digest.MustNewDigest("get", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 		// In the initial state, calls to Get() should go to the
 		// replica backend, just to see whether it's online.
@@ -108,8 +109,8 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// GetFromComposite(), as most of the logic is shared
 		// with Get(). Just test that traffic is capable of
 		// going to both backends.
-		parentDigest := digest.MustNewDigest("get-from-composite", "8b1a9953c4611296a827abf8c47804d7", 100)
-		childDigest := digest.MustNewDigest("get-from-composite", "80cd354fb9a929ffad1b059d909b3b69", 10)
+		parentDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 100)
+		childDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "80cd354fb9a929ffad1b059d909b3b69", 10)
 		slicer := mock.NewMockBlobSlicer(ctrl)
 
 		clock.EXPECT().Now().Return(time.Unix(15000, 0))
@@ -135,13 +136,13 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(20000, 0))
 		replicaBackend.EXPECT().FindMissing(
 			ctx,
-			digest.MustNewDigest("find-missing/down", "11111111111111111111111111111111", 1).ToSingletonSet(),
+			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet(),
 		).Return(digest.EmptySet, status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(20000, 100000000))
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.MustNewDigest("find-missing/down", "11111111111111111111111111111111", 1).ToSingletonSet())
+			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet())
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Replica, instance name \"find-missing/down\": Server is offline"), err)
 
 		// Perform another call with a set that contains digests
@@ -156,44 +157,44 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		replicaBackend.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("find-missing/1", "11111111111111111111111111111111", 1)).
-				Add(digest.MustNewDigest("find-missing/1", "22222222222222222222222222222222", 2)).
+				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
+				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "22222222222222222222222222222222", 2)).
 				Build(),
-		).Return(digest.MustNewDigest("find-missing/1", "11111111111111111111111111111111", 1).ToSingletonSet(), nil)
+		).Return(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet(), nil)
 		clock.EXPECT().Now().Return(time.Unix(20001, 100000000)).Times(2)
 		replicaBackend.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("find-missing/2", "33333333333333333333333333333333", 3)).
-				Add(digest.MustNewDigest("find-missing/2", "44444444444444444444444444444444", 4)).
+				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
+				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "44444444444444444444444444444444", 4)).
 				Build(),
-		).Return(digest.MustNewDigest("find-missing/2", "33333333333333333333333333333333", 3).ToSingletonSet(), nil)
+		).Return(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3).ToSingletonSet(), nil)
 		clock.EXPECT().Now().Return(time.Unix(20001, 100000000)).Times(2)
 		sourceBackend.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("find-missing/down", "55555555555555555555555555555555", 5)).
-				Add(digest.MustNewDigest("find-missing/down", "66666666666666666666666666666666", 6)).
+				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
+				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "66666666666666666666666666666666", 6)).
 				Build(),
-		).Return(digest.MustNewDigest("find-missing/down", "55555555555555555555555555555555", 5).ToSingletonSet(), nil)
+		).Return(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5).ToSingletonSet(), nil)
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("find-missing/1", "11111111111111111111111111111111", 1)).
-				Add(digest.MustNewDigest("find-missing/1", "22222222222222222222222222222222", 2)).
-				Add(digest.MustNewDigest("find-missing/2", "33333333333333333333333333333333", 3)).
-				Add(digest.MustNewDigest("find-missing/2", "44444444444444444444444444444444", 4)).
-				Add(digest.MustNewDigest("find-missing/down", "55555555555555555555555555555555", 5)).
-				Add(digest.MustNewDigest("find-missing/down", "66666666666666666666666666666666", 6)).
+				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
+				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "22222222222222222222222222222222", 2)).
+				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
+				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "44444444444444444444444444444444", 4)).
+				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
+				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "66666666666666666666666666666666", 6)).
 				Build())
 		require.NoError(t, err)
 		require.Equal(
 			t,
 			digest.NewSetBuilder().
-				Add(digest.MustNewDigest("find-missing/1", "11111111111111111111111111111111", 1)).
-				Add(digest.MustNewDigest("find-missing/2", "33333333333333333333333333333333", 3)).
-				Add(digest.MustNewDigest("find-missing/down", "55555555555555555555555555555555", 5)).
+				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
+				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
+				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
 				Build(),
 			missing)
 	})

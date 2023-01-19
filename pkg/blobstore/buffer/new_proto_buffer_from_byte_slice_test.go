@@ -119,7 +119,7 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", "f988a36ed06e17f6c4a258ec8e03fe88", 123)))).ReadAt(p[:], 0)
+			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "f988a36ed06e17f6c4a258ec8e03fe88", 123)))).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 	})

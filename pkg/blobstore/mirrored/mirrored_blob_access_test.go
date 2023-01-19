@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
@@ -23,7 +24,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 	backendB := mock.NewMockBlobAccess(ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
-	blobDigest := digest.MustNewDigest("default", "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
+	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
 
 	t.Run("Success", func(t *testing.T) {
 		// Requests should alternate between backends to spread
@@ -93,8 +94,8 @@ func TestMirroredBlobAccessGetFromComposite(t *testing.T) {
 	backendB := mock.NewMockBlobAccess(ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
-	parentDigest := digest.MustNewDigest("default", "834c514174f3a7d5952dfa68d4b657f3c4cf78b3973dcf2721731c3861559828", 100)
-	childDigest := digest.MustNewDigest("default", "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
+	parentDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "834c514174f3a7d5952dfa68d4b657f3c4cf78b3973dcf2721731c3861559828", 100)
+	childDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
 	slicer := mock.NewMockBlobSlicer(ctrl)
 
 	// We assume that tests for Get() provides coverage for other
@@ -118,7 +119,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 	backendB := mock.NewMockBlobAccess(ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
-	blobDigest := digest.MustNewDigest("default", "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
+	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
 	blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 
 	t.Run("Success", func(t *testing.T) {
@@ -184,10 +185,10 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	backendB := mock.NewMockBlobAccess(ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
-	digestNone := digest.MustNewDigest("default", "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
-	digestA := digest.MustNewDigest("default", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
-	digestB := digest.MustNewDigest("default", "522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2", 9)
-	digestBoth := digest.MustNewDigest("default", "9c6079651d4062b6811f93061cb6a768a60e51d714bddffee99b1173c6580580", 5)
+	digestNone := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
+	digestA := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
+	digestB := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2", 9)
+	digestBoth := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "9c6079651d4062b6811f93061cb6a768a60e51d714bddffee99b1173c6580580", 5)
 	allDigests := digest.NewSetBuilder().Add(digestNone).Add(digestA).Add(digestB).Add(digestBoth).Build()
 	onlyOnA := digestA.ToSingletonSet()
 	onlyOnB := digestB.ToSingletonSet()
