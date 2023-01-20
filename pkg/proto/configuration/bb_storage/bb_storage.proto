@@ -70,6 +70,10 @@ message ApplicationConfiguration {
   // (ISCC).
   NonScannableBlobAccessConfiguration initial_size_class_cache = 11;
 
+  // Optional: Blobstore configuration for the File System Access Cache
+  // (FSAC).
+  NonScannableBlobAccessConfiguration file_system_access_cache = 19;
+
   // Was 'content_addressable_storage_authorizers',
   // 'indirect_content_addressable_storage_authorizers',
   // 'action_cache_authorizers and

@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package buildbarn.fsac;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/fsac";
+
+// The File System Access Cache (FSAC) is a Buildbarn specific data
+// store that workers can use to store information on how build actions
+// access the data stored in the input root. This information can be
+// used during subsequent executions of similar actions to speed up file
+// system access.
+service FileSystemAccessCache {
+  // GetFileSystemAccessProfile() reads a single FileSystemAccessProfile
+  // from the FSAC.
+  rpc GetFileSystemAccessProfile(GetFileSystemAccessProfileRequest)
+      returns (FileSystemAccessProfile);
+
+  // UpdateFileSystemAccessProfile() writes a single
+  // FileSystemAccessProfile message into the FSAC.
+  rpc UpdateFileSystemAccessProfile(UpdateFileSystemAccessProfileRequest)
+      returns (google.protobuf.Empty);
+}
+
+// The file system access profile of a build action.
+message FileSystemAccessProfile {
+  // A Bloom filter that captures paths of regular files and directories
+  // in the input root whose contents have been read. In case files with
+  // the same digest are present in the input root multiple times, there
+  // is no guarantee that all paths are added to the Bloom filter.
+  //
+  // This Bloom filter can be used by workers to perform readahead of
+  // Content Addressable Storage (CAS) objects, thereby reducing the
+  // probability of execution of actions getting suspended to load data
+  // over the network.
+  //
+  // Hashes are computed by taking the FNV-1a hash of the path in the
+  // input root, modulo the size of the Bloom filter. The path uses the
+  // following pattern:
+  //
+  //     (/${filename})*/*
+  //
+  // This means that the root directory uses the empty path. A file
+  // contained in the root directory may use path "/hello.txt". Between
+  // [0, k) trailing slashes are added to the path to obtain k
+  // independent hashes.
+  //
+  // The size of the Bloom filter in bits (m) SHOULD be prime. To be
+  // able to reobtain the exact size in bits, the bits in the final byte
+  // are terminated with a 1 bit, followed by zero or more 0 bits.
+  bytes bloom_filter = 1;
+
+  // The number of hash functions (k) that should be considered when
+  // querying the Bloom filter.
+  uint32 bloom_filter_hash_functions = 2;
+}
+
+message GetFileSystemAccessProfileRequest {
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The digest function that was used to compute the reduced action digest.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 2;
+
+  // The digest of a trimmed down Action message for which a file system
+  // access profile is requested. This digest is obtained by removing
+  // all fields from the original Action, except for 'command_digest'
+  // and 'platform'.
+  //
+  // This means that contents of the input root, the Action's timeout
+  // and the do_not_cache flag are ignored.
+  build.bazel.remote.execution.v2.Digest reduced_action_digest = 3;
+}
+
+message UpdateFileSystemAccessProfileRequest {
+  // The instance of the execution system to operate against.
+  string instance_name = 1;
+
+  // The digest function that was used to compute the reduced action digest.
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 2;
+
+  // The digest of a trimmed down Action message for which a file system
+  // access profile is being stored.
+  build.bazel.remote.execution.v2.Digest reduced_action_digest = 3;
+
+  // The file system access profile to store.
+  FileSystemAccessProfile file_system_access_profile = 4;
+}

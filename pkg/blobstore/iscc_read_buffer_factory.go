@@ -29,16 +29,17 @@ func (f isccReadBufferFactory) NewBufferFromReaderAt(digest digest.Digest, r buf
 // for objects stored in the Initial Size Class Cache (ISCC).
 var ISCCReadBufferFactory ReadBufferFactory = isccReadBufferFactory{}
 
-// ISCCGetReducedActionDigest computes the digest of an Initial Size
-// Class Cache (ISCC) object that corresponds to a given Action.
+// GetReducedActionDigest computes the digest of an Initial Size Class
+// Cache (ISCC), or File System Access Cache (FSAC) object that
+// corresponds to a given Action.
 //
 // By only considering the Action's command digest and the platform
 // properties when generating the digest, actions with equal command
-// line arguments and environment variables will have the same ISCC
+// line arguments and environment variables will have the same ISCC/FSAC
 // digest, even if their input roots differ. This should be an adequate
 // heuristic for grouping actions with similar performance
 // characteristics.
-func ISCCGetReducedActionDigest(digestFunction digest.Function, action *remoteexecution.Action) (digest.Digest, error) {
+func GetReducedActionDigest(digestFunction digest.Function, action *remoteexecution.Action) (digest.Digest, error) {
 	data, err := proto.Marshal(&remoteexecution.Action{
 		CommandDigest: action.CommandDigest,
 		Platform:      action.Platform,

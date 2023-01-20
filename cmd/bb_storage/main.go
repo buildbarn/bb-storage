@@ -15,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage"
+	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -118,6 +119,22 @@ func main() {
 		initialSizeClassCache = authorizedBackend
 	}
 
+	// Buildbarn extension: File System Access Cache (FSAC).
+	var fileSystemAccessCache blobstore.BlobAccess
+	if configuration.FileSystemAccessCache != nil {
+		_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
+			terminationContext,
+			terminationGroup,
+			configuration.FileSystemAccessCache,
+			blobstore_configuration.NewFSACBlobAccessCreator(
+				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes)))
+		if err != nil {
+			log.Fatal("Failed to create File System Access Cache: ", err)
+		}
+		fileSystemAccessCache = authorizedBackend
+	}
+
 	var capabilitiesProviders []capabilities.Provider
 	if len(cacheCapabilitiesProviders) > 0 {
 		capabilitiesProviders = append(
@@ -177,6 +194,13 @@ func main() {
 					s,
 					grpcservers.NewInitialSizeClassCacheServer(
 						initialSizeClassCache,
+						int(configuration.MaximumMessageSizeBytes)))
+			}
+			if fileSystemAccessCache != nil {
+				fsac.RegisterFileSystemAccessCacheServer(
+					s,
+					grpcservers.NewFileSystemAccessCacheServer(
+						fileSystemAccessCache,
 						int(configuration.MaximumMessageSizeBytes)))
 			}
 			if buildQueue != nil {

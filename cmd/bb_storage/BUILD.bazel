@@ -17,6 +17,7 @@ go_library(
         "//pkg/global",
         "//pkg/grpc",
         "//pkg/proto/configuration/bb_storage",
+        "//pkg/proto/fsac",
         "//pkg/proto/icas",
         "//pkg/proto/iscc",
         "//pkg/util",
