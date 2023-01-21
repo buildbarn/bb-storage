@@ -67,9 +67,25 @@ func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 	// yields better performance, as writes through a memory map
 	// would trigger a page fault that causes data to be read.
 	//
+	// The pwrite() system call cannot return a size and error at
+	// the same time. If an error occurs after one or more bytes are
+	// written, it returns the size without an error (a "short
+	// write"). As WriteAt() must return an error in those cases, we
+	// must invoke pwrite() repeatedly.
+	//
 	// TODO: Maybe it makes sense to let unaligned writes that would
 	// trigger reads anyway to go through the memory map?
-	return unix.Pwrite(bd.fd, p, off)
+	nTotal := 0
+	for len(p) > 0 {
+		n, err := unix.Pwrite(bd.fd, p, off)
+		nTotal += n
+		if err != nil {
+			return nTotal, err
+		}
+		p = p[n:]
+		off += int64(n)
+	}
+	return nTotal, nil
 }
 
 func (bd *memoryMappedBlockDevice) Sync() error {
