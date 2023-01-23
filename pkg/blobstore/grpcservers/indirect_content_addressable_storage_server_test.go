@@ -49,7 +49,8 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 			Return(digest.EmptySet, status.Error(codes.Internal, "Hardware failure"))
 
 		_, err := s.FindMissingReferences(ctx, &remoteexecution.FindMissingBlobsRequest{
-			InstanceName: "example",
+			InstanceName:   "example",
+			DigestFunction: remoteexecution.DigestFunction_MD5,
 			BlobDigests: []*remoteexecution.Digest{
 				{
 					Hash:      "8b1a9953c4611296a827abf8c47804d7",
@@ -74,7 +75,8 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 			Return(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(), nil)
 
 		resp, err := s.FindMissingReferences(ctx, &remoteexecution.FindMissingBlobsRequest{
-			InstanceName: "example",
+			InstanceName:   "example",
+			DigestFunction: remoteexecution.DigestFunction_MD5,
 			BlobDigests: []*remoteexecution.Digest{
 				{
 					Hash:      "8b1a9953c4611296a827abf8c47804d7",
@@ -225,7 +227,8 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hardware failure")))
 
 		_, err := s.GetReference(ctx, &icas.GetReferenceRequest{
-			InstanceName: "example",
+			InstanceName:   "example",
+			DigestFunction: remoteexecution.DigestFunction_MD5,
 			Digest: &remoteexecution.Digest{
 				Hash:      "8b1a9953c4611296a827abf8c47804d7",
 				SizeBytes: 5,
@@ -249,7 +252,8 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 
 		resp, err := s.GetReference(ctx, &icas.GetReferenceRequest{
-			InstanceName: "example",
+			InstanceName:   "example",
+			DigestFunction: remoteexecution.DigestFunction_MD5,
 			Digest: &remoteexecution.Digest{
 				Hash:      "8b1a9953c4611296a827abf8c47804d7",
 				SizeBytes: 5,

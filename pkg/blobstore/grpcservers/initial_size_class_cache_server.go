@@ -35,7 +35,7 @@ func (s *initialSizeClassCacheServer) GetPreviousExecutionStats(ctx context.Cont
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.ReducedActionDigest.GetHash()))
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (s *initialSizeClassCacheServer) UpdatePreviousExecutionStats(ctx context.C
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.ReducedActionDigest.GetHash()))
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, 0)
 	if err != nil {
 		return nil, err
 	}

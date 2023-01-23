@@ -30,14 +30,11 @@ func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess,
 }
 
 func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx context.Context, in *remoteexecution.FindMissingBlobsRequest) (*remoteexecution.FindMissingBlobsResponse, error) {
-	if len(in.BlobDigests) == 0 {
-		return &remoteexecution.FindMissingBlobsResponse{}, nil
-	}
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigests[0].GetHash()))
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -64,14 +61,11 @@ func (s *indirectContentAddressableStorageServer) FindMissingReferences(ctx cont
 }
 
 func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx context.Context, in *icas.BatchUpdateReferencesRequest) (*remoteexecution.BatchUpdateBlobsResponse, error) {
-	if len(in.Requests) == 0 {
-		return &remoteexecution.BatchUpdateBlobsResponse{}, nil
-	}
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.Requests[0].Digest.GetHash()))
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +95,7 @@ func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Conte
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
 	}
-	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.Digest.GetHash()))
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, 0)
 	if err != nil {
 		return nil, err
 	}
