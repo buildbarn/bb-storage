@@ -32,8 +32,10 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 	return br.source.Get(ctx, digest).WithTask(func() error {
 		// Let the remote replication service perform the
 		// replication while we stream data back to the client.
+		digestFunction := digest.GetDigestFunction()
 		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
-			InstanceName: digest.GetInstanceName().String(),
+			InstanceName:   digestFunction.GetInstanceName().String(),
+			DigestFunction: digestFunction.GetEnumValue(),
 			BlobDigests: []*remoteexecution.Digest{
 				digest.GetProto(),
 			},
@@ -44,8 +46,10 @@ func (br *remoteBlobReplicator) ReplicateSingle(ctx context.Context, digest dige
 
 func (br *remoteBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
 	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer).WithTask(func() error {
+		digestFunction := parentDigest.GetDigestFunction()
 		_, err := br.replicatorClient.ReplicateBlobs(ctx, &replicator.ReplicateBlobsRequest{
-			InstanceName: parentDigest.GetInstanceName().String(),
+			InstanceName:   digestFunction.GetInstanceName().String(),
+			DigestFunction: digestFunction.GetEnumValue(),
 			BlobDigests: []*remoteexecution.Digest{
 				parentDigest.GetProto(),
 			},
@@ -55,20 +59,22 @@ func (br *remoteBlobReplicator) ReplicateComposite(ctx context.Context, parentDi
 }
 
 func (br *remoteBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
-	// Partition all digests by instance name, as the
+	// Partition all digests by digest function, as the
 	// ReplicateBlobs() RPC can only process digests for a single
-	// instance. This is not a serious limitation, as digest sets
-	// are unlikely to contain digests for multiple instance names.
-	perInstanceDigests := map[digest.InstanceName][]*remoteexecution.Digest{}
+	// instance name and digest function. This is not a serious
+	// limitation, as digest sets are unlikely to contain digests
+	// for multiple instance names.
+	perFunctionDigests := map[digest.Function][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
-		instanceName := digest.GetInstanceName()
-		perInstanceDigests[instanceName] = append(perInstanceDigests[instanceName], digest.GetProto())
+		digestFunction := digest.GetDigestFunction()
+		perFunctionDigests[digestFunction] = append(perFunctionDigests[digestFunction], digest.GetProto())
 	}
-	for instanceName, blobDigests := range perInstanceDigests {
-		// Call ReplicateBlobs() for each instance.
+	for digestFunction, blobDigests := range perFunctionDigests {
+		// Call ReplicateBlobs() for each digest function.
 		request := replicator.ReplicateBlobsRequest{
-			InstanceName: instanceName.String(),
-			BlobDigests:  blobDigests,
+			InstanceName:   digestFunction.GetInstanceName().String(),
+			DigestFunction: digestFunction.GetEnumValue(),
+			BlobDigests:    blobDigests,
 		}
 		if _, err := br.replicatorClient.ReplicateBlobs(ctx, &request); err != nil {
 			return err

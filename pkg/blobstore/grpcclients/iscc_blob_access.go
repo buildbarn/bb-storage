@@ -34,8 +34,10 @@ func NewISCCBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes 
 }
 
 func (ba *isccBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	digestFunction := digest.GetDigestFunction()
 	previousExecutionStats, err := ba.initialSizeClassCacheClient.GetPreviousExecutionStats(ctx, &iscc.GetPreviousExecutionStatsRequest{
-		InstanceName:        digest.GetInstanceName().String(),
+		InstanceName:        digestFunction.GetInstanceName().String(),
+		DigestFunction:      digestFunction.GetEnumValue(),
 		ReducedActionDigest: digest.GetProto(),
 	})
 	if err != nil {
@@ -54,8 +56,10 @@ func (ba *isccBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffe
 	if err != nil {
 		return err
 	}
+	digestFunction := digest.GetDigestFunction()
 	_, err = ba.initialSizeClassCacheClient.UpdatePreviousExecutionStats(ctx, &iscc.UpdatePreviousExecutionStatsRequest{
-		InstanceName:           digest.GetInstanceName().String(),
+		InstanceName:           digestFunction.GetInstanceName().String(),
+		DigestFunction:         digestFunction.GetEnumValue(),
 		ReducedActionDigest:    digest.GetProto(),
 		PreviousExecutionStats: previousExecutionStats.(*iscc.PreviousExecutionStats),
 	})

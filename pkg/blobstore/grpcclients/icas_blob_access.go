@@ -30,9 +30,11 @@ func NewICASBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes 
 }
 
 func (ba *icasBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	digestFunction := digest.GetDigestFunction()
 	reference, err := ba.icasClient.GetReference(ctx, &icas.GetReferenceRequest{
-		InstanceName: digest.GetInstanceName().String(),
-		Digest:       digest.GetProto(),
+		InstanceName:   digestFunction.GetInstanceName().String(),
+		DigestFunction: digestFunction.GetEnumValue(),
+		Digest:         digest.GetProto(),
 	})
 	if err != nil {
 		return buffer.NewBufferFromError(err)
@@ -68,18 +70,18 @@ func (ba *icasBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffe
 }
 
 func (ba *icasBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	// Partition all digests by instance name, as the
+	// Partition all digests by digest function, as the
 	// FindMissingReferences() RPC can only process digests for a
-	// single instance.
-	perInstanceDigests := map[digest.Function][]*remoteexecution.Digest{}
+	// single instance name and digest function.
+	perFunctionDigests := map[digest.Function][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
 		digestFunction := digest.GetDigestFunction()
-		perInstanceDigests[digestFunction] = append(perInstanceDigests[digestFunction], digest.GetProto())
+		perFunctionDigests[digestFunction] = append(perFunctionDigests[digestFunction], digest.GetProto())
 	}
 
 	missingDigests := digest.NewSetBuilder()
-	for digestFunction, blobDigests := range perInstanceDigests {
-		// Call FindMissingReferences() for each instance.
+	for digestFunction, blobDigests := range perFunctionDigests {
+		// Call FindMissingReferences() for each digest function.
 		request := remoteexecution.FindMissingBlobsRequest{
 			InstanceName:   digestFunction.GetInstanceName().String(),
 			BlobDigests:    blobDigests,

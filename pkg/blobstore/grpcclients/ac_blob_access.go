@@ -46,9 +46,11 @@ func NewACBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes in
 }
 
 func (ba *acBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	digestFunction := digest.GetDigestFunction()
 	actionResult, err := ba.actionCacheClient.GetActionResult(ctx, &remoteexecution.GetActionResultRequest{
-		InstanceName: digest.GetInstanceName().String(),
-		ActionDigest: digest.GetProto(),
+		InstanceName:   digestFunction.GetInstanceName().String(),
+		DigestFunction: digestFunction.GetEnumValue(),
+		ActionDigest:   digest.GetProto(),
 	})
 	if err != nil {
 		return buffer.NewBufferFromError(err)
@@ -66,10 +68,12 @@ func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.
 	if err != nil {
 		return err
 	}
+	digestFunction := digest.GetDigestFunction()
 	_, err = ba.actionCacheClient.UpdateActionResult(ctx, &remoteexecution.UpdateActionResultRequest{
-		InstanceName: digest.GetInstanceName().String(),
-		ActionDigest: digest.GetProto(),
-		ActionResult: actionResult.(*remoteexecution.ActionResult),
+		InstanceName:   digestFunction.GetInstanceName().String(),
+		DigestFunction: digestFunction.GetEnumValue(),
+		ActionDigest:   digest.GetProto(),
+		ActionResult:   actionResult.(*remoteexecution.ActionResult),
 	})
 	return err
 }
