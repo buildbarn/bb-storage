@@ -93,7 +93,7 @@ message BlobAccessConfiguration {
     CompletenessCheckingBlobAccessConfiguration completeness_checking = 17;
 
     // Fall back to reading data from a secondary backend when not found
-    // in the primary backend. Data is never written to the latter.
+    // in the primary backend. Data is written to the primary backend only.
     //
     // This backend can be used to integrate external data sets into the
     // system, e.g. by combining it with reference_expanding.
