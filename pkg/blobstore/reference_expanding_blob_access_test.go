@@ -31,10 +31,12 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
+	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
 		&http.Client{Transport: roundTripper},
 		s3Client,
+		gcsClient,
 		100)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -322,6 +324,39 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
 	})
+
+	t.Run("GCSSuccess", func(t *testing.T) {
+		helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_Gcs{
+						Gcs: &icas.Reference_GCS{
+							Bucket: "mybucket",
+							Object: "myobject",
+						},
+					},
+					OffsetBytes:  3,
+					SizeBytes:    0,
+					Decompressor: remoteexecution.Compressor_IDENTITY,
+				},
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+		bucketHandle := mock.NewMockStorageBucketHandle(ctrl)
+		gcsClient.EXPECT().Bucket("mybucket").Return(bucketHandle)
+		objectHandle := mock.NewMockStorageObjectHandle(ctrl)
+		bucketHandle.EXPECT().Object("myobject").Return(objectHandle)
+		body := mock.NewMockReadCloser(ctrl)
+		objectHandle.EXPECT().NewRangeReader(ctx, int64(3), int64(-1)).Return(body, nil)
+		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
+			copy(p, "Hello")
+			return 5, io.EOF
+		})
+		body.EXPECT().Close()
+
+		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
 }
 
 func TestReferenceExpandingBlobAccessPut(t *testing.T) {
@@ -330,10 +365,12 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
+	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
 		&http.Client{Transport: roundTripper},
 		s3Client,
+		gcsClient,
 		100)
 
 	t.Run("Failure", func(t *testing.T) {
@@ -360,10 +397,12 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
+	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
 		baseBlobAccess,
 		&http.Client{Transport: roundTripper},
 		s3Client,
+		gcsClient,
 		100)
 
 	digests := digest.NewSetBuilder().

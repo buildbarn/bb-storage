@@ -9,6 +9,7 @@ proto_library(
     deps = [
         "//pkg/proto/configuration/blockdevice:blockdevice_proto",
         "//pkg/proto/configuration/cloud/aws:aws_proto",
+        "//pkg/proto/configuration/cloud/gcp:gcp_proto",
         "//pkg/proto/configuration/digest:digest_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/http:http_proto",
@@ -27,6 +28,7 @@ go_proto_library(
     deps = [
         "//pkg/proto/configuration/blockdevice",
         "//pkg/proto/configuration/cloud/aws",
+        "//pkg/proto/configuration/cloud/gcp",
         "//pkg/proto/configuration/digest",
         "//pkg/proto/configuration/grpc",
         "//pkg/proto/configuration/http",

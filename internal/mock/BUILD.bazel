@@ -146,6 +146,18 @@ gomock(
 )
 
 gomock(
+    name = "cloud_gcp",
+    out = "cloud_gcp.go",
+    interfaces = [
+        "StorageBucketHandle",
+        "StorageClient",
+        "StorageObjectHandle",
+    ],
+    library = "//pkg/cloud/gcp",
+    package = "mock",
+)
+
+gomock(
     name = "digest",
     out = "digest.go",
     interfaces = ["InstanceNameMatcher"],
@@ -275,6 +287,7 @@ go_library(
         "capabilities.go",
         "clock.go",
         "cloud_aws.go",
+        "cloud_gcp.go",
         "digest.go",
         "filesystem.go",
         "filesystem_path.go",
@@ -298,6 +311,7 @@ go_library(
         "//pkg/blobstore/slicing",
         "//pkg/builder",
         "//pkg/clock",
+        "//pkg/cloud/gcp",
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/filesystem/path",

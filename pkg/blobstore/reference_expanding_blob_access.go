@@ -13,6 +13,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
+	cloud_gcp "github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -26,6 +27,7 @@ type referenceExpandingBlobAccess struct {
 	blobAccess              BlobAccess
 	httpClient              *http.Client
 	s3Client                cloud_aws.S3Client
+	gcsClient               cloud_gcp.StorageClient
 	maximumMessageSizeBytes int
 }
 
@@ -43,11 +45,12 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(blobAccess BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		blobAccess:              blobAccess,
 		httpClient:              httpClient,
 		s3Client:                s3Client,
+		gcsClient:               gcsClient,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
@@ -90,6 +93,23 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "S3 request failed"))
 		}
 		r = getObjectOutput.Body
+	case *icas.Reference_Gcs:
+		if ba.gcsClient == nil {
+			return buffer.NewBufferFromError(status.Error(codes.Unimplemented, "No Google Cloud Storage client configured"))
+		}
+
+		// Download the object from Google Cloud Storage.
+		sizeBytes := cloud_gcp.ReadUntilEOF
+		if reference.SizeBytes > 0 {
+			sizeBytes = reference.SizeBytes
+		}
+		r, err = ba.gcsClient.
+			Bucket(medium.Gcs.Bucket).
+			Object(medium.Gcs.Object).
+			NewRangeReader(ctx, reference.OffsetBytes, sizeBytes)
+		if err != nil {
+			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Google Cloud Storage request failed"))
+		}
 	default:
 		return buffer.NewBufferFromError(status.Error(codes.Unimplemented, "Reference uses an unsupported medium"))
 	}

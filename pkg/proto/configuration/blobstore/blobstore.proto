@@ -7,6 +7,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "pkg/proto/configuration/cloud/aws/aws.proto";
+import "pkg/proto/configuration/cloud/gcp/gcp.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/http/http.proto";
@@ -748,6 +749,11 @@ message ReferenceExpandingBlobAccessConfiguration {
 
   // Optional: Options to be used by the HTTP client.
   buildbarn.configuration.http.ClientConfiguration http_client = 3;
+
+  // Optional: Google Cloud Platform (GCP) client options for objects
+  // loaded from GCS. Support for GCS is disabled if left unspecified.
+  buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
+      gcp_client_options = 4;
 }
 
 message BlobReplicatorConfiguration {

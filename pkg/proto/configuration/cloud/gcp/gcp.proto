@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package buildbarn.configuration.cloud.gcp;
+
+import "pkg/proto/configuration/http/http.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp";
+
+message ClientOptionsConfiguration {
+  // TODO: Are there any client options which we want to support?
+  // https://pkg.go.dev/google.golang.org/api/option
+}

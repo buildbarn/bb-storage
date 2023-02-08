@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
+	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
@@ -20,6 +22,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"cloud.google.com/go/storage"
 )
 
 var casCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
@@ -113,21 +117,38 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		cfg, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
+
+		awsConfig, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
+
 		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
+
+		var gcsClient gcp.StorageClient
+		if gcpClientOptions := backend.ReferenceExpanding.GcpClientOptions; gcpClientOptions != nil {
+			clientOptions, err := gcp.NewClientOptionsFromConfiguration(gcpClientOptions, "GCSReferenceExpandingBlobAccess")
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create GCP client options")
+			}
+			client, err := storage.NewClient(context.Background(), clientOptions...)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create GCS client")
+			}
+			gcsClient = gcp.NewWrappedStorageClient(client)
+		}
+
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
 				base.BlobAccess,
 				&http.Client{
 					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
 				},
-				s3.NewFromConfig(cfg),
+				s3.NewFromConfig(awsConfig),
+				gcsClient,
 				bac.maximumMessageSizeBytes),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "reference_expanding", nil

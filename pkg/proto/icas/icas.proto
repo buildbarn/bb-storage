@@ -44,6 +44,15 @@ message Reference {
     string key = 2;
   }
 
+  message GCS {
+    // The Google Cloud Storage bucket that contains the object.
+    string bucket = 1;
+
+    // The Key under which the object is stored in the Google Cloud
+    // Storage bucket.
+    string object = 2;
+  }
+
   oneof medium {
     // A HTTP location where the object may be retrieved. The server
     // corresponding with this URL must support HTTP range requests.
@@ -51,6 +60,10 @@ message Reference {
 
     // A location in S3 where the object may be retrieved.
     S3 s3 = 2;
+
+    // A location in Google Cloud Storage where the object may be
+    // retrieved.
+    GCS gcs = 7;
   }
 
   // The leading amount of data that should be skipped when reading from

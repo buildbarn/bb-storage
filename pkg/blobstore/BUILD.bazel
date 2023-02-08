@@ -37,6 +37,7 @@ go_library(
         "//pkg/capabilities",
         "//pkg/clock",
         "//pkg/cloud/aws",
+        "//pkg/cloud/gcp",
         "//pkg/digest",
         "//pkg/eviction",
         "//pkg/proto/fsac",
