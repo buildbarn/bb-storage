@@ -399,7 +399,6 @@ def go_dependencies():
         name = "com_github_google_go_jsonnet",
         build_file_generation = "on",
         importpath = "github.com/google/go-jsonnet",
-        patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_google_go_jsonnet/astgen.diff"],
         sum = "h1:MORxkrG0elylUqh36R4AcSPX0oZQa9hvI3lroN+kDhs=",
         version = "v0.19.1",
     )
