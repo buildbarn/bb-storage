@@ -212,6 +212,29 @@ message ServerConfiguration {
   // Parameters to set keepalive and max-age parameters server-side.
   // The default policy is used if this field is unset
   ServerKeepaliveParameters keepalive_parameters = 11;
+
+  // Upon shutdown, stop the server from accepting new connections and
+  // RPCs, and block until all the pending RPCs are finished.
+  //
+  // When left unset, it immediately closes all open connections and
+  // listeners. This cancels all active RPCs, causing the corresponding
+  // pending RPCs on the client side to get notified of connection
+  // errors.
+  //
+  // In the general case, it is recommended to leave this option unset,
+  // as enabling this option may lead to underutilization and slow
+  // rolling upgrades. As clients are generally capable of performing
+  // retries, it is often sufficient to just terminate immediately.
+  //
+  // One situation in which this configuration option is necessary, is
+  // when bb_worker and bb_runner are run as separate containers in a
+  // pod on a Kubernetes cluster. As Kubernetes does not provide
+  // facilities for specifying dependencies between containers in a pod,
+  // it is necessary to enable this option on the bb_runner side to
+  // ensure in-flight actions are able to run to completion.
+  //
+  // More details: https://github.com/kubernetes/enhancements/issues/753
+  bool stop_gracefully = 12;
 }
 
 message ServerKeepaliveEnforcementPolicy {

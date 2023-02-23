@@ -18,6 +18,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	bb_otel "github.com/buildbarn/bb-storage/pkg/otel"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
@@ -53,12 +54,10 @@ type LifecycleState struct {
 // MarkReadyAndWait can be called to report that the program has started
 // successfully. The application should now be reported as being healthy
 // and ready, and receive incoming requests if applicable.
-func (ls *LifecycleState) MarkReadyAndWait() {
+func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
-	if ls.config == nil {
-		select {}
-	} else {
+	if ls.config != nil {
 		router := mux.NewRouter()
 		router.HandleFunc("/-/healthy", func(http.ResponseWriter, *http.Request) {})
 		if ls.config.EnablePrometheus {
@@ -71,7 +70,10 @@ func (ls *LifecycleState) MarkReadyAndWait() {
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		log.Fatal(http.ListenAndServe(ls.config.ListenAddress, router))
+		bb_http.LaunchServer(&http.Server{
+			Addr:    ls.config.ListenAddress,
+			Handler: router,
+		}, group)
 	}
 }
 
@@ -282,6 +284,8 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}
 		pushTimeoutDuration := pushTimeout.AsDuration()
 
+		// TODO: Run this as part of the program.Group, so that
+		// it gets cleaned up upon shutdown.
 		go func() {
 			for {
 				ctx, cancel := context.WithTimeout(context.Background(), pushTimeoutDuration)

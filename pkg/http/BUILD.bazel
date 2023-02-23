@@ -6,11 +6,13 @@ go_library(
         "configuration.go",
         "header_adding_round_tripper.go",
         "metrics_round_tripper.go",
+        "server.go",
         "status_code.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/program",
         "//pkg/proto/configuration/http",
         "//pkg/util",
         "@com_github_prometheus_client_golang//prometheus",

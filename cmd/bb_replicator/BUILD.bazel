@@ -12,10 +12,13 @@ go_library(
         "//pkg/blobstore/replication",
         "//pkg/global",
         "//pkg/grpc",
+        "//pkg/program",
         "//pkg/proto/configuration/bb_replicator",
         "//pkg/proto/replicator",
         "//pkg/util",
         "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
 

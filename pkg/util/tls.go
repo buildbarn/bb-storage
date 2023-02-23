@@ -90,6 +90,8 @@ func refreshTLSCertOnInterval(cert *RotatingTLSCertificate, refreshInterval *dur
 		return StatusWrap(err, "Failed to parse refresh interval")
 	}
 
+	// TODO: Run this as part of the program.Group, so that it gets
+	// cleaned up upon shutdown.
 	go func() {
 		t := time.NewTicker(refreshInterval.AsDuration())
 		for {

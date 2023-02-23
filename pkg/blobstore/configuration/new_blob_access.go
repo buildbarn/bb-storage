@@ -21,6 +21,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
@@ -28,7 +29,6 @@ import (
 	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
 
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -62,9 +62,8 @@ func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConf
 }
 
 type simpleNestedBlobAccessCreator struct {
-	terminationContext context.Context
-	terminationGroup   *errgroup.Group
-	labels             map[string]BlobAccessInfo
+	terminationGroup program.Group
+	labels           map[string]BlobAccessInfo
 }
 
 func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
@@ -396,14 +395,15 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				minimumEpochInterval,
 				keyLocationMapHashInitialization,
 				dataSyncer)
+			// TODO: Run this as part of the program.Group,
+			// so that it gets cleaned up upon shutdown.
 			go func() {
 				for {
 					periodicSyncer.ProcessBlockRelease()
 				}
 			}()
-			terminationContext := nc.terminationContext
-			nc.terminationGroup.Go(func() error {
-				for periodicSyncer.ProcessBlockPut(terminationContext) {
+			nc.terminationGroup.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+				for periodicSyncer.ProcessBlockPut(ctx) {
 				}
 				// TODO: Let PeriodicSyncer propagate errors
 				// upwards in case they occur after the context
@@ -619,9 +619,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			file)
 
 		// Ensure the central directory is written upon termination.
-		terminationContext := nc.terminationContext
-		nc.terminationGroup.Go(func() error {
-			<-terminationContext.Done()
+		nc.terminationGroup.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+			<-ctx.Done()
 			if err := blobAccess.Finalize(); err != nil {
 				return util.StatusWrapf(err, "Failed to finalize ZIP archive %#v", zipPath)
 			}
@@ -674,9 +673,8 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		}
 
 		return (&simpleNestedBlobAccessCreator{
-			terminationContext: nc.terminationContext,
-			terminationGroup:   nc.terminationGroup,
-			labels:             labels,
+			terminationGroup: nc.terminationGroup,
+			labels:           labels,
 		}).NewNestedBlobAccess(config.Backend, creator)
 	case *pb.BlobAccessConfiguration_Label:
 		if labelBackend, ok := nc.labels[backend.Label]; ok {
@@ -697,10 +695,9 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 
 // NewBlobAccessFromConfiguration creates a BlobAccess object based on a
 // configuration file.
-func NewBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
 	nestedCreator := &simpleNestedBlobAccessCreator{
-		terminationContext: terminationContext,
-		terminationGroup:   terminationGroup,
+		terminationGroup: terminationGroup,
 	}
 	backend, err := nestedCreator.NewNestedBlobAccess(configuration, creator)
 	if err != nil {
@@ -716,9 +713,8 @@ func NewBlobAccessFromConfiguration(terminationContext context.Context, terminat
 // create BlobAccess objects for both the Content Addressable Storage
 // and Action Cache. Most Buildbarn components tend to require access to
 // both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(terminationContext context.Context, terminationGroup *errgroup.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
+func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
-		terminationContext,
 		terminationGroup,
 		configuration.GetContentAddressableStorage(),
 		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes))
@@ -727,7 +723,6 @@ func NewCASAndACBlobAccessFromConfiguration(terminationContext context.Context, 
 	}
 
 	actionCache, err := NewBlobAccessFromConfiguration(
-		terminationContext,
 		terminationGroup,
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(

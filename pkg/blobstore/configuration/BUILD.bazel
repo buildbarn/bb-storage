@@ -38,6 +38,7 @@ go_library(
         "//pkg/filesystem",
         "//pkg/grpc",
         "//pkg/http",
+        "//pkg/program",
         "//pkg/proto/configuration/blobstore",
         "//pkg/proto/configuration/digest",
         "//pkg/random",
@@ -50,7 +51,6 @@ go_library(
         "@com_google_cloud_go_storage//:storage",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_x_sync//errgroup",
         "@org_golang_x_sync//semaphore",
     ],
 )

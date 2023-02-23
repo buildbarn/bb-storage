@@ -1,10 +1,11 @@
 package grpc
 
 import (
-	"log"
+	"context"
 	"net"
 	"os"
 
+	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -32,7 +33,7 @@ func init() {
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar)) error {
+func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
 		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
@@ -140,6 +141,15 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
+		stopFunc := s.Stop
+		if configuration.StopGracefully {
+			stopFunc = s.GracefulStop
+		}
+		group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+			<-ctx.Done()
+			stopFunc()
+			return nil
+		})
 		registrationFunc(s)
 
 		// Enable default services.
@@ -162,7 +172,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenAddress)
 			}
-			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenAddress, s.Serve(sock)) }()
+			group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+				if err := s.Serve(sock); err != nil {
+					return util.StatusWrapf(err, "gRPC server failed for %#v", listenAddress)
+				}
+				return nil
+			})
 		}
 
 		// UNIX sockets.
@@ -175,7 +190,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to create listening socket for %#v", listenPath)
 			}
-			go func() { log.Fatalf("gRPC server failed for %#v: %s", listenPath, s.Serve(sock)) }()
+			group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+				if err := s.Serve(sock); err != nil {
+					return util.StatusWrapf(err, "gRPC server failed for %#v", listenPath)
+				}
+				return nil
+			})
 		}
 	}
 	return nil

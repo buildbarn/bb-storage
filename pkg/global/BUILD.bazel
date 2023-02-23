@@ -4,7 +4,6 @@ go_library(
     name = "global",
     srcs = [
         "apply_configuration.go",
-        "graceful_termination_handler.go",
         "umask_nonunix.go",
         "umask_unix.go",
     ],
@@ -15,6 +14,7 @@ go_library(
         "//pkg/grpc",
         "//pkg/http",
         "//pkg/otel",
+        "//pkg/program",
         "//pkg/proto/configuration/global",
         "//pkg/util",
         "@com_github_gorilla_mux//:mux",
@@ -35,6 +35,5 @@ go_library(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_x_sync//errgroup",
     ],
 )

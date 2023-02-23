@@ -12,9 +12,11 @@ go_library(
         "//pkg/blobstore/replication",
         "//pkg/digest",
         "//pkg/grpc",
+        "//pkg/program",
         "//pkg/proto/configuration/bb_copy",
         "//pkg/util",
-        "@org_golang_x_sync//errgroup",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
 
