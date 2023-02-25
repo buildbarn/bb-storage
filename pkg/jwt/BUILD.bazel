@@ -10,6 +10,7 @@ go_library(
         "ed25519_signature_validator.go",
         "generate_authorization_header.go",
         "hmac_sha_signature_validator.go",
+        "rsa_sha_signature_validator.go",
         "signature_generator.go",
         "signature_validator.go",
     ],
@@ -37,6 +38,7 @@ go_test(
         "ed25519_signature_validator_test.go",
         "generate_authorization_header_test.go",
         "hmac_sha_signature_validator_test.go",
+        "rsa_sha_signature_validator_test.go",
     ],
     deps = [
         ":jwt",

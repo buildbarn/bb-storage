@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 
@@ -42,6 +43,8 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 			}
 		case ed25519.PublicKey:
 			signatureValidator = NewEd25519SignatureValidator(convertedKey)
+		case *rsa.PublicKey:
+			signatureValidator = NewRSASHASignatureValidator(convertedKey)
 		default:
 			return nil, status.Error(codes.InvalidArgument, "Unsupported public key type")
 		}

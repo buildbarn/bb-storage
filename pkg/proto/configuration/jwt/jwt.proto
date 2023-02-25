@@ -14,8 +14,8 @@ message AuthorizationHeaderParserConfiguration {
     // signature.
     bytes hmac_key = 1;
 
-    // Accept signatures using algorithms "ES256", "ES384", "ES512" or
-    // "EdDSA".
+    // Accept signatures using algorithms "ES256", "ES384", "ES512",
+    // "EdDSA", "RS256", "RS384", or "RS512".
     //
     // This field contains the public key used to validate the
     // signature. It should start with "-----BEGIN PUBLIC KEY-----".
