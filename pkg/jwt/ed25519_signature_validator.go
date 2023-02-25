@@ -16,10 +16,10 @@ type ed25519SignatureValidator struct {
 // EdDSA uses asymmetrical cryptography, meaning that signing is
 // performed using a private key, while verification only relies on a
 // public key.
-func NewEd25519SignatureValidator(publicKey ed25519.PublicKey) (SignatureValidator, error) {
+func NewEd25519SignatureValidator(publicKey ed25519.PublicKey) SignatureValidator {
 	return &ed25519SignatureValidator{
 		publicKey: publicKey,
-	}, nil
+	}
 }
 
 func (sv *ed25519SignatureValidator) ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool {

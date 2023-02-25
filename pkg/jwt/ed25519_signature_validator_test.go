@@ -17,8 +17,7 @@ MCowBQYDK2VwAyEA7fySb/9h7hVH8j1paD5IoLfXj4prjfNLwOPUYKvsTOc=
 	require.NotNil(t, block)
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	require.NoError(t, err)
-	signatureValidator, err := jwt.NewEd25519SignatureValidator(key.(ed25519.PublicKey))
-	require.NoError(t, err)
+	signatureValidator := jwt.NewEd25519SignatureValidator(key.(ed25519.PublicKey))
 
 	// Algorithm "HS256" uses HMAC; not Ed25519. Validation should fail.
 	require.False(t, signatureValidator.ValidateSignature(

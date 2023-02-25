@@ -41,11 +41,7 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 				return nil, err
 			}
 		case ed25519.PublicKey:
-			var err error
-			signatureValidator, err = NewEd25519SignatureValidator(convertedKey)
-			if err != nil {
-				return nil, err
-			}
+			signatureValidator = NewEd25519SignatureValidator(convertedKey)
 		default:
 			return nil, status.Error(codes.InvalidArgument, "Unsupported public key type")
 		}
