@@ -11,6 +11,7 @@ import (
 
 type isccBlobAccessCreator struct {
 	protoBlobAccessCreator
+	protoBlobReplicatorCreator
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int

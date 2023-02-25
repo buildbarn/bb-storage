@@ -10,6 +10,7 @@ go_library(
         "cas_blob_replicator_creator.go",
         "fsac_blob_access_creator.go",
         "icas_blob_access_creator.go",
+        "icas_blob_replicator_creator.go",
         "iscc_blob_access_creator.go",
         "new_blob_access.go",
         "new_blob_replicator.go",

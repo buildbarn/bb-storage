@@ -27,12 +27,6 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 			base,
 			sink.BlobAccess,
 			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency)), nil
-	case *pb.BlobReplicatorConfiguration_Deduplicating:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, creator)
-		if err != nil {
-			return nil, err
-		}
-		return replication.NewDeduplicatingBlobReplicator(base, sink.BlobAccess, sink.DigestKeyFormat), nil
 	case *pb.BlobReplicatorConfiguration_Local:
 		return replication.NewLocalBlobReplicator(source, sink.BlobAccess), nil
 	case *pb.BlobReplicatorConfiguration_Noop:

@@ -26,6 +26,12 @@ func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobRepli
 
 func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
+	case *pb.BlobReplicatorConfiguration_Deduplicating:
+		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc)
+		if err != nil {
+			return nil, err
+		}
+		return replication.NewDeduplicatingBlobReplicator(base, sink.BlobAccess, sink.DigestKeyFormat), nil
 	case *pb.BlobReplicatorConfiguration_Remote:
 		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Remote)
 		if err != nil {

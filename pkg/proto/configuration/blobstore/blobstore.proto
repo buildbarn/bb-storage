@@ -826,6 +826,9 @@ message BlobReplicatorConfiguration {
     // use this replicator when the sink is an instance of
     // LocalBlobAccess that is embedded into the same process, and blobs
     // are expected to be consumed locally.
+    //
+    // This strategy is only supported for the Content Addressable
+    // Storage (CAS) and Indirect Content Addressable Storage (ICAS).
     BlobReplicatorConfiguration deduplicating = 5;
 
     // Ensure that the total number of concurrent replication requests

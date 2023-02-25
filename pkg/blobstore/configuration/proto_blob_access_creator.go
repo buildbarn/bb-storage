@@ -12,9 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type protoBlobAccessCreator struct {
-	protoBlobReplicatorCreator
-}
+type protoBlobAccessCreator struct{}
 
 func (bac *protoBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
 	return digest.KeyWithInstance

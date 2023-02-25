@@ -28,6 +28,7 @@ var acCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.Ser
 
 type acBlobAccessCreator struct {
 	protoBlobAccessCreator
+	protoBlobReplicatorCreator
 
 	contentAddressableStorage *BlobAccessInfo
 	grpcClientFactory         grpc.ClientFactory
