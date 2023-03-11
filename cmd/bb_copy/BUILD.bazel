@@ -1,5 +1,5 @@
-load("//tools:container.bzl", "container_push_official")
-load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("//tools/oci:push.bzl", "oci_push_official")
+load("//tools/oci:go_image.bzl", "go_image_index")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
@@ -27,15 +27,19 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
-go_image(
-    name = "bb_copy_container",
+go_image_index(
+    name = "bb_copy_image",
     embed = [":bb_copy_lib"],
     pure = "on",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64"
+    ],
     visibility = ["//visibility:public"],
 )
 
-container_push_official(
-    name = "bb_copy_container_push",
+oci_push_official(
+    name = "bb_copy_image_push",
     component = "bb-copy",
-    image = ":bb_copy_container",
+    image = ":bb_copy_image",
 )

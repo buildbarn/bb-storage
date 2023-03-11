@@ -3,9 +3,10 @@ workspace(name = "com_github_buildbarn_bb_storage")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz"],
+    name = "rules_oci",
+    sha256 = "31ce886bb530132e5307f9195f6f08a1bb2aa07d541f436dd9429bad265eae4b",
+    strip_prefix = "rules_oci-0.3.4",
+    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v0.3.4/rules_oci-v0.3.4.tar.gz",
 )
 
 http_archive(
@@ -38,21 +39,35 @@ go_rules_dependencies()
 
 go_register_toolchains(version = "1.20.1")
 
-load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
+load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
 
-container_repositories()
+rules_oci_dependencies()
 
-load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
+load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "LATEST_ZOT_VERSION", "oci_register_toolchains")
 
-container_deps()
+register_toolchains("//tools/oci/registry:registry_toolchain")
+
+oci_register_toolchains(
+    name = "oci",
+    crane_version = LATEST_CRANE_VERSION,
+    zot_version = LATEST_ZOT_VERSION,
+)
+
+load("@rules_oci//oci:pull.bzl", "oci_pull")
+
+oci_pull(
+    name = "distroless_base",
+    digest = "sha256:ccaef5ee2f1850270d453fdf700a5392534f8d1a8ca2acda391fbb6a06b81c86",
+    image = "gcr.io/distroless/base",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64",
+    ],
+)
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
-
-load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
-
-_go_image_repos()
 
 http_archive(
     name = "com_github_bazelbuild_buildtools",

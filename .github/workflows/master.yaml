@@ -384,15 +384,15 @@
             },
             {
                "name": "Push container bb_copy:bb_copy",
-               "run": "bazel run --stamp //cmd/bb_copy:bb_copy_container_push"
+               "run": "bazel run --stamp //cmd/bb_copy:bb_copy_image_push"
             },
             {
                "name": "Push container bb_replicator:bb_replicator",
-               "run": "bazel run --stamp //cmd/bb_replicator:bb_replicator_container_push"
+               "run": "bazel run --stamp //cmd/bb_replicator:bb_replicator_image_push"
             },
             {
                "name": "Push container bb_storage:bb_storage",
-               "run": "bazel run --stamp //cmd/bb_storage:bb_storage_container_push"
+               "run": "bazel run --stamp //cmd/bb_storage:bb_storage_image_push"
             }
          ]
       }

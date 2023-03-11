@@ -1,6 +1,7 @@
-load("//tools:container.bzl", "container_push_official")
-load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("//tools/oci:push.bzl", "oci_push_official")
+load("//tools/oci:go_image.bzl", "go_image_index")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
 
 go_library(
     name = "bb_storage_lib",
@@ -37,15 +38,19 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
-go_image(
-    name = "bb_storage_container",
+go_image_index(
+    name = "bb_storage_image",
     embed = [":bb_storage_lib"],
     pure = "on",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64"
+    ],
     visibility = ["//visibility:public"],
 )
 
-container_push_official(
-    name = "bb_storage_container_push",
+oci_push_official(
+    name = "bb_storage_image_push",
     component = "bb-storage",
-    image = ":bb_storage_container",
+    image = ":bb_storage_image",
 )
