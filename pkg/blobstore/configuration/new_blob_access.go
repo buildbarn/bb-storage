@@ -357,12 +357,12 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			// persistent state from disk.
 			persistentStateDirectory, err := filesystem.NewLocalDirectory(persistent.StateDirectoryPath)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open persistent state directory")
+				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
 			}
 			persistentStateStore := local.NewDirectoryBackedPersistentStateStore(persistentStateDirectory)
 			persistentState, err := persistentStateStore.ReadPersistentState()
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to reload persistent state")
+				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to reload persistent state from %#v", persistent.StateDirectoryPath)
 			}
 			keyLocationMapHashInitialization = persistentState.KeyLocationMapHashInitialization
 
