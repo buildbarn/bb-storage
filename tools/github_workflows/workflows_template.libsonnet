@@ -154,9 +154,9 @@
           [
             {
               name: 'Install Docker credentials',
-              run: 'mkdir -p ~/.docker && echo "${DOCKER_CONFIG_JSON}" > ~/.docker/config.json',
+              run: 'echo "${GITHUB_TOKEN}" | docker login ghcr.io -u $ --password-stdin',
               env: {
-                DOCKER_CONFIG_JSON: '${{ secrets.DOCKER_CONFIG_JSON }}',
+                GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
               },
             },
           ] + [
