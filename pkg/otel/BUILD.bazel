@@ -60,6 +60,7 @@ go_test(
 
 purgecss_bin.purgecss_binary(
     name = "purgecss",
+    tags = ["manual"],
 )
 
 # Create a copy of Bootstrap that only contains the style attributes
