@@ -4,9 +4,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_oci",
-    sha256 = "31ce886bb530132e5307f9195f6f08a1bb2aa07d541f436dd9429bad265eae4b",
-    strip_prefix = "rules_oci-0.3.4",
-    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v0.3.4/rules_oci-v0.3.4.tar.gz",
+    sha256 = "f6125c9a123a2ac58fb6b13b4b8d4631827db9cfac025f434bbbefbd97953f7c",
+    strip_prefix = "rules_oci-0.3.9",
+    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v0.3.9/rules_oci-v0.3.9.tar.gz",
 )
 
 http_archive(
@@ -43,14 +43,11 @@ load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
 
 rules_oci_dependencies()
 
-load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "LATEST_ZOT_VERSION", "oci_register_toolchains")
-
-register_toolchains("//tools/oci/registry:registry_toolchain")
+load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "oci_register_toolchains")
 
 oci_register_toolchains(
     name = "oci",
-    crane_version = LATEST_CRANE_VERSION,
-    zot_version = LATEST_ZOT_VERSION,
+    crane_version = LATEST_CRANE_VERSION
 )
 
 load("@rules_oci//oci:pull.bzl", "oci_pull")
