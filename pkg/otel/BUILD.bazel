@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@npm//:purgecss/package_json.bzl", purgecss_bin = "bin")
 
 go_library(
     name = "otel",
@@ -57,6 +58,11 @@ go_test(
     ],
 )
 
+purgecss_bin.purgecss_binary(
+    name = "purgecss",
+    tags = ["manual"],
+)
+
 # Create a copy of Bootstrap that only contains the style attributes
 # used by the HTML template.
 genrule(
@@ -66,6 +72,6 @@ genrule(
         "active_spans.html",
     ],
     outs = ["stylesheet.css"],
-    cmd = "$(location @npm//purgecss/bin:purgecss) --css $(location @com_github_twbs_bootstrap//:css/bootstrap.min.css) --content $(location active_spans.html) --output $@",
-    tools = ["@npm//purgecss/bin:purgecss"],
+    cmd = "BAZEL_BINDIR=$(BINDIR) $(location :purgecss) --css $${PWD}/$(location @com_github_twbs_bootstrap//:css/bootstrap.min.css) --content $${PWD}/$(location active_spans.html) --output $${PWD}/$@",
+    tools = [":purgecss"],
 )

@@ -326,6 +326,9 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			dataSyncer = blockDevice.Sync
 			blockCount := blocksOnBlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			blockSectorCount = sectorCount / int64(blockCount)
+			if blockSectorCount <= 0 {
+				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Block device only has %d sectors (%d bytes each), which is less than the total number of blocks (%d), meaning this backend would be incapable of storing any data", sectorCount, sectorSizeBytes, blockCount)
+			}
 
 			cachedReadBufferFactory, err := newCachedReadBufferFactory(blocksOnBlockDevice.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
 			if err != nil {
@@ -357,12 +360,12 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			// persistent state from disk.
 			persistentStateDirectory, err := filesystem.NewLocalDirectory(persistent.StateDirectoryPath)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open persistent state directory")
+				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
 			}
 			persistentStateStore := local.NewDirectoryBackedPersistentStateStore(persistentStateDirectory)
 			persistentState, err := persistentStateStore.ReadPersistentState()
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to reload persistent state")
+				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to reload persistent state from %#v", persistent.StateDirectoryPath)
 			}
 			keyLocationMapHashInitialization = persistentState.KeyLocationMapHashInitialization
 

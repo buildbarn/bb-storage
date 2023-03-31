@@ -138,23 +138,33 @@ http_archive(
 )
 
 http_archive(
-    name = "build_bazel_rules_nodejs",
-    sha256 = "8f5f192ba02319254aaf2cdcca00ec12eaafeb979a80a1e946773c520ae0a2c9",
-    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/3.7.0/rules_nodejs-3.7.0.tar.gz"],
+    name = "aspect_rules_js",
+    sha256 = "00e7b97b696af63812df0ca9e9dbd18579f3edd3ab9a56f227238b8405e4051c",
+    strip_prefix = "rules_js-1.23.0",
+    url = "https://github.com/aspect-build/rules_js/releases/download/v1.23.0/rules_js-v1.23.0.tar.gz",
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "npm_install")
+load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
 
-node_repositories(
-    node_version = "16.4.1",
+rules_js_dependencies()
+
+load("@rules_nodejs//nodejs:repositories.bzl", "DEFAULT_NODE_VERSION", "nodejs_register_toolchains")
+
+nodejs_register_toolchains(
+    name = "nodejs",
+    node_version = DEFAULT_NODE_VERSION,
 )
 
-npm_install(
+load("@aspect_rules_js//npm:npm_import.bzl", "npm_translate_lock")
+
+npm_translate_lock(
     name = "npm",
-    package_json = "//:package.json",
-    package_lock_json = "//:package-lock.json",
-    symlink_node_modules = False,
+    pnpm_lock = "//:pnpm-lock.yaml",
 )
+
+load("@npm//:repositories.bzl", "npm_repositories")
+
+npm_repositories()
 
 http_archive(
     name = "io_opentelemetry_proto",

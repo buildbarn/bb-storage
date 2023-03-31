@@ -157,7 +157,7 @@ $ bazel build --remote_cache=grpc://localhost:8980 --remote_instance_name=foo //
 
 Prebuilt binaries of the Buildbarn storage daemon may be obtained by
 choosing a build on [the GitHub Actions page](https://github.com/buildbarn/bb-storage/actions?query=event%3Apush+branch%3Amaster+is%3Asuccess+workflow%3Amaster).
-Prebuilt container images may be found on [Docker Hub](https://hub.docker.com/r/buildbarn/bb-storage).
+Prebuilt container images may be found on [the GitHub Packages page](https://github.com/orgs/buildbarn/packages).
 More examples of how the Buildbarn storage daemon may be deployed can be
 found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-deployments).
 

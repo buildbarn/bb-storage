@@ -15,6 +15,6 @@ def oci_push_official(name, image, component):
     oci_push(
         name = name,
         image = image,
-        repository = "index.docker.io/buildbarn/" + component,
+        repository = "ghcr.io/buildbarn/" + component,
         repotags = ":{}_tags".format(name),
     )
