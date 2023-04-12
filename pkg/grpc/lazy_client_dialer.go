@@ -2,11 +2,11 @@ package grpc
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 )
 
@@ -30,6 +30,8 @@ func NewLazyClientDialer(dialer ClientDialer) ClientDialer {
 			dialer:      dialer,
 			target:      target,
 			dialOptions: dialOptions,
+
+			initializationSemaphore: semaphore.NewWeighted(1),
 		}, nil
 	}
 }
@@ -39,64 +41,33 @@ type lazyClientConn struct {
 	target      string
 	dialOptions []grpc.DialOption
 
-	state      atomic.Uint32
-	wakeup     chan struct{}
-	connection grpc.ClientConnInterface
-	lock       sync.Mutex
+	connection              atomic.Pointer[grpc.ClientConnInterface]
+	initializationSemaphore *semaphore.Weighted
 }
 
 func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnInterface, error) {
 	// Fast path: immediately return the existing connection that
 	// was created previously.
-	if cc.state.Load() == 2 {
-		return cc.connection, nil
+	if conn := cc.connection.Load(); conn != nil {
+		return *conn, nil
 	}
 
 	// Slow path: initialize or wait for initialization by another
 	// goroutine to complete.
-	for {
-		cc.lock.Lock()
-		switch cc.state.Load() {
-		case 0:
-			// Connection is uninitialized. Attempt to
-			// create it ourselves.
-			cc.wakeup = make(chan struct{}, 1)
-			cc.state.Store(1)
-			cc.lock.Unlock()
-
-			conn, err := cc.dialer(ctx, cc.target, cc.dialOptions...)
-
-			cc.lock.Lock()
-			close(cc.wakeup)
-			if err != nil {
-				// Creation failed. Return to the
-				// initial state.
-				cc.state.Store(0)
-				cc.lock.Unlock()
-				return nil, util.StatusWrap(err, "Failed to create client connection")
-			}
-
-			// Creation succeeded.
-			cc.connection = conn
-			cc.state.Store(2)
-			cc.lock.Unlock()
-			return conn, nil
-		case 1:
-			// Another goroutine is attempting to
-			// initialize. Wait for that to complete.
-			ch := cc.wakeup
-			cc.lock.Unlock()
-			select {
-			case <-ch:
-			case <-ctx.Done():
-				return nil, util.StatusFromContext(ctx)
-			}
-		case 2:
-			// Another goroutine completed initialization.
-			cc.lock.Unlock()
-			return cc.connection, nil
-		}
+	if cc.initializationSemaphore.Acquire(ctx, 1) != nil {
+		return nil, util.StatusFromContext(ctx)
 	}
+	defer cc.initializationSemaphore.Release(1)
+
+	if conn := cc.connection.Load(); conn != nil {
+		return *conn, nil
+	}
+	conn, err := cc.dialer(ctx, cc.target, cc.dialOptions...)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create client connection")
+	}
+	cc.connection.Store(&conn)
+	return conn, nil
 }
 
 func (cc *lazyClientConn) Invoke(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {

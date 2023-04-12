@@ -60,6 +60,7 @@ go_library(
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_x_sync//semaphore",
     ] + select({
         "@io_bazel_rules_go//go/platform:android": [
             "@org_golang_x_sys//unix",
