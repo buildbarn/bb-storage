@@ -77,8 +77,8 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 			}
 
 			// Creation succeeded.
-			cc.state.Store(2)
 			cc.connection = conn
+			cc.state.Store(2)
 			cc.lock.Unlock()
 			return conn, nil
 		case 1:
