@@ -24,11 +24,14 @@ func TestShardingBlobAccess(t *testing.T) {
 	shard0 := mock.NewMockBlobAccess(ctrl)
 	shard1 := mock.NewMockBlobAccess(ctrl)
 	shardPermuter := mock.NewMockShardPermuter(ctrl)
-	blobAccess := sharding.NewShardingBlobAccess([]blobstore.BlobAccess{
-		shard0,
-		shard1,
-		nil, // Shard that is explicitly drained.
-	}, shardPermuter, 0x62994904405896a1)
+	blobAccess := sharding.NewShardingBlobAccess(
+		[]blobstore.BlobAccess{
+			shard0,
+			shard1,
+			nil, // Shard that is explicitly drained.
+		},
+		shardPermuter,
+		/* hashInitialization = */ 0x62994904405896a1)
 
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	llDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5b54c0a045f179bcbbbc9abcb8b5cd4c", 2)
