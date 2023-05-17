@@ -33,13 +33,13 @@ func (s *server) GetCapabilities(ctx context.Context, in *remoteexecution.GetCap
 		return nil, err
 	}
 
-	// TODO: Set these version numbers properly; including
-	// DeprecatedApiVersion. Instead of setting these here, should
+	// TODO: Instead of setting these version numbers here, should
 	// we let providers set these and have MergingProvider merge
 	// those as well?
 	capabilitiesWithVersion := remoteexecution.ServerCapabilities{
-		LowApiVersion:  &semver.SemVer{Major: 2},
-		HighApiVersion: &semver.SemVer{Major: 2},
+		DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+		LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
+		HighApiVersion:       &semver.SemVer{Major: 2, Minor: 3},
 	}
 	proto.Merge(&capabilitiesWithVersion, capabilities)
 	return &capabilitiesWithVersion, nil

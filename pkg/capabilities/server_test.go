@@ -60,8 +60,9 @@ func TestServer(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 				ExecEnabled:     true,
 			},
-			LowApiVersion:  &semver.SemVer{Major: 2},
-			HighApiVersion: &semver.SemVer{Major: 2},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 3},
 		}, serverCapabilities)
 	})
 }
