@@ -385,7 +385,7 @@ message TLSClientCertificateAuthenticationPolicy {
   // `validation_jmespath_expression`.
   //
   // The following expression can be used if no metadata needs to be
-  // extracted from the token:
+  // extracted from the token (including the backticks):
   //
   //     `{}`
   string metadata_extraction_jmespath_expression = 4;
