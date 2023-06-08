@@ -86,6 +86,11 @@ type hashingKeyLocationMap struct {
 // discarded once the upper bound is reached. Though this may sound
 // harmful, there is a very high probability that the entry being
 // discarded is one of the older ones.
+//
+// As both the hashing function that is used by LocationRecordKey and
+// the slot computation of HashingKeyLocationMap use modulo arithmetic,
+// it is recommended to let recordsCount be prime to ensure proper
+// distribution of records.
 func NewHashingKeyLocationMap(recordArray LocationRecordArray, recordsCount int, hashInitialization uint64, maximumGetAttempts uint32, maximumPutAttempts int, storageType string) KeyLocationMap {
 	hashingKeyLocationMapPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(hashingKeyLocationMapGetAttempts)

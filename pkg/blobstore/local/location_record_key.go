@@ -35,9 +35,5 @@ func (k *LocationRecordKey) Hash(hashInitialization uint64) uint64 {
 		h *= 1099511628211
 		attempt >>= 8
 	}
-	// With FNV-1a, the upper bits tend to have a strong avalanche
-	// effect, while the lower bits do not. For example, the lowest
-	// bit is equal to the lowest bit of every byte XOR'ed together.
-	// Mitigate this by folding the upper bits into the lowest.
-	return h ^ (h >> 32)
+	return h
 }

@@ -244,6 +244,12 @@ def go_dependencies():
         version = "v1.4.9",
     )
     go_repository(
+        name = "com_github_fxtlabs_primes",
+        importpath = "github.com/fxtlabs/primes",
+        sum = "h1:HOYnhuVrhAVGKdg3rZapII640so7QfXQmkLkefUN/uM=",
+        version = "v0.0.0-20150821004651-dad82d10a449",
+    )
+    go_repository(
         name = "com_github_ghodss_yaml",
         importpath = "github.com/ghodss/yaml",
         sum = "h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=",

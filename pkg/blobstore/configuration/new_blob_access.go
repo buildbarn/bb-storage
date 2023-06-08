@@ -26,6 +26,7 @@ import (
 	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/fxtlabs/primes"
 	"github.com/go-redis/redis/extra/redisotel"
 	"github.com/go-redis/redis/v8"
 
@@ -455,6 +456,16 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Key-location map backend not specified")
 		}
+
+		// Considering that FNV-1a is used to compute keys and
+		// HashingKeyLocationMap uses simple modulo arithmetic
+		// to store entries in the location record array, ensure
+		// that the size that is used is prime. This causes the
+		// best dispersion of hash table entries.
+		for locationRecordArraySize > 3 && !primes.IsPrime(locationRecordArraySize) {
+			locationRecordArraySize--
+		}
+
 		keyLocationMap := local.NewHashingKeyLocationMap(
 			locationRecordArray,
 			locationRecordArraySize,
@@ -474,13 +485,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			}
 		} else {
 			localBlobAccess = local.NewFlatBlobAccess(
-				local.NewHashingKeyLocationMap(
-					locationRecordArray,
-					locationRecordArraySize,
-					keyLocationMapHashInitialization,
-					backend.Local.KeyLocationMapMaximumGetAttempts,
-					int(backend.Local.KeyLocationMapMaximumPutAttempts),
-					storageTypeName),
+				keyLocationMap,
 				locationBlobMap,
 				digestKeyFormat,
 				&globalLock,

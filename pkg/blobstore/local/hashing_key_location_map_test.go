@@ -17,7 +17,7 @@ func TestHashingKeyLocationMapGet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	array := mock.NewMockLocationRecordArray(ctrl)
-	klm := local.NewHashingKeyLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
+	klm := local.NewHashingKeyLocationMap(array, 13, 0x970aef1f90c7f916, 2, 2, "cas")
 
 	key1 := local.Key{
 		0xca, 0x2b, 0xd6, 0xc9, 0xc9, 0x9e, 0x7b, 0xc0,
@@ -38,7 +38,7 @@ func TestHashingKeyLocationMapGet(t *testing.T) {
 		// iterations to prevent deadlocks in case the hash
 		// table is full. Put() will also only consider a finite
 		// number of places to store the record.
-		array.EXPECT().Get(5).Return(local.LocationRecord{
+		array.EXPECT().Get(8).Return(local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key2},
 			Location:  validLocation,
 		}, nil)
@@ -55,7 +55,7 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	array := mock.NewMockLocationRecordArray(ctrl)
-	klm := local.NewHashingKeyLocationMap(array, 10, 0x970aef1f90c7f916, 2, 2, "cas")
+	klm := local.NewHashingKeyLocationMap(array, 13, 0x970aef1f90c7f916, 2, 2, "cas")
 
 	key1 := local.Key{
 		0xca, 0x2b, 0xd6, 0xc9, 0xc9, 0x9e, 0x7b, 0xc0,
@@ -78,8 +78,8 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 
 	t.Run("SimpleInsertion", func(t *testing.T) {
 		// An unused slot should be overwritten immediately.
-		array.EXPECT().Get(5).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
-		array.EXPECT().Put(5, local.LocationRecord{
+		array.EXPECT().Get(8).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
+		array.EXPECT().Put(8, local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key1},
 			Location:  newLocation,
 		})
@@ -91,11 +91,11 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 		// only permitted if the location is newer. This may
 		// happen in situations where two clients attempt to
 		// upload the same object concurrently.
-		array.EXPECT().Get(5).Return(local.LocationRecord{
+		array.EXPECT().Get(8).Return(local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key1},
 			Location:  oldLocation,
 		}, nil)
-		array.EXPECT().Put(5, local.LocationRecord{
+		array.EXPECT().Put(8, local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key1},
 			Location:  newLocation,
 		})
@@ -105,7 +105,7 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 	t.Run("OverwriteWithOlder", func(t *testing.T) {
 		// Overwriting the same key with an older location
 		// should be ignored.
-		array.EXPECT().Get(5).Return(local.LocationRecord{
+		array.EXPECT().Get(8).Return(local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key1},
 			Location:  newLocation,
 		}, nil)
@@ -116,7 +116,7 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 		// In case we collide with an entry with a newer
 		// location, the other entry is permitted to stay. We
 		// should fall back to an alternative index.
-		array.EXPECT().Get(5).Return(local.LocationRecord{
+		array.EXPECT().Get(8).Return(local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key2},
 			Location:  newLocation,
 		}, nil)
@@ -137,14 +137,14 @@ func TestHashingKeyLocationMapPut(t *testing.T) {
 			RecordKey: local.LocationRecordKey{Key: key2},
 			Location:  oldLocation,
 		}
-		array.EXPECT().Get(5).Return(locationRecord, nil)
-		array.EXPECT().Put(5, local.LocationRecord{
+		array.EXPECT().Get(8).Return(locationRecord, nil)
+		array.EXPECT().Put(8, local.LocationRecord{
 			RecordKey: local.LocationRecordKey{Key: key1},
 			Location:  newLocation,
 		})
-		array.EXPECT().Get(6).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
+		array.EXPECT().Get(9).Return(local.LocationRecord{}, local.ErrLocationRecordInvalid)
 		locationRecord.RecordKey.Attempt++
-		array.EXPECT().Put(6, locationRecord)
+		array.EXPECT().Put(9, locationRecord)
 		require.NoError(t, klm.Put(key1, newLocation))
 	})
 }
