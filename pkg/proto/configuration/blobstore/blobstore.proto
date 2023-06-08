@@ -5,6 +5,7 @@ package buildbarn.configuration.blobstore;
 import "google/rpc/status.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "pkg/proto/configuration/cloud/aws/aws.proto";
 import "pkg/proto/configuration/cloud/gcp/gcp.proto";
@@ -897,6 +898,12 @@ message ActionResultExpiringBlobAccessConfiguration {
   // subsequent requests for the same ActionResult still yield the same
   // expiration time.
   google.protobuf.Duration maximum_validity_jitter = 3;
+
+  // The minimum value 'worker_completed_timestamp' should have for it
+  // to be considered valid. This can be used to fully invalidate the
+  // contents of the Action Cache (AC) in case its contents have become
+  // poisoned.
+  google.protobuf.Timestamp minimum_timestamp = 4;
 }
 
 message ReadCanaryingBlobAccessConfiguration {

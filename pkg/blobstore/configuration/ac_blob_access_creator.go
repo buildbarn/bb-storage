@@ -65,6 +65,10 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
+		minimumTimestamp := backend.ActionResultExpiring.MinimumTimestamp
+		if err := minimumTimestamp.CheckValid(); err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum timestamp")
+		}
 		minimumValidity := backend.ActionResultExpiring.MinimumValidity
 		if err := minimumValidity.CheckValid(); err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum validity")
@@ -78,6 +82,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 				base.BlobAccess,
 				clock.SystemClock,
 				bac.maximumMessageSizeBytes,
+				minimumTimestamp.AsTime(),
 				minimumValidity.AsDuration(),
 				maximumValidityJitter.AsDuration()),
 			DigestKeyFormat: base.DigestKeyFormat,

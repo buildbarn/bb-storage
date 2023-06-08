@@ -18,6 +18,7 @@ type actionResultExpiringBlobAccess struct {
 	BlobAccess
 	clock                   clock.Clock
 	maximumMessageSizeBytes int
+	minimumTimestamp        time.Time
 	minimumValidity         time.Duration
 	maximumValidityJitter   uint64
 }
@@ -32,14 +33,27 @@ type actionResultExpiringBlobAccess struct {
 // is added to the expiration time to amortize rebuilds. The process for
 // determining the amount of jitter is deterministic, meaning that it is
 // safe to use this decorator in a distributed setting.
-func NewActionResultExpiringBlobAccess(blobAccess BlobAccess, clock clock.Clock, maximumMessageSizeBytes int, minimumValidity, maximumValidityJitter time.Duration) BlobAccess {
+func NewActionResultExpiringBlobAccess(blobAccess BlobAccess, clock clock.Clock, maximumMessageSizeBytes int, minimumTimestamp time.Time, minimumValidity, maximumValidityJitter time.Duration) BlobAccess {
 	return &actionResultExpiringBlobAccess{
 		BlobAccess:              blobAccess,
 		clock:                   clock,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		minimumTimestamp:        minimumTimestamp,
 		minimumValidity:         minimumValidity,
 		maximumValidityJitter:   uint64(maximumValidityJitter),
 	}
+}
+
+func (ba *actionResultExpiringBlobAccess) checkWorkerCompletedTimestamp(t time.Time) error {
+	if t.Before(ba.minimumTimestamp) {
+		return status.Errorf(codes.NotFound, "Action result has worker completed timestamp %s, which is below the minimum of %s", t.Format(time.RFC3339), ba.minimumTimestamp.Format(time.RFC3339))
+	}
+	// Pick an expiration time that includes jitter.
+	expirationTime := t.Add(ba.minimumValidity).Add(time.Duration(uint64(t.Unix()) * 0x936a0d2a41e8c779 % ba.maximumValidityJitter))
+	if ba.clock.Now().After(expirationTime) {
+		return status.Errorf(codes.NotFound, "Action result with worker completed timestamp %s expired at %s", t.Format(time.RFC3339), expirationTime.Format(time.RFC3339))
+	}
+	return nil
 }
 
 func (ba *actionResultExpiringBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
@@ -51,13 +65,10 @@ func (ba *actionResultExpiringBlobAccess) Get(ctx context.Context, digest digest
 	}
 	actionResult := actionResultMessage.(*remoteexecution.ActionResult)
 	if workerCompletedTimestamp := actionResult.ExecutionMetadata.GetWorkerCompletedTimestamp(); workerCompletedTimestamp.CheckValid() == nil {
-		// ActionResult has a valid 'worker_completed_timestamp'
-		// field. Pick an expiration time that includes jitter.
-		t := workerCompletedTimestamp.AsTime()
-		expirationTime := t.Add(ba.minimumValidity).Add(time.Duration(uint64(t.Unix()) * 0x936a0d2a41e8c779 % ba.maximumValidityJitter))
-		if ba.clock.Now().After(expirationTime) {
+		// ActionResult has a valid 'worker_completed_timestamp' field.
+		if err := ba.checkWorkerCompletedTimestamp(workerCompletedTimestamp.AsTime()); err != nil {
 			b2.Discard()
-			return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "Action result expired at %s", expirationTime.Format(time.RFC3339)))
+			return buffer.NewBufferFromError(err)
 		}
 	}
 	return b2

@@ -16,6 +16,7 @@ proto_library(
         "//pkg/proto/configuration/tls:tls_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
+        "@com_google_protobuf//:timestamp_proto",
         "@go_googleapis//google/rpc:status_proto",
     ],
 )

@@ -24,7 +24,13 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	clock := mock.NewMockClock(ctrl)
-	blobAccess := blobstore.NewActionResultExpiringBlobAccess(baseBlobAccess, clock, 10000, 28*24*time.Hour, 28*24*time.Hour)
+	blobAccess := blobstore.NewActionResultExpiringBlobAccess(
+		baseBlobAccess,
+		clock,
+		/* maximumMessageSizeBytes = */ 10000,
+		/* minimumTimestamp = */ time.Unix(1641325785, 0),
+		/* minimumValidity = */ 28*24*time.Hour,
+		/* maximumValidityJitter = */ 28*24*time.Hour)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "09b6c5db18b5e8db9ca5400c5ced1a0f", 123)
 
@@ -65,6 +71,23 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 		testutil.RequireEqualProto(t, desiredActionResult, actualActionResult)
 	})
 
+	t.Run("TooOld", func(t *testing.T) {
+		// Request an entry that was built before the minimum
+		// permitted timestamp, which may be set to suppress
+		// poisoned cache entries.
+		desiredActionResult := &remoteexecution.ActionResult{
+			StderrRaw: []byte("Internal compiler error!"),
+			ExitCode:  1,
+			ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
+				WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 1641325784},
+			},
+		}
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+
+		_, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result has worker completed timestamp 2022-01-04T19:49:44Z, which is below the minimum of 2022-01-04T19:49:45Z"), err)
+	})
+
 	t.Run("StillValid", func(t *testing.T) {
 		// Request an entry right before it's about to expire.
 		desiredActionResult := &remoteexecution.ActionResult{
@@ -95,6 +118,6 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1644187856, 0))
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
-		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result expired at 2022-02-06T22:50:55Z"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result with worker completed timestamp 2022-01-04T19:49:46Z expired at 2022-02-06T22:50:55Z"), err)
 	})
 }
