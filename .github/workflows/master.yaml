@@ -52,10 +52,6 @@
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
             },
             {
-               "name": "Check for ineffective assignments",
-               "run": "bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)"
-            },
-            {
                "name": "linux_amd64: build and test",
                "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
             },

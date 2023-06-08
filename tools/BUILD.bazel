@@ -6,8 +6,5 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/tools",
     tags = ["manual"],
     visibility = ["//visibility:public"],
-    deps = [
-        "@cc_mvdan_gofumpt//:gofumpt",
-        "@com_github_gordonklaus_ineffassign//:ineffassign",
-    ],
+    deps = ["@cc_mvdan_gofumpt//:gofumpt"],
 )

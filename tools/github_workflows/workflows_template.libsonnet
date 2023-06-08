@@ -110,10 +110,6 @@
           name: 'Golint',
           run: 'bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/...',
         },
-        {
-          name: 'Check for ineffective assignments',
-          run: 'bazel run @com_github_gordonklaus_ineffassign//:ineffassign $(pwd)',
-        },
       ] + std.flattenArrays([
         [{
           name: platform.name + ': build and test',
