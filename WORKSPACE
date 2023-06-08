@@ -27,6 +27,20 @@ http_archive(
     ],
 )
 
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# Override the version of gomock to one that includes support for
+# generating mocks for function types. We can't do this through go.mod,
+# as it causes almost all of our package dependencies to be downgraded.
+go_repository(
+    name = "com_github_golang_mock",
+    importpath = "github.com/golang/mock",
+    patches = ["//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
+    replace = "github.com/golang/mock",
+    sum = "h1:DxRM2MRFDKF8JGaT1ZSsCZ9KxoOki+rrOoB011jIEDc=",
+    version = "v1.6.1-0.20220512030613-73266f9366fc",
+)
+
 # gazelle:repository_macro go_dependencies.bzl%go_dependencies
 load(":go_dependencies.bzl", "go_dependencies")
 
