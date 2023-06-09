@@ -135,7 +135,7 @@ func (dg dependenciesGroup) Go(routine Routine) {
 func Run(routine Routine) {
 	// Install the signal handler. This needs to be done first to
 	// ensure no signals are missed.
-	signalChan := make(chan os.Signal)
+	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
 	// Launch the initial routine.
