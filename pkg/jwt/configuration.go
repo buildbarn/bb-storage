@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"reflect"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -46,7 +47,8 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		case *rsa.PublicKey:
 			signatureValidator = NewRSASHASignatureValidator(convertedKey)
 		default:
-			return nil, status.Error(codes.InvalidArgument, "Unsupported public key type")
+			keyType := reflect.TypeOf(parsedKey)
+			return nil, status.Errorf(codes.InvalidArgument, "Unsupported public key type: %s/%s", keyType.PkgPath(), keyType.Name())
 		}
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
