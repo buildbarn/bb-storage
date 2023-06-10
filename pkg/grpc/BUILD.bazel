@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "grpc",
     srcs = [
+        "all_authenticator.go",
         "allow_authenticator.go",
         "any_authenticator.go",
         "authenticating_interceptor.go",
@@ -37,6 +38,7 @@ go_library(
         "//pkg/clock",
         "//pkg/jwt",
         "//pkg/program",
+        "//pkg/proto/auth",
         "//pkg/proto/configuration/grpc",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
@@ -84,6 +86,7 @@ go_library(
 go_test(
     name = "grpc_test",
     srcs = [
+        "all_authenticator_test.go",
         "allow_authenticator_test.go",
         "any_authenticator_test.go",
         "authenticating_interceptor_test.go",

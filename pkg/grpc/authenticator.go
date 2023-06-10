@@ -47,6 +47,18 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			needsPeerTransportCredentials = needsPeerTransportCredentials || childNeedsPeerTransportCredentials
 		}
 		return NewAnyAuthenticator(children), needsPeerTransportCredentials, nil
+	case *configuration.AuthenticationPolicy_All:
+		children := make([]Authenticator, 0, len(policyKind.All.Policies))
+		needsPeerTransportCredentials := false
+		for _, childConfiguration := range policyKind.All.Policies {
+			child, childNeedsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(childConfiguration)
+			if err != nil {
+				return nil, false, err
+			}
+			children = append(children, child)
+			needsPeerTransportCredentials = needsPeerTransportCredentials || childNeedsPeerTransportCredentials
+		}
+		return NewAllAuthenticator(children), needsPeerTransportCredentials, nil
 	case *configuration.AuthenticationPolicy_Deny:
 		return NewDenyAuthenticator(policyKind.Deny), false, nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:

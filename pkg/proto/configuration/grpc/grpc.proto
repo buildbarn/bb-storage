@@ -296,6 +296,38 @@ message AuthenticationPolicy {
     // The authentication metadata of the first matching policy is used.
     AnyAuthenticationPolicy any = 2;
 
+    // Allow incoming requests if all the authentication policies allow it.
+    //
+    // The authentication metadata is merged, first to last. So if this was
+    // configured with two authenticators, one which returned metadata:
+    //
+    //     {
+    //       "public": {
+    //         "first_name": "kermit",
+    //         "middle_name": "the"
+    //       }
+    //     }
+    //
+    // And the second returned metadata:
+    //
+    //     {
+    //       "public": {
+    //        "first_name": "robin",
+    //        "last_name": "frog"
+    //       }
+    //     }
+    //
+    // This authenticator would return the metadata:
+    //
+    //     {
+    //       "public": {
+    //         "first_name": "robin",
+    //         "middle_name": "the",
+    //         "last_name": "frog"
+    //       }
+    //     }
+    AllAuthenticationPolicy all = 7;
+
     // Deny all incoming requests, returning a fixed error message back
     // to the client.
     string deny = 3;
@@ -328,6 +360,11 @@ message AuthenticationPolicy {
 }
 
 message AnyAuthenticationPolicy {
+  // Set of backing authentication policies.
+  repeated AuthenticationPolicy policies = 1;
+}
+
+message AllAuthenticationPolicy {
   // Set of backing authentication policies.
   repeated AuthenticationPolicy policies = 1;
 }

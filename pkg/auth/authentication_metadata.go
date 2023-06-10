@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -44,13 +45,12 @@ func NewAuthenticationMetadataFromProto(message *auth_pb.AuthenticationMetadata)
 		return nil, util.StatusWrap(err, "Cannot create tracing attributes")
 	}
 
-	return &AuthenticationMetadata{
-		raw: raw,
-		proto: auth_pb.AuthenticationMetadata{
-			Public: message.GetPublic(),
-		},
+	am := &AuthenticationMetadata{
+		raw:               raw,
 		tracingAttributes: tracingAttributes,
-	}, nil
+	}
+	proto.Merge(&am.proto, message)
+	return am, nil
 }
 
 // NewAuthenticationMetadataFromRaw is identical to
@@ -95,6 +95,11 @@ func (am *AuthenticationMetadata) GetPublicProto() (*auth_pb.AuthenticationMetad
 	return &auth_pb.AuthenticationMetadata{
 		Public: am.proto.Public,
 	}, am.proto.Public != nil
+}
+
+// GetFullProto returns the AuthenticationMetadata in Protobuf form.
+func (am *AuthenticationMetadata) GetFullProto() *auth_pb.AuthenticationMetadata {
+	return &am.proto
 }
 
 // GetTracingAttributes returns OpenTelemetry tracing attributes that
