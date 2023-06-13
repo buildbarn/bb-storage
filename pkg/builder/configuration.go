@@ -26,15 +26,15 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 	for k, scheduler := range schedulers {
 		matchInstanceNamePrefix, err := digest.NewInstanceName(k)
 		if err != nil {
-			return nil, util.StatusWrapf(err, "Invalid instance name %#v: %s", k)
+			return nil, util.StatusWrapf(err, "Invalid instance name %#v", k)
 		}
 		addInstanceNamePrefix, err := digest.NewInstanceName(scheduler.AddInstanceNamePrefix)
 		if err != nil {
-			return nil, util.StatusWrapf(err, "Invalid instance name %#v: %s", scheduler.AddInstanceNamePrefix)
+			return nil, util.StatusWrapf(err, "Invalid instance name %#v", scheduler.AddInstanceNamePrefix)
 		}
 		endpoint, err := grpcClientFactory.NewClientFromConfiguration(scheduler.Endpoint)
 		if err != nil {
-			return nil, util.StatusWrapf(err, "Failer to create scheduler RPC client for instance name %#v: ", k)
+			return nil, util.StatusWrapf(err, "Failed to create scheduler RPC client for instance name %#v", k)
 		}
 		buildQueuesTrie.Set(matchInstanceNamePrefix, len(buildQueues))
 		buildQueues = append(buildQueues, buildQueueInfo{
