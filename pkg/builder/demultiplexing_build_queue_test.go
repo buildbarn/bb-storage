@@ -116,13 +116,13 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			digest.EmptyInstanceName,
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().Execute(&remoteexecution.ExecuteRequest{
+		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
 			ActionDigest: &remoteexecution.Digest{
 				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 				SizeBytes: 0,
 			},
-		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
+		}), gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
 		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
@@ -143,13 +143,13 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			digest.MustNewInstanceName("foo"),
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().Execute(&remoteexecution.ExecuteRequest{
+		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
 			ActionDigest: &remoteexecution.Digest{
 				Hash:      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 				SizeBytes: 0,
 			},
-		}, gomock.Any()).DoAndReturn(
+		}), gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
 				require.NoError(t, out.Send(&longrunning.Operation{
 					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
@@ -159,7 +159,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			})
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
 		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
-		executeServer.EXPECT().Send(&longrunning.Operation{
+		executeServer.EXPECT().Send(testutil.EqProto(t, &longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
 			// name, so that WaitExecution() can forward
@@ -167,7 +167,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			// operation name.
 			Name: "foo/operations/fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 			Done: true,
-		})
+		}))
 
 		err := demultiplexingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "foo/ubuntu1804",
@@ -217,9 +217,9 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().WaitExecution(&remoteexecution.WaitExecutionRequest{
+		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
-		}, gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
+		}), gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
 		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
@@ -236,9 +236,9 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			digest.MustNewInstanceName("ubuntu1804"),
 			digest.MustNewInstanceName("rhel7"),
 			nil)
-		buildQueue.EXPECT().WaitExecution(&remoteexecution.WaitExecutionRequest{
+		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
-		}, gomock.Any()).DoAndReturn(
+		}), gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
 				require.NoError(t, out.Send(&longrunning.Operation{
 					Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
@@ -248,7 +248,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			})
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
 		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
-		waitExecutionServer.EXPECT().Send(&longrunning.Operation{
+		waitExecutionServer.EXPECT().Send(testutil.EqProto(t, &longrunning.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
 			// name, so that WaitExecution() can forward
@@ -256,7 +256,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			// operation name.
 			Name: "ubuntu1804/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
 			Done: true,
-		})
+		}))
 
 		err := demultiplexingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 			Name: "ubuntu1804/operations/df4ab561-4e81-48c7-a387-edc7d899a76f",
