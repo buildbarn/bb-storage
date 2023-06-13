@@ -11,6 +11,7 @@ import (
 	"google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // DemultiplexedBuildQueueGetter is the callback invoked by the
@@ -57,7 +58,8 @@ func (bq *demultiplexingBuildQueue) Execute(in *remoteexecution.ExecuteRequest, 
 		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
 	}
 
-	requestCopy := *in
+	var requestCopy remoteexecution.ExecuteRequest
+	proto.Merge(&requestCopy, in)
 	requestCopy.InstanceName = newInstanceName.String()
 	return backend.Execute(&requestCopy, &operationNamePrepender{
 		Execution_ExecuteServer: out,
@@ -79,7 +81,8 @@ func (bq *demultiplexingBuildQueue) WaitExecution(in *remoteexecution.WaitExecut
 		return util.StatusWrapf(err, "Failed to obtain backend for instance name %#v", instanceName.String())
 	}
 
-	requestCopy := *in
+	var requestCopy remoteexecution.WaitExecutionRequest
+	proto.Merge(&requestCopy, in)
 	requestCopy.Name = target[1]
 	return backend.WaitExecution(&requestCopy, &operationNamePrepender{
 		Execution_ExecuteServer: out,
@@ -93,7 +96,8 @@ type operationNamePrepender struct {
 }
 
 func (np *operationNamePrepender) Send(operation *longrunning.Operation) error {
-	operationCopy := *operation
+	var operationCopy longrunning.Operation
+	proto.Merge(&operationCopy, operation)
 	operationCopy.Name = np.prefix + operation.Name
 	return np.Execution_ExecuteServer.Send(&operationCopy)
 }
