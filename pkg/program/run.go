@@ -2,12 +2,10 @@ package program
 
 import (
 	"context"
-	"log"
-	"os"
-	"os/signal"
 	"sync"
 	"sync/atomic"
-	"syscall"
+
+	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 // Routine that can be executed as part of a program. Routines may
@@ -31,17 +29,7 @@ type Group interface {
 // within the current program.
 type groupsRoot struct {
 	siblingsGroupsCount sync.WaitGroup
-
-	shutdownStarted sync.Once
-	shutdownFunc    func()
-	cancel          context.CancelFunc
-}
-
-func (root *groupsRoot) startShutdown(shutdownFunc func()) {
-	root.shutdownStarted.Do(func() {
-		root.shutdownFunc = shutdownFunc
-		root.cancel()
-	})
+	errorLogger         util.ErrorLogger
 }
 
 // siblingsGroup is a group of routines that are all siblings with
@@ -76,12 +64,7 @@ func (sg *siblingsGroup) runRoutine(routine Routine) {
 		sg,
 		dependenciesGroup{siblingsGroup: sg},
 	); err != nil {
-		// Some error occurred. Initiate cancelation of the
-		// entire program with a non-zero exit code.
-		log.Print("Fatal error: ", err)
-		sg.root.startShutdown(func() {
-			os.Exit(1)
-		})
+		sg.root.errorLogger.Log(err)
 	}
 
 	if sg.siblingsActive.Add(^uint32(0)) == 0 {
@@ -115,69 +98,11 @@ func (dg dependenciesGroup) Go(routine Routine) {
 	go childSG.runRoutine(routine)
 }
 
-// Run a program that supports graceful termination. Programs consist of
-// a pool of routines that may have dependencies on each other. Programs
-// terminate if one of the following three cases occur:
-//
-//   - The root routine and all of its siblings have terminated. In that
-//     case the program terminates with exit code 0.
-//
-//   - One of the routines fails with a non-nil error. In that case the
-//     program terminates with exit code 1.
-//
-//   - The program receives SIGINT or SIGTERM. In that case the program
-//     will terminate with that signal.
-//
-// In case termination occurs, all remaining routines are canceled,
-// respecting dependencies between these routines. This can for example
-// be used to ensure an outgoing database connection is terminated after
-// an integrated RPC server is shut down.
-func Run(routine Routine) {
-	// Install the signal handler. This needs to be done first to
-	// ensure no signals are missed.
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-
-	// Launch the initial routine.
-	ctx, cancel := context.WithCancel(context.Background())
+func run(ctx context.Context, errorLogger util.ErrorLogger, routine Routine) {
 	root := groupsRoot{
-		cancel: cancel,
+		errorLogger: errorLogger,
 	}
 	sg := newSiblingsGroup(ctx, &root)
-	go sg.runRoutine(routine)
-
-	// Handle incoming signals.
-	go func() {
-		receivedSignal := <-signalChan
-		log.Printf("Received %#v signal. Initiating graceful shutdown.", receivedSignal.String())
-		root.startShutdown(func() {
-			// Clear the signal handler and raise the
-			// original signal once again. That way we shut
-			// down under the original circumstances.
-			signal.Reset(receivedSignal)
-			process, err := os.FindProcess(os.Getpid())
-			if err != nil {
-				panic(err)
-			}
-			if err := process.Signal(receivedSignal); err != nil {
-				panic(err)
-			}
-			// This code should not be reached, if it
-			// weren't for the fact that process.Signal()
-			// does not guarantee that the signal is
-			// delivered to the same thread. More details:
-			// https://github.com/golang/go/issues/19326
-			select {}
-		})
-	}()
-
-	// Wait for all of the routines in the program to complete.
+	sg.runRoutine(routine)
 	root.siblingsGroupsCount.Wait()
-
-	// If none of the routines failed and we didn't get signalled,
-	// terminate with exit code zero.
-	root.startShutdown(func() {
-		os.Exit(0)
-	})
-	root.shutdownFunc()
 }

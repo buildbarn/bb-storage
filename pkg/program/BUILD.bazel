@@ -2,7 +2,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "program",
-    srcs = ["run.go"],
+    srcs = [
+        "run.go",
+        "run_local.go",
+        "run_main.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/program",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/util"],
 )
