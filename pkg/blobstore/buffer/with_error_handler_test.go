@@ -315,6 +315,59 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 
 	digest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 
+	t.Run("NoRetriesImmediateEOF", func(t *testing.T) {
+		// ChunkReader never returns data and errors at the same
+		// time. If Reader.Read() returns data and EOF at the
+		// same time, the EOF should be saved, so that it may be
+		// returned later.
+		reader := mock.NewMockReadCloser(ctrl)
+		reader.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
+			return copy(p, []byte("Hello world")), io.EOF
+		})
+		reader.EXPECT().Close()
+		b := buffer.NewCASBufferFromReader(digest, reader, buffer.UserProvided)
+
+		errorHandler := mock.NewMockErrorHandler(ctrl)
+		errorHandler.EXPECT().Done()
+
+		r := buffer.WithErrorHandler(b, errorHandler).ToChunkReader(
+			/* offset = */ 0,
+			/* chunk size = */ 12)
+		chunk, err := r.Read()
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello world"), chunk)
+		_, err = r.Read()
+		require.Equal(t, io.EOF, err)
+		_, err = r.Read()
+		require.Equal(t, io.EOF, err)
+		r.Close()
+	})
+
+	t.Run("NoRetriesSeparateEOF", func(t *testing.T) {
+		reader := mock.NewMockReadCloser(ctrl)
+		reader.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
+			return copy(p, []byte("Hello world")), nil
+		})
+		reader.EXPECT().Read(gomock.Any()).Return(0, io.EOF)
+		reader.EXPECT().Close()
+		b := buffer.NewCASBufferFromReader(digest, reader, buffer.UserProvided)
+
+		errorHandler := mock.NewMockErrorHandler(ctrl)
+		errorHandler.EXPECT().Done()
+
+		r := buffer.WithErrorHandler(b, errorHandler).ToChunkReader(
+			/* offset = */ 0,
+			/* chunk size = */ 12)
+		chunk, err := r.Read()
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello world"), chunk)
+		_, err = r.Read()
+		require.Equal(t, io.EOF, err)
+		_, err = r.Read()
+		require.Equal(t, io.EOF, err)
+		r.Close()
+	})
+
 	t.Run("RetriesFailure", func(t *testing.T) {
 		reader1 := mock.NewMockChunkReader(ctrl)
 		reader1.EXPECT().Read().Return([]byte("Hello "), nil)

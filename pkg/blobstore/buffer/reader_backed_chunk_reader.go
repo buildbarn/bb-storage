@@ -7,6 +7,8 @@ import (
 type readerBackedChunkReader struct {
 	r                     io.ReadCloser
 	maximumChunkSizeBytes int
+
+	err error
 }
 
 // newReaderBackedChunkReader creates a ChunkReader based on an existing
@@ -20,15 +22,19 @@ func newReaderBackedChunkReader(r io.ReadCloser, maximumChunkSizeBytes int) Chun
 }
 
 func (r *readerBackedChunkReader) Read() ([]byte, error) {
-	b := make([]byte, r.maximumChunkSizeBytes)
-	n, err := io.ReadFull(r.r, b[:])
-	if n > 0 {
-		return b[:n], nil
+	if r.err == nil {
+		b := make([]byte, r.maximumChunkSizeBytes)
+		n, err := io.ReadFull(r.r, b[:])
+		if err == io.ErrUnexpectedEOF {
+			r.err = io.EOF
+		} else {
+			r.err = err
+		}
+		if n > 0 {
+			return b[:n], nil
+		}
 	}
-	if err == io.ErrUnexpectedEOF {
-		return nil, io.EOF
-	}
-	return nil, err
+	return nil, r.err
 }
 
 func (r *readerBackedChunkReader) Close() {
