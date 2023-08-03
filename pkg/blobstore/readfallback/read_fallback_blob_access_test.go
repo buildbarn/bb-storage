@@ -183,8 +183,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(missingFromPrimary, nil)
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
-		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
-		    Return(nil)
+		replicator.EXPECT().ReplicateMultiple(ctx, presentOnlyInSecondary)
 
 		missing, err := blobAccess.FindMissing(ctx, allDigests)
 		require.NoError(t, err)
@@ -214,7 +213,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(missingFromPrimary, nil)
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
-		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
+		replicator.EXPECT().ReplicateMultiple(ctx, presentOnlyInSecondary).
 		    Return(status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
@@ -226,7 +225,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(missingFromPrimary, nil)
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
-		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
+		replicator.EXPECT().ReplicateMultiple(ctx, presentOnlyInSecondary).
 		    Return(status.Error(codes.NotFound, "Object 00000000000000000000000000000001 not found"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
