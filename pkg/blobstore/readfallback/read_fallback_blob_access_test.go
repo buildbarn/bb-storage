@@ -159,7 +159,8 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 
 	primary := mock.NewMockBlobAccess(ctrl)
 	secondary := mock.NewMockBlobAccess(ctrl)
-	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
+	replicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 
 	allDigests := digest.NewSetBuilder().
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)).
@@ -171,6 +172,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)).
 		Build()
 	missingFromBoth := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100).ToSingletonSet()
+	presentOnlyInSecondary := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101).ToSingletonSet()
 
 	t.Run("Success", func(t *testing.T) {
 		// Both backends should be queried. Only the missing
@@ -181,6 +183,8 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 			Return(missingFromPrimary, nil)
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
+		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
+		    Return(nil)
 
 		missing, err := blobAccess.FindMissing(ctx, allDigests)
 		require.NoError(t, err)
@@ -203,5 +207,29 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+	})
+
+	t.Run("ReplicateError", func(t *testing.T) {
+		primary.EXPECT().FindMissing(ctx, allDigests).
+			Return(missingFromPrimary, nil)
+		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
+			Return(missingFromBoth, nil)
+		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
+		    Return(status.Error(codes.Internal, "Server on fire"))
+
+		_, err := blobAccess.FindMissing(ctx, allDigests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend secondary to backend primary: Server on fire"), err)
+	})
+
+	t.Run("InconsistentBackendSecondary", func(t *testing.T) {
+		primary.EXPECT().FindMissing(ctx, allDigests).
+			Return(missingFromPrimary, nil)
+		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
+			Return(missingFromBoth, nil)
+		replicator.EXPECT().ReplicateMultiple(gomock.Any(), presentOnlyInSecondary).
+		    Return(status.Error(codes.NotFound, "Object 00000000000000000000000000000001 not found"))
+
+		_, err := blobAccess.FindMissing(ctx, allDigests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend secondary returned inconsistent results while synchronizing: Object 00000000000000000000000000000001 not found"), err)
 	})
 }

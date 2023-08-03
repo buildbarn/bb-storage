@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -89,6 +90,24 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 	missingInBoth, err := ba.secondary.FindMissing(ctx, missingInPrimary)
 	if err != nil {
 		return digest.EmptySet, util.StatusWrap(err, "Secondary")
+	}
+
+	// Replicate the blobs that are present only in the secondary backend to primary
+	if ba.replicator != nil {
+		presentOnlyInSecondary, _, _ := digest.GetDifferenceAndIntersection(missingInPrimary, missingInBoth)
+		replicateGroup, replicateCtx := errgroup.WithContext(ctx)
+		replicateGroup.Go(func() error {
+			if err := ba.replicator.ReplicateMultiple(replicateCtx, presentOnlyInSecondary); err != nil {
+				if status.Code(err) == codes.NotFound {
+					return util.StatusWrapWithCode(err, codes.Internal, "Backend secondary returned inconsistent results while synchronizing")
+				}
+				return util.StatusWrap(err, "Failed to synchronize from backend secondary to backend primary")
+			}
+			return nil
+		})
+		if err := replicateGroup.Wait(); err != nil {
+			return digest.EmptySet, err
+		}
 	}
 	return missingInBoth, nil
 }
