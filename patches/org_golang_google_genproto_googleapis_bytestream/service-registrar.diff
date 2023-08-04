@@ -1,0 +1,11 @@
+--- bytestream.pb.go	2023-07-27 13:58:36
++++ bytestream.pb.go	2023-07-27 20:48:22
+@@ -823,7 +823,7 @@
+ 	return nil, status.Errorf(codes.Unimplemented, "method QueryWriteStatus not implemented")
+ }
+ 
+-func RegisterByteStreamServer(s *grpc.Server, srv ByteStreamServer) {
++func RegisterByteStreamServer(s grpc.ServiceRegistrar, srv ByteStreamServer) {
+ 	s.RegisterService(&_ByteStream_serviceDesc, srv)
+ }
+ 

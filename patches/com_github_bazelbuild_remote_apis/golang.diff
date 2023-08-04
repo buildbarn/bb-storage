@@ -1,65 +1,5 @@
-diff --git build/bazel/remote/asset/v1/BUILD build/bazel/remote/asset/v1/BUILD
-index a09bea4..418fe05 100644
---- build/bazel/remote/asset/v1/BUILD
-+++ build/bazel/remote/asset/v1/BUILD
-@@ -1,7 +1,9 @@
--package(default_visibility = ["//visibility:public"])
--
-+load("@io_bazel_rules_go//go:def.bzl", "go_library")
-+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
- load("@rules_proto//proto:defs.bzl", "proto_library")
- 
-+package(default_visibility = ["//visibility:public"])
-+
- licenses(["notice"])
- 
- proto_library(
-@@ -11,28 +13,25 @@ proto_library(
-         "//build/bazel/remote/execution/v2:remote_execution_proto",
-         "@com_google_protobuf//:duration_proto",
-         "@com_google_protobuf//:timestamp_proto",
--        "@googleapis//:google_api_annotations_proto",
--        "@googleapis//:google_api_http_proto",
--        "@googleapis//:google_rpc_status_proto",
-+        "@go_googleapis//google/api:annotations_proto",
-+        "@go_googleapis//google/rpc:status_proto",
-     ],
- )
- 
--alias(
--    name = "remote_asset_java_proto",
--    actual = "//build/bazel/remote/asset/v1/java:remote_asset_java_proto",
--)
--
--alias(
--    name = "remote_asset_cc_proto",
--    actual = "//build/bazel/remote/asset/v1/cc:remote_asset_cc_grpc",
--)
--
--alias(
-+go_proto_library(
-     name = "remote_asset_go_proto",
--    actual = "//build/bazel/remote/asset/v1/go:remote_asset_go_proto",
-+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-+    importpath = "github.com/bazelbuild/remote-apis/build/bazel/remote/asset/v1",
-+    proto = ":remote_asset_proto",
-+    deps = [
-+        "//build/bazel/remote/execution/v2:execution",
-+        "@go_googleapis//google/api:annotations_go_proto",
-+        "@go_googleapis//google/rpc:status_go_proto",
-+    ],
- )
- 
--alias(
--    name = "go_default_library",
--    actual = "//build/bazel/remote/asset/v1/go:go_default_library",
-+go_library(
-+    name = "asset",
-+    embed = [":remote_asset_go_proto"],
-+    importpath = "github.com/bazelbuild/remote-apis/build/bazel/remote/asset/v1",
- )
 diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
-index 01f415b..fdd40c7 100644
+index 01f415b..eb3b3f2 100644
 --- build/bazel/remote/execution/v2/BUILD
 +++ build/bazel/remote/execution/v2/BUILD
 @@ -1,7 +1,9 @@
@@ -74,7 +14,7 @@ index 01f415b..fdd40c7 100644
  licenses(["notice"])
  
  proto_library(
-@@ -13,29 +15,27 @@ proto_library(
+@@ -13,29 +15,28 @@ proto_library(
          "@com_google_protobuf//:duration_proto",
          "@com_google_protobuf//:timestamp_proto",
          "@com_google_protobuf//:wrappers_proto",
@@ -82,9 +22,10 @@ index 01f415b..fdd40c7 100644
 -        "@googleapis//:google_api_http_proto",
 -        "@googleapis//:google_longrunning_operations_proto",
 -        "@googleapis//:google_rpc_status_proto",
-+        "@go_googleapis//google/api:annotations_proto",
-+        "@go_googleapis//google/longrunning:longrunning_proto",
-+        "@go_googleapis//google/rpc:status_proto",
++        "@googleapis//google/api:annotations_proto",
++        "@googleapis//google/api:http_proto",
++        "@googleapis//google/longrunning:operations_proto",
++        "@googleapis//google/rpc:status_proto",
      ],
  )
  
@@ -107,9 +48,9 @@ index 01f415b..fdd40c7 100644
 +    proto = ":remote_execution_proto",
 +    deps = [
 +        "//build/bazel/semver",
-+        "@go_googleapis//google/api:annotations_go_proto",
-+        "@go_googleapis//google/longrunning:longrunning_go_proto",
-+        "@go_googleapis//google/rpc:status_go_proto",
++        "@com_google_cloud_go_longrunning//autogen/longrunningpb",
++        "@org_golang_google_genproto_googleapis_api//annotations",
++        "@org_golang_google_genproto_googleapis_rpc//status",
 +    ],
  )
  

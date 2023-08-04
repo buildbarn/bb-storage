@@ -12,9 +12,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"cloud.google.com/go/longrunning/autogen/longrunningpb"
 )
 
 func TestAuthorizingBuildQueueGetExecutionCapabilities(t *testing.T) {
@@ -112,13 +113,13 @@ func TestAuthorizingBuildQueueExecute(t *testing.T) {
 			},
 		}, gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
-				require.NoError(t, out.Send(&longrunning.Operation{
+				require.NoError(t, out.Send(&longrunningpb.Operation{
 					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 					Done: true,
 				}))
 				return nil
 			})
-		executeServer.EXPECT().Send(&longrunning.Operation{
+		executeServer.EXPECT().Send(&longrunningpb.Operation{
 			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 			Done: true,
 		})
@@ -147,13 +148,13 @@ func TestAuthorizingBuildQueueWaitExecution(t *testing.T) {
 			Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
 		}, gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
-				require.NoError(t, out.Send(&longrunning.Operation{
+				require.NoError(t, out.Send(&longrunningpb.Operation{
 					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 					Done: true,
 				}))
 				return nil
 			})
-		executeServer.EXPECT().Send(&longrunning.Operation{
+		executeServer.EXPECT().Send(&longrunningpb.Operation{
 			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 			Done: true,
 		})

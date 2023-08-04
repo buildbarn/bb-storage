@@ -12,9 +12,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"cloud.google.com/go/longrunning/autogen/longrunningpb"
 )
 
 func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
@@ -151,7 +152,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			},
 		}), gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.ExecuteRequest, out remoteexecution.Execution_ExecuteServer) error {
-				require.NoError(t, out.Send(&longrunning.Operation{
+				require.NoError(t, out.Send(&longrunningpb.Operation{
 					Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 					Done: true,
 				}))
@@ -159,7 +160,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			})
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
 		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
-		executeServer.EXPECT().Send(testutil.EqProto(t, &longrunning.Operation{
+		executeServer.EXPECT().Send(testutil.EqProto(t, &longrunningpb.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
 			// name, so that WaitExecution() can forward
@@ -240,7 +241,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}), gomock.Any()).DoAndReturn(
 			func(in *remoteexecution.WaitExecutionRequest, out remoteexecution.Execution_WaitExecutionServer) error {
-				require.NoError(t, out.Send(&longrunning.Operation{
+				require.NoError(t, out.Send(&longrunningpb.Operation{
 					Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 					Done: true,
 				}))
@@ -248,7 +249,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			})
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
 		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
-		waitExecutionServer.EXPECT().Send(testutil.EqProto(t, &longrunning.Operation{
+		waitExecutionServer.EXPECT().Send(testutil.EqProto(t, &longrunningpb.Operation{
 			// We should return the operation name prefixed
 			// with the identifying part of the instance
 			// name, so that WaitExecution() can forward

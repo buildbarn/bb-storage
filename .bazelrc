@@ -1,1 +1,2 @@
+build --host_cxxopt=-std=c++17
 run --workspace_status_command="bash tools/workspace-status.sh"

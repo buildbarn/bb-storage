@@ -5,6 +5,10 @@ load("@npm//:defs.bzl", "npm_link_all_packages", "npm_link_targets")
 # gazelle:prefix github.com/buildbarn/bb-storage
 # gazelle:resolve proto build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto
 # gazelle:resolve proto go build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution
+# gazelle:resolve proto go google/bytestream/bytestream.proto @org_golang_google_genproto_googleapis_bytestream//:bytestream
+# gazelle:resolve proto google/bytestream/bytestream.proto @googleapis//google/bytestream:bytestream_proto
+# gazelle:resolve proto go google/rpc/status.proto @org_golang_google_genproto_googleapis_rpc//status
+# gazelle:resolve proto proto google/rpc/status.proto @googleapis//google/rpc:status_proto
 # gazelle:resolve proto opentelemetry/proto/common/v1/common.proto @io_opentelemetry_proto//:common_proto
 # gazelle:resolve proto go opentelemetry/proto/common/v1/common.proto @io_opentelemetry_go_proto_otlp//common/v1:common
 gazelle(
