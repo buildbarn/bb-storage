@@ -575,7 +575,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				clock.SystemClock,
 				eviction.NewMetricsSet(eviction.NewLRUSet[string](), "ReadCanaryingBlobAccess"),
 				int(config.MaximumCacheSize),
-				maximumCacheDuration.AsDuration()),
+				maximumCacheDuration.AsDuration(),
+				util.DefaultErrorLogger),
 			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),
 		}, "read_canarying", nil
 	case *pb.BlobAccessConfiguration_ZipReading:

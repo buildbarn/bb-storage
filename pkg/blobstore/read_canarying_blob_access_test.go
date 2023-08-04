@@ -26,13 +26,15 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 	sourceBackend.EXPECT().FindMissing(ctx, digest.EmptySet).Return(digest.EmptySet, nil).AnyTimes()
 	replicaBackend := mock.NewMockBlobAccess(ctrl)
 	clock := mock.NewMockClock(ctrl)
+	replicaErrorLogger := mock.NewMockErrorLogger(ctrl)
 	blobAccess := blobstore.NewReadCanaryingBlobAccess(
 		sourceBackend,
 		replicaBackend,
 		clock,
 		eviction.NewLRUSet[string](),
 		100,
-		5*time.Minute)
+		5*time.Minute,
+		replicaErrorLogger)
 
 	t.Run("Put", func(t *testing.T) {
 		// Writes should always go to the source backend. There
@@ -57,10 +59,12 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// replica backend, just to see whether it's online.
 		clock.EXPECT().Now().Return(time.Unix(10000, 0))
 		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(10000, 100000000))
+		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Replica: Server is offline"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
 
 		// If the replica is offline, calls within the next five
 		// minutes should be forwarded to the source backend.
@@ -92,10 +96,12 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// fall back to the source for another five minutes.
 		clock.EXPECT().Now().Return(time.Unix(11202, 0))
 		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(11202, 100000000))
+		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
 
 		_, err = blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Replica: Server is offline"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
 
 		clock.EXPECT().Now().Return(time.Unix(11501, 0))
 		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
@@ -116,10 +122,13 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(15000, 0))
 		replicaBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
 			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(15000, 100000000))
+		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
+			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
 
 		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Replica: Server is offline"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
 
 		clock.EXPECT().Now().Return(time.Unix(15001, 0))
 		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
@@ -138,12 +147,18 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 			ctx,
 			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet(),
 		).Return(digest.EmptySet, status.Error(codes.Unavailable, "Server is offline"))
+		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(20000, 100000000))
+		sourceBackend.EXPECT().FindMissing(
+			ctx,
+			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet(),
+		).Return(digest.EmptySet, nil)
 
-		_, err := blobAccess.FindMissing(
+		missing, err := blobAccess.FindMissing(
 			ctx,
 			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet())
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Replica, instance name \"find-missing/down\": Server is offline"), err)
+		require.NoError(t, err)
+		require.Equal(t, digest.EmptySet, missing)
 
 		// Perform another call with a set that contains digests
 		// for multiple instance names. This call should be
@@ -178,7 +193,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 				Build(),
 		).Return(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5).ToSingletonSet(), nil)
 
-		missing, err := blobAccess.FindMissing(
+		missing, err = blobAccess.FindMissing(
 			ctx,
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).

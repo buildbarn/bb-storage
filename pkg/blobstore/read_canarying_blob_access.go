@@ -25,6 +25,7 @@ type readCanaryingBlobAccess struct {
 	clock                clock.Clock
 	maximumCacheSize     int
 	maximumCacheDuration time.Duration
+	replicaErrorLogger   util.ErrorLogger
 
 	lock                sync.Mutex
 	cachedInstanceNames map[string]readCanaryingCacheEntry
@@ -47,13 +48,14 @@ type readCanaryingBlobAccess struct {
 // if the replica uses features like AuthorizingBlobAccess or
 // DemultiplexingBlobAccess, this backend still behaves in a meaningful
 // way.
-func NewReadCanaryingBlobAccess(source, replica BlobAccess, clock clock.Clock, evictionSet eviction.Set[string], maximumCacheSize int, maximumCacheDuration time.Duration) BlobAccess {
+func NewReadCanaryingBlobAccess(source, replica BlobAccess, clock clock.Clock, evictionSet eviction.Set[string], maximumCacheSize int, maximumCacheDuration time.Duration, replicaErrorLogger util.ErrorLogger) BlobAccess {
 	return &readCanaryingBlobAccess{
 		BlobAccess:           source,
 		replica:              replica,
 		clock:                clock,
 		maximumCacheSize:     maximumCacheSize,
 		maximumCacheDuration: maximumCacheDuration,
+		replicaErrorLogger:   replicaErrorLogger,
 
 		cachedInstanceNames: map[string]readCanaryingCacheEntry{},
 		evictionSet:         evictionSet,
@@ -101,8 +103,11 @@ func (ba *readCanaryingBlobAccess) shouldSendToReplica(instanceNameStr string) b
 	return true
 }
 
-func (ba *readCanaryingBlobAccess) recordReplicaResponse(instanceNameStr string, err error) {
-	shouldSendToReplica := !util.IsInfrastructureError(err)
+func (ba *readCanaryingBlobAccess) recordReplicaResponse(instanceNameStr string, err error) bool {
+	gotInfrastructureError := util.IsInfrastructureError(err)
+	if gotInfrastructureError {
+		ba.replicaErrorLogger.Log(err)
+	}
 	expirationTime := ba.clock.Now().Add(ba.maximumCacheDuration)
 
 	ba.lock.Lock()
@@ -110,9 +115,10 @@ func (ba *readCanaryingBlobAccess) recordReplicaResponse(instanceNameStr string,
 
 	ba.getAndTouchCacheEntry(instanceNameStr)
 	ba.cachedInstanceNames[instanceNameStr] = readCanaryingCacheEntry{
-		shouldSendToReplica: shouldSendToReplica,
+		shouldSendToReplica: !gotInfrastructureError,
 		expirationTime:      expirationTime,
 	}
+	return gotInfrastructureError
 }
 
 func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buffer.Buffer {
@@ -120,9 +126,10 @@ func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buf
 	if ba.shouldSendToReplica(instanceNameStr) {
 		return buffer.WithErrorHandler(
 			ba.replica.Get(ctx, d),
-			&readCanaryingReplicaErrorHandler{
-				blobAccess:      ba,
-				instanceNameStr: instanceNameStr,
+			&readCanaryingReplicaGetErrorHandler{
+				blobAccess: ba,
+				context:    ctx,
+				digest:     d,
 			})
 	}
 	return buffer.WithErrorHandler(
@@ -135,9 +142,12 @@ func (ba *readCanaryingBlobAccess) GetFromComposite(ctx context.Context, parentD
 	if ba.shouldSendToReplica(instanceNameStr) {
 		return buffer.WithErrorHandler(
 			ba.replica.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-			&readCanaryingReplicaErrorHandler{
-				blobAccess:      ba,
-				instanceNameStr: instanceNameStr,
+			&readCanaryingReplicaGetFromCompositeErrorHandler{
+				blobAccess:   ba,
+				context:      ctx,
+				parentDigest: parentDigest,
+				childDigest:  childDigest,
+				slicer:       slicer,
 			})
 	}
 	return buffer.WithErrorHandler(
@@ -158,14 +168,18 @@ func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests dige
 		instanceNameStr := digestsForInstanceName.Items()[0].GetInstanceName().String()
 		if ba.shouldSendToReplica(instanceNameStr) {
 			missingFromReplica, err := ba.replica.FindMissing(ctx, digestsForInstanceName)
-			ba.recordReplicaResponse(instanceNameStr, err)
-			if err != nil {
-				return digest.EmptySet, util.StatusWrapf(err, "Replica, instance name %#v", instanceNameStr)
+			if !ba.recordReplicaResponse(instanceNameStr, err) {
+				if err != nil {
+					return digest.EmptySet, util.StatusWrapf(err, "Replica, instance name %#v", instanceNameStr)
+				}
+				missingFromReplicas = append(missingFromReplicas, missingFromReplica)
+				continue
 			}
-			missingFromReplicas = append(missingFromReplicas, missingFromReplica)
-		} else {
-			digestsForSource = append(digestsForSource, digestsForInstanceName)
 		}
+		// Replica was known to be unavailable, or a call
+		// against it just failed. Forward the request to the
+		// source.
+		digestsForSource = append(digestsForSource, digestsForInstanceName)
 	}
 
 	// Single request to the source for all instance names for which
@@ -177,22 +191,67 @@ func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests dige
 	return digest.GetUnion(append(missingFromReplicas, missingFromSource)), nil
 }
 
-// readCanaryingReplicaErrorHandler is the ErrorHandler that is attached
-// to all buffers read from the replica backend.
-type readCanaryingReplicaErrorHandler struct {
-	blobAccess      *readCanaryingBlobAccess
-	instanceNameStr string
+// readCanaryingReplicaGetErrorHandler is the ErrorHandler that is
+// attached to all buffers read from the replica backend through the
+// Get() operation.
+type readCanaryingReplicaGetErrorHandler struct {
+	blobAccess *readCanaryingBlobAccess
+	context    context.Context
+	digest     digest.Digest
 }
 
-func (eh *readCanaryingReplicaErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	eh.blobAccess.recordReplicaResponse(eh.instanceNameStr, err)
+func (eh *readCanaryingReplicaGetErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	ba := eh.blobAccess
+	if ba == nil {
+		// Already retried the operation against the source backend.
+		return nil, util.StatusWrap(err, "Source")
+	}
 	eh.blobAccess = nil
+	if ba.recordReplicaResponse(eh.digest.GetInstanceName().String(), err) {
+		// Request against the replica failed with an
+		// infrastructure error. Retry it against the source
+		// backend.
+		return ba.BlobAccess.Get(eh.context, eh.digest), nil
+	}
 	return nil, util.StatusWrap(err, "Replica")
 }
 
-func (eh *readCanaryingReplicaErrorHandler) Done() {
+func (eh *readCanaryingReplicaGetErrorHandler) Done() {
 	if ba := eh.blobAccess; ba != nil {
-		ba.recordReplicaResponse(eh.instanceNameStr, nil)
+		ba.recordReplicaResponse(eh.digest.GetInstanceName().String(), nil)
+	}
+}
+
+// readCanaryingReplicaGetFromCompositeErrorHandler is the ErrorHandler
+// that is attached to all buffers read from the replica backend through
+// the GetFromComposite() operation.
+type readCanaryingReplicaGetFromCompositeErrorHandler struct {
+	blobAccess   *readCanaryingBlobAccess
+	context      context.Context
+	parentDigest digest.Digest
+	childDigest  digest.Digest
+	slicer       slicing.BlobSlicer
+}
+
+func (eh *readCanaryingReplicaGetFromCompositeErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	ba := eh.blobAccess
+	if ba == nil {
+		// Already retried the operation against the source backend.
+		return nil, util.StatusWrap(err, "Source")
+	}
+	eh.blobAccess = nil
+	if ba.recordReplicaResponse(eh.parentDigest.GetInstanceName().String(), err) {
+		// Request against the replica failed with an
+		// infrastructure error. Retry it against the source
+		// backend.
+		return ba.BlobAccess.GetFromComposite(eh.context, eh.parentDigest, eh.childDigest, eh.slicer), nil
+	}
+	return nil, util.StatusWrap(err, "Replica")
+}
+
+func (eh *readCanaryingReplicaGetFromCompositeErrorHandler) Done() {
+	if ba := eh.blobAccess; ba != nil {
+		ba.recordReplicaResponse(eh.parentDigest.GetInstanceName().String(), nil)
 	}
 }
 
