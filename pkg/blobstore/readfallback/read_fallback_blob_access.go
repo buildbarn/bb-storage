@@ -93,14 +93,13 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 
 	// Replicate the blobs that are present only in the secondary
 	// backend to the primary backend.
-	if ba.replicator != nil {
-		presentOnlyInSecondary, _, _ := digest.GetDifferenceAndIntersection(missingInPrimary, missingInBoth)
-		if err := ba.replicator.ReplicateMultiple(ctx, presentOnlyInSecondary); err != nil {
-			if status.Code(err) == codes.NotFound {
-				return digest.EmptySet, util.StatusWrapWithCode(err, codes.Internal, "Backend secondary returned inconsistent results while synchronizing")
-			}
-			return digest.EmptySet, util.StatusWrap(err, "Failed to synchronize from backend secondary to backend primary")
+	presentOnlyInSecondary, _, _ := digest.GetDifferenceAndIntersection(missingInPrimary, missingInBoth)
+	if err := ba.replicator.ReplicateMultiple(ctx, presentOnlyInSecondary); err != nil {
+		if status.Code(err) == codes.NotFound {
+			return digest.EmptySet, util.StatusWrapWithCode(err, codes.Internal, "Backend secondary returned inconsistent results while synchronizing")
 		}
+		return digest.EmptySet, util.StatusWrap(err, "Failed to synchronize from backend secondary to backend primary")
 	}
+
 	return missingInBoth, nil
 }

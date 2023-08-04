@@ -214,7 +214,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
 		replicator.EXPECT().ReplicateMultiple(ctx, presentOnlyInSecondary).
-		    Return(status.Error(codes.Internal, "Server on fire"))
+			Return(status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to synchronize from backend secondary to backend primary: Server on fire"), err)
@@ -226,7 +226,7 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 		secondary.EXPECT().FindMissing(ctx, missingFromPrimary).
 			Return(missingFromBoth, nil)
 		replicator.EXPECT().ReplicateMultiple(ctx, presentOnlyInSecondary).
-		    Return(status.Error(codes.NotFound, "Object 00000000000000000000000000000001 not found"))
+			Return(status.Error(codes.NotFound, "Object 00000000000000000000000000000001 not found"))
 
 		_, err := blobAccess.FindMissing(ctx, allDigests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend secondary returned inconsistent results while synchronizing: Object 00000000000000000000000000000001 not found"), err)
