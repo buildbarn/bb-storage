@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package buildbarn.http.oidc;
+
+import "google/protobuf/timestamp.proto";
+import "pkg/proto/auth/auth.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/http/oidc";
+
+// The unencrypted payload of the cookie containing session state that
+// is managed by OIDCAuthenticator.
+message CookieValue {
+  message Authenticating {
+    // The value of query parameter "state" that was provided to the
+    // authorization endpoint URL. Its value is checked when the
+    // redirect URL is requested.
+    bytes state_verifier = 1;
+
+    // The page that was attempted to be requested when a redirect to
+    // the authorization endpoint URL took place. The user will be
+    // redirected back to this page upon success.
+    string original_request_uri = 2;
+  }
+
+  message Authenticated {
+    // The authentication metadata that is computed from the claims
+    // returned by the user info endpoint.
+    buildbarn.auth.AuthenticationMetadata authentication_metadata = 1;
+
+    // The time at which the access token that was used to obtain the
+    // authentication metadata expires.
+    google.protobuf.Timestamp expiration = 2;
+
+    // If set, a refresh token that may be used to obtain a new access
+    // token and updated claims after the current access token expires.
+    string refresh_token = 3;
+  }
+
+  oneof session_state {
+    // The user was redirected to the authorization endpoint URL.
+    Authenticating authenticating = 1;
+
+    // Successfully obtained an access token and claims.
+    Authenticated authenticated = 2;
+  }
+}

@@ -322,10 +322,10 @@ type DiagnosticsHTTPServerConfiguration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ListenAddress     string `protobuf:"bytes,1,opt,name=listen_address,json=listenAddress,proto3" json:"listen_address,omitempty"`
-	EnablePprof       bool   `protobuf:"varint,2,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`
-	EnablePrometheus  bool   `protobuf:"varint,3,opt,name=enable_prometheus,json=enablePrometheus,proto3" json:"enable_prometheus,omitempty"`
-	EnableActiveSpans bool   `protobuf:"varint,4,opt,name=enable_active_spans,json=enableActiveSpans,proto3" json:"enable_active_spans,omitempty"`
+	HttpServers       []*http.ServerConfiguration `protobuf:"bytes,1,rep,name=http_servers,json=httpServers,proto3" json:"http_servers,omitempty"`
+	EnablePprof       bool                        `protobuf:"varint,2,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`
+	EnablePrometheus  bool                        `protobuf:"varint,3,opt,name=enable_prometheus,json=enablePrometheus,proto3" json:"enable_prometheus,omitempty"`
+	EnableActiveSpans bool                        `protobuf:"varint,4,opt,name=enable_active_spans,json=enableActiveSpans,proto3" json:"enable_active_spans,omitempty"`
 }
 
 func (x *DiagnosticsHTTPServerConfiguration) Reset() {
@@ -360,11 +360,11 @@ func (*DiagnosticsHTTPServerConfiguration) Descriptor() ([]byte, []int) {
 	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *DiagnosticsHTTPServerConfiguration) GetListenAddress() string {
+func (x *DiagnosticsHTTPServerConfiguration) GetHttpServers() []*http.ServerConfiguration {
 	if x != nil {
-		return x.ListenAddress
+		return x.HttpServers
 	}
-	return ""
+	return nil
 }
 
 func (x *DiagnosticsHTTPServerConfiguration) GetEnablePprof() bool {
@@ -1157,24 +1157,27 @@ var file_pkg_proto_configuration_global_global_proto_rawDesc = []byte{
 	0x72, 0x65, 0x75, 0x73, 0x65, 0x5f, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x08,
 	0x20, 0x03, 0x28, 0x09, 0x52, 0x1b, 0x67, 0x72, 0x70, 0x63, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72,
 	0x64, 0x41, 0x6e, 0x64, 0x52, 0x65, 0x75, 0x73, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
-	0x61, 0x4a, 0x04, 0x08, 0x04, 0x10, 0x05, 0x22, 0xcb, 0x01, 0x0a, 0x22, 0x44, 0x69, 0x61, 0x67,
+	0x61, 0x4a, 0x04, 0x08, 0x04, 0x10, 0x05, 0x22, 0xfa, 0x01, 0x0a, 0x22, 0x44, 0x69, 0x61, 0x67,
 	0x6e, 0x6f, 0x73, 0x74, 0x69, 0x63, 0x73, 0x48, 0x54, 0x54, 0x50, 0x53, 0x65, 0x72, 0x76, 0x65,
-	0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x25,
-	0x0a, 0x0e, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x5f,
-	0x70, 0x70, 0x72, 0x6f, 0x66, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x65, 0x6e, 0x61,
-	0x62, 0x6c, 0x65, 0x50, 0x70, 0x72, 0x6f, 0x66, 0x12, 0x2b, 0x0a, 0x11, 0x65, 0x6e, 0x61, 0x62,
-	0x6c, 0x65, 0x5f, 0x70, 0x72, 0x6f, 0x6d, 0x65, 0x74, 0x68, 0x65, 0x75, 0x73, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x08, 0x52, 0x10, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x50, 0x72, 0x6f, 0x6d, 0x65,
-	0x74, 0x68, 0x65, 0x75, 0x73, 0x12, 0x2e, 0x0a, 0x13, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x5f,
-	0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x73, 0x70, 0x61, 0x6e, 0x73, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x11, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65,
-	0x53, 0x70, 0x61, 0x6e, 0x73, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e, 0x2f, 0x62, 0x62,
-	0x2d, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x2f, 0x67, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x54,
+	0x0a, 0x0c, 0x68, 0x74, 0x74, 0x70, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x31, 0x2e, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e,
+	0x2e, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x68,
+	0x74, 0x74, 0x70, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x68, 0x74, 0x74, 0x70, 0x53, 0x65, 0x72,
+	0x76, 0x65, 0x72, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x5f, 0x70,
+	0x70, 0x72, 0x6f, 0x66, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x65, 0x6e, 0x61, 0x62,
+	0x6c, 0x65, 0x50, 0x70, 0x72, 0x6f, 0x66, 0x12, 0x2b, 0x0a, 0x11, 0x65, 0x6e, 0x61, 0x62, 0x6c,
+	0x65, 0x5f, 0x70, 0x72, 0x6f, 0x6d, 0x65, 0x74, 0x68, 0x65, 0x75, 0x73, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x10, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x50, 0x72, 0x6f, 0x6d, 0x65, 0x74,
+	0x68, 0x65, 0x75, 0x73, 0x12, 0x2e, 0x0a, 0x13, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x5f, 0x61,
+	0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x73, 0x70, 0x61, 0x6e, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x11, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x53,
+	0x70, 0x61, 0x6e, 0x73, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x62, 0x61, 0x72, 0x6e, 0x2f, 0x62, 0x62, 0x2d,
+	0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
+	0x67, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1206,8 +1209,9 @@ var file_pkg_proto_configuration_global_global_proto_goTypes = []interface{}{
 	(*durationpb.Duration)(nil),                                      // 12: google.protobuf.Duration
 	(*http.ClientConfiguration)(nil),                                 // 13: buildbarn.configuration.http.ClientConfiguration
 	(*v1.KeyValue)(nil),                                              // 14: opentelemetry.proto.common.v1.KeyValue
-	(*grpc.ClientConfiguration)(nil),                                 // 15: buildbarn.configuration.grpc.ClientConfiguration
-	(*emptypb.Empty)(nil),                                            // 16: google.protobuf.Empty
+	(*http.ServerConfiguration)(nil),                                 // 15: buildbarn.configuration.http.ServerConfiguration
+	(*grpc.ClientConfiguration)(nil),                                 // 16: buildbarn.configuration.grpc.ClientConfiguration
+	(*emptypb.Empty)(nil),                                            // 17: google.protobuf.Empty
 }
 var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	5,  // 0: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.grouping:type_name -> buildbarn.configuration.global.PrometheusPushgatewayConfiguration.GroupingEntry
@@ -1221,28 +1225,29 @@ var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	0,  // 8: buildbarn.configuration.global.Configuration.prometheus_pushgateway:type_name -> buildbarn.configuration.global.PrometheusPushgatewayConfiguration
 	4,  // 9: buildbarn.configuration.global.Configuration.diagnostics_http_server:type_name -> buildbarn.configuration.global.DiagnosticsHTTPServerConfiguration
 	2,  // 10: buildbarn.configuration.global.Configuration.set_umask:type_name -> buildbarn.configuration.global.SetUmaskConfiguration
-	8,  // 11: buildbarn.configuration.global.TracingConfiguration.Backend.jaeger_collector_span_exporter:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter
-	15, // 12: buildbarn.configuration.global.TracingConfiguration.Backend.otlp_span_exporter:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	16, // 13: buildbarn.configuration.global.TracingConfiguration.Backend.simple_span_processor:type_name -> google.protobuf.Empty
-	9,  // 14: buildbarn.configuration.global.TracingConfiguration.Backend.batch_span_processor:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor
-	16, // 15: buildbarn.configuration.global.TracingConfiguration.Sampler.always:type_name -> google.protobuf.Empty
-	16, // 16: buildbarn.configuration.global.TracingConfiguration.Sampler.never:type_name -> google.protobuf.Empty
-	10, // 17: buildbarn.configuration.global.TracingConfiguration.Sampler.parent_based:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased
-	11, // 18: buildbarn.configuration.global.TracingConfiguration.Sampler.maximum_rate:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.MaximumRate
-	13, // 19: buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
-	12, // 20: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.batch_timeout:type_name -> google.protobuf.Duration
-	12, // 21: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.export_timeout:type_name -> google.protobuf.Duration
-	7,  // 22: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.no_parent:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
-	7,  // 23: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.local_parent_not_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
-	7,  // 24: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.local_parent_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
-	7,  // 25: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.remote_parent_not_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
-	7,  // 26: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.remote_parent_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
-	12, // 27: buildbarn.configuration.global.TracingConfiguration.Sampler.MaximumRate.epoch_duration:type_name -> google.protobuf.Duration
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	15, // 11: buildbarn.configuration.global.DiagnosticsHTTPServerConfiguration.http_servers:type_name -> buildbarn.configuration.http.ServerConfiguration
+	8,  // 12: buildbarn.configuration.global.TracingConfiguration.Backend.jaeger_collector_span_exporter:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter
+	16, // 13: buildbarn.configuration.global.TracingConfiguration.Backend.otlp_span_exporter:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	17, // 14: buildbarn.configuration.global.TracingConfiguration.Backend.simple_span_processor:type_name -> google.protobuf.Empty
+	9,  // 15: buildbarn.configuration.global.TracingConfiguration.Backend.batch_span_processor:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor
+	17, // 16: buildbarn.configuration.global.TracingConfiguration.Sampler.always:type_name -> google.protobuf.Empty
+	17, // 17: buildbarn.configuration.global.TracingConfiguration.Sampler.never:type_name -> google.protobuf.Empty
+	10, // 18: buildbarn.configuration.global.TracingConfiguration.Sampler.parent_based:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased
+	11, // 19: buildbarn.configuration.global.TracingConfiguration.Sampler.maximum_rate:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.MaximumRate
+	13, // 20: buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	12, // 21: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.batch_timeout:type_name -> google.protobuf.Duration
+	12, // 22: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.export_timeout:type_name -> google.protobuf.Duration
+	7,  // 23: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.no_parent:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
+	7,  // 24: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.local_parent_not_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
+	7,  // 25: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.local_parent_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
+	7,  // 26: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.remote_parent_not_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
+	7,  // 27: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.remote_parent_sampled:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler
+	12, // 28: buildbarn.configuration.global.TracingConfiguration.Sampler.MaximumRate.epoch_duration:type_name -> google.protobuf.Duration
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_global_global_proto_init() }

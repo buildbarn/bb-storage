@@ -244,7 +244,7 @@ message DiagnosticsHTTPServerConfiguration {
   // Default endpoints:
   // - /-/healthy: Returns HTTP 200 OK if the application managed to
   //               start successfully.
-  string listen_address = 1;
+  repeated buildbarn.configuration.http.ServerConfiguration http_servers = 1;
 
   // Enables endpoints:
   // - /debug/pprof/*: Endpoints for Go's pprof debug tool.

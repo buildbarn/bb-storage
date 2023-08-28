@@ -1,22 +1,65 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "http",
     srcs = [
+        "allow_authenticator.go",
+        "any_authenticator.go",
+        "authenticating_handler.go",
+        "authenticator.go",
         "configuration.go",
+        "deny_authenticator.go",
         "header_adding_round_tripper.go",
+        "jwt_authenticator.go",
         "metrics_round_tripper.go",
+        "oidc_authenticator.go",
         "server.go",
         "status_code.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/auth",
+        "//pkg/clock",
+        "//pkg/jwt",
         "//pkg/program",
         "//pkg/proto/configuration/http",
+        "//pkg/proto/http/oidc",
+        "//pkg/random",
         "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_oauth2//:oauth2",
+    ],
+)
+
+go_test(
+    name = "http_test",
+    srcs = [
+        "allow_authenticator_test.go",
+        "deny_authenticator_test.go",
+        "oidc_authenticator_test.go",
+    ],
+    deps = [
+        ":http",
+        "//internal/mock",
+        "//pkg/auth",
+        "//pkg/proto/auth",
+        "//pkg/proto/http/oidc",
+        "//pkg/testutil",
+        "@com_github_golang_mock//gomock",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/structpb",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_oauth2//:oauth2",
     ],
 )

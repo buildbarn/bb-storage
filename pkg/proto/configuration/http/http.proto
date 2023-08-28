@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.http;
 
+import "pkg/proto/auth/auth.proto";
+import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http";
@@ -28,4 +30,116 @@ message ClientConfiguration {
   //
   //         "Basic " + std.base64(username + ":" + password)
   repeated HeaderValues add_headers = 5;
+}
+
+message ServerConfiguration {
+  // Network addresses on which to listen (e.g., ":443").
+  repeated string listen_addresses = 1;
+
+  // Policy for authenticating clients against the HTTP server.
+  //
+  // Each authentication policy yields a Protobuf message of type
+  // buildbarn.auth.AuthenticationMetadata object that is passed on to
+  // the authorization layer. The authentication metadata may be used to
+  // store the username or sets of permissions.
+  AuthenticationPolicy authentication_policy = 2;
+}
+
+message AuthenticationPolicy {
+  oneof policy {
+    // Allow all incoming requests.
+    //
+    // The value of this field is used as authentication metadata in
+    // literal form.
+    buildbarn.auth.AuthenticationMetadata allow = 1;
+
+    // Allow incoming requests if one of multiple authentication
+    // policies allows it, similar to Python's any() function.
+    //
+    // The first matching policy is used. It therefore makes sense to
+    // place policies such as 'oidc' at the very end, as those end up
+    // redirecting requests if no credentials are present.
+    AnyAuthenticationPolicy any = 2;
+
+    // Deny all incoming requests, returning a fixed error message back
+    // to the client.
+    string deny = 3;
+
+    // Allow incoming requests in case they present an "Authorization"
+    // header containing a JWT bearer token.
+    buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration jwt = 4;
+
+    // Allow incoming requests if the identity of a user can be obtained
+    // through OpenID Connect.
+    OIDCAuthenticationPolicy oidc = 5;
+  }
+}
+
+message AnyAuthenticationPolicy {
+  // Set of backing authentication policies.
+  repeated AuthenticationPolicy policies = 1;
+}
+
+message OIDCAuthenticationPolicy {
+  // The client identifier to provide to the authorization endpoint.
+  string client_id = 1;
+
+  // The client secret to provide to the token endpoint.
+  string client_secret = 2;
+
+  // The URL of the authorization endpoint. The HTTP server will
+  // redirect to this URL whenever a login needs to be performed.
+  string authorization_endpoint_url = 3;
+
+  // The URL of the token endpoint. The HTTP server will make calls to
+  // it to obtain access tokens and refresh tokens.
+  string token_endpoint_url = 4;
+
+  // The URL of the user info endpoint. The HTTP server will make calls
+  // to it to obtain information about the end-user (i.e., claims).
+  string user_info_endpoint_url = 5;
+
+  // JMESPath expression for converting claims to a Protobuf message of
+  // type buildbarn.auth.AuthenticationMetadata. The resulting metadata
+  // can be used for purposes such as authorization.
+  //
+  // For example, the following expression can be used to expose an
+  // email address stored in the claims as public authentication
+  // metadata.
+  //
+  //     {"public": {"email": email}}
+  string metadata_extraction_jmespath_expression = 6;
+
+  // The URL of a location on this HTTP server to which the
+  // authorization endpoint should redirect upon success. Care must be
+  // taken that this location does not overlap with a valid path.
+  string redirect_url = 7;
+
+  // The scope of of the access request. As required by OpenID Connect,
+  // this list MUST contain "openid". It is recommended to also specify
+  // "offline_access", as it acts as a hint that the authorization
+  // service returns refresh tokens. This permits the HTTP server to
+  // continue sessions with fewer redirects to the authorization
+  // service.
+  repeated string scopes = 8;
+
+  // A random seed of how cookies containing session state are named,
+  // and how they are encrypted.
+  //
+  // This implementation hashes the complete contents of the
+  // OIDCAuthenticationPolicy message to derive an AES key that is used
+  // to authenticate and encrypt cookie values. This means that any
+  // changes to the configuration automatically cause existing login
+  // sessions to be invalidated. Furthermore, assuming the client secret
+  // remains private, users cannot decrypt/encrypt cookies.
+  //
+  // This configuration option ensures that the authorization service
+  // (and potentially other environments that use the same client
+  // identifier and secret) also cannot decrypt/encrypt cookies used by
+  // this environment.
+  bytes cookie_seed = 9;
+
+  // Configuration options for the HTTP client that is used to send
+  // requests to the token endpoint and user info endpoint.
+  ClientConfiguration http_client = 10;
 }

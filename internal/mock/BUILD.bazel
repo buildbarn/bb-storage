@@ -5,7 +5,9 @@ gomock(
     name = "aliases",
     out = "aliases.go",
     interfaces = [
+        "AEAD",
         "ReadCloser",
+        "ResponseWriter",
         "RoundTripper",
         "Writer",
     ],
@@ -229,6 +231,14 @@ gomock(
 )
 
 gomock(
+    name = "random",
+    out = "random.go",
+    interfaces = ["ThreadSafeGenerator"],
+    library = "//pkg/random",
+    package = "mock",
+)
+
+gomock(
     name = "redis",
     out = "redis.go",
     interfaces = ["RedisClient"],
@@ -294,6 +304,7 @@ go_library(
         "grpc.go",
         "grpc_go.go",
         "jwt.go",
+        "random.go",
         "redis.go",
         "remoteexecution.go",
         "trace.go",

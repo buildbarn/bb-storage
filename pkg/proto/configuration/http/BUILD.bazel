@@ -6,7 +6,11 @@ proto_library(
     name = "http_proto",
     srcs = ["http.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/tls:tls_proto"],
+    deps = [
+        "//pkg/proto/auth:auth_proto",
+        "//pkg/proto/configuration/jwt:jwt_proto",
+        "//pkg/proto/configuration/tls:tls_proto",
+    ],
 )
 
 go_proto_library(
@@ -14,7 +18,11 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http",
     proto = ":http_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/tls"],
+    deps = [
+        "//pkg/proto/auth",
+        "//pkg/proto/configuration/jwt",
+        "//pkg/proto/configuration/tls",
+    ],
 )
 
 go_library(

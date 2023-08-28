@@ -1,0 +1,176 @@
+diff --git clientcredentials/clientcredentials.go clientcredentials/clientcredentials.go
+index 7a0b9ed..f93f3ff 100644
+--- clientcredentials/clientcredentials.go
++++ clientcredentials/clientcredentials.go
+@@ -19,6 +19,7 @@ import (
+ 	"net/http"
+ 	"net/url"
+ 	"strings"
++	"time"
+ 
+ 	"golang.org/x/oauth2"
+ 	"golang.org/x/oauth2/internal"
+@@ -103,7 +104,7 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
+ 		v[k] = p
+ 	}
+ 
+-	tk, err := internal.RetrieveToken(c.ctx, c.conf.ClientID, c.conf.ClientSecret, c.conf.TokenURL, v, internal.AuthStyle(c.conf.AuthStyle))
++	tk, err := internal.RetrieveToken(c.ctx, c.conf.ClientID, c.conf.ClientSecret, c.conf.TokenURL, v, internal.AuthStyle(c.conf.AuthStyle), time.Now)
+ 	if err != nil {
+ 		if rErr, ok := err.(*internal.RetrieveError); ok {
+ 			return nil, (*oauth2.RetrieveError)(rErr)
+diff --git internal/token.go internal/token.go
+index 58901bd..ed3003e 100644
+--- internal/token.go
++++ internal/token.go
+@@ -69,9 +69,9 @@ type tokenJSON struct {
+ 	ErrorURI         string `json:"error_uri"`
+ }
+ 
+-func (e *tokenJSON) expiry() (t time.Time) {
++func (e *tokenJSON) expiry(timeNow func() time.Time) (t time.Time) {
+ 	if v := e.ExpiresIn; v != 0 {
+-		return time.Now().Add(time.Duration(v) * time.Second)
++		return timeNow().Add(time.Duration(v) * time.Second)
+ 	}
+ 	return
+ }
+@@ -189,7 +189,7 @@ func cloneURLValues(v url.Values) url.Values {
+ 	return v2
+ }
+ 
+-func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, v url.Values, authStyle AuthStyle) (*Token, error) {
++func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, v url.Values, authStyle AuthStyle, timeNow func() time.Time) (*Token, error) {
+ 	needsAuthStyleProbe := authStyle == 0
+ 	if needsAuthStyleProbe {
+ 		if style, ok := lookupAuthStyle(tokenURL); ok {
+@@ -203,7 +203,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	token, err := doTokenRoundTrip(ctx, req)
++	token, err := doTokenRoundTrip(ctx, req, timeNow)
+ 	if err != nil && needsAuthStyleProbe {
+ 		// If we get an error, assume the server wants the
+ 		// clientID & clientSecret in a different form.
+@@ -219,7 +219,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+ 		// So just try both ways.
+ 		authStyle = AuthStyleInParams // the second way we'll try
+ 		req, _ = newTokenRequest(tokenURL, clientID, clientSecret, v, authStyle)
+-		token, err = doTokenRoundTrip(ctx, req)
++		token, err = doTokenRoundTrip(ctx, req, timeNow)
+ 	}
+ 	if needsAuthStyleProbe && err == nil {
+ 		setAuthStyle(tokenURL, authStyle)
+@@ -232,7 +232,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+ 	return token, err
+ }
+ 
+-func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
++func doTokenRoundTrip(ctx context.Context, req *http.Request, timeNow func() time.Time) (*Token, error) {
+ 	r, err := ContextClient(ctx).Do(req.WithContext(ctx))
+ 	if err != nil {
+ 		return nil, err
+@@ -274,7 +274,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
+ 		e := vals.Get("expires_in")
+ 		expires, _ := strconv.Atoi(e)
+ 		if expires != 0 {
+-			token.Expiry = time.Now().Add(time.Duration(expires) * time.Second)
++			token.Expiry = timeNow().Add(time.Duration(expires) * time.Second)
+ 		}
+ 	default:
+ 		var tj tokenJSON
+@@ -291,7 +291,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
+ 			AccessToken:  tj.AccessToken,
+ 			TokenType:    tj.TokenType,
+ 			RefreshToken: tj.RefreshToken,
+-			Expiry:       tj.expiry(),
++			Expiry:       tj.expiry(timeNow),
+ 			Raw:          make(map[string]interface{}),
+ 		}
+ 		json.Unmarshal(body, &token.Raw) // no error checks for optional fields
+diff --git internal/token_test.go internal/token_test.go
+index c54095a..c2935a2 100644
+--- internal/token_test.go
++++ internal/token_test.go
+@@ -13,6 +13,7 @@ import (
+ 	"net/http/httptest"
+ 	"net/url"
+ 	"testing"
++	"time"
+ )
+ 
+ func TestRetrieveToken_InParams(t *testing.T) {
+@@ -29,7 +30,7 @@ func TestRetrieveToken_InParams(t *testing.T) {
+ 		io.WriteString(w, `{"access_token": "ACCESS_TOKEN", "token_type": "bearer"}`)
+ 	}))
+ 	defer ts.Close()
+-	_, err := RetrieveToken(context.Background(), clientID, "", ts.URL, url.Values{}, AuthStyleInParams)
++	_, err := RetrieveToken(context.Background(), clientID, "", ts.URL, url.Values{}, AuthStyleInParams, time.Now)
+ 	if err != nil {
+ 		t.Errorf("RetrieveToken = %v; want no error", err)
+ 	}
+@@ -45,7 +46,7 @@ func TestRetrieveTokenWithContexts(t *testing.T) {
+ 	}))
+ 	defer ts.Close()
+ 
+-	_, err := RetrieveToken(context.Background(), clientID, "", ts.URL, url.Values{}, AuthStyleUnknown)
++	_, err := RetrieveToken(context.Background(), clientID, "", ts.URL, url.Values{}, AuthStyleUnknown, time.Now)
+ 	if err != nil {
+ 		t.Errorf("RetrieveToken (with background context) = %v; want no error", err)
+ 	}
+@@ -58,7 +59,7 @@ func TestRetrieveTokenWithContexts(t *testing.T) {
+ 
+ 	ctx, cancel := context.WithCancel(context.Background())
+ 	cancel()
+-	_, err = RetrieveToken(ctx, clientID, "", cancellingts.URL, url.Values{}, AuthStyleUnknown)
++	_, err = RetrieveToken(ctx, clientID, "", cancellingts.URL, url.Values{}, AuthStyleUnknown, time.Now)
+ 	close(retrieved)
+ 	if err == nil {
+ 		t.Errorf("RetrieveToken (with cancelled context) = nil; want error")
+diff --git token.go token.go
+index 5ffce97..0a3cd03 100644
+--- token.go
++++ token.go
+@@ -124,7 +124,7 @@ func (t *Token) Extra(key string) interface{} {
+ }
+ 
+ // timeNow is time.Now but pulled out as a variable for tests.
+-var timeNow = time.Now
++var TimeNow = time.Now
+ 
+ // expired reports whether the token is expired.
+ // t must be non-nil.
+@@ -137,7 +137,7 @@ func (t *Token) expired() bool {
+ 	if t.expiryDelta != 0 {
+ 		expiryDelta = t.expiryDelta
+ 	}
+-	return t.Expiry.Round(0).Add(-expiryDelta).Before(timeNow())
++	return t.Expiry.Round(0).Add(-expiryDelta).Before(TimeNow())
+ }
+ 
+ // Valid reports whether t is non-nil, has an AccessToken, and is not expired.
+@@ -164,7 +164,7 @@ func tokenFromInternal(t *internal.Token) *Token {
+ // This token is then mapped from *internal.Token into an *oauth2.Token which is returned along
+ // with an error..
+ func retrieveToken(ctx context.Context, c *Config, v url.Values) (*Token, error) {
+-	tk, err := internal.RetrieveToken(ctx, c.ClientID, c.ClientSecret, c.Endpoint.TokenURL, v, internal.AuthStyle(c.Endpoint.AuthStyle))
++	tk, err := internal.RetrieveToken(ctx, c.ClientID, c.ClientSecret, c.Endpoint.TokenURL, v, internal.AuthStyle(c.Endpoint.AuthStyle), TimeNow)
+ 	if err != nil {
+ 		if rErr, ok := err.(*internal.RetrieveError); ok {
+ 			return nil, (*RetrieveError)(rErr)
+diff --git token_test.go token_test.go
+index 0d8c7df..bf76470 100644
+--- token_test.go
++++ token_test.go
+@@ -34,8 +34,8 @@ func TestTokenExtra(t *testing.T) {
+ 
+ func TestTokenExpiry(t *testing.T) {
+ 	now := time.Now()
+-	timeNow = func() time.Time { return now }
+-	defer func() { timeNow = time.Now }()
++	TimeNow = func() time.Time { return now }
++	defer func() { TimeNow = time.Now }()
+ 
+ 	cases := []struct {
+ 		name string

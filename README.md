@@ -114,7 +114,10 @@ $ cat config/bb_storage.jsonnet
     } },
   },
   global: { diagnosticsHttpServer: {
-    listenAddress: ':9980',
+    httpServers: [{
+      listenAddresses: [':9980'],
+      authenticationPolicy: { allow: {} },
+    }],
     enablePrometheus: true,
     enablePprof: true,
   } },
