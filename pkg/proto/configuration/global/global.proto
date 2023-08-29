@@ -241,10 +241,14 @@ message Configuration {
 }
 
 message DiagnosticsHTTPServerConfiguration {
+  // Was 'listen_address'. The listen address of the diagnostics HTTP
+  // server can now be configured through the 'http_servers' option.
+  reserved 1;
+
   // Default endpoints:
   // - /-/healthy: Returns HTTP 200 OK if the application managed to
   //               start successfully.
-  repeated buildbarn.configuration.http.ServerConfiguration http_servers = 1;
+  repeated buildbarn.configuration.http.ServerConfiguration http_servers = 5;
 
   // Enables endpoints:
   // - /debug/pprof/*: Endpoints for Go's pprof debug tool.

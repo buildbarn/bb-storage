@@ -121,6 +121,10 @@ message OIDCAuthenticationPolicy {
   // service returns refresh tokens. This permits the HTTP server to
   // continue sessions with fewer redirects to the authorization
   // service.
+  //
+  // A list of commonly used scopes can be found in the OpenID Connect
+  // specification:
+  // https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
   repeated string scopes = 8;
 
   // A random seed of how cookies containing session state are named,

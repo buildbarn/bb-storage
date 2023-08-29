@@ -62,7 +62,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Oidc:
 		// Select a name and encryption key for the session
 		// state cookie. Even though the configuration has a
-		// dedicted cookie seed field, we include the rest of
+		// dedicated cookie seed field, we include the rest of
 		// the configuration message as well. This ensures that
 		// any changes to the configuration automatically
 		// invalidate existing sessions.
@@ -74,6 +74,10 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, status.Error(codes.InvalidArgument, "Failed to marshal configuration to compute OIDC cookie seed")
 		}
 		cookieSeedHash := sha256.Sum256(fullCookieSeed)
+
+		// Let the first 128 bits of the seed hash be the name
+		// of the cookie, while the last 128 bits are used as
+		// the AES key for encrypting/signing the cookie value.
 		cookieName := base64.RawURLEncoding.EncodeToString(cookieSeedHash[:sha256.Size/2])
 		cookieCipher, err := aes.NewCipher(cookieSeedHash[sha256.Size/2:])
 		if err != nil {

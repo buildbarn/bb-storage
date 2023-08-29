@@ -32,6 +32,6 @@ func (h *authenticatingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		// not write a response to the client (e.g., emit a
 		// redirect). Forward the request to the underlying
 		// handler.
-		h.handler.ServeHTTP(w, r.Clone(auth.NewContextWithAuthenticationMetadata(r.Context(), metadata)))
+		h.handler.ServeHTTP(w, r.WithContext(auth.NewContextWithAuthenticationMetadata(r.Context(), metadata)))
 	}
 }

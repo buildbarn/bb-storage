@@ -10,9 +10,9 @@ import (
 )
 
 // NewServersFromConfigurationAndServe spawns HTTP servers as part of a
-// program.Group, based on a configuration specification. The web
-// servers are automatically terminated if the context associated with
-// the group is canceled.
+// program.Group, based on a configuration message. The web servers are
+// automatically terminated if the context associated with the group is
+// canceled.
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, handler http.Handler, group program.Group) error {
 	for _, configuration := range configurations {
 		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)

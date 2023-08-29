@@ -42,7 +42,16 @@ type oidcAuthenticator struct {
 // requests are authorized by an OAuth2 server. Authentication metadata
 // is constructed by obtaining claims through the OpenID Connect user
 // info endpoint, and transforming it using a JMESPath expression.
-func NewOIDCAuthenticator(oauth2Config *oauth2.Config, userInfoURL string, metadataExtractor *jmespath.JMESPath, httpClient *http.Client, randomNumberGenerator random.ThreadSafeGenerator, cookieName string, cookieAEAD cipher.AEAD, clock clock.Clock) (Authenticator, error) {
+func NewOIDCAuthenticator(
+	oauth2Config *oauth2.Config,
+	userInfoURL string,
+	metadataExtractor *jmespath.JMESPath,
+	httpClient *http.Client,
+	randomNumberGenerator random.ThreadSafeGenerator,
+	cookieName string,
+	cookieAEAD cipher.AEAD,
+	clock clock.Clock,
+) (Authenticator, error) {
 	// Extract the path in the redirect URL of the OAuth2
 	// configuration, as we need to match it in incoming HTTP
 	// requests.
