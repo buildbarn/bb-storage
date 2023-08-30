@@ -22,7 +22,7 @@ func NewRoundTripperFromConfiguration(configuration *pb.ClientConfiguration) (ht
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2: true,
+		ForceAttemptHTTP2: !configuration.DisableHttp2,
 		TLSClientConfig:   tlsConfig,
 	}
 	if proxyURL := configuration.GetProxyUrl(); proxyURL != "" {

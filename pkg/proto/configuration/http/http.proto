@@ -30,6 +30,17 @@ message ClientConfiguration {
   //
   //         "Basic " + std.base64(username + ":" + password)
   repeated HeaderValues add_headers = 5;
+
+  // Use HTTP/1.1, even if the server supports HTTP/2.
+  //
+  // This option can be used to work around HTTP client or server bugs.
+  // For example, the following bug in Go's HTTP/2 client may cause
+  // requests to be sent across network connections that are known to be
+  // unresponsive, leading to request timeouts:
+  //
+  // https://github.com/golang/go/issues/36026
+  // https://github.com/golang/go/issues/59690
+  bool disable_http2 = 6;
 }
 
 message ServerConfiguration {
