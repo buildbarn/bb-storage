@@ -129,6 +129,8 @@ func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oa
 	}
 	claimsResponse, err := a.oauth2Config.Client(ctx, token).Do(claimsRequest)
 	if err != nil {
+		// Strip the user info endpoint URL from the error
+		// message, as it's not for the user to see.
 		var urlErr *url.Error
 		if errors.As(err, &urlErr) {
 			err = urlErr.Unwrap()
@@ -195,6 +197,8 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 		// Obtain an access token and refresh token.
 		token, err := a.oauth2Config.Exchange(ctx, r.FormValue("code"))
 		if err != nil {
+			// Strip the token endpoint URL from the error
+			// message, as it's not for the user to see.
 			var urlErr *url.Error
 			if errors.As(err, &urlErr) {
 				err = urlErr.Unwrap()
