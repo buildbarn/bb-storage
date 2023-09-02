@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -121,7 +122,7 @@ func (a *oidcAuthenticator) setCookieValue(w http.ResponseWriter, cookieValue *o
 	return nil
 }
 
-func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oauth2.Token, w http.ResponseWriter) (*auth.AuthenticationMetadata, error) {
+func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oauth2.Token, defaultExpiration time.Duration, w http.ResponseWriter) (*auth.AuthenticationMetadata, error) {
 	// Obtain claims from the user info endpoint.
 	claimsRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, a.userInfoURL, nil)
 	if err != nil {
@@ -157,14 +158,25 @@ func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oa
 		return nil, util.StatusWrap(err, "Failed to create authentication metadata")
 	}
 
+	expiration := token.Expiry
+	if expiration.IsZero() {
+		// The access token response did not contain an
+		// expiration duration. Simply assume an expiration
+		// duration of 1 minute, growing exponentially as long
+		// as refreshing succeeds.
+		expiration = a.clock.Now().Add(defaultExpiration)
+		defaultExpiration *= 2
+	}
+
 	// Redirect to the originally requested path, with the
 	// authentication metadata stored in a cookie.
 	if err := a.setCookieValue(w, &oidc.CookieValue{
 		SessionState: &oidc.CookieValue_Authenticated_{
 			Authenticated: &oidc.CookieValue_Authenticated{
 				AuthenticationMetadata: authenticationMetadata.GetFullProto(),
-				Expiration:             timestamppb.New(token.Expiry),
+				Expiration:             timestamppb.New(expiration),
 				RefreshToken:           token.RefreshToken,
+				DefaultExpiration:      durationpb.New(defaultExpiration),
 			},
 		},
 	}); err != nil {
@@ -207,7 +219,7 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Redirect back to the originally requested page.
-		if _, err := a.getClaimsAndSetCookie(ctx, token, w); err != nil {
+		if _, err := a.getClaimsAndSetCookie(ctx, token, time.Minute, w); err != nil {
 			return nil, err
 		}
 		http.Redirect(w, r, authenticating.OriginalRequestUri, http.StatusSeeOther)
@@ -235,7 +247,7 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 					Expiry:       time.Unix(0, 0),
 				},
 			).Token(); err == nil {
-				if authenticationMetadata, err := a.getClaimsAndSetCookie(ctx, refreshedToken, w); err == nil {
+				if authenticationMetadata, err := a.getClaimsAndSetCookie(ctx, refreshedToken, authenticated.DefaultExpiration.AsDuration(), w); err == nil {
 					return authenticationMetadata, nil
 				}
 			}

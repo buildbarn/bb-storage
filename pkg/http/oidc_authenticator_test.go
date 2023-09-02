@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -131,6 +132,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 					Authenticated: &oidc.CookieValue_Authenticated{
 						AuthenticationMetadata: &auth.AuthenticationMetadata{},
 						Expiration:             &timestamppb.Timestamp{Seconds: 1693145873},
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
 					},
 				},
 			})...), nil
@@ -175,7 +177,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 		}, w.HeaderMap)
 	})
 
-	t.Run("RegularRequestExpiredAccessTokenWithRefreshToken", func(t *testing.T) {
+	t.Run("RegularRequestExpiredAccessTokenWithRefreshTokenWithExpiresIn", func(t *testing.T) {
 		// If the access token is expired and a refresh token is
 		// available, we may be able to continue the session
 		// without sending the user through the authorization
@@ -193,6 +195,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 						AuthenticationMetadata: &auth.AuthenticationMetadata{},
 						Expiration:             &timestamppb.Timestamp{Seconds: 1693147158},
 						RefreshToken:           "RefreshToken1",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
 					},
 				},
 			})...), nil
@@ -252,6 +255,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 						AuthenticationMetadata: expectedAuthenticationMetadata,
 						Expiration:             &timestamppb.Timestamp{Seconds: 1693150813},
 						RefreshToken:           "RefreshToken2",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
 					},
 				},
 			}),
@@ -273,6 +277,108 @@ func TestOIDCAuthenticator(t *testing.T) {
 
 		require.Equal(t, http.Header{
 			"Set-Cookie": []string{"CookieName=z8xDvfTz6dcZKSOD; Path=/; HttpOnly; Secure; SameSite=Strict"},
+		}, w.HeaderMap)
+	})
+
+	t.Run("RegularRequestExpiredAccessTokenWithRefreshTokenWithoutExpiresIn", func(t *testing.T) {
+		// It is only recommended that the access token response
+		// contains an 'expires_in' value. If it does not, let's
+		// pick an exponentially growing expiration time.
+		//
+		// More details: RFC 6749, section 4.2.2.
+		cookieAEAD.EXPECT().Open(
+			gomock.Any(),
+			[]byte{0x84, 0x4b, 0x47, 0xdd},
+			[]byte{0xac, 0x4f, 0xc2, 0x0d, 0x5b, 0x01, 0x78, 0x67},
+			nil,
+		).DoAndReturn(func(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+			return append(dst, protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: &auth.AuthenticationMetadata{},
+						Expiration:             &timestamppb.Timestamp{Seconds: 1693631281},
+						RefreshToken:           "RefreshToken1",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
+					},
+				},
+			})...), nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693631288, 0))
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
+			require.Equal(t, "https://login.com/token", r.URL.String())
+			r.ParseForm()
+			require.Equal(t, url.Values{
+				"client_id":     []string{"MyClientID"},
+				"client_secret": []string{"MyClientSecret"},
+				"grant_type":    []string{"refresh_token"},
+				"refresh_token": []string{"RefreshToken1"},
+			}, r.Form)
+			return &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{
+					"access_token": "AccessToken2",
+					"refresh_token": "RefreshToken2",
+					"token_type": "Bearer"
+				}`)),
+			}, nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693631289, 0))
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
+			require.Equal(t, "https://login.com/userinfo", r.URL.String())
+			require.Equal(t, http.Header{
+				"Authorization": []string{"Bearer AccessToken2"},
+			}, r.Header)
+			return &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{
+					"email": "john@myserver.com",
+					"name": "John Doe"
+				}`)),
+			}, nil
+		})
+		nonce := []byte{0xa9, 0xe3, 0x9f, 0xc5}
+		expectRead(randomNumberGenerator, nonce)
+		expectedAuthenticationMetadata := &auth.AuthenticationMetadata{
+			Public: structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"email": structpb.NewStringValue("john@myserver.com"),
+					"name":  structpb.NewStringValue("John Doe"),
+				},
+			}),
+		}
+		cookieAEAD.EXPECT().Seal(
+			gomock.Any(),
+			nonce,
+			protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: expectedAuthenticationMetadata,
+						Expiration:             &timestamppb.Timestamp{Seconds: 1693631349},
+						RefreshToken:           "RefreshToken2",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 120},
+					},
+				},
+			}),
+			nil,
+		).DoAndReturn(func(dst, nonce, plaintext, additionalData []byte) []byte {
+			return append(dst, 0xfc, 0x39, 0x91, 0xcd, 0x66, 0xd1, 0xbb, 0x95)
+		})
+
+		w := httptest.NewRecorder()
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://myserver.com/hello.png", nil)
+		r.AddCookie(&http.Cookie{
+			Name:  "CookieName",
+			Value: "hEtH3axPwg1bAXhn",
+		})
+		require.NoError(t, err)
+		metadata, err := authenticator.Authenticate(w, r)
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, expectedAuthenticationMetadata, metadata.GetFullProto())
+
+		require.Equal(t, http.Header{
+			"Set-Cookie": []string{"CookieName=qeOfxfw5kc1m0buV; Path=/; HttpOnly; Secure; SameSite=Strict"},
 		}, w.HeaderMap)
 	})
 

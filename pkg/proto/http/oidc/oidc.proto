@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.http.oidc;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/proto/auth/auth.proto";
 
@@ -34,6 +35,10 @@ message CookieValue {
     // If set, a refresh token that may be used to obtain a new access
     // token and updated claims after the current access token expires.
     string refresh_token = 3;
+
+    // The expiration duration to use if the next token refresh does not
+    // return "expires_in" explicitly.
+    google.protobuf.Duration default_expiration = 4;
   }
 
   oneof session_state {
