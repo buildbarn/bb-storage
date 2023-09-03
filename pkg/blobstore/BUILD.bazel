@@ -15,7 +15,6 @@ go_library(
         "existence_caching_blob_access.go",
         "fsac_read_buffer_factory.go",
         "hierarchical_instance_names_blob_access.go",
-        "http_blob_access.go",
         "icas_read_buffer_factory.go",
         "iscc_read_buffer_factory.go",
         "metrics_blob_access.go",

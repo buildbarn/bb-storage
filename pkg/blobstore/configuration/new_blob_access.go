@@ -3,7 +3,6 @@ package configuration
 import (
 	"archive/zip"
 	"context"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
@@ -85,22 +83,6 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      readcaching.NewReadCachingBlobAccess(slow.BlobAccess, fast.BlobAccess, replicator),
 			DigestKeyFormat: slow.DigestKeyFormat,
 		}, "read_caching", nil
-	case *pb.BlobAccessConfiguration_Http:
-		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.Http.Client)
-		if err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
-		}
-		return BlobAccessInfo{
-			BlobAccess: blobstore.NewHTTPBlobAccess(
-				backend.Http.Address,
-				storageTypeName,
-				readBufferFactory,
-				&http.Client{
-					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPBlobAccess"),
-				},
-				creator.GetDefaultCapabilitiesProvider()),
-			DigestKeyFormat: digest.KeyWithInstance,
-		}, "remote", nil
 	case *pb.BlobAccessConfiguration_Sharding:
 		backends := make([]blobstore.BlobAccess, 0, len(backend.Sharding.Shards))
 		weights := make([]uint32, 0, len(backend.Sharding.Shards))

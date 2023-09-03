@@ -26,10 +26,6 @@ message BlobstoreConfiguration {
 
 message BlobAccessConfiguration {
   oneof backend {
-    // Read objects from/write objects to a server that supports
-    // Bazel's HTTP caching protocol.
-    HTTPBlobAccessConfiguration http = 3;
-
     // Cache reads from a slow remote storage backend into a fast
     // local storage backend.
     ReadCachingBlobAccessConfiguration read_caching = 4;
@@ -204,6 +200,11 @@ message BlobAccessConfiguration {
   // instance of bb_storage that uses the 'local' backend.
   reserved 2;
 
+  // Was 'http'. Using HTTP as a transport for REv2 is suboptimal, as
+  // it does not provide any facilities for performing batch existence
+  // checks. Please use 'grpc' instead.
+  reserved 3;
+
   // Was 'size_distinguishing'. This was mainly of use with the
   // initial versions of Buildbarn, where the recommended approach for
   // storing CAS objects was to store small objects in Redis and large
@@ -255,14 +256,6 @@ message ReadCachingBlobAccessConfiguration {
   // The replication strategy that should be used to copy objects from
   // the slow backend to the fast backend.
   BlobReplicatorConfiguration replicator = 3;
-}
-
-message HTTPBlobAccessConfiguration {
-  // URL of the remote build cache (e.g., "http://localhost:8080/").
-  string address = 1;
-
-  // Optional: Options to be used by the HTTP client.
-  buildbarn.configuration.http.ClientConfiguration client = 2;
 }
 
 message ShardingBlobAccessConfiguration {
