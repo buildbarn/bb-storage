@@ -99,6 +99,14 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain TLS configuration")
 		}
 
+		var keyTTL time.Duration
+		if backend.Redis.KeyTtl != nil {
+			if err := backend.Redis.DialTimeout.CheckValid(); err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain key TTL configuration")
+			}
+			keyTTL = backend.Redis.KeyTtl.AsDuration()
+		}
+
 		var replicationTimeout time.Duration
 		if backend.Redis.ReplicationTimeout != nil {
 			if err := backend.Redis.ReplicationTimeout.CheckValid(); err != nil {
@@ -191,6 +199,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				redisClient,
 				readBufferFactory,
 				digestKeyFormat,
+				keyTTL,
 				backend.Redis.ReplicationCount,
 				replicationTimeout,
 				creator.GetDefaultCapabilitiesProvider()),

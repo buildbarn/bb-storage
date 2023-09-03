@@ -30,19 +30,21 @@ type redisBlobAccess struct {
 	redisClient        RedisClient
 	readBufferFactory  ReadBufferFactory
 	digestKeyFormat    digest.KeyFormat
+	keyTTL			   time.Duration
 	replicationCount   int64
 	replicationTimeout int
 }
 
 // NewRedisBlobAccess creates a BlobAccess that uses Redis as its
 // backing store.
-func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, replicationCount int64, replicationTimeout time.Duration, capabilitiesProvider capabilities.Provider) BlobAccess {
+func NewRedisBlobAccess(redisClient RedisClient, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, keyTTL time.Duration, replicationCount int64, replicationTimeout time.Duration, capabilitiesProvider capabilities.Provider) BlobAccess {
 	return &redisBlobAccess{
 		Provider: capabilitiesProvider,
 
 		redisClient:        redisClient,
 		readBufferFactory:  readBufferFactory,
 		digestKeyFormat:    digestKeyFormat,
+		keyTTL: 			keyTTL,
 		replicationCount:   int64(replicationCount),
 		replicationTimeout: int(replicationTimeout.Milliseconds()),
 	}
@@ -53,7 +55,13 @@ func (ba *redisBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer
 		return buffer.NewBufferFromError(err)
 	}
 	key := digest.GetKey(ba.digestKeyFormat)
-	value, err := ba.redisClient.Get(ctx, key).Bytes()
+	var value []byte
+	var err error
+	if ba.keyTTL > 0 {
+		value, err = ba.redisClient.GetEx(ctx, key, ba.keyTTL).Bytes()
+	} else {
+		value, err = ba.redisClient.Get(ctx, key).Bytes()
+	}
 	if err == redis.Nil {
 		return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.NotFound, "Blob not found"))
 	} else if err != nil {
@@ -88,7 +96,7 @@ func (ba *redisBlobAccess) Put(ctx context.Context, digest digest.Digest, b buff
 	if err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
-	if err := ba.redisClient.Set(ctx, digest.GetKey(ba.digestKeyFormat), value, 0).Err(); err != nil {
+	if err := ba.redisClient.Set(ctx, digest.GetKey(ba.digestKeyFormat), value, ba.keyTTL).Err(); err != nil {
 		return util.StatusWrapWithCode(err, codes.Unavailable, "Failed to put blob")
 	}
 	return ba.waitIfReplicationEnabled(ctx)
@@ -123,11 +131,11 @@ func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 		return digest.EmptySet, nil
 	}
 
-	// Execute "EXISTS" requests all in a single pipeline.
+	// Execute "TOUCH/EXPIRE" requests all in a single pipeline.
 	pipeline := ba.redisClient.Pipeline()
-	cmds := make([]*redis.IntCmd, 0, digests.Length())
+	cmds := make([]RedisCmd, 0, digests.Length())
 	for _, digest := range digests.Items() {
-		cmds = append(cmds, pipeline.Exists(ctx, digest.GetKey(ba.digestKeyFormat)))
+		cmds = append(cmds, touchOrExpire(ctx, pipeline, digest.GetKey(ba.digestKeyFormat), ba.keyTTL))
 	}
 	if _, err := pipeline.Exec(ctx); err != nil {
 		return digest.EmptySet, util.StatusWrapWithCode(err, codes.Unavailable, "Failed to find missing blobs")
@@ -136,10 +144,37 @@ func (ba *redisBlobAccess) FindMissing(ctx context.Context, digests digest.Set) 
 	missing := digest.NewSetBuilder()
 	i := 0
 	for _, digest := range digests.Items() {
-		if cmds[i].Val() == 0 {
+		if !cmds[i].Val() {
 			missing.Add(digest)
 		}
 		i++
 	}
 	return missing.Build(), nil
+}
+
+type RedisCmd interface {
+    Val() bool
+}
+
+type intCmdWrapper struct {
+    cmd *redis.IntCmd
+}
+
+func (w *intCmdWrapper) Val() bool {
+    return w.cmd.Val() != 0
+}
+
+type boolCmdWrapper struct {
+    cmd *redis.BoolCmd
+}
+
+func (w *boolCmdWrapper) Val() bool {
+    return w.cmd.Val()
+}
+
+func touchOrExpire(ctx context.Context, cmdable redis.Cmdable, key string, ttl time.Duration) RedisCmd {
+    if ttl > 0 {
+        return &boolCmdWrapper{cmd: cmdable.Expire(ctx, key, ttl)}
+    }
+    return &intCmdWrapper{cmd: cmdable.Touch(ctx, key)}
 }
