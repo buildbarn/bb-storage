@@ -978,3 +978,11 @@ func (d *localDirectory) Apply(arg interface{}) error {
 		return syscall.EXDEV
 	}
 }
+
+func (d *localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
+	return status.Error(codes.Unimplemented, "Mount is not supported")
+}
+
+func (d *localDirectory) Unmount(mountpoint path.Component) error {
+	return status.Error(codes.Unimplemented, "Unmount is not supported")
+}
