@@ -11,6 +11,7 @@ go_library(
         "deny_authenticator.go",
         "header_adding_round_tripper.go",
         "jwt_authenticator.go",
+        "metrics_handler.go",
         "metrics_round_tripper.go",
         "oidc_authenticator.go",
         "server.go",

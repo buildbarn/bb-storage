@@ -71,7 +71,11 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 		}
 
 		group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-			if err := bb_http.NewServersFromConfigurationAndServe(ls.config.HttpServers, router, group); err != nil {
+			if err := bb_http.NewServersFromConfigurationAndServe(
+				ls.config.HttpServers,
+				bb_http.NewMetricsHandler(router, "Diagnostics"),
+				group,
+			); err != nil {
 				return util.StatusWrap(err, "Failed to launch diagnostics HTTP server")
 			}
 			return nil
