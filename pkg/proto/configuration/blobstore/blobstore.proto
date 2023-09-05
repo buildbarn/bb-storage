@@ -483,6 +483,21 @@ message LocalBlobAccessConfiguration {
     int64 entries = 1;
   }
 
+  // Data store for the metadata of objects. The following Prometheus
+  // queries may be used to determine whether insertion into the
+  // key-location map caused other entries to be displaced prematurely:
+  //
+  // buildbarn_blobstore_hashing_key_location_map_put_iterations_count{outcome="TooManyAttempts"}
+  // buildbarn_blobstore_hashing_key_location_map_put_too_many_iterations_total
+  //
+  // If this query yields values greater than zero, you may need to
+  // increase this data store's size (or reduce the size of the blocks
+  // backend).
+  //
+  // Note that restarting bb_storage causes these metrics to be reset,
+  // meaning that you may need to run bb_storage for a longer amount of
+  // time to get better insight in whether objects are discarded
+  // prematurely.
   oneof key_location_map_backend {
     // Store the key-location map in memory.
     KeyLocationMapInMemory key_location_map_in_memory = 11;
@@ -603,6 +618,19 @@ message LocalBlobAccessConfiguration {
         data_integrity_validation_cache = 3;
   }
 
+  // Data store for the contents of objects. The following Prometheus
+  // query may be used to determine the worst-case retention of this
+  // data store in seconds:
+  //
+  // time() -
+  // buildbarn_blobstore_old_current_new_location_blob_map_last_removed_old_block_insertion_time_seconds
+  //
+  // If this query yields a value that is lower than desired, you may
+  // need to increase this data store's size.
+  //
+  // Note that restarting bb_storage causes this metric to be reset,
+  // meaning that you may need to run bb_storage for a longer amount of
+  // time to get better insight in the worst-case retention.
   oneof blocks_backend {
     // Store all data in memory. For larger setups, this may place a lot
     // of pressure on Go's garbage collector. It may be necessary to

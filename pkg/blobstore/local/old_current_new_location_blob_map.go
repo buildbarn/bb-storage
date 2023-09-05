@@ -21,7 +21,7 @@ var (
 		prometheus.GaugeOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "old_new_current_location_blob_map_last_removed_old_block_insertion_time_seconds",
+			Name:      "old_current_new_location_blob_map_last_removed_old_block_insertion_time_seconds",
 			Help:      "Time at which the last removed block was inserted into the \"old\" queue, which is an indicator for the worst-case blob retention time",
 		},
 		[]string{"storage_type"})
