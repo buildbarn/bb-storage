@@ -115,8 +115,7 @@ message BlobAccessConfiguration {
     //
     // The logic for matching incoming requests and mutating the
     // instance name in outgoing requests is identical to bb_storage's
-    // 'schedulers' configuration option. Please refer to that
-    // configuration option for more details.
+    // 'schedulers' configuration option.
     DemultiplexingBlobAccessConfiguration demultiplexing = 20;
 
     // Read objects using instance names in a hierarchical fashion. This
@@ -897,7 +896,19 @@ message ConcurrencyLimitingBlobReplicatorConfiguration {
 }
 
 message DemultiplexingBlobAccessConfiguration {
-  // The instance name prefixes for which requests are forwarded.
+  // Map of storage backends, where the key corresponds to the instance
+  // name prefix to match. In case of multiple matches, the storage
+  // backend with the longest matching prefix is used. The matching
+  // prefix is removed from the resulting instance name.
+  //
+  // For example, if storage backends for instance name prefixes
+  // "acmecorp" and "acmecorp/rockets" are declared, requests for
+  // instance name "acmecorp/rockets/mars" will be forwarded to the
+  // latter. This storage backend will receive requests with instance
+  // name "mars".
+  //
+  // The empty string can be used to match all instance names, thereby
+  // causing all requests to be forwarded to a single storage backend.
   map<string, DemultiplexedBlobAccessConfiguration> instance_name_prefixes = 1;
 }
 

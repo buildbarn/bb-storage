@@ -26,9 +26,9 @@ message ApplicationConfiguration {
   repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 4;
 
   // Map of schedulers available capable of running build actions, where
-  // the key corresponds to the instance name prefix. In case of
-  // multiple matches, the scheduler with the longest matching prefix is
-  // used. The matching prefix is removed from the resulting instance
+  // the key corresponds to the instance name prefix to match. In case
+  // of multiple matches, the scheduler with the longest matching prefix
+  // is used. The matching prefix is removed from the resulting instance
   // name.
   //
   // For example, if schedulers for instance name prefixes "acmecorp"
