@@ -22,6 +22,7 @@ MCowBQYDK2VwAyEA7fySb/9h7hVH8j1paD5IoLfXj4prjfNLwOPUYKvsTOc=
 	// Algorithm "HS256" uses HMAC; not Ed25519. Validation should fail.
 	require.False(t, signatureValidator.ValidateSignature(
 		"HS256",
+		"",
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 		[]byte{
 			0xb3, 0x57, 0x72, 0xdf, 0xc5, 0xc6, 0x74, 0xba,
@@ -33,6 +34,7 @@ MCowBQYDK2VwAyEA7fySb/9h7hVH8j1paD5IoLfXj4prjfNLwOPUYKvsTOc=
 	// Ed25519, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"EdDSA",
+		"",
 		"eyJhbGciOiJFZERTQSJ9.eyJpZCI6MX0",
 		[]byte{
 			0x44, 0x0c, 0x41, 0x01, 0x03, 0xc5, 0x3b, 0x1a,
@@ -46,6 +48,7 @@ MCowBQYDK2VwAyEA7fySb/9h7hVH8j1paD5IoLfXj4prjfNLwOPUYKvsTOc=
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"EdDSA",
+		"",
 		"eyJhbGciOiJFZERTQSJ9.eyJpZCI6MX0",
 		[]byte{
 			0x04, 0x16, 0xeb, 0x4f, 0xfc, 0x5d, 0x6f, 0x39,

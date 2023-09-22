@@ -13,6 +13,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 	// Algorithm "RS256" uses RSA; not HMAC. Validation should fail.
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS256",
+		"",
 		"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x34, 0x75, 0x5a, 0x61, 0xed, 0xba, 0x31, 0xbb, 0x4e,
@@ -49,6 +50,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 	// HMAC with SHA-256, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"HS256",
+		"",
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 		[]byte{
 			0xb3, 0x57, 0x72, 0xdf, 0xc5, 0xc6, 0x74, 0xba,
@@ -58,6 +60,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"HS256",
+		"",
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 		[]byte{
 			0x6d, 0x32, 0xc8, 0x2c, 0x25, 0xce, 0x4d, 0x54,
@@ -69,6 +72,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 	// HMAC with SHA-384, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"HS384",
+		"",
 		"eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x17, 0xf9, 0x9c, 0xc4, 0x9c, 0x91, 0xdf, 0x4e,
@@ -80,6 +84,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"HS384",
+		"",
 		"eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0xd9, 0xa6, 0x0a, 0x8f, 0x74, 0xc6, 0xe9, 0x94,
@@ -93,6 +98,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 	// HMAC with SHA-512, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"HS512",
+		"",
 		"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0xa7, 0xaa, 0x8f, 0x98, 0x7a, 0xed, 0xfa, 0x02,
@@ -106,6 +112,7 @@ func TestHMACSHASignatureValidator(t *testing.T) {
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"HS512",
+		"",
 		"eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x9b, 0x19, 0x35, 0xa6, 0xb3, 0xe0, 0x9c, 0x3a,

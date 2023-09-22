@@ -36,6 +36,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635747849, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
+			"",
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 			[]byte{
 				0x49, 0xf9, 0x4a, 0xc7, 0x04, 0x49, 0x48, 0xc7,
@@ -59,6 +60,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781700, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
+			"",
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 			[]byte{
 				0x69, 0xf2, 0xcf, 0x62, 0xca, 0x9a, 0xa4, 0x3c,
@@ -102,6 +104,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781778, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
+			"",
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9",
 			[]byte{
 				0x9a, 0xf0, 0xa6, 0x11, 0xb2, 0x62, 0xcb, 0xec,
@@ -199,6 +202,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1636144433, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
+			"",
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ",
 			[]byte{
 				0xf1, 0x5c, 0xbc, 0x0c, 0x47, 0x71, 0x2d, 0x88,

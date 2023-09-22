@@ -22,7 +22,7 @@ func NewEd25519SignatureValidator(publicKey ed25519.PublicKey) SignatureValidato
 	}
 }
 
-func (sv *ed25519SignatureValidator) ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool {
+func (sv *ed25519SignatureValidator) ValidateSignature(algorithm, keyId, headerAndPayload string, signature []byte) bool {
 	if algorithm != "EdDSA" {
 		return false
 	}

@@ -60,7 +60,7 @@ func NewECDSASHASignatureValidator(publicKey *ecdsa.PublicKey) (SignatureValidat
 	}, nil
 }
 
-func (sv *ecdsaSHASignatureValidator) ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool {
+func (sv *ecdsaSHASignatureValidator) ValidateSignature(algorithm, keyId, headerAndPayload string, signature []byte) bool {
 	p := sv.parameters
 	if algorithm != p.algorithm || len(signature) != 2*p.keySizeBytes {
 		return false

@@ -4,5 +4,5 @@ package jwt
 // of a JWT. Implementations of this interface may use HMAC, ECDSA or
 // other algorithms.
 type SignatureValidator interface {
-	ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool
+	ValidateSignature(algorithm, keyId, headerAndPayload string, signature []byte) bool
 }

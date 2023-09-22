@@ -28,6 +28,7 @@ mwIDAQAB
 	// Algorithm "ES256" uses ECDSA; not RSA. Validation should fail.
 	require.False(t, signatureValidator.ValidateSignature(
 		"ES256",
+		"",
 		"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			// R.
@@ -45,6 +46,7 @@ mwIDAQAB
 	// RSA with SHA-256, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"RS256",
+		"",
 		"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x34, 0x75, 0x5a, 0x61, 0xed, 0xba, 0x31, 0xbb,
@@ -82,6 +84,7 @@ mwIDAQAB
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS256",
+		"",
 		"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x25, 0x7e, 0x03, 0x4d, 0x2a, 0x4d, 0x94, 0xfc,
@@ -121,6 +124,7 @@ mwIDAQAB
 	// RSA with SHA-384, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"RS384",
+		"",
 		"eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0xa3, 0x58, 0x42, 0xd7, 0x16, 0x1b, 0x26, 0x89,
@@ -158,6 +162,7 @@ mwIDAQAB
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS384",
+		"",
 		"eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x86, 0x0d, 0x70, 0xc5, 0x6d, 0x52, 0x1c, 0xa2,
@@ -197,6 +202,7 @@ mwIDAQAB
 	// RSA with SHA-512, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
 		"RS512",
+		"",
 		"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x8d, 0x85, 0xb4, 0xe3, 0x32, 0xc3, 0x1d, 0xf4,
@@ -234,6 +240,7 @@ mwIDAQAB
 		}))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS512",
+		"",
 		"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 		[]byte{
 			0x18, 0x6a, 0x31, 0xc7, 0xab, 0xea, 0x89, 0x80,
