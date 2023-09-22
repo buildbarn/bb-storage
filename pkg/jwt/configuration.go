@@ -1,6 +1,8 @@
 package jwt
 
 import (
+	"os"
+
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
@@ -16,23 +18,25 @@ import (
 // "Authorization" header parser based on options stored in a
 // configuration file.
 func NewAuthorizationHeaderParserFromConfiguration(config *configuration.AuthorizationHeaderParserConfiguration) (*AuthorizationHeaderParser, error) {
-	var keySet *configuration.JSONWebKeySet
+	var err error
+	var jwksJson []byte
 
 	switch key := config.Jwks.(type) {
 	case *configuration.AuthorizationHeaderParserConfiguration_JwksInline:
-		keySet = key.JwksInline
+		jwksJson, err = protojson.Marshal(key.JwksInline)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to parse inline JWKS")
+		}
 	case *configuration.AuthorizationHeaderParserConfiguration_JwksPath:
-		// FIXME: Implement reading this from a file
+		jwksJson, err = os.ReadFile(key.JwksPath)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to read JWKS file")
+		}
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
 
-	messageJSON, err := protojson.Marshal(keySet)
-	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to convert JWKS to JSON")
-	}
-
-	signatureValidator, err := NewJWKSSignatureValidator(messageJSON)
+	signatureValidator, err := NewJWKSSignatureValidator(jwksJson)
 
 	evictionSet, err := eviction.NewSetFromConfiguration[string](config.CacheReplacementPolicy)
 	if err != nil {
