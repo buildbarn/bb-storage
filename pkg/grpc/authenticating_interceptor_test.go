@@ -23,7 +23,7 @@ import (
 func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	authenticator := mock.NewMockAuthenticator(ctrl)
+	authenticator := mock.NewMockGRPCAuthenticator(ctrl)
 
 	interceptor := bb_grpc.NewAuthenticatingUnaryInterceptor(authenticator)
 	handler := mock.NewMockUnaryHandler(ctrl)
@@ -78,7 +78,7 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 func TestAuthenticatingStreamInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	authenticator := mock.NewMockAuthenticator(ctrl)
+	authenticator := mock.NewMockGRPCAuthenticator(ctrl)
 
 	interceptor := bb_grpc.NewAuthenticatingStreamInterceptor(authenticator)
 	handler := mock.NewMockStreamHandler(ctrl)

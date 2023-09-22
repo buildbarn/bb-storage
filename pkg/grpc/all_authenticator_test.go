@@ -33,8 +33,8 @@ func TestAllAuthenticatorZero(t *testing.T) {
 func TestAllAuthenticatorMultiple(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	m0 := mock.NewMockAuthenticator(ctrl)
-	m1 := mock.NewMockAuthenticator(ctrl)
+	m0 := mock.NewMockGRPCAuthenticator(ctrl)
+	m1 := mock.NewMockGRPCAuthenticator(ctrl)
 	a := bb_grpc.NewAllAuthenticator([]bb_grpc.Authenticator{m0, m1})
 
 	t.Run("FirstFailure", func(t *testing.T) {

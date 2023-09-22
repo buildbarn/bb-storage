@@ -200,6 +200,7 @@ gomock(
         "ClientFactory",
     ],
     library = "//pkg/grpc",
+    mock_names = {"Authenticator": "MockGRPCAuthenticator"},
     package = "mock",
 )
 
