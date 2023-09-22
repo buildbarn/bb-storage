@@ -1,13 +1,6 @@
 package jwt
 
 import (
-	"crypto/ecdsa"
-	"crypto/ed25519"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"reflect"
-
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
@@ -16,43 +9,30 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // NewAuthorizationHeaderParserFromConfiguration creates a new HTTP
 // "Authorization" header parser based on options stored in a
 // configuration file.
 func NewAuthorizationHeaderParserFromConfiguration(config *configuration.AuthorizationHeaderParserConfiguration) (*AuthorizationHeaderParser, error) {
-	var signatureValidator SignatureValidator
-	switch key := config.Key.(type) {
-	case *configuration.AuthorizationHeaderParserConfiguration_HmacKey:
-		signatureValidator = NewHMACSHASignatureValidator(key.HmacKey)
-	case *configuration.AuthorizationHeaderParserConfiguration_PublicKey:
-		block, _ := pem.Decode([]byte(key.PublicKey))
-		if block == nil {
-			return nil, status.Error(codes.InvalidArgument, "Public key does not use the PEM format")
-		}
-		parsedKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to parse public key")
-		}
-		switch convertedKey := parsedKey.(type) {
-		case *ecdsa.PublicKey:
-			var err error
-			signatureValidator, err = NewECDSASHASignatureValidator(convertedKey)
-			if err != nil {
-				return nil, err
-			}
-		case ed25519.PublicKey:
-			signatureValidator = NewEd25519SignatureValidator(convertedKey)
-		case *rsa.PublicKey:
-			signatureValidator = NewRSASHASignatureValidator(convertedKey)
-		default:
-			keyType := reflect.TypeOf(parsedKey)
-			return nil, status.Errorf(codes.InvalidArgument, "Unsupported public key type: %s/%s", keyType.PkgPath(), keyType.Name())
-		}
+	var keySet *configuration.JSONWebKeySet
+
+	switch key := config.Jwks.(type) {
+	case *configuration.AuthorizationHeaderParserConfiguration_JwksInline:
+		keySet = key.JwksInline
+	case *configuration.AuthorizationHeaderParserConfiguration_JwksPath:
+		// FIXME: Implement reading this from a file
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
+
+	messageJSON, err := protojson.Marshal(keySet)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to convert JWKS to JSON")
+	}
+
+	signatureValidator, err := NewJWKSSignatureValidator(messageJSON)
 
 	evictionSet, err := eviction.NewSetFromConfiguration[string](config.CacheReplacementPolicy)
 	if err != nil {
