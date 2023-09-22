@@ -6,22 +6,75 @@ import "pkg/proto/configuration/eviction/eviction.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt";
 
-message AuthorizationHeaderParserConfiguration {
-  oneof key {
-    // Accept signatures using algorithms "HS256", "HS384" and "HS512".
-    //
-    // This field contains the shared key secret to validate the
-    // signature.
-    bytes hmac_key = 1;
 
-    // Accept signatures using algorithms "ES256", "ES384", "ES512",
-    // "EdDSA", "RS256", "RS384", or "RS512".
-    //
-    // This field contains the public key used to validate the
-    // signature. It should start with "-----BEGIN PUBLIC KEY-----".
-    // The public key type and curve size determine which exact
-    // algorithm is used.
-    string public_key = 2;
+// (JSON Web Key) [https://tools.ietf.org/html/rfc7517]
+message JSONWebKey {
+  // "kty" (Key Type) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
+  string kty = 1;
+
+  // "use" (Public Key Use) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2
+  string use = 2;
+
+  // "alg" (Algorithm) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7517#section-4.4
+  string alg = 3;
+
+  // "kid" (Key ID) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5
+  string kid = 4;
+
+  // "crv" (Curve) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
+  string crv = 5;
+
+  // "x" (X Coordinate) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.2
+  string x = 6;
+
+  // "y" (X Coordinate) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.3
+  string y = 7;
+
+  // "n" (Modulus) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
+  string n = 8;
+
+  // "e" (Exponent) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
+  string e = 9;
+
+  // "k" (Key Value) Parameter
+  // https://datatracker.ietf.org/doc/html/rfc7518#section-6.4.1
+  string k = 10;
+}
+
+// (JWK Set) [https://tools.ietf.org/html/rfc7517]
+message JSONWebKeySet {
+  // The value of the "keys" parameter is an array of JWK values.  By
+  // default, the order of the JWK values within the array does not imply
+  // an order of preference among them, although applications of JWK Sets
+  // can choose to assign a meaning to the order for their purposes, if
+  // desired.
+  repeated JSONWebKey keys = 1;
+}
+
+message AuthorizationHeaderParserConfiguration {
+  // Was 'hmac_key'. Replaced by 'jwks'.
+  reserved 1;
+
+  // Was 'public_key'. Replaced by 'jwks'.
+  reserved 2;
+  
+  oneof jwks {
+    // JSON Web Key Set (JWKS) that contains the public keys that can sign
+    // accepted JWTs.
+    JSONWebKeySet jwks_inline = 7;
+
+    // Path to a file containing a JSON Web Key Set (JWKS) that contains the the
+    // public keys that can sign accepted JWTs.
+    string jwks_path = 8;
   }
 
   // Maximum number of validated tokens to cache in memory. This speeds
