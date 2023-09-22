@@ -250,6 +250,13 @@ def go_dependencies():
         version = "v0.0.0-20150821004651-dad82d10a449",
     )
     go_repository(
+        name = "com_github_go_jose_go_jose_v3",
+        importpath = "github.com/go-jose/go-jose/v3",
+        sum = "h1:s6rrhirfEP/CGIoc6p+PZAeogN2SxKav6Wp7+dyMWVo=",
+        version = "v3.0.0",
+    )
+
+    go_repository(
         name = "com_github_go_kit_log",
         importpath = "github.com/go-kit/log",
         sum = "h1:MRVx0/zhvdseW+Gza6N9rVzU/IVzaeE1SFI4raAhmBU=",
