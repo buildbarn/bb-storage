@@ -117,6 +117,12 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			cookieName,
 			cookieAEAD,
 			clock.SystemClock)
+	case *configuration.AuthenticationPolicy_AcceptHeader:
+		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy)
+		if err != nil {
+			return nil, err
+		}
+		return NewAcceptHeaderAuthenticator(base, policyKind.AcceptHeader.MediaTypes), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

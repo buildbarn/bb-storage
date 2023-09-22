@@ -83,6 +83,12 @@ message AuthenticationPolicy {
     // Allow incoming requests if the identity of a user can be obtained
     // through OpenID Connect.
     OIDCAuthenticationPolicy oidc = 5;
+
+    // Only perform authentication if the HTTP request's "Accept" header
+    // contains a matching media type. This can, for example, be used to
+    // limit OpenID Connect authentication to requests originating from
+    // a web browser.
+    AcceptHeaderAuthenticationPolicy accept_header = 6;
   }
 }
 
@@ -157,4 +163,14 @@ message OIDCAuthenticationPolicy {
   // Configuration options for the HTTP client that is used to send
   // requests to the token endpoint and user info endpoint.
   ClientConfiguration http_client = 10;
+}
+
+message AcceptHeaderAuthenticationPolicy {
+  // Media types of which at least one must be provided as part of the
+  // HTTP Accept header for authentication to take place.
+  repeated string media_types = 1;
+
+  // The authentication policy to apply when a matching media type is
+  // provided.
+  AuthenticationPolicy policy = 2;
 }

@@ -221,6 +221,15 @@ gomock(
 )
 
 gomock(
+    name = "http",
+    out = "http.go",
+    interfaces = ["Authenticator"],
+    library = "//pkg/http",
+    mock_names = {"Authenticator": "MockHTTPAuthenticator"},
+    package = "mock",
+)
+
+gomock(
     name = "jwt",
     out = "jwt.go",
     interfaces = [
@@ -304,6 +313,7 @@ go_library(
         "filesystem_path.go",
         "grpc.go",
         "grpc_go.go",
+        "http.go",
         "jwt.go",
         "random.go",
         "redis.go",

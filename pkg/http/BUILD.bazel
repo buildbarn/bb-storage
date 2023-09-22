@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "http",
     srcs = [
+        "accept_header_authenticator.go",
         "allow_authenticator.go",
         "any_authenticator.go",
         "authenticating_handler.go",
@@ -28,6 +29,7 @@ go_library(
         "//pkg/proto/http/oidc",
         "//pkg/random",
         "//pkg/util",
+        "@com_github_aohorodnyk_mimeheader//:mimeheader",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
@@ -43,6 +45,7 @@ go_library(
 go_test(
     name = "http_test",
     srcs = [
+        "accept_header_authenticator_test.go",
         "allow_authenticator_test.go",
         "deny_authenticator_test.go",
         "oidc_authenticator_test.go",
