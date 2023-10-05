@@ -6,7 +6,10 @@ proto_library(
     name = "jwt_proto",
     srcs = ["jwt.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/eviction:eviction_proto"],
+    deps = [
+        "//pkg/proto/configuration/eviction:eviction_proto",
+        "@com_google_protobuf//:struct_proto",
+    ],
 )
 
 go_proto_library(
