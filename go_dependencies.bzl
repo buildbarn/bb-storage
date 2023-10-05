@@ -255,7 +255,6 @@ def go_dependencies():
         sum = "h1:s6rrhirfEP/CGIoc6p+PZAeogN2SxKav6Wp7+dyMWVo=",
         version = "v3.0.0",
     )
-
     go_repository(
         name = "com_github_go_kit_log",
         importpath = "github.com/go-kit/log",

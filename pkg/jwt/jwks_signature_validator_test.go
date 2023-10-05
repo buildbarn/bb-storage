@@ -8,7 +8,7 @@ import (
 )
 
 func TestJWKSSignatureValidatorCreation(t *testing.T) {
-	var key = []byte(`{
+	key := []byte(`{
 		"keys": [
 			{
 				"kty": "RSA",
