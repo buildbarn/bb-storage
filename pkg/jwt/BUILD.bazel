@@ -9,6 +9,7 @@ go_library(
         "ecdsa_sha_signature_generator.go",
         "ecdsa_sha_signature_validator.go",
         "ed25519_signature_validator.go",
+        "forwarding_signature_validator.go",
         "generate_authorization_header.go",
         "hmac_sha_signature_validator.go",
         "rsa_sha_signature_validator.go",
