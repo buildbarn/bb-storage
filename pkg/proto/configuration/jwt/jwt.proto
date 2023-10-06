@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.jwt;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
 
@@ -14,17 +15,31 @@ message AuthorizationHeaderParserConfiguration {
   // Was 'public_key'. Replaced by 'jwks_inline'.
   reserved 2;
 
-  // A JSON Web Key Set (JWKS) as described in RFC 7517, chapter 5,
-  // containing one or more public keys against which tokens signatures
-  // are validated.
-  //
-  // Public keys encoded in DER or PEM format can be converted to a JSON
-  // Web Key Set using one of the following tools:
-  //
-  // - https://smallstep.com/docs/step-cli/reference/crypto/key/format/
-  // - https://irrte.ch/jwt-js-decode/pem2jwk.html
-  // - https://russelldavies.github.io/jwk-creator/
-  google.protobuf.Struct jwks_inline = 7;
+  message JwksFile {
+    // Path to JWKS file.
+    string file_path = 1;
+
+    // Interval at which to refresh JWKS file.
+    google.protobuf.Duration refresh_interval = 2;
+  }
+
+  oneof jwks {
+    // A JSON Web Key Set (JWKS) as described in RFC 7517, chapter 5,
+    // containing one or more public keys against which tokens signatures
+    // are validated.
+    //
+    // Public keys encoded in DER or PEM format can be converted to a JSON
+    // Web Key Set using one of the following tools:
+    //
+    // - https://smallstep.com/docs/step-cli/reference/crypto/key/format/
+    // - https://irrte.ch/jwt-js-decode/pem2jwk.html
+    // - https://russelldavies.github.io/jwk-creator/
+    google.protobuf.Struct jwks_inline = 7;
+
+    // Similar to jwks_inline, but reads the JWKS from a file, with a
+    // refresh interval.
+    JwksFile jwks_file = 8;
+  }
 
   // Maximum number of validated tokens to cache in memory. This speeds
   // up successive requests made with the same token.

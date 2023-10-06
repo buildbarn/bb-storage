@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/eviction:eviction_proto",
+        "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:struct_proto",
     ],
 )
