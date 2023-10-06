@@ -3,6 +3,7 @@ package blobstore
 import (
 	"compress/flate"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -75,7 +76,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 		req.Header.Add("Range", getHTTPRangeHeader(reference))
 		resp, err := ba.httpClient.Do(req)
 		if err != nil {
-			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "HTTP request failed"))
+			return buffer.NewBufferFromError(util.StatusWrap(errToStatus(err), "HTTP request failed"))
 		}
 		if resp.StatusCode != http.StatusPartialContent {
 			resp.Body.Close()
@@ -90,7 +91,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 			Range:  aws.String(getHTTPRangeHeader(reference)),
 		})
 		if err != nil {
-			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "S3 request failed"))
+			return buffer.NewBufferFromError(util.StatusWrap(errToStatus(err), "S3 request failed"))
 		}
 		r = getObjectOutput.Body
 	case *icas.Reference_Gcs:
@@ -108,11 +109,13 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, digest digest.D
 			Object(medium.Gcs.Object).
 			NewRangeReader(ctx, reference.OffsetBytes, sizeBytes)
 		if err != nil {
-			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Google Cloud Storage request failed"))
+			return buffer.NewBufferFromError(util.StatusWrap(errToStatus(err), "Google Cloud Storage request failed"))
 		}
 	default:
 		return buffer.NewBufferFromError(status.Error(codes.Unimplemented, "Reference uses an unsupported medium"))
 	}
+
+	r = statusReturningReadCloser{r: r}
 
 	// Apply a decompressor if needed.
 	switch reference.Decompressor {
@@ -169,6 +172,36 @@ func (ba *referenceExpandingBlobAccess) GetCapabilities(ctx context.Context, ins
 
 func (ba *referenceExpandingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return ba.blobAccess.FindMissing(ctx, digests)
+}
+
+func errToStatus(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return status.FromContextError(err).Err()
+	}
+	return status.Error(codes.Internal, err.Error())
+}
+
+// statusReturningReadCloser is a decorator for ReadCloser that
+// transforms any errors returned by the underlying transport of an
+// object retrieved through referenceExpandingBlobAccess gRPC style
+// status.
+type statusReturningReadCloser struct {
+	r io.ReadCloser
+}
+
+func (r statusReturningReadCloser) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	if err != io.EOF {
+		err = errToStatus(err)
+	}
+	return n, err
+}
+
+func (r statusReturningReadCloser) Close() error {
+	return errToStatus(r.r.Close())
 }
 
 // zstdReader is a decorator for zstd.Decoder that ensures both the

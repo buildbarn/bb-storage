@@ -214,6 +214,61 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "S3 request failed: NoSuchKey: The specified key does not exist. status code: 404, request id: ..., host id: ..."), err)
 	})
 
+	t.Run("S3RequestCanceled", func(t *testing.T) {
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  100,
+					SizeBytes:    11,
+					Decompressor: remoteexecution.Compressor_DEFLATE,
+				},
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("bytes=100-110"),
+		}).Return(nil, context.Canceled)
+
+		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		testutil.RequireEqualStatus(t, status.Error(codes.Canceled, "S3 request failed: context canceled"), err)
+	})
+
+	t.Run("S3ReaderDeadlineExceeded", func(t *testing.T) {
+		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_S3_{
+						S3: &icas.Reference_S3{
+							Bucket: "mybucket",
+							Key:    "mykey",
+						},
+					},
+					OffsetBytes:  100,
+					SizeBytes:    11,
+					Decompressor: remoteexecution.Compressor_DEFLATE,
+				},
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+		body := mock.NewMockReadCloser(ctrl)
+		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String("mybucket"),
+			Key:    aws.String("mykey"),
+			Range:  aws.String("bytes=100-110"),
+		}).Return(&s3.GetObjectOutput{
+			Body: body,
+		}, nil)
+		body.EXPECT().Read(gomock.Any()).Return(0, context.DeadlineExceeded)
+		body.EXPECT().Close()
+
+		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		testutil.RequireEqualStatus(t, status.Error(codes.DeadlineExceeded, "context deadline exceeded"), err)
+	})
+
 	t.Run("S3DeflateError", func(t *testing.T) {
 		// The data returned by S3 cannot be decompressed.
 		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
