@@ -25,6 +25,7 @@ q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
 		// Algorithm "HS256" uses HMAC; not ECDSA. Validation should fail.
 		require.False(t, signatureValidator.ValidateSignature(
 			"HS256",
+			/* keyID = */ nil,
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 			[]byte{
 				0xb3, 0x57, 0x72, 0xdf, 0xc5, 0xc6, 0x74, 0xba,
@@ -36,6 +37,7 @@ q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
 		// ECDSA with SHA-256, both with a valid and invalid signature.
 		require.True(t, signatureValidator.ValidateSignature(
 			"ES256",
+			/* keyID = */ nil,
 			"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 			[]byte{
 				// R.
@@ -51,6 +53,7 @@ q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
 			}))
 		require.False(t, signatureValidator.ValidateSignature(
 			"ES256",
+			/* keyID = */ nil,
 			"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 			[]byte{
 				// R.
@@ -82,6 +85,7 @@ Pk9Yf9rIf374m5XP1U8q79dBhLSIuaojsvOT39UUcPJROSD1FqYLued0rXiooIii
 		// 256-bit signatures.
 		require.False(t, signatureValidator.ValidateSignature(
 			"ES256",
+			/* keyID = */ nil,
 			"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 			[]byte{
 				// R.
@@ -99,6 +103,7 @@ Pk9Yf9rIf374m5XP1U8q79dBhLSIuaojsvOT39UUcPJROSD1FqYLued0rXiooIii
 		// ECDSA with SHA-384, both with a valid and invalid signature.
 		require.True(t, signatureValidator.ValidateSignature(
 			"ES384",
+			/* keyID = */ nil,
 			"eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 			[]byte{
 				// R.
@@ -118,6 +123,7 @@ Pk9Yf9rIf374m5XP1U8q79dBhLSIuaojsvOT39UUcPJROSD1FqYLued0rXiooIii
 			}))
 		require.False(t, signatureValidator.ValidateSignature(
 			"ES384",
+			/* keyID = */ nil,
 			"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
 			[]byte{
 				// R.
@@ -153,6 +159,7 @@ ihmzIyMgyPuqu8IuyzMNx4G2jpoCKhRu9qPCQUMGDeCG1x3/n/OgkWNQANsB82x7
 		// ECDSA with SHA-512, both with a valid and invalid signature.
 		require.True(t, signatureValidator.ValidateSignature(
 			"ES512",
+			/* keyID = */ nil,
 			"eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzUxMiJ9.eyJmb28iOiJiYXIifQ",
 			[]byte{
 				// R.
@@ -178,6 +185,7 @@ ihmzIyMgyPuqu8IuyzMNx4G2jpoCKhRu9qPCQUMGDeCG1x3/n/OgkWNQANsB82x7
 			}))
 		require.False(t, signatureValidator.ValidateSignature(
 			"ES512",
+			/* keyID = */ nil,
 			"eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzUxMiJ9.eyJmb28iOiJiYXIifQ",
 			[]byte{
 				// R.

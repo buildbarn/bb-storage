@@ -25,6 +25,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		1000,
 		eviction.NewLRUSet[string]())
 
+	exampleKeyID := "MyKeyID"
+
 	t.Run("NoAuthorizationHeadersProvided", func(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635747849, 0))
 
@@ -36,6 +38,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635747849, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
+			/* keyID = */ nil,
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 			[]byte{
 				0x49, 0xf9, 0x4a, 0xc7, 0x04, 0x49, 0x48, 0xc7,
@@ -59,7 +62,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781700, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
+			&exampleKeyID,
+			"eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 			[]byte{
 				0x69, 0xf2, 0xcf, 0x62, 0xca, 0x9a, 0xa4, 0x3c,
 				0x6f, 0xc1, 0xe7, 0x61, 0x35, 0x39, 0xd8, 0xaa,
@@ -69,7 +73,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		).Return(true)
 
 		metadata, ok := authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
 		})
 		require.True(t, ok)
 		require.Equal(t, map[string]any{
@@ -84,7 +88,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781701, 0))
 
 		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.afLPYsqapDxvwedhNTnYqpk3YmXo9rSO24UDyCokl9M",
 		})
 		require.True(t, ok)
 		require.Equal(t, map[string]any{
@@ -102,7 +106,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781778, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9",
+			&exampleKeyID,
+			"eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9",
 			[]byte{
 				0x9a, 0xf0, 0xa6, 0x11, 0xb2, 0x62, 0xcb, 0xec,
 				0x48, 0x43, 0x7c, 0xec, 0x21, 0x3a, 0x6a, 0x6e,
@@ -112,7 +117,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		).Return(true)
 
 		_, ok := authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.False(t, ok)
 
@@ -120,7 +125,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781779, 0))
 
 		_, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.False(t, ok)
 
@@ -129,7 +134,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781780, 0))
 
 		metadata, ok := authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
 		require.Equal(t, map[string]any{
@@ -146,7 +151,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781786, 0))
 
 		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
 		require.Equal(t, map[string]any{
@@ -161,7 +166,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781791, 0))
 
 		metadata, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.True(t, ok)
 		require.Equal(t, map[string]any{
@@ -178,7 +183,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781792, 0))
 
 		_, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.False(t, ok)
 
@@ -187,7 +192,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1635781793, 0))
 
 		_, ok = authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwibmJmIjoxNjM1NzgxNzgwLCJleHAiOjE2MzU3ODE3OTJ9.mvCmEbJiy-xIQ3zsITpqbthXrSTjtuph1Sd2KGvMXhY",
 		})
 		require.False(t, ok)
 	})
@@ -199,7 +204,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(1636144433, 0))
 		signatureValidator.EXPECT().ValidateSignature(
 			"HS256",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ",
+			&exampleKeyID,
+			"eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ",
 			[]byte{
 				0xf1, 0x5c, 0xbc, 0x0c, 0x47, 0x71, 0x2d, 0x88,
 				0x42, 0x8a, 0xe3, 0x52, 0x32, 0x77, 0xee, 0xb7,
@@ -209,7 +215,7 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		).Return(true)
 
 		_, ok := authenticator.ParseAuthorizationHeaders([]string{
-			"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ.8Vy8DEdxLYhCiuNSMnfut4c7UJmHjHQWencNhePnKH4",
+			"Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ik15S2V5SUQiLCJ0eXAiOiJKV1QifQ.eyJmb3JiaWRkZW5GaWVsZCI6Im9vcHMifQ.8Vy8DEdxLYhCiuNSMnfut4c7UJmHjHQWencNhePnKH4",
 		})
 		require.False(t, ok)
 	})

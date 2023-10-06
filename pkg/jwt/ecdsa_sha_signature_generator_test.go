@@ -33,6 +33,6 @@ f2EJfEoVNO/YidkVY+J35v8vQoAMS4rRGA==
 		// Ensure that the generated signature is valid.
 		signatureValidator, err := jwt.NewECDSASHASignatureValidator(&key.PublicKey)
 		require.NoError(t, err)
-		require.True(t, signatureValidator.ValidateSignature("ES256", headerAndPayload, signature))
+		require.True(t, signatureValidator.ValidateSignature("ES256", nil, headerAndPayload, signature))
 	})
 }

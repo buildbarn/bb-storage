@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "authorization_header_parser.go",
         "configuration.go",
+        "demultiplexing_signature_validator.go",
         "ecdsa_sha_signature_generator.go",
         "ecdsa_sha_signature_validator.go",
         "ed25519_signature_validator.go",
@@ -23,9 +24,11 @@ go_library(
         "//pkg/proto/configuration/jwt",
         "//pkg/random",
         "//pkg/util",
+        "@com_github_go_jose_go_jose_v3//:go-jose",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
     ],
 )
 

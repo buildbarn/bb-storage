@@ -27,7 +27,7 @@ func NewRSASHASignatureValidator(key *rsa.PublicKey) SignatureValidator {
 	}
 }
 
-func (sv *rsaSHASignatureValidator) ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool {
+func (sv *rsaSHASignatureValidator) ValidateSignature(algorithm string, keyID *string, headerAndPayload string, signature []byte) bool {
 	var hashType crypto.Hash
 	var hasher hash.Hash
 	switch algorithm {

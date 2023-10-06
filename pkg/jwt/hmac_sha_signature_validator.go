@@ -26,7 +26,7 @@ func NewHMACSHASignatureValidator(key []byte) SignatureValidator {
 	}
 }
 
-func (sv *hmacSHASignatureValidator) ValidateSignature(algorithm, headerAndPayload string, signature []byte) bool {
+func (sv *hmacSHASignatureValidator) ValidateSignature(algorithm string, keyID *string, headerAndPayload string, signature []byte) bool {
 	// Determine the hashing function that was used to create the
 	// signature.
 	var hashFunc func() hash.Hash

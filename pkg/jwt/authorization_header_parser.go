@@ -101,12 +101,13 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 
 	// Perform signature validation.
 	headerMessage := struct {
-		Alg string `json:"alg"`
+		Alg string  `json:"alg"`
+		KID *string `json:"kid"`
 	}{}
 	if json.Unmarshal(decodedFields[0], &headerMessage) != nil {
 		return unauthenticated
 	}
-	if !a.signatureValidator.ValidateSignature(headerMessage.Alg, match[1], decodedFields[2]) {
+	if !a.signatureValidator.ValidateSignature(headerMessage.Alg, headerMessage.KID, match[1], decodedFields[2]) {
 		return unauthenticated
 	}
 
