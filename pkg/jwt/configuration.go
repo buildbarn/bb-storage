@@ -5,7 +5,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/json"
+	"log"
+	"os"
 	"reflect"
+	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -23,18 +26,28 @@ import (
 // "Authorization" header parser based on options stored in a
 // configuration file.
 func NewAuthorizationHeaderParserFromConfiguration(config *configuration.AuthorizationHeaderParserConfiguration) (*AuthorizationHeaderParser, error) {
-	jwksJSON, err := protojson.Marshal(config.JwksInline)
-	if err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to marshal JSON Web Key Set")
+	var signatureValidator SignatureValidator
+
+	switch key := config.Jwks.(type) {
+	case *configuration.AuthorizationHeaderParserConfiguration_JwksInline:
+		jwksJSON, err := protojson.Marshal(key.JwksInline)
+		if err != nil {
+			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to marshal JSON Web Key Set")
+		}
+		var jwks jose.JSONWebKeySet
+		if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
+			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal JSON Web Key Set")
+		}
+		signatureValidator, err = NewSignatureValidatorFromJSONWebKeySet(&jwks)
+		if err != nil {
+			return nil, err
+		}
+	case *configuration.AuthorizationHeaderParserConfiguration_JwksFile_:
+		signatureValidator = NewSignatureValidatorFromJSONWebKeySetFile(key.JwksFile.FilePath, key.JwksFile.RefreshInterval.AsDuration())
+	default:
+		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
-	var jwks jose.JSONWebKeySet
-	if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal JSON Web Key Set")
-	}
-	signatureValidator, err := NewSignatureValidatorFromJSONWebKeySet(&jwks)
-	if err != nil {
-		return nil, err
-	}
+
 
 	evictionSet, err := eviction.NewSetFromConfiguration[string](config.CacheReplacementPolicy)
 	if err != nil {
@@ -101,4 +114,39 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 	}
 
 	return NewDemultiplexingSignatureValidator(namedSignatureValidators, allSignatureValidators), nil
+}
+
+func NewSignatureValidatorFromJSONWebKeySetFile(path string, refreshInterval time.Duration) SignatureValidator {
+	// Hmm. I don't want us to first read the file once, to initialize this, and then read the file periodically to update it.
+	// However, I also don't want us to initialize this in a state that isn't ready for use.
+	validator := NewForwardingSignatureValidator(nil)
+
+	// TODO: Run this as part of the program.Group, so that it gets
+	// cleaned up upon shutdown.
+	go func() {
+		t := time.NewTicker(refreshInterval)
+		for range t.C {
+			jwksJSON, err := os.ReadFile(path)
+			if err != nil {
+				log.Printf("Failed to reload JWKS file: %v", err)
+				continue
+			}
+
+			var jwks jose.JSONWebKeySet
+			if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
+				log.Printf("Failed to reload JWKS file: %v", err)
+				continue
+			}
+
+			signatureValidator, err := NewSignatureValidatorFromJSONWebKeySet(&jwks)
+			if err != nil {
+				log.Printf("Failed to create SignatureValidator for JWKS file: %v", err)
+				continue
+			}
+
+			(validator.(*forwardingSignatureValidator)).Replace(signatureValidator)
+		}
+	}()
+
+	return validator
 }
