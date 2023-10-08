@@ -21,9 +21,7 @@ go_library(
         "metrics_blob_access.go",
         "read_buffer_factory.go",
         "read_canarying_blob_access.go",
-        "redis_blob_access.go",
         "reference_expanding_blob_access.go",
-        "size_distinguishing_blob_access.go",
         "validation_caching_read_buffer_factory.go",
         "zip_reading_blob_access.go",
         "zip_writing_blob_access.go",
@@ -47,7 +45,6 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
-        "@com_github_go_redis_redis_v8//:redis",
         "@com_github_klauspost_compress//zstd",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",
@@ -55,7 +52,6 @@ go_library(
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
-        "@org_golang_x_sync//errgroup",
     ],
 )
 
@@ -70,7 +66,6 @@ go_test(
         "existence_caching_blob_access_test.go",
         "hierarchical_instance_names_blob_access_test.go",
         "read_canarying_blob_access_test.go",
-        "redis_blob_access_test.go",
         "reference_expanding_blob_access_test.go",
         "validation_caching_read_buffer_factory_test.go",
         "zip_reading_blob_access_test.go",

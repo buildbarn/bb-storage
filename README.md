@@ -17,10 +17,11 @@ does, however, facilitate remote execution by allowing execution
 requests to be forwarded to a separate remote execution service.
 
 This storage daemon can be configured to use a whole series of backends.
-Examples include networked systems like Redis, but also a local on-disk
-storage backend that writes data to a large file, using a hash table as
-an index. This storage backend is self-cleaning; no garbage collection
-is needed. The [schema of the storage configuration file](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/blobstore/blobstore.proto)
+Examples include a backend that forwards traffic over gRPC, but also a
+local on-disk storage backend that writes data to a large file, using a
+hash table as an index. This storage backend is self-cleaning; no
+garbage collection is needed. The
+[schema of the storage configuration file](https://github.com/buildbarn/bb-storage/blob/master/pkg/proto/configuration/blobstore/blobstore.proto)
 gives a good overview of which storage backends are available and how
 they can be configured.
 

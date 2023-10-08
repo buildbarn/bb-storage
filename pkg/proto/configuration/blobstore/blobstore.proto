@@ -12,7 +12,6 @@ import "pkg/proto/configuration/cloud/gcp/gcp.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/http/http.proto";
-import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
@@ -27,9 +26,6 @@ message BlobstoreConfiguration {
 
 message BlobAccessConfiguration {
   oneof backend {
-    // Read objects from/write objects to a Redis server.
-    RedisBlobAccessConfiguration redis = 2;
-
     // Read objects from/write objects to a server that supports
     // Bazel's HTTP caching protocol.
     HTTPBlobAccessConfiguration http = 3;
@@ -37,9 +33,6 @@ message BlobAccessConfiguration {
     // Cache reads from a slow remote storage backend into a fast
     // local storage backend.
     ReadCachingBlobAccessConfiguration read_caching = 4;
-
-    // Split up objects across two storage backends by digest size.
-    SizeDistinguishingBlobAccessConfiguration size_distinguishing = 5;
 
     // Read objects from/write objects to a GRPC service that
     // implements the remote execution protocol.
@@ -207,6 +200,17 @@ message BlobAccessConfiguration {
     string label = 27;
   }
 
+  // Was 'redis'. Instead of using Redis, one may run a separate
+  // instance of bb_storage that uses the 'local' backend.
+  reserved 2;
+
+  // Was 'size_distinguishing'. This was mainly of use with the
+  // initial versions of Buildbarn, where the recommended approach for
+  // storing CAS objects was to store small objects in Redis and large
+  // objects in S3. Unlike the 'redis' backend, the 'local' backend is
+  // capable of storing objects of any size.
+  reserved 5;
+
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
   // by 'local' (LocalBlobAccess).
   reserved 6;
@@ -253,82 +257,6 @@ message ReadCachingBlobAccessConfiguration {
   BlobReplicatorConfiguration replicator = 3;
 }
 
-message ClusteredRedisBlobAccessConfiguration {
-  // Endpoint addresses of the Redis servers.
-  repeated string endpoints = 1;
-
-  // Retry configuration, defaults to 16 if not set
-  uint32 maximum_retries = 2;
-
-  // After each attempt, the delay will be randomly selected from values
-  // between: 0 and min((2^attempt * minimum_retry_backoff),
-  // maximum_retry_backoff)
-  google.protobuf.Duration minimum_retry_backoff = 3;
-  google.protobuf.Duration maximum_retry_backoff = 4;
-}
-
-message SingleRedisBlobAccessConfiguration {
-  // Endpoint address of the Redis server (e.g., "localhost:6379").
-  string endpoint = 1;
-
-  // Numerical ID of the database.
-  int32 db = 2;
-
-  // Redis Auth Password, "" for NO Password
-  string password = 3;
-}
-
-message RedisBlobAccessConfiguration {
-  oneof mode {
-    // Redis is configured in clustered mode.
-    ClusteredRedisBlobAccessConfiguration clustered = 1;
-
-    // Redis is configured as a single server.
-    SingleRedisBlobAccessConfiguration single = 2;
-  }
-
-  // TLS configuration for the Redis connection. TLS will not be enabled
-  // when not set.
-  buildbarn.configuration.tls.ClientConfiguration tls = 4;
-
-  // key_ttl was removed because it gives the wrong eviction
-  // behaviour. Use redis's own eviction policies instead.
-  reserved 7;
-
-  // The minimum number of replicas to successfully replicate put calls to
-  // before considering it successful.
-  // If unset, no guarantee is made on the number of replicas that contain
-  // the contents of a Redis write and master failures can lose data.
-  int64 replication_count = 8;
-
-  // The maximum tolerated replication delay expressed in seconds.
-  // If unset, Redis write calls return immediately and no attempt is made to
-  // ensure that replication succeeds. This can result in data loss when
-  // the master is lost.
-  google.protobuf.Duration replication_timeout = 9;
-
-  // The following three timeouts are for individual dial/read/write
-  // operations within a retriable operation. In particular, if using
-  // a clustered redis configuration with default retries, you want to
-  // set these to be no more than a few seconds, so that slow or
-  // unresponsive redis nodes are skipped and the operation is retried
-  // on a different node.
-
-  // Dial timeout for establishing new connections.
-  // Default value can be overidden (e.g, '30s').
-  google.protobuf.Duration dial_timeout = 10;
-
-  // Timeout for socket reads. If reached, commands will fail with a timeout
-  // instead of blocking. Use value -1 for no timeout and 0 for default.
-  // Default value can be overidden (e.g, '300s').
-  google.protobuf.Duration read_timeout = 11;
-
-  // Timeout for socket writes. If reached, commands will fail with a timeout
-  // instead of blocking. Defaults to ReadTimeout,
-  // can be overidden (e.g, '300s').
-  google.protobuf.Duration write_timeout = 12;
-}
-
 message HTTPBlobAccessConfiguration {
   // URL of the remote build cache (e.g., "http://localhost:8080/").
   string address = 1;
@@ -371,17 +299,6 @@ message ShardingBlobAccessConfiguration {
   // allocate their weight from this backend, thereby causing most of
   // the keyspace to still be routed to its original backend.
   repeated Shard shards = 2;
-}
-
-message SizeDistinguishingBlobAccessConfiguration {
-  // Backend to which to send requests for small blobs (e.g., Redis).
-  BlobAccessConfiguration small = 1;
-
-  // Backend to which to send requests for large blobs (e.g., S3).
-  BlobAccessConfiguration large = 2;
-
-  // Maximum size of blobs read from/written to the backend for small blobs.
-  int64 cutoff_size_bytes = 3;
 }
 
 message MirroredBlobAccessConfiguration {

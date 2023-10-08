@@ -249,14 +249,6 @@ gomock(
 )
 
 gomock(
-    name = "redis",
-    out = "redis.go",
-    interfaces = ["RedisClient"],
-    library = "//pkg/blobstore",
-    package = "mock",
-)
-
-gomock(
     name = "remoteexecution",
     out = "remoteexecution.go",
     interfaces = [
@@ -316,7 +308,6 @@ go_library(
         "http.go",
         "jwt.go",
         "random.go",
-        "redis.go",
         "remoteexecution.go",
         "trace.go",
         "util.go",
@@ -342,7 +333,6 @@ go_library(
         "//pkg/util",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
-        "@com_github_go_redis_redis_v8//:redis",
         "@com_github_golang_mock//gomock",
         "@com_github_google_uuid//:uuid",
         "@com_google_cloud_go_longrunning//autogen/longrunningpb",

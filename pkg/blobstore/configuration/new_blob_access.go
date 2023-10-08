@@ -27,8 +27,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/fxtlabs/primes"
-	"github.com/go-redis/redis/extra/redisotel"
-	"github.com/go-redis/redis/v8"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -40,12 +38,6 @@ import (
 type BlobAccessInfo struct {
 	BlobAccess      blobstore.BlobAccess
 	DigestKeyFormat digest.KeyFormat
-}
-
-func newRedisClient(opt *redis.Options) *redis.Client {
-	client := redis.NewClient(opt)
-	client.AddHook(redisotel.TracingHook{})
-	return client
 }
 
 func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConfiguration, baseReadBufferFactory blobstore.ReadBufferFactory, digestKeyFormat digest.KeyFormat) (blobstore.ReadBufferFactory, error) {
@@ -93,109 +85,6 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      readcaching.NewReadCachingBlobAccess(slow.BlobAccess, fast.BlobAccess, replicator),
 			DigestKeyFormat: slow.DigestKeyFormat,
 		}, "read_caching", nil
-	case *pb.BlobAccessConfiguration_Redis:
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(backend.Redis.Tls)
-		if err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain TLS configuration")
-		}
-
-		var replicationTimeout time.Duration
-		if backend.Redis.ReplicationTimeout != nil {
-			if err := backend.Redis.ReplicationTimeout.CheckValid(); err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain replication timeout")
-			}
-			replicationTimeout = backend.Redis.ReplicationTimeout.AsDuration()
-		}
-
-		var dialTimeout time.Duration
-		if backend.Redis.DialTimeout != nil {
-			if err := backend.Redis.DialTimeout.CheckValid(); err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain dial timeout configuration")
-			}
-			dialTimeout = backend.Redis.DialTimeout.AsDuration()
-		}
-
-		var readTimeout time.Duration
-		if backend.Redis.ReadTimeout != nil {
-			if err := backend.Redis.ReadTimeout.CheckValid(); err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain read timeout configuration")
-			}
-			readTimeout = backend.Redis.ReadTimeout.AsDuration()
-		}
-
-		var writeTimeout time.Duration
-		if backend.Redis.WriteTimeout != nil {
-			if err := backend.Redis.WriteTimeout.CheckValid(); err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain write timeout configuration")
-			}
-			writeTimeout = backend.Redis.WriteTimeout.AsDuration()
-		}
-
-		var redisClient blobstore.RedisClient
-		switch mode := backend.Redis.Mode.(type) {
-		case *pb.RedisBlobAccessConfiguration_Clustered:
-			// Gather retry configuration (min/max delay and overall retry attempts)
-			minRetryDur := time.Millisecond * 32
-			if mode.Clustered.MinimumRetryBackoff != nil {
-				if err := mode.Clustered.MinimumRetryBackoff.CheckValid(); err != nil {
-					return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain minimum retry back off configuration")
-				}
-				minRetryDur = mode.Clustered.MinimumRetryBackoff.AsDuration()
-			}
-
-			maxRetryDur := time.Millisecond * 2048
-			if mode.Clustered.MaximumRetryBackoff != nil {
-				if err := mode.Clustered.MaximumRetryBackoff.CheckValid(); err != nil {
-					return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain maximum retry back off")
-				}
-				maxRetryDur = mode.Clustered.MaximumRetryBackoff.AsDuration()
-			}
-
-			maxRetries := 16 // Default will be 16
-			if mode.Clustered.MaximumRetries != 0 {
-				maxRetries = int(mode.Clustered.MaximumRetries)
-			}
-
-			redisClient = redis.NewClusterClient(
-				&redis.ClusterOptions{
-					Addrs:           mode.Clustered.Endpoints,
-					TLSConfig:       tlsConfig,
-					ReadOnly:        true,
-					MaxRetries:      maxRetries,
-					MinRetryBackoff: minRetryDur,
-					MaxRetryBackoff: maxRetryDur,
-					DialTimeout:     dialTimeout,
-					ReadTimeout:     readTimeout,
-					WriteTimeout:    writeTimeout,
-					NewClient:       newRedisClient,
-				})
-
-		case *pb.RedisBlobAccessConfiguration_Single:
-			redisClient = newRedisClient(
-				&redis.Options{
-					Addr:         mode.Single.Endpoint,
-					Password:     mode.Single.Password,
-					DB:           int(mode.Single.Db),
-					TLSConfig:    tlsConfig,
-					DialTimeout:  dialTimeout,
-					ReadTimeout:  readTimeout,
-					WriteTimeout: writeTimeout,
-				})
-		default:
-			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Redis configuration must either be clustered or single server")
-		}
-
-		digestKeyFormat := creator.GetBaseDigestKeyFormat()
-		return BlobAccessInfo{
-			BlobAccess: blobstore.NewRedisBlobAccess(
-				redisClient,
-				readBufferFactory,
-				digestKeyFormat,
-				backend.Redis.ReplicationCount,
-				replicationTimeout,
-				creator.GetDefaultCapabilitiesProvider()),
-			DigestKeyFormat: digestKeyFormat,
-		}, "redis", nil
 	case *pb.BlobAccessConfiguration_Http:
 		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.Http.Client)
 		if err != nil {
@@ -250,19 +139,6 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				backend.Sharding.HashInitialization),
 			DigestKeyFormat: *combinedDigestKeyFormat,
 		}, "sharding", nil
-	case *pb.BlobAccessConfiguration_SizeDistinguishing:
-		small, err := nc.NewNestedBlobAccess(backend.SizeDistinguishing.Small, creator)
-		if err != nil {
-			return BlobAccessInfo{}, "", err
-		}
-		large, err := nc.NewNestedBlobAccess(backend.SizeDistinguishing.Large, creator)
-		if err != nil {
-			return BlobAccessInfo{}, "", err
-		}
-		return BlobAccessInfo{
-			BlobAccess:      blobstore.NewSizeDistinguishingBlobAccess(small.BlobAccess, large.BlobAccess, backend.SizeDistinguishing.CutoffSizeBytes),
-			DigestKeyFormat: small.DigestKeyFormat.Combine(large.DigestKeyFormat),
-		}, "size_distinguishing", nil
 	case *pb.BlobAccessConfiguration_Mirrored:
 		backendA, err := nc.NewNestedBlobAccess(backend.Mirrored.BackendA, creator)
 		if err != nil {
