@@ -115,37 +115,50 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 	return NewDemultiplexingSignatureValidator(namedSignatureValidators, allSignatureValidators), nil
 }
 
-func NewSignatureValidatorFromJSONWebKeySetFile(path string) SignatureValidator {
-	// Hmm. I don't want us to first read the file once, to initialize this, and then read the file periodically to update it.
-	// However, I also don't want us to initialize this in a state that isn't ready for use.
-	validator := NewForwardingSignatureValidator(nil)
+// NewSignatureValidatorFromJSONWebKeySetFile creates a new
+// SignatureValidator capable of validating JWTs matching keys contained
+// in a JSON Web Key Set read from a file. The content of the file is
+// periodically refreshed.
+func NewSignatureValidatorFromJSONWebKeySetFile(path string) (SignatureValidator, error) {
+	internalValidator, err := getJwksFromFile(path)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Unable to read JWKS content from file at %s", path)
+	}
+	forwardingValidator := NewForwardingSignatureValidator(internalValidator)
 
 	// TODO: Run this as part of the program.Group, so that it gets
 	// cleaned up upon shutdown.
 	go func() {
 		t := time.NewTicker(300 * time.Second)
 		for range t.C {
-			jwksJSON, err := os.ReadFile(path)
+			internalValidator, err := getJwksFromFile(path)
 			if err != nil {
-				log.Printf("Failed to reload JWKS file: %v", err)
+				log.Printf("Failed to get JWKS content from file: %v", err)
 				continue
 			}
 
-			var jwks jose.JSONWebKeySet
-			if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
-				log.Printf("Failed to reload JWKS file: %v", err)
-				continue
-			}
-
-			signatureValidator, err := NewSignatureValidatorFromJSONWebKeySet(&jwks)
-			if err != nil {
-				log.Printf("Failed to create SignatureValidator for JWKS file: %v", err)
-				continue
-			}
-
-			validator.Replace(signatureValidator)
+			forwardingValidator.Replace(internalValidator)
 		}
 	}()
 
-	return validator
+	return forwardingValidator, nil
+}
+
+func getJwksFromFile(path string) (SignatureValidator, error) {
+	jwksJSON, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var jwks jose.JSONWebKeySet
+	if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
+		return nil, err
+	}
+
+	signatureValidator, err := NewSignatureValidatorFromJSONWebKeySet(&jwks)
+	if err != nil {
+		return nil, err
+	}
+
+	return signatureValidator, nil
 }
