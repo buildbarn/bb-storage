@@ -134,18 +134,18 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 	group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 		t := time.NewTicker(300 * time.Second)
 		for {
-            select {
-            case <-t.C:
+			select {
+			case <-t.C:
 				internalValidator, err := getJwksFromFile(path)
 				if err != nil {
 					return err
 				}
 
 				forwardingValidator.Replace(internalValidator)
-            case <-ctx.Done():
+			case <-ctx.Done():
 				return util.StatusFromContext(ctx)
-            }
-        }
+			}
+		}
 	})
 
 	return forwardingValidator, nil
