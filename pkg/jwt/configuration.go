@@ -42,12 +42,11 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		if err != nil {
 			return nil, err
 		}
-	case *configuration.AuthorizationHeaderParserConfiguration_JwksFile_:
-		signatureValidator = NewSignatureValidatorFromJSONWebKeySetFile(key.JwksFile.FilePath, key.JwksFile.RefreshInterval.AsDuration())
+	case *configuration.AuthorizationHeaderParserConfiguration_JwksFile:
+		signatureValidator = NewSignatureValidatorFromJSONWebKeySetFile(key.JwksFile)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
-
 
 	evictionSet, err := eviction.NewSetFromConfiguration[string](config.CacheReplacementPolicy)
 	if err != nil {
@@ -116,7 +115,7 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 	return NewDemultiplexingSignatureValidator(namedSignatureValidators, allSignatureValidators), nil
 }
 
-func NewSignatureValidatorFromJSONWebKeySetFile(path string, refreshInterval time.Duration) SignatureValidator {
+func NewSignatureValidatorFromJSONWebKeySetFile(path string) SignatureValidator {
 	// Hmm. I don't want us to first read the file once, to initialize this, and then read the file periodically to update it.
 	// However, I also don't want us to initialize this in a state that isn't ready for use.
 	validator := NewForwardingSignatureValidator(nil)
@@ -124,7 +123,7 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, refreshInterval tim
 	// TODO: Run this as part of the program.Group, so that it gets
 	// cleaned up upon shutdown.
 	go func() {
-		t := time.NewTicker(refreshInterval)
+		t := time.NewTicker(300 * time.Second)
 		for range t.C {
 			jwksJSON, err := os.ReadFile(path)
 			if err != nil {

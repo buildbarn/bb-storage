@@ -15,14 +15,6 @@ message AuthorizationHeaderParserConfiguration {
   // Was 'public_key'. Replaced by 'jwks_inline'.
   reserved 2;
 
-  message JwksFile {
-    // Path to JWKS file.
-    string file_path = 1;
-
-    // Interval at which to refresh JWKS file.
-    google.protobuf.Duration refresh_interval = 2;
-  }
-
   oneof jwks {
     // A JSON Web Key Set (JWKS) as described in RFC 7517, chapter 5,
     // containing one or more public keys against which tokens signatures
@@ -36,9 +28,9 @@ message AuthorizationHeaderParserConfiguration {
     // - https://russelldavies.github.io/jwk-creator/
     google.protobuf.Struct jwks_inline = 7;
 
-    // Similar to jwks_inline, but reads the JWKS from a file, with a
-    // refresh interval.
-    JwksFile jwks_file = 8;
+    // Similar to jwks_inline, but reads the JWKS from a file.
+    // The file will be automatically reloaded every 300 seconds.
+    string jwks_file = 8;
   }
 
   // Maximum number of validated tokens to cache in memory. This speeds
