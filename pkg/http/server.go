@@ -15,7 +15,7 @@ import (
 // canceled.
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, handler http.Handler, group program.Group) error {
 	for _, configuration := range configurations {
-		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
+		authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
 		if err != nil {
 			return err
 		}

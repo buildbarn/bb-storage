@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -30,7 +31,7 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy) (Authenticator, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group) (Authenticator, error) {
 	if policy == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
@@ -44,7 +45,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, err := NewAuthenticatorFromConfiguration(childConfiguration)
+			child, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
 			if err != nil {
 				return nil, err
 			}
@@ -54,7 +55,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Deny:
 		return NewDenyAuthenticator(policyKind.Deny), nil
 	case *configuration.AuthenticationPolicy_Jwt:
-		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt)
+		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt, group)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
@@ -118,7 +119,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			cookieAEAD,
 			clock.SystemClock)
 	case *configuration.AuthenticationPolicy_AcceptHeader:
-		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy)
+		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group)
 		if err != nil {
 			return nil, err
 		}

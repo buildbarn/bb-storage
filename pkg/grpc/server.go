@@ -36,7 +36,7 @@ func init() {
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy)
+		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
 		if err != nil {
 			return err
 		}

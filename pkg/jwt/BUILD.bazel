@@ -22,6 +22,7 @@ go_library(
         "//pkg/auth",
         "//pkg/clock",
         "//pkg/eviction",
+        "//pkg/program",
         "//pkg/proto/configuration/jwt",
         "//pkg/random",
         "//pkg/util",

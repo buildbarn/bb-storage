@@ -1,17 +1,18 @@
 package jwt
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/json"
-	"log"
 	"os"
 	"reflect"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	jose "github.com/go-jose/go-jose/v3"
@@ -25,7 +26,7 @@ import (
 // NewAuthorizationHeaderParserFromConfiguration creates a new HTTP
 // "Authorization" header parser based on options stored in a
 // configuration file.
-func NewAuthorizationHeaderParserFromConfiguration(config *configuration.AuthorizationHeaderParserConfiguration) (*AuthorizationHeaderParser, error) {
+func NewAuthorizationHeaderParserFromConfiguration(config *configuration.AuthorizationHeaderParserConfiguration, group program.Group) (*AuthorizationHeaderParser, error) {
 	var signatureValidator SignatureValidator
 
 	switch key := config.Jwks.(type) {
@@ -43,7 +44,11 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 			return nil, err
 		}
 	case *configuration.AuthorizationHeaderParserConfiguration_JwksFile:
-		signatureValidator = NewSignatureValidatorFromJSONWebKeySetFile(key.JwksFile)
+		var err error
+		signatureValidator, err = NewSignatureValidatorFromJSONWebKeySetFile(key.JwksFile, group)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No key type provided")
 	}
@@ -119,27 +124,29 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 // SignatureValidator capable of validating JWTs matching keys contained
 // in a JSON Web Key Set read from a file. The content of the file is
 // periodically refreshed.
-func NewSignatureValidatorFromJSONWebKeySetFile(path string) (SignatureValidator, error) {
+func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group) (SignatureValidator, error) {
 	internalValidator, err := getJwksFromFile(path)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Unable to read JWKS content from file at %s", path)
 	}
 	forwardingValidator := NewForwardingSignatureValidator(internalValidator)
 
-	// TODO: Run this as part of the program.Group, so that it gets
-	// cleaned up upon shutdown.
-	go func() {
+	group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 		t := time.NewTicker(300 * time.Second)
-		for range t.C {
-			internalValidator, err := getJwksFromFile(path)
-			if err != nil {
-				log.Printf("Failed to get JWKS content from file: %v", err)
-				continue
-			}
+		for {
+            select {
+            case <-t.C:
+				internalValidator, err := getJwksFromFile(path)
+				if err != nil {
+					return err
+				}
 
-			forwardingValidator.Replace(internalValidator)
-		}
-	}()
+				forwardingValidator.Replace(internalValidator)
+            case <-ctx.Done():
+				return util.StatusFromContext(ctx)
+            }
+        }
+	})
 
 	return forwardingValidator, nil
 }
