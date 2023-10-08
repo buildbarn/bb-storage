@@ -4,23 +4,25 @@ import (
 	"sync/atomic"
 )
 
-type forwardingSignatureValidator struct {
+type ForwardingSignatureValidator struct {
 	validator atomic.Pointer[SignatureValidator]
 }
 
 // NewForwardingSignatureValidator creates a SignatureValidator that simply forwards
 // requests to another SignatureValidator.
-func NewForwardingSignatureValidator(validator SignatureValidator) SignatureValidator {
-	sv := &forwardingSignatureValidator{}
+// This returns a pointer to the new ForwardingSignatureValidator, so as not to
+// copy the atomic.Pointer.
+func NewForwardingSignatureValidator(validator SignatureValidator) *ForwardingSignatureValidator {
+	sv := ForwardingSignatureValidator{}
 	sv.validator.Store(&validator)
 
-	return sv
+	return &sv
 }
 
-func (sv *forwardingSignatureValidator) Replace(validator SignatureValidator) {
+func (sv *ForwardingSignatureValidator) Replace(validator SignatureValidator) {
 	sv.validator.Store(&validator)
 }
 
-func (sv *forwardingSignatureValidator) ValidateSignature(algorithm string, keyID *string, headerAndPayload string, signature []byte) bool {
+func (sv *ForwardingSignatureValidator) ValidateSignature(algorithm string, keyID *string, headerAndPayload string, signature []byte) bool {
 	return (*sv.validator.Load()).ValidateSignature(algorithm, keyID, headerAndPayload, signature)
 }

@@ -143,7 +143,7 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string) SignatureValidator 
 				continue
 			}
 
-			(validator.(*forwardingSignatureValidator)).Replace(signatureValidator)
+			validator.Replace(signatureValidator)
 		}
 	}()
 
