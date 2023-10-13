@@ -70,16 +70,10 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-			if err := bb_http.NewServersFromConfigurationAndServe(
-				ls.config.HttpServers,
-				bb_http.NewMetricsHandler(router, "Diagnostics"),
-				group,
-			); err != nil {
-				return util.StatusWrap(err, "Failed to launch diagnostics HTTP server")
-			}
-			return nil
-		})
+		bb_http.NewServersFromConfigurationAndServe(
+			ls.config.HttpServers,
+			bb_http.NewMetricsHandler(router, "Diagnostics"),
+			group)
 	}
 }
 
