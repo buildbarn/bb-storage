@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/json"
+	"log"
 	"os"
 	"reflect"
 	"time"
@@ -140,10 +141,11 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 			case <-t.C:
 				internalValidator, err := getJwksFromFile(path)
 				if err != nil {
-					return err
+					log.Printf("Failed to read JWKS content from file at %s: %s", path, err)
+					continue
 				}
-
 				forwardingValidator.Replace(internalValidator)
+
 			case <-ctx.Done():
 				return util.StatusFromContext(ctx)
 			}
