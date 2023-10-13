@@ -166,10 +166,5 @@ func getJwksFromFile(path string) (SignatureValidator, error) {
 		return nil, err
 	}
 
-	signatureValidator, err := NewSignatureValidatorFromJSONWebKeySet(&jwks)
-	if err != nil {
-		return nil, err
-	}
-
-	return signatureValidator, nil
+	return NewSignatureValidatorFromJSONWebKeySet(&jwks)
 }
