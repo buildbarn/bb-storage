@@ -133,6 +133,8 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 
 	group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 		t := time.NewTicker(300 * time.Second)
+		defer t.Stop()
+
 		for {
 			select {
 			case <-t.C:
