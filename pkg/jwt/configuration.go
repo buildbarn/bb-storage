@@ -128,7 +128,7 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group) (SignatureValidator, error) {
 	internalValidator, err := getJWKSFromFile(path)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Unable to read JWKS content from file at %#v", path)
+		return nil, util.StatusWrapf(err, "Unable to read JWKS content from file at %#v", path)
 	}
 	forwardingValidator := NewForwardingSignatureValidator(internalValidator)
 
