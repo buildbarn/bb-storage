@@ -4,6 +4,9 @@ import (
 	"sync/atomic"
 )
 
+// ForwardingSignatureValidator wraps another SignatureValidator. It is
+// used when the underlying SignatureValidator needs to be replaced at
+// runtime.
 type ForwardingSignatureValidator struct {
 	validator atomic.Pointer[SignatureValidator]
 }
