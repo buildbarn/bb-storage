@@ -126,7 +126,7 @@ func NewSignatureValidatorFromJSONWebKeySet(jwks *jose.JSONWebKeySet) (Signature
 // in a JSON Web Key Set read from a file. The content of the file is
 // periodically refreshed.
 func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group) (SignatureValidator, error) {
-	internalValidator, err := getJwksFromFile(path)
+	internalValidator, err := getJWKSFromFile(path)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Unable to read JWKS content from file at %s", path)
 	}
@@ -139,7 +139,7 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 		for {
 			select {
 			case <-t.C:
-				internalValidator, err := getJwksFromFile(path)
+				internalValidator, err := getJWKSFromFile(path)
 				if err != nil {
 					log.Printf("Failed to read JWKS content from file at %s: %s", path, err)
 					continue
@@ -155,7 +155,7 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 	return forwardingValidator, nil
 }
 
-func getJwksFromFile(path string) (SignatureValidator, error) {
+func getJWKSFromFile(path string) (SignatureValidator, error) {
 	r, err := os.Open(path)
 	if err != nil {
 		return nil, err
