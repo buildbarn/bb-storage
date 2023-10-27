@@ -22,12 +22,12 @@ func NewForwardingSignatureValidator(validator SignatureValidator) *ForwardingSi
 	return &sv
 }
 
-// Replace the registered SignatureValidator
+// Replace replaces the registered SignatureValidator
 func (sv *ForwardingSignatureValidator) Replace(validator SignatureValidator) {
 	sv.validator.Store(&validator)
 }
 
-// Validate a signature using the registered SignatureValidator
+// ValidateSignature validates a signature using the registered SignatureValidator
 func (sv *ForwardingSignatureValidator) ValidateSignature(algorithm string, keyID *string, headerAndPayload string, signature []byte) bool {
 	return (*sv.validator.Load()).ValidateSignature(algorithm, keyID, headerAndPayload, signature)
 }
