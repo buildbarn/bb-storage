@@ -163,8 +163,7 @@ func getJWKSFromFile(path string) (SignatureValidator, error) {
 	defer r.Close()
 
 	var jwks jose.JSONWebKeySet
-	err = json.NewDecoder(r).Decode(&jwks)
-	if err != nil {
+	if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
 		return nil, err
 	}
 
