@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/json"
+        "io"
 	"log"
 	"os"
 	"reflect"
@@ -162,8 +163,13 @@ func getJWKSFromFile(path string) (SignatureValidator, error) {
 	}
 	defer r.Close()
 
+        data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
 	var jwks jose.JSONWebKeySet
-	if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
+	if err := json.Unmarshal(data, &jwks); err != nil {
 		return nil, err
 	}
 
