@@ -6,7 +6,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/json"
-        "io"
 	"log"
 	"os"
 	"reflect"
