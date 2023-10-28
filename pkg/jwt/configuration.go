@@ -157,19 +157,13 @@ func NewSignatureValidatorFromJSONWebKeySetFile(path string, group program.Group
 }
 
 func getJWKSFromFile(path string) (SignatureValidator, error) {
-	r, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-
-        data, err := io.ReadAll(r)
+	jwksJSON, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	var jwks jose.JSONWebKeySet
-	if err := json.Unmarshal(data, &jwks); err != nil {
+	if err := json.Unmarshal(jwksJSON, &jwks); err != nil {
 		return nil, err
 	}
 
