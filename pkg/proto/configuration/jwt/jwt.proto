@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.jwt;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
 
@@ -24,7 +25,14 @@ message AuthorizationHeaderParserConfiguration {
   // - https://smallstep.com/docs/step-cli/reference/crypto/key/format/
   // - https://irrte.ch/jwt-js-decode/pem2jwk.html
   // - https://russelldavies.github.io/jwk-creator/
-  google.protobuf.Struct jwks_inline = 7;
+  oneof jwks {
+    // JWKS stored inline in the configuration.
+    google.protobuf.Struct jwks_inline = 7;
+
+    // JWKS stored in a separate file.
+    // The file will be automatically reloaded every 300 seconds.
+    string jwks_file = 8;
+  }
 
   // Maximum number of validated tokens to cache in memory. This speeds
   // up successive requests made with the same token.
