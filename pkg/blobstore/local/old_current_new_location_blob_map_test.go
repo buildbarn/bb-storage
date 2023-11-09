@@ -169,3 +169,81 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	_, err = locationBlobPutWriter(buffer.NewBufferFromError(status.Error(codes.Unknown, "Client hung up")))()
 	testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 }
+
+func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	blockList := mock.NewMockBlockList(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
+	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
+		blockList,
+		local.NewImmutableBlockListGrowthPolicy(
+			/* currentBlocksCount = */ 4,
+			/* newBlocksCount = */ 4),
+		errorLogger,
+		"cas",
+		/* blockSizeBytes = */ 16,
+		/* oldBlocksCount = */ 2,
+		/* newBlocksCount = */ 4,
+		/* initialBlocksCount = */ 10)
+
+	// Perform a Get() call against the new block 9. Return a buffer that
+	// will trigger a data integrity error in the last block, as the digest
+	// corresponds with "Hello", not "xyzzy". This should cause the
+	// all blocks to be marked for immediate release.
+	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	blockList.EXPECT().Get(9, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
+		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
+		})
+	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 10 blocks due to a data integrity error"))
+
+	locationBlobGetter, needsRefresh := locationBlobMap.Get(local.Location{
+		BlockIndex:  9,
+		OffsetBytes: 10,
+		SizeBytes:   5,
+	})
+	require.False(t, needsRefresh)
+	_, err := locationBlobGetter(helloDigest).ToByteSlice(10)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+
+	// Get() is not capable of releasing blocks immediately due to
+	// locking constraints. Still, we should make sure that further
+	// reads don't end up getting sent to these blocks.
+	// BlockReferenceToBlockIndex() should hide the results returned
+	// by the underlying BlockList.
+	blockList.EXPECT().BlockReferenceToBlockIndex(local.BlockReference{
+		EpochID:        72,
+		BlocksFromLast: 7,
+	}).Return(0, uint64(0xb8e12b9fbe428eba), true)
+
+	_, _, found := locationBlobMap.BlockReferenceToBlockIndex(local.BlockReference{
+		EpochID:        72,
+		BlocksFromLast: 7,
+	})
+	require.False(t, found)
+
+	// The next time Put() is called, we should first see that all
+	// the (corrupted) blocks are released. Eight blocks should be
+	// created, so that we continue the desired minimum number of
+	// blocks.
+	blockList.EXPECT().PopFront().Times(10)
+	blockList.EXPECT().PushBack().Times(8)
+
+	blockList.EXPECT().HasSpace(0, int64(5)).Return(true).Times(2)
+	blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
+	blockList.EXPECT().Put(0, int64(5)).Return(blockListPutWriter.Call)
+	blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
+	blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
+		func(b buffer.Buffer) local.BlockListPutFinalizer {
+			_, err := b.ToByteSlice(10)
+			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
+			return blockListPutFinalizer.Call
+		})
+	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
+
+	locationBlobPutWriter, err := locationBlobMap.Put(5)
+	require.NoError(t, err)
+	_, err = locationBlobPutWriter(buffer.NewBufferFromError(status.Error(codes.Unknown, "Client hung up")))()
+	testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
+}

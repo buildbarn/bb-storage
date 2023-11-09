@@ -142,10 +142,9 @@ func NewOldCurrentNewLocationBlobMap(blockList BlockList, blockListGrowthPolicy 
 		desiredOldBlocksCount: oldBlocksCount,
 		desiredNewBlocksCount: newBlocksCount,
 
-		allocationBlockIndex: -1,
-
 		lastRemovedOldBlockInsertionTime: oldCurrentNewLocationBlobMapLastRemovedOldBlockInsertionTime.WithLabelValues(storageType),
 	}
+	lbm.resetAllocationBlockIndex()
 	now := unixTime()
 	lbm.lastRemovedOldBlockInsertionTime.Set(now)
 
@@ -249,14 +248,22 @@ func (lbm *OldCurrentNewLocationBlobMap) Get(location Location) (LocationBlobGet
 	}, location.BlockIndex < len(lbm.oldBlocks)
 }
 
-// startAllocatingFromBlock resets the counters used to determine from
-// which "new" block to allocate data. This function is called whenever
-// the list of "new" blocks changes.
-func (lbm *OldCurrentNewLocationBlobMap) startAllocatingFromBlock(i int) {
-	lbm.allocationBlockIndex = i
-	if i >= lbm.newBlocks-lbm.desiredNewBlocksCount {
+// resetAllocationBlockIndex resets the counters used to determine from
+// which "new" block to allocate data. This causes the next allocation
+// to be performed against the first "new" block.
+func (lbm *OldCurrentNewLocationBlobMap) resetAllocationBlockIndex() {
+	lbm.allocationBlockIndex = -1
+	lbm.allocationAttemptsRemaining = 0
+}
+
+// incrementAllocationBlockIndex increments the counters used to
+// determine from which "new" block to allocate data. This function is
+// called when space in a "new" block is exhausted.
+func (lbm *OldCurrentNewLocationBlobMap) incrementAllocationBlockIndex() {
+	lbm.allocationBlockIndex = (lbm.allocationBlockIndex + 1) % lbm.newBlocks
+	if lbm.allocationBlockIndex >= lbm.newBlocks-lbm.desiredNewBlocksCount {
 		// One of the actual "new" blocks.
-		lbm.allocationAttemptsRemaining = 1 << (lbm.newBlocks - i - 1)
+		lbm.allocationAttemptsRemaining = 1 << (lbm.newBlocks - lbm.allocationBlockIndex - 1)
 	} else {
 		// One of the "current" blocks, while still in the
 		// initial phase where we populate all blocks.
@@ -299,7 +306,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 			lbm.currentBlocks--
 		} else {
 			lbm.newBlocks--
-			lbm.startAllocatingFromBlock(0)
+			lbm.resetAllocationBlockIndex()
 		}
 	}
 
@@ -342,7 +349,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 				lbm.increaseTotalBlocksToBeReleased(lbm.totalBlocksReleased)
 			}
 		}
-		lbm.startAllocatingFromBlock(0)
+		lbm.resetAllocationBlockIndex()
 	}
 
 	// Repeatedly attempt to allocate a blob within a "new" block.
@@ -354,7 +361,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 				return index, nil
 			}
 		}
-		lbm.startAllocatingFromBlock((lbm.allocationBlockIndex + 1) % lbm.newBlocks)
+		lbm.incrementAllocationBlockIndex()
 	}
 }
 
