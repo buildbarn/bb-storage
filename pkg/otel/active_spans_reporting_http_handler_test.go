@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed" // For "go:embed".
 	"errors"
+	"html/template"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/logo"
 	"github.com/buildbarn/bb-storage/pkg/otel"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -38,6 +40,7 @@ func requireEqualBody(t *testing.T, expectedBody string, hh http.Handler) {
 		<html>
 			<head>
 				<title>Active OpenTelemetry spans</title>
+				<link href="` + template.URLQueryEscaper(logo.EmbeddedFaviconURL) + `" rel="icon">
 				<style>` + stylesheet + `</style>
 			</head>
 			<body>

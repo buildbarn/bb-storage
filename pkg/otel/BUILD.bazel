@@ -18,6 +18,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/clock",
+        "//pkg/logo",
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//codes",
         "@io_opentelemetry_go_otel//propagation",
@@ -45,6 +46,7 @@ go_test(
     deps = [
         ":otel",
         "//internal/mock",
+        "//pkg/logo",
         "//pkg/testutil",
         "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",

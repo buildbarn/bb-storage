@@ -12,9 +12,7 @@ genrule(
 go_library(
     name = "logo",
     srcs = ["logo.go"],
-    embedsrcs = [
-        "favicon.svg",
-    ],
+    embedsrcs = ["favicon.svg"],
     importpath = "github.com/buildbarn/bb-storage/pkg/logo",
     visibility = ["//visibility:public"],
 )
