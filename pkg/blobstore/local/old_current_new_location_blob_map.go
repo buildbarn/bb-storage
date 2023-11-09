@@ -291,6 +291,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 	// DataIntegrityCallback, as it's impossible to pick up a write
 	// lock from that context.
 	totalBlocksToBeReleased := lbm.totalBlocksToBeReleased.Load()
+	newBlockHasBeenReleased := false
 	for lbm.totalBlocksReleased < totalBlocksToBeReleased {
 		lbm.popFront()
 		if len(lbm.oldBlocks) > 0 {
@@ -299,7 +300,7 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 			lbm.currentBlocks--
 		} else {
 			lbm.newBlocks--
-			lbm.startAllocatingFromBlock(0)
+			newBlockHasBeenReleased = true
 		}
 	}
 
@@ -312,6 +313,11 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 			return 0, err
 		}
 		lbm.newBlocks++
+	}
+	// Make sure a released block is not written to.
+	if newBlockHasBeenReleased {
+		// Allocate from the first new block instead.
+		lbm.startAllocatingFromBlock(0)
 	}
 
 	// Move the first "new" block(s) to "current" whenever they no
