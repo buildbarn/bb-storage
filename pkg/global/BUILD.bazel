@@ -15,6 +15,7 @@ go_library(
         "//pkg/http",
         "//pkg/otel",
         "//pkg/program",
+        "//pkg/prometheus",
         "//pkg/proto/configuration/global",
         "//pkg/util",
         "@com_github_gorilla_mux//:mux",

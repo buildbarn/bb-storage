@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
@@ -19,6 +20,7 @@ import (
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	bb_otel "github.com/buildbarn/bb-storage/pkg/otel"
 	"github.com/buildbarn/bb-storage/pkg/program"
+	bb_prometheus "github.com/buildbarn/bb-storage/pkg/prometheus"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
@@ -259,8 +261,33 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	// Periodically push metrics to a Prometheus Pushgateway, as
 	// opposed to letting the Prometheus server scrape the metrics.
 	if pushgateway := configuration.GetPrometheusPushgateway(); pushgateway != nil {
+		gatherer := prometheus.DefaultGatherer
+		if len(pushgateway.AdditionalScrapeTargets) > 0 {
+			// Set up scraping of additional targets, such
+			// as Prometheus Node Exporter.
+			allGatherers := make(prometheus.Gatherers, 0, len(pushgateway.AdditionalScrapeTargets)+1)
+			for _, scrapeTarget := range pushgateway.AdditionalScrapeTargets {
+				roundTripper, err := bb_http.NewRoundTripperFromConfiguration(scrapeTarget.HttpClient)
+				if err != nil {
+					return nil, nil, util.StatusWrapf(err, "Failed to create HTTP client for additional scrape target %#v", scrapeTarget.Url)
+				}
+				metricNamePattern, err := regexp.Compile(scrapeTarget.MetricNamePattern)
+				if err != nil {
+					return nil, nil, util.StatusWrapfWithCode(err, codes.InvalidArgument, "Invalid metric name pattern %#v for additional scrape target %#v", scrapeTarget.MetricNamePattern, scrapeTarget.Url)
+				}
+				allGatherers = append(
+					allGatherers,
+					bb_prometheus.NewNameFilteringGatherer(
+						bb_prometheus.NewHTTPGatherer(
+							&http.Client{Transport: roundTripper},
+							scrapeTarget.Url),
+						metricNamePattern))
+			}
+			gatherer = append(allGatherers, gatherer)
+		}
+
 		pusher := push.New(pushgateway.Url, pushgateway.Job)
-		pusher.Gatherer(prometheus.DefaultGatherer)
+		pusher.Gatherer(gatherer)
 		for key, value := range pushgateway.Grouping {
 			pusher.Grouping(key, value)
 		}
