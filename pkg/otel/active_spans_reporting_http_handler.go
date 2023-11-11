@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 var (
@@ -107,6 +108,8 @@ func (hh *ActiveSpansReportingHTTPHandler) ServeHTTP(w http.ResponseWriter, r *h
 // ActiveSpansReportingTracerProvider is a decorator for TracerProvider
 // that causes all resulting Spans to be wrapped.
 type activeSpansReportingTracerProvider struct {
+	embedded.TracerProvider
+
 	base        trace.TracerProvider
 	httpHandler *ActiveSpansReportingHTTPHandler
 }
@@ -122,6 +125,8 @@ func (tp *activeSpansReportingTracerProvider) Tracer(instrumentationName string,
 // ActiveSpansReportingTracer is a decorator for Tracer that causes all
 // resulting Spans to be wrapped.
 type activeSpansReportingTracer struct {
+	embedded.Tracer
+
 	base                trace.Tracer
 	tracerProvider      *activeSpansReportingTracerProvider
 	instrumentationName string
@@ -224,6 +229,8 @@ func (l *spanList) getInfos() []spanInfo {
 // ActiveSpan contains all of the bookkeeping for a single span
 // displayed by ActiveSpansReportingHTTPHandler.
 type activeSpan struct {
+	embedded.Span
+
 	// Constant fields.
 	base   trace.Span
 	tracer *activeSpansReportingTracer

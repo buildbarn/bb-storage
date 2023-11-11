@@ -268,6 +268,11 @@ gomock(
         "TracerProvider",
     ],
     library = "@io_opentelemetry_go_otel_trace//:trace",
+    mock_names = {
+        "Span": "BareMockSpan",
+        "Tracer": "BareMockTracer",
+        "TracerProvider": "BareMockTracerProvider",
+    },
     package = "mock",
 )
 
@@ -310,6 +315,7 @@ go_library(
         "random.go",
         "remoteexecution.go",
         "trace.go",
+        "trace_wrap.go",
         "util.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/internal/mock",
@@ -339,6 +345,7 @@ go_library(
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//codes",
         "@io_opentelemetry_go_otel_trace//:trace",
+        "@io_opentelemetry_go_otel_trace//embedded",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//encoding/protowire",

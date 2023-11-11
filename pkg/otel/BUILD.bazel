@@ -24,6 +24,7 @@ go_library(
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace//:otlptrace",
         "@io_opentelemetry_go_otel_sdk//trace",
         "@io_opentelemetry_go_otel_trace//:trace",
+        "@io_opentelemetry_go_otel_trace//embedded",
         "@io_opentelemetry_go_proto_otlp//collector/trace/v1:trace",
         "@io_opentelemetry_go_proto_otlp//common/v1:common",
         "@io_opentelemetry_go_proto_otlp//trace/v1:trace",
