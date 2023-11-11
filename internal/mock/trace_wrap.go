@@ -6,48 +6,48 @@ import (
 	"go.opentelemetry.io/otel/trace/embedded"
 )
 
-// MockSpan is a wrapper around the gomock stub for trace.Span. We need
-// to add embedded.Span to it to satisfy the interface, as it contains
-// some private methods.
-type MockSpan struct {
+// WrappedMockSpan is a wrapper around the gomock stub for trace.Span.
+// We need to add embedded.Span to it to satisfy the interface, as it
+// contains some private methods.
+type WrappedMockSpan struct {
 	embedded.Span
 	*BareMockSpan
 }
 
 // NewMockSpan creates a new gomock stub for trace.Span.
-func NewMockSpan(ctrl *gomock.Controller) *MockSpan {
-	return &MockSpan{
+func NewMockSpan(ctrl *gomock.Controller) *WrappedMockSpan {
+	return &WrappedMockSpan{
 		BareMockSpan: NewBareMockSpan(ctrl),
 	}
 }
 
-// MockTracer is a wrapper around the gomock stub for trace.Tracer. We
-// need to add embedded.Tracer to it to satisfy the interface, as it
-// contains some private methods.
-type MockTracer struct {
+// WrappedMockTracer is a wrapper around the gomock stub for
+// trace.Tracer. We need to add embedded.Tracer to it to satisfy the
+// interface, as it contains some private methods.
+type WrappedMockTracer struct {
 	embedded.Tracer
 	*BareMockTracer
 }
 
 // NewMockTracer creates a new gomock stub for trace.Tracer.
-func NewMockTracer(ctrl *gomock.Controller) *MockTracer {
-	return &MockTracer{
+func NewMockTracer(ctrl *gomock.Controller) *WrappedMockTracer {
+	return &WrappedMockTracer{
 		BareMockTracer: NewBareMockTracer(ctrl),
 	}
 }
 
-// MockTracerProvider is a wrapper around the gomock stub for
+// WrappedMockTracerProvider is a wrapper around the gomock stub for
 // trace.TracerProvider. We need to add embedded.TracerProvider to it to
 // satisfy the interface, as it contains some private methods.
-type MockTracerProvider struct {
+type WrappedMockTracerProvider struct {
 	embedded.TracerProvider
 	*BareMockTracerProvider
 }
 
 // NewMockTracerProvider creates a new gomock stub for
 // trace.TracerProvider.
-func NewMockTracerProvider(ctrl *gomock.Controller) *MockTracerProvider {
-	return &MockTracerProvider{
+func NewMockTracerProvider(ctrl *gomock.Controller) *WrappedMockTracerProvider {
+	return &WrappedMockTracerProvider{
 		BareMockTracerProvider: NewBareMockTracerProvider(ctrl),
 	}
 }
