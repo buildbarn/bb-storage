@@ -6,6 +6,7 @@ gomock(
     out = "aliases.go",
     interfaces = [
         "AEAD",
+        "IntTreeDirectoryVisitor",
         "ReadCloser",
         "ResponseWriter",
         "RoundTripper",

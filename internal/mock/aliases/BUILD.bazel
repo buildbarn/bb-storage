@@ -5,4 +5,5 @@ go_library(
     srcs = ["aliases.go"],
     importpath = "github.com/buildbarn/bb-storage/internal/mock/aliases",
     visibility = ["//:__subpackages__"],
+    deps = ["//pkg/blobstore"],
 )

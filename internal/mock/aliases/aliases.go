@@ -4,6 +4,8 @@ import (
 	"crypto/cipher"
 	"io"
 	"net/http"
+
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 )
 
 // This file contains aliases for some of the interfaces provided by the
@@ -14,6 +16,10 @@ import (
 
 // AEAD is an alias of cipher.AEAD.
 type AEAD = cipher.AEAD
+
+// IntTreeDirectoryVisitor is a TreeDirectoryVisitor that takes integer
+// arguments.
+type IntTreeDirectoryVisitor = blobstore.TreeDirectoryVisitor[int]
 
 // ReadCloser is an alias of io.ReadCloser.
 type ReadCloser = io.ReadCloser
