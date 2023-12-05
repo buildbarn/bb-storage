@@ -28,12 +28,14 @@ import (
 func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
-		baseBlobAccess,
+		indirectContentAddressableStorage,
+		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
 		s3Client,
 		gcsClient,
@@ -42,7 +44,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("BackendError", func(t *testing.T) {
 		// The ICAS backend returning an error.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -52,7 +54,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	t.Run("InvalidReference", func(t *testing.T) {
 		// The ICAS returning an entry that does not contain a
 		// reference for a supported medium.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{},
 				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
@@ -64,7 +66,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	t.Run("HTTPInvalidURL", func(t *testing.T) {
 		// The ICAS returning an entry with a malformed URL,
 		// which prevents us from creating a HTTP request.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
@@ -81,7 +83,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("HTTPRequestFailed", func(t *testing.T) {
 		// The HTTP server returns no valid HTTP response.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
@@ -100,7 +102,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	t.Run("HTTPBadStatusCode", func(t *testing.T) {
 		// The HTTP server returns a response other than
 		// 206 Partial Content.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
@@ -125,7 +127,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	t.Run("HTTPChecksumFailure", func(t *testing.T) {
 		// The HTTP server returns data, but it does not
 		// correspond with the digest of the object.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
@@ -153,7 +155,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("HTTPSuccessPlain", func(t *testing.T) {
 		// The HTTP server returns valid data.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
@@ -188,7 +190,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("S3RequestFailed", func(t *testing.T) {
 		// The S3 service returns an error.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -215,7 +217,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	})
 
 	t.Run("S3RequestCanceled", func(t *testing.T) {
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -240,7 +242,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	})
 
 	t.Run("S3ReaderDeadlineExceeded", func(t *testing.T) {
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -271,7 +273,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("S3DeflateError", func(t *testing.T) {
 		// The data returned by S3 cannot be decompressed.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -305,7 +307,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("S3SuccessDeflate", func(t *testing.T) {
 		// The S3 service returns valid compressed data.
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -342,7 +344,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		// The S3 service returns valid data compressed using
 		// the Zstandard algorithm.
 		aaaDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_SHA256, "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
-		baseBlobAccess.EXPECT().Get(ctx, aaaDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, aaaDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_S3_{
@@ -382,7 +384,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	t.Run("GCSSuccess", func(t *testing.T) {
 		helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-		baseBlobAccess.EXPECT().Get(ctx, helloDigest).Return(
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{
 					Medium: &icas.Reference_Gcs{
@@ -412,17 +414,81 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 	})
+
+	t.Run("CASSuccessNoTranslations", func(t *testing.T) {
+		helloDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
+		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_ContentAddressableStorage_{
+						ContentAddressableStorage: &icas.Reference_ContentAddressableStorage{
+							InstanceName:   "instance/name",
+							DigestFunction: remoteexecution.DigestFunction_SHA256,
+							BlobDigest: &remoteexecution.Digest{
+								Hash:      "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
+								SizeBytes: 5,
+							},
+						},
+					},
+					Decompressor: remoteexecution.Compressor_IDENTITY,
+				},
+				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+		contentAddressableStorage.EXPECT().Get(
+			ctx,
+			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+
+	t.Run("CASSuccessDecompressor", func(t *testing.T) {
+		aaaDigest := digest.MustNewDigest("foo", remoteexecution.DigestFunction_SHA256, "160b4e433e384e05e537dc59b467f7cb2403f0214db15c5db58862a3f1156d2e", 50)
+		indirectContentAddressableStorage.EXPECT().Get(ctx, aaaDigest).Return(
+			buffer.NewProtoBufferFromProto(
+				&icas.Reference{
+					Medium: &icas.Reference_ContentAddressableStorage_{
+						ContentAddressableStorage: &icas.Reference_ContentAddressableStorage{
+							InstanceName:   "instance/name",
+							DigestFunction: remoteexecution.DigestFunction_SHA1,
+							BlobDigest: &remoteexecution.Digest{
+								Hash:      "a6cf72f4c7f42afde230ac461d5c7b9e25838530",
+								SizeBytes: 21,
+							},
+						},
+					},
+					Decompressor: remoteexecution.Compressor_ZSTD,
+				},
+				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
+		contentAddressableStorage.EXPECT().Get(
+			ctx,
+			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA1, "a6cf72f4c7f42afde230ac461d5c7b9e25838530", 21),
+		).Return(buffer.NewValidatedBufferFromByteSlice([]byte{
+			// 21 bytes of Zstandard compressed data
+			// that decompress to fifty 'a' bytes.
+			0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x45,
+			0x00, 0x00, 0x10, 0x61, 0x61, 0x01, 0x00,
+			0x45, 0x00, 0x0b, 0x23, 0x9f, 0x0f, 0x9a,
+		}))
+
+		data, err := blobAccess.Get(ctx, aaaDigest).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
+	})
 }
 
 func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
-		baseBlobAccess,
+		indirectContentAddressableStorage,
+		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
 		s3Client,
 		gcsClient,
@@ -449,12 +515,14 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
 	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
-		baseBlobAccess,
+		indirectContentAddressableStorage,
+		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
 		s3Client,
 		gcsClient,
@@ -471,7 +539,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		// objects are available. No checks against the actual
 		// storage backend holding the data are performed, as
 		// that would be too costly.
-		baseBlobAccess.EXPECT().FindMissing(ctx, digests).
+		indirectContentAddressableStorage.EXPECT().FindMissing(ctx, digests).
 			Return(digests, nil)
 
 		missing, err := blobAccess.FindMissing(ctx, digests)
@@ -480,7 +548,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("Failure", func(t *testing.T) {
-		baseBlobAccess.EXPECT().FindMissing(ctx, digests).
+		indirectContentAddressableStorage.EXPECT().FindMissing(ctx, digests).
 			Return(digest.EmptySet, status.Error(codes.Internal, "Network error"))
 
 		_, err := blobAccess.FindMissing(ctx, digests)

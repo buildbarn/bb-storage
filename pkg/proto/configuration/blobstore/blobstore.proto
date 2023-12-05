@@ -699,6 +699,10 @@ message ReferenceExpandingBlobAccessConfiguration {
   // loaded from GCS. Support for GCS is disabled if left unspecified.
   buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
       gcp_client_options = 4;
+
+  // Optional: Storage backend to use when Reference objects refer to
+  // objects stored in another Content Addressable Storage.
+  BlobAccessConfiguration content_addressable_storage = 5;
 }
 
 message BlobReplicatorConfiguration {

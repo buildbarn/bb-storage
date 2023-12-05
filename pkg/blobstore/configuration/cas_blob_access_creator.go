@@ -109,13 +109,24 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		// location of a blob, not the blobs themselves. Create
 		// a new BlobAccessCreator to ensure data is loaded
 		// properly.
-		base, err := nestedCreator.NewNestedBlobAccess(
+		indirectContentAddressableStorage, err := nestedCreator.NewNestedBlobAccess(
 			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,
 				bac.maximumMessageSizeBytes))
 		if err != nil {
 			return BlobAccessInfo{}, "", err
+		}
+
+		var contentAddressableStorage blobstore.BlobAccess
+		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
+			backend, err := nestedCreator.NewNestedBlobAccess(backend.ReferenceExpanding.ContentAddressableStorage, bac)
+			if err != nil {
+				return BlobAccessInfo{}, "", err
+			}
+			contentAddressableStorage = backend.BlobAccess
+		} else {
+			contentAddressableStorage = blobstore.NewErrorBlobAccess(status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
 		}
 
 		awsConfig, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
@@ -143,14 +154,15 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 
 		return BlobAccessInfo{
 			BlobAccess: blobstore.NewReferenceExpandingBlobAccess(
-				base.BlobAccess,
+				indirectContentAddressableStorage.BlobAccess,
+				contentAddressableStorage,
 				&http.Client{
 					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
 				},
 				s3.NewFromConfig(awsConfig),
 				gcsClient,
 				bac.maximumMessageSizeBytes),
-			DigestKeyFormat: base.DigestKeyFormat,
+			DigestKeyFormat: indirectContentAddressableStorage.DigestKeyFormat,
 		}, "reference_expanding", nil
 	default:
 		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
