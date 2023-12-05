@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package buildbarn.configuration.jwt;
 
-import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
 
