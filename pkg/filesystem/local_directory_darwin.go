@@ -23,3 +23,7 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumb
 func clonefileImpl(oldFD int, oldName string, newFD int, newName string) error {
 	return unix.Clonefileat(oldFD, oldName, newFD, newName, unix.CLONE_NOFOLLOW)
 }
+
+func (d *localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
+	return status.Error(codes.Unimplemented, "Mount is not supported")
+}

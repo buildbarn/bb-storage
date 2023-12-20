@@ -268,7 +268,7 @@ func (d *localDirectory) Remove(name path.Component) error {
 
 var workingDirectoryLock sync.Mutex
 
-func (d *localDirectory) unmount(name path.Component) error {
+func (d *localDirectory) Unmount(name path.Component) error {
 	defer runtime.KeepAlive(d)
 
 	// POSIX systems provide no umountat() system call that permits
@@ -302,7 +302,7 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 		// unmount until the remaining directory is on the same
 		// file system.
 		for parentDeviceNumber != childDeviceNumber {
-			if err := d.unmount(component); err != nil {
+			if err := d.Unmount(component); err != nil {
 				return err
 			}
 			fileType, childDeviceNumber, _, err = d.lstat(component)

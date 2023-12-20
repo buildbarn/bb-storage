@@ -112,6 +112,10 @@ type Directory interface {
 	// Function that base types may use to implement calls that
 	// require double dispatching, such as hardlinking and renaming.
 	Apply(arg interface{}) error
+
+	// Mount and Unmount.
+	Mount(mountpoint path.Component, source, fstype string) error
+	Unmount(mountpoint path.Component) error
 }
 
 // DirectoryCloser is a Directory handle that can be released.
