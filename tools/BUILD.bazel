@@ -6,5 +6,8 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/tools",
     tags = ["manual"],
     visibility = ["//visibility:public"],
-    deps = ["@cc_mvdan_gofumpt//:gofumpt"],
+    deps = [
+        "@cc_mvdan_gofumpt//:gofumpt",
+        "@org_golang_x_lint//:lint",
+    ],
 )
