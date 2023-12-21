@@ -1,5 +1,5 @@
 diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
-index 01f415b..eb3b3f2 100644
+index e8edcf0..eb3b3f2 100644
 --- build/bazel/remote/execution/v2/BUILD
 +++ build/bazel/remote/execution/v2/BUILD
 @@ -1,7 +1,9 @@
@@ -14,18 +14,7 @@ index 01f415b..eb3b3f2 100644
  licenses(["notice"])
  
  proto_library(
-@@ -13,29 +15,28 @@ proto_library(
-         "@com_google_protobuf//:duration_proto",
-         "@com_google_protobuf//:timestamp_proto",
-         "@com_google_protobuf//:wrappers_proto",
--        "@googleapis//:google_api_annotations_proto",
--        "@googleapis//:google_api_http_proto",
--        "@googleapis//:google_longrunning_operations_proto",
--        "@googleapis//:google_rpc_status_proto",
-+        "@googleapis//google/api:annotations_proto",
-+        "@googleapis//google/api:http_proto",
-+        "@googleapis//google/longrunning:operations_proto",
-+        "@googleapis//google/rpc:status_proto",
+@@ -20,22 +22,21 @@ proto_library(
      ],
  )
  
