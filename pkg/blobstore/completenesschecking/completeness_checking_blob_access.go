@@ -126,6 +126,9 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		if err := findMissingQueue.add(outputDirectory.TreeDigest); err != nil {
 			return err
 		}
+		if err := findMissingQueue.add(outputDirectory.RootDirectoryDigest); err != nil {
+			return err
+		}
 	}
 	if err := findMissingQueue.add(actionResult.StdoutDigest); err != nil {
 		return err
@@ -161,9 +164,22 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 					return err
 				}
 				directory := directoryMessage.(*remoteexecution.Directory)
+
+				// Files are always stored as separate CAS
+				// objects. Directories should only be stored
+				// as separate CAS objects if we announce them
+				// to be present by having the root directory
+				// digest set.
 				for _, child := range directory.Files {
 					if err := findMissingQueue.add(child.Digest); err != nil {
 						return err
+					}
+				}
+				if outputDirectory.RootDirectoryDigest != nil {
+					for _, child := range directory.Directories {
+						if err := findMissingQueue.add(child.Digest); err != nil {
+							return err
+						}
 					}
 				}
 			}

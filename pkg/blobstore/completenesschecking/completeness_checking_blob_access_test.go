@@ -294,7 +294,11 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 					Path: "bazel-out/foo",
 					TreeDigest: &remoteexecution.Digest{
 						Hash:      "8b1a9953c4611296a827abf8c47804d7",
-						SizeBytes: 5,
+						SizeBytes: 200,
+					},
+					RootDirectoryDigest: &remoteexecution.Digest{
+						Hash:      "f7b00e64e49a13e36a5d50ec2e1ab21d",
+						SizeBytes: 130,
 					},
 				},
 			},
@@ -317,7 +321,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		dataIntegrityCallback2.EXPECT().Call(true)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
-			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 200),
 		).Return(buffer.NewProtoBufferFromProto(&remoteexecution.Tree{
 			Root: &remoteexecution.Directory{
 				// Directory digests should not be part of
@@ -325,9 +329,17 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				// are contained within the Tree object itself.
 				Directories: []*remoteexecution.DirectoryNode{
 					{
+						Name: "sub1",
 						Digest: &remoteexecution.Digest{
-							Hash:      "7a3435d88e819881cbe9d430a340d157",
-							SizeBytes: 10,
+							Hash:      "bdcfcea2c9e3d753463abd000dab2495",
+							SizeBytes: 40,
+						},
+					},
+					{
+						Name: "sub2",
+						Digest: &remoteexecution.Digest{
+							Hash:      "d41d8cd98f00b204e9800998ecf8427e",
+							SizeBytes: 0,
 						},
 					},
 				},
@@ -359,16 +371,19 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			digest.NewSetBuilder().
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "38837949e2518a6e8a912ffb29942788", 10)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 200)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "f7b00e64e49a13e36a5d50ec2e1ab21d", 130)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "136de6de72514772b9302d4776e5c3d2", 4)).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "41d7247285b686496aa91b56b4c48395", 11)).
 				Build(),
 		).Return(digest.EmptySet, nil)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder().
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "41d7247285b686496aa91b56b4c48395", 11)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "eda14e187a768b38eda999457c9cca1e", 6)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "bdcfcea2c9e3d753463abd000dab2495", 40)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6c396013ff0ebff6a2a96cdc20a4ba4c", 5)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).
 				Build(),
 		).Return(digest.EmptySet, nil)
 
