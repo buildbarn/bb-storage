@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.13
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.6
-	github.com/bazelbuild/remote-apis v0.0.0-20231207155409-7e33c12ee961
+	github.com/bazelbuild/remote-apis v0.0.0-20231221155620-d20ae8b97fd3
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/golang/mock v1.6.0
@@ -38,7 +38,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.21.0
 	go.opentelemetry.io/otel/trace v1.21.0
 	go.opentelemetry.io/proto/otlp v1.0.0
-	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5
+	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/oauth2 v0.15.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.15.0
@@ -46,7 +46,7 @@ require (
 	google.golang.org/genproto/googleapis/bytestream v0.0.0-20231212172506-995d672761c0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231212172506-995d672761c0
 	google.golang.org/grpc v1.60.1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	mvdan.cc/gofumpt v0.5.0
 )
 

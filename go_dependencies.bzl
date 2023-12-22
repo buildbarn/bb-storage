@@ -149,8 +149,8 @@ def go_dependencies():
         name = "com_github_bazelbuild_remote_apis",
         importpath = "github.com/bazelbuild/remote-apis",
         patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_bazelbuild_remote_apis/golang.diff"],
-        sum = "h1:xhO5v3Ac039HesaPqoVUwOy4WhRRJbmo9om245kp+AY=",
-        version = "v0.0.0-20231207155409-7e33c12ee961",
+        sum = "h1:pYzFHP6FWkA8FjSyx+Kx99zeyVjiRB1epllcRIMDIbc=",
+        version = "v0.0.0-20231221155620-d20ae8b97fd3",
     )
     go_repository(
         name = "com_github_benbjohnson_clock",
@@ -1451,8 +1451,8 @@ def go_dependencies():
             "-exclude=**/testdata",
         ],
         importpath = "google.golang.org/protobuf",
-        sum = "h1:g0LDEJHgrBl9N9r17Ru3sqWhkIx2NB67okBHPwC7hs8=",
-        version = "v1.31.0",
+        sum = "h1:pPC6BG5ex8PDFnkbrGU3EixyhKcQ2aDuBS36lqK/C7I=",
+        version = "v1.32.0",
     )
     go_repository(
         name = "org_golang_x_crypto",
@@ -1470,8 +1470,8 @@ def go_dependencies():
         name = "org_golang_x_lint",
         importpath = "golang.org/x/lint",
         patches = ["//:patches/org_golang_x_lint/generic.diff"],
-        sum = "h1:2M3HP5CCK1Si9FQhwnzYhXdG6DXeebvUHFpre8QvbyI=",
-        version = "v0.0.0-20201208152925-83fdc39ff7b5",
+        sum = "h1:VLliZ0d+/avPrXXH+OakdXhpJuEoBZuwh1m2j7U6Iug=",
+        version = "v0.0.0-20210508222113-6edffad5e616",
     )
     go_repository(
         name = "org_golang_x_mod",
