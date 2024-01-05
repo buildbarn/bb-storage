@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 // NewAuthenticatingUnaryInterceptor creates a gRPC request interceptor
 // for unary calls that passes all requests through an Authenticator.
 // This may be used to enable authentication support on a gRPC server.
-func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerInterceptor {
+func NewAuthenticatingUnaryInterceptor(a grpcauth.Authenticator) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		metadata, err := a.Authenticate(ctx)
 		if err != nil {
@@ -29,7 +30,7 @@ func NewAuthenticatingUnaryInterceptor(a Authenticator) grpc.UnaryServerIntercep
 // for streaming calls that passes all requests through an
 // Authenticator. This may be used to enable authentication support on a
 // gRPC server.
-func NewAuthenticatingStreamInterceptor(a Authenticator) grpc.StreamServerInterceptor {
+func NewAuthenticatingStreamInterceptor(a grpcauth.Authenticator) grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		ctx := ss.Context()
 		metadata, err := a.Authenticate(ctx)

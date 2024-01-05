@@ -1,7 +1,7 @@
 //go:build darwin || freebsd || linux
 // +build darwin freebsd linux
 
-package grpc_test
+package grpcauth_test
 
 import (
 	"net"
@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"testing"
 
-	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +29,11 @@ func TestPeerTransportCredentials(t *testing.T) {
 	require.NoError(t, file1.Close())
 
 	// Perform server handshake.
-	wrappedConn0, authInfo, err := bb_grpc.PeerTransportCredentials.ServerHandshake(conn0)
+	wrappedConn0, authInfo, err := grpcauth.PeerTransportCredentials.ServerHandshake(conn0)
 	require.NoError(t, err)
 
 	// Resulting credentials should match that of the current user.
-	peerAuthInfo := authInfo.(bb_grpc.PeerAuthInfo)
+	peerAuthInfo := authInfo.(grpcauth.PeerAuthInfo)
 	require.Equal(t, uint32(syscall.Getuid()), peerAuthInfo.UID)
 	require.LessOrEqual(t, 1, len(peerAuthInfo.Groups))
 	require.Equal(t, uint32(syscall.Getgid()), peerAuthInfo.Groups[0])

@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package grpc
+package grpcauth
 
 import (
 	"google.golang.org/grpc/codes"

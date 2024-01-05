@@ -1,4 +1,4 @@
-package grpc_test
+package grpcauth_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -121,8 +121,8 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	aValidator := jmespath.MustCompile(`contains(dnsNames, 'a.example.com')`)
 	bValidator := jmespath.MustCompile(`contains(dnsNames, 'b.example.com')`)
 	metadataExtractor := jmespath.MustCompile(`{"public": @}`)
-	aAuthenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, aValidator, metadataExtractor)
-	bAuthenticator := bb_grpc.NewTLSClientCertificateAuthenticator(clientCAs, clock, bValidator, metadataExtractor)
+	aAuthenticator := grpcauth.NewTLSClientCertificateAuthenticator(clientCAs, clock, aValidator, metadataExtractor)
+	bAuthenticator := grpcauth.NewTLSClientCertificateAuthenticator(clientCAs, clock, bValidator, metadataExtractor)
 
 	t.Run("NoGRPC", func(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot

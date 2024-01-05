@@ -1,4 +1,4 @@
-package grpc_test
+package grpcauth_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -23,7 +23,7 @@ import (
 func TestAllAuthenticatorZero(t *testing.T) {
 	var wantMetadata auth_pb.AuthenticationMetadata
 
-	a := bb_grpc.NewAllAuthenticator(nil)
+	a := grpcauth.NewAllAuthenticator(nil)
 
 	metadata, err := a.Authenticate(context.Background())
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestAllAuthenticatorMultiple(t *testing.T) {
 
 	m0 := mock.NewMockGRPCAuthenticator(ctrl)
 	m1 := mock.NewMockGRPCAuthenticator(ctrl)
-	a := bb_grpc.NewAllAuthenticator([]bb_grpc.Authenticator{m0, m1})
+	a := grpcauth.NewAllAuthenticator([]grpcauth.Authenticator{m0, m1})
 
 	t.Run("FirstFailure", func(t *testing.T) {
 		// There is no need to check the other authentication

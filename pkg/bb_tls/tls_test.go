@@ -1,4 +1,4 @@
-package util_test
+package bb_tls_test
 
 import (
 	"crypto/tls"
@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildbarn/bb-storage/pkg/bb_tls"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -116,7 +116,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	t.Run("Disabled", func(t *testing.T) {
 		// When the TLS configuration is nil, TLS should be left
 		// disabled.
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(nil)
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(nil)
 		require.NoError(t, err)
 		require.Nil(t, tlsConfig)
 	})
@@ -124,7 +124,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
 		// The default configuration should enforce the use of
 		// TLS 1.2 or higher.
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{})
 		require.NoError(t, err)
 		require.Equal(t, &tls.Config{
@@ -133,7 +133,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("ClientCertificateInline", func(t *testing.T) {
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ClientKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{
@@ -151,7 +151,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("ClientCertificateFiles", func(t *testing.T) {
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ClientKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Files_{
@@ -170,7 +170,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidClientCertificateInline", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromClientConfiguration(
+		_, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ClientKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{
@@ -185,7 +185,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidClientCertificateFiles", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromClientConfiguration(
+		_, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ClientKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Files_{
@@ -201,7 +201,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("ServerCertificateAuthorities", func(t *testing.T) {
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ServerCertificateAuthorities: exampleCertificate,
 			})
@@ -214,7 +214,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 		// a rich error message, we have no choice but to return
 		// a simple error message in case of CA parsing failures.
 		// https://github.com/golang/go/issues/23711#issuecomment-363322424
-		_, err := util.NewTLSConfigFromClientConfiguration(
+		_, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ServerCertificateAuthorities: "This is an invalid certificate",
 			})
@@ -223,7 +223,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
 		// Custom cipher suites should be respected.
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				CipherSuites: []string{
 					"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
@@ -245,7 +245,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidCipherSuite", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromClientConfiguration(
+		_, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				CipherSuites: []string{
 					"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385",
@@ -255,7 +255,7 @@ func TestTLSConfigFromClientConfiguration(t *testing.T) {
 	})
 
 	t.Run("ServerName", func(t *testing.T) {
-		tlsConfig, err := util.NewTLSConfigFromClientConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromClientConfiguration(
 			&configuration.ClientConfiguration{
 				ServerName: "example.com",
 			})
@@ -279,7 +279,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	t.Run("Disabled", func(t *testing.T) {
 		// When the TLS configuration is nil, TLS should be left
 		// disabled.
-		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(nil)
+		tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(nil)
 		require.NoError(t, err)
 		require.Nil(t, tlsConfig)
 	})
@@ -287,7 +287,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	t.Run("DefaultCertInline", func(t *testing.T) {
 		// The default configuration should enforce the use of
 		// TLS 1.2 or higher.
-		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{
@@ -312,7 +312,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	t.Run("DefaultCertFiles", func(t *testing.T) {
 		// The default configuration should enforce the use of
 		// TLS 1.2 or higher.
-		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Files_{
@@ -336,7 +336,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidServerCertificateInline", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromServerConfiguration(
+		_, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{
@@ -351,7 +351,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidServerCertificateFiles", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromServerConfiguration(
+		_, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Files_{
@@ -367,7 +367,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	})
 
 	t.Run("MissingServerCertificateFiles", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromServerConfiguration(
+		_, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Files_{
@@ -384,7 +384,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
 		// Custom cipher suites should be respected.
-		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+		tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{
@@ -419,7 +419,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	})
 
 	t.Run("InvalidCipherSuite", func(t *testing.T) {
-		_, err := util.NewTLSConfigFromServerConfiguration(
+		_, err := bb_tls.NewTLSConfigFromServerConfiguration(
 			&configuration.ServerConfiguration{
 				ServerKeyPair: &configuration.X509KeyPair{
 					KeyPair: &configuration.X509KeyPair_Inline_{

@@ -1,10 +1,12 @@
-package util
+package bb_tls
 
 import (
 	"bytes"
 	"crypto/tls"
 	"os"
 	"sync"
+
+	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 // RotatingTLSCertificate provides an up-to-date certificate given file paths and a refresh interval.
@@ -43,11 +45,11 @@ func (r *RotatingTLSCertificate) LoadCertificate() error {
 	// Read certificate data from disk.
 	certData, err := os.ReadFile(r.certFile)
 	if err != nil {
-		return StatusWrap(err, "Failed to read certificate file")
+		return util.StatusWrap(err, "Failed to read certificate file")
 	}
 	keyData, err := os.ReadFile(r.keyFile)
 	if err != nil {
-		return StatusWrap(err, "Failed to read private key file")
+		return util.StatusWrap(err, "Failed to read private key file")
 	}
 
 	r.lock.Lock()
@@ -61,7 +63,7 @@ func (r *RotatingTLSCertificate) LoadCertificate() error {
 	// Parse the PEM data into a certificate.
 	cert, err := tls.X509KeyPair(certData, keyData)
 	if err != nil {
-		return StatusWrap(err, "Invalid certificate file or private key file")
+		return util.StatusWrap(err, "Invalid certificate file or private key file")
 	}
 
 	// Update the certificate.

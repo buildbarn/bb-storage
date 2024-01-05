@@ -1,7 +1,7 @@
 //go:build darwin || freebsd
 // +build darwin freebsd
 
-package grpc
+package grpcauth
 
 import (
 	"golang.org/x/sys/unix"

@@ -1,4 +1,4 @@
-package grpc_test
+package grpcauth_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/golang/mock/gomock"
@@ -18,7 +18,7 @@ import (
 )
 
 func TestAnyAuthenticatorZero(t *testing.T) {
-	a := bb_grpc.NewAnyAuthenticator(nil)
+	a := grpcauth.NewAnyAuthenticator(nil)
 
 	_, err := a.Authenticate(context.Background())
 	testutil.RequireEqualStatus(
@@ -33,7 +33,7 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 	m0 := mock.NewMockGRPCAuthenticator(ctrl)
 	m1 := mock.NewMockGRPCAuthenticator(ctrl)
 	m2 := mock.NewMockGRPCAuthenticator(ctrl)
-	a := bb_grpc.NewAnyAuthenticator([]bb_grpc.Authenticator{m0, m1, m2})
+	a := grpcauth.NewAnyAuthenticator([]grpcauth.Authenticator{m0, m1, m2})
 
 	t.Run("Success", func(t *testing.T) {
 		// There is no need to check the third authentication

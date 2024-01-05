@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/buildbarn/bb-storage/pkg/bb_tls"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -36,7 +38,7 @@ func init() {
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
+		authenticator, needsPeerTransportCredentials, err := grpcauth.NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
 		if err != nil {
 			return err
 		}
@@ -70,7 +72,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable TLS transport credentials if provided.
 		hasCredsOption := false
-		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
+		if tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
 			return err
 		} else if tlsConfig != nil {
 			hasCredsOption = true
@@ -83,7 +85,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			if hasCredsOption {
 				return status.Error(codes.InvalidArgument, "Peer credentials authentication and TLS cannot be enabled at the same time")
 			}
-			serverOptions = append(serverOptions, grpc.Creds(PeerTransportCredentials))
+			serverOptions = append(serverOptions, grpc.Creds(grpcauth.PeerTransportCredentials))
 		}
 
 		if maxRecvMsgSize := configuration.MaximumReceivedMessageSizeBytes; maxRecvMsgSize != 0 {

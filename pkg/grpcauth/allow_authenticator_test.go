@@ -1,11 +1,11 @@
-package grpc_test
+package grpcauth_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +20,7 @@ func TestAllowAuthenticator(t *testing.T) {
 			},
 		}),
 	})
-	a := bb_grpc.NewAllowAuthenticator(expectedMetadata)
+	a := grpcauth.NewAllowAuthenticator(expectedMetadata)
 	actualMetadata, err := a.Authenticate(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, expectedMetadata, actualMetadata)

@@ -1,12 +1,12 @@
-package util_test
+package bb_tls_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/buildbarn/bb-storage/pkg/bb_tls"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -110,7 +110,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte(exampleCertificate), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte(exampleCertFile), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(otherExamplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Invalid certificate file or private key file: tls: failed to find any PEM data in certificate input"), err)
@@ -195,7 +195,7 @@ func TestTLSCertificate(t *testing.T) {
 		os.WriteFile(exampleCertFile, []byte("This is an invalid certificate"), os.FileMode(0o600))
 		os.WriteFile(exampleKeyFile, []byte(examplePrivateKey), os.FileMode(0o600))
 
-		cert := util.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
+		cert := bb_tls.NewRotatingTLSCertificate(exampleCertFile, exampleKeyFile)
 
 		err := cert.LoadCertificate()
 		testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Invalid certificate file or private key file: tls: failed to find any PEM data in certificate input"), err)

@@ -1,31 +1,27 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "grpc",
+    name = "grpcauth",
     srcs = [
-        "authenticating_interceptor.go",
-        "base_client_factory.go",
-        "client_dialer.go",
-        "client_factory.go",
-        "deduplicating_client_factory.go",
-        "jmespath_extractor.go",
-        "lazy_client_dialer.go",
-        "metadata_adding_interceptor.go",
-        "metadata_extracting_and_forwarding_interceptor.go",
-        "metadata_forwarding_and_reusing_interceptor.go",
-        "metadata_header_values.go",
-        "proto_trace_attributes_extractor.go",
-        "proxy_dialer.go",
-        "request_metadata_tracing_interceptor.go",
-        "server.go",
+        "all_authenticator.go",
+        "allow_authenticator.go",
+        "any_authenticator.go",
+        "authenticator.go",
+        "deny_authenticator.go",
+        "jwt_authenticator.go",
+        "peer_credentials_authenticator.go",
+        "peer_transport_credentials.go",
+        "peer_transport_credentials_bsd.go",
+        "peer_transport_credentials_disabled.go",
+        "peer_transport_credentials_linux.go",
+        "spiffe_authenticator.go",
+        "tls_client_certificate_authenticator.go",
     ],
-    importpath = "github.com/buildbarn/bb-storage/pkg/grpc",
+    importpath = "github.com/buildbarn/bb-storage/pkg/grpcauth",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/auth",
-        "//pkg/bb_tls",
         "//pkg/clock",
-        "//pkg/grpcauth",
         "//pkg/jwt",
         "//pkg/program",
         "//pkg/proto/auth",
@@ -76,20 +72,34 @@ go_library(
 )
 
 go_test(
-    name = "grpc_test",
+    name = "grpcauth_test",
     srcs = [
-        "authenticating_interceptor_test.go",
-        "deduplicating_client_factory_test.go",
-        "jmespath_extractor_test.go",
-        "lazy_client_dialer_test.go",
-        "metadata_adding_interceptor_test.go",
-        "metadata_extracting_and_forwarding_interceptor_test.go",
-        "metadata_forwarding_and_reusing_interceptor_test.go",
-        "proto_trace_attributes_extractor_test.go",
-        "request_metadata_tracing_interceptor_test.go",
-    ],
+        "all_authenticator_test.go",
+        "allow_authenticator_test.go",
+        "any_authenticator_test.go",
+        "deny_authenticator_test.go",
+        "peer_credentials_authenticator_test.go",
+        "tls_client_certificate_authenticator_test.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "peer_transport_credentials_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "peer_transport_credentials_test.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
-        ":grpc",
+        ":grpcauth",
         "//internal/mock",
         "//pkg/auth",
         "//pkg/proto/auth",

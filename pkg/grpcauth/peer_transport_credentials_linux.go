@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-package grpc
+package grpcauth
 
 import (
 	"golang.org/x/sys/unix"

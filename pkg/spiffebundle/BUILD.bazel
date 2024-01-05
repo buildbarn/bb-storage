@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
+
+go_library(
+    name = "spiffebundle",
+    srcs = ["source.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/spiffebundle",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_spiffe_go_spiffe_v2//bundle/x509bundle",
+        "@com_github_spiffe_go_spiffe_v2//spiffeid",
+    ],
+)
+
+go_test(
+    name = "spiffebundle_test",
+    srcs = ["source_test.go"],
+    embed = [":spiffebundle"],
+    deps = [
+        "//pkg/testutil",
+        "@com_github_spiffe_go_spiffe_v2//bundle/x509bundle",
+        "@com_github_spiffe_go_spiffe_v2//spiffeid",
+    ],
+)
+
+go_binary(
+    name = "fake_certs",
+    srcs = ["fake_certs.go"],
+    deps = [
+        "//pkg/clock",
+        "@com_github_spiffe_go_spiffe_v2//spiffeid",
+    ],
+)

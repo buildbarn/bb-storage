@@ -1,10 +1,10 @@
-package grpc_test
+package grpcauth_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/grpcauth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 func TestPeerCredentialsAuthenticator(t *testing.T) {
 	ctx := context.Background()
 
-	authenticator := grpc.NewPeerCredentialsAuthenticator(jmespath.MustCompile("{\"public\": @}"))
+	authenticator := grpcauth.NewPeerCredentialsAuthenticator(jmespath.MustCompile("{\"public\": @}"))
 
 	t.Run("NoGRPC", func(t *testing.T) {
 		// Authenticator is used outside of gRPC, meaning it cannot
@@ -38,7 +38,7 @@ func TestPeerCredentialsAuthenticator(t *testing.T) {
 			peer.NewContext(
 				ctx,
 				&peer.Peer{
-					AuthInfo: grpc.PeerAuthInfo{
+					AuthInfo: grpcauth.PeerAuthInfo{
 						UID:    1000,
 						Groups: []uint32{100, 12, 42},
 					},
