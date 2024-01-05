@@ -75,6 +75,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, false, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
 		}
+                // If we're using mTLS, use the allow authenticator instead, because the TLS handshake will take care of
+                // validating the client's identity.
+                if policyKind.TlsClientCertificate.Spiffe != nil {
+			return NewAllowAuthenticator(nil), false, nil
+                }
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock,

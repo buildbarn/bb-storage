@@ -6,7 +6,10 @@ proto_library(
     name = "auth_proto",
     srcs = ["auth.proto"],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_protobuf//:empty_proto"],
+    deps = [
+        "//pkg/proto/configuration/spiffe:spiffe_proto",
+        "@com_google_protobuf//:empty_proto",
+    ],
 )
 
 go_proto_library(
@@ -14,6 +17,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth",
     proto = ":auth_proto",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/spiffe"],
 )
 
 go_library(

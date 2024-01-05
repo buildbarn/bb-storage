@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"os"
 
@@ -72,9 +73,20 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable TLS transport credentials if provided.
 		hasCredsOption := false
-		if tlsConfig, err := bb_tls.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
-			return err
-		} else if tlsConfig != nil {
+		var tlsConfig *tls.Config
+		if configuration.AuthenticationPolicy != nil {
+			t := configuration.AuthenticationPolicy.GetTlsClientCertificate()
+			if t != nil && t.Spiffe != nil {
+				if tlsConfig, err = bb_tls.NewMTLSConfigFromServerConfiguration(configuration.Tls, configuration.AuthenticationPolicy); err != nil {
+					return err
+				}
+			}
+		} else {
+			if tlsConfig, err = bb_tls.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
+				return err
+			}
+		}
+		if tlsConfig != nil {
 			hasCredsOption = true
 			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		}
