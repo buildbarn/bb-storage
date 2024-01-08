@@ -90,6 +90,13 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}
 	}
 
+	// Set resource limits, if provided.
+	for name, resourceLimit := range configuration.GetSetResourceLimits() {
+		if err := setResourceLimit(name, resourceLimit); err != nil {
+			return nil, nil, util.StatusWrapf(err, "Failed to set resource limit %#v", name)
+		}
+	}
+
 	// Logging.
 	logPaths := configuration.GetLogPaths()
 	logWriters := append(make([]io.Writer, 0, len(logPaths)+1), os.Stderr)

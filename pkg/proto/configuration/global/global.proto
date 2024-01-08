@@ -4,6 +4,7 @@ package buildbarn.configuration.global;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "opentelemetry/proto/common/v1/common.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/http/http.proto";
@@ -221,6 +222,16 @@ message SetUmaskConfiguration {
   uint32 umask = 1;
 }
 
+message SetResourceLimitConfiguration {
+  // If set, configure a soft limit. If not set, no soft limit is
+  // assumed (RLIM_INFINITY).
+  google.protobuf.UInt64Value soft_limit = 1;
+
+  // If set, configure a hard limit. If not set, no hard limit is
+  // assumed (RLIM_INFINITY).
+  google.protobuf.UInt64Value hard_limit = 2;
+}
+
 message Configuration {
   // Configuration for sending tracing data using OpenTelemetry.
   TracingConfiguration tracing = 1;
@@ -264,6 +275,14 @@ message Configuration {
   // strongly discouraged, as it allows users to hijack each other's
   // credentials.
   repeated string grpc_forward_and_reuse_metadata = 8;
+
+  // Resource limits to apply on startup using setrlimit(2) to ensure
+  // the program is capable of only consuming a finite number of file
+  // descriptors or amount of memory.
+  //
+  // Keys of this map correspond to the suffixes of the RLIMIT_*
+  // constants (e.g., "NOFILE" to limit the number of file descriptors).
+  map<string, SetResourceLimitConfiguration> set_resource_limits = 15;
 }
 
 message DiagnosticsHTTPServerConfiguration {
