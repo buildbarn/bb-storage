@@ -50,6 +50,18 @@ message BlobAccessConfiguration {
     // be refilled automatically.
     MirroredBlobAccessConfiguration mirrored = 14;
 
+    // Store blobs in three backends. Blobs present in two backends
+    // are automatically replicated to the other backend.
+    //
+    // This backend guarantees high availability as long as at most one
+    // backend fails at a time.  When used with the action cache, reads
+    // and writes are treated more strictly than when used with the CAS,
+    // because CAS blobs are immutable, whereas action cache blobs are not.
+    //
+    // When replacing a backend with new storage, it will be replicated
+    // automatically.
+    TriMirroredBlobAccessConfiguration tri_mirrored = 28;
+
     // Store blobs on the local system.
     LocalBlobAccessConfiguration local = 15;
 
@@ -194,6 +206,9 @@ message BlobAccessConfiguration {
 
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
+
+    // Actually a hybrid of spanner and GCS.
+    SpannerBlobAccessConfiguration spanner = 29;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -310,6 +325,52 @@ message MirroredBlobAccessConfiguration {
   // the secondary backend to the primary backend in case of
   // inconsistencies.
   BlobReplicatorConfiguration replicator_b_to_a = 4;
+}
+
+message StorageType {
+  enum Value {
+    // Invalid value.
+    UNKNOWN = 0;
+
+    // Action Cache.
+    ACTION_CACHE = 1;
+
+    // Content-Addressable Store.
+    CASTORE = 2;
+  }
+}
+
+// An alternate mirror implementation.  Three backends mirror one another
+// and can withstand the failure of one backend.  When used with k8s, configure
+// a pod disruption budget of one, so at most one backend will be taken down at
+// a time during pushes.
+//
+// Care must be taken when used with the action cache so that copies of an action
+// result entry have the same contents on all mirrors.
+message TriMirroredBlobAccessConfiguration {
+  // Three backend mirrors.
+  BlobAccessConfiguration backend_a = 1;
+  BlobAccessConfiguration backend_b = 2;
+  BlobAccessConfiguration backend_c = 3;
+
+  // Distinguish between the action cache and the CAS to know when to
+  // apply additional logic to avoid inconsistencies in the action cache.
+  StorageType.Value storage_type = 4;
+}
+
+message SpannerBlobAccessConfiguration {
+  // Name of Spanner database.
+  string spanner_db_name = 1;
+
+  // Name of GCS bucket.
+  string gcs_bucket_name = 2;
+
+  // Distinguish between the action cache and the CAS to know how to
+  // format the keys for storage objects.
+  StorageType.Value storage_type = 3;
+
+  // Expiration time in days.  The default is 7 days.
+  uint64 expiration_days = 4;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block

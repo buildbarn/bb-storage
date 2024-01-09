@@ -30,4 +30,8 @@ message ApplicationConfiguration {
 
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 7;
+
+  // File systems to monitor.  This is ignored unless prometheus is enabled
+  // in the global config.
+  repeated string monitored_file_systems = 8;
 }

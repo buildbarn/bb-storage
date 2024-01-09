@@ -2,7 +2,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "mirrored",
-    srcs = ["mirrored_blob_access.go"],
+    srcs = [
+        "mirrored_blob_access.go",
+        "tri_mirrored_ac_blob_access.go",
+        "tri_mirrored_cas_blob_access.go",
+        "tri_mirrored_common.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/mirrored",
     visibility = ["//visibility:public"],
     deps = [
@@ -11,23 +16,29 @@ go_library(
         "//pkg/blobstore/replication",
         "//pkg/blobstore/slicing",
         "//pkg/digest",
+        "//pkg/proto/configuration/blobstore",
         "//pkg/util",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
         "@org_golang_x_sync//errgroup",
     ],
 )
 
 go_test(
     name = "mirrored_test",
-    srcs = ["mirrored_blob_access_test.go"],
+    srcs = [
+        "mirrored_blob_access_test.go",
+        "tri_mirrored_blob_access_test.go",
+    ],
     deps = [
         ":mirrored",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",
+        "//pkg/proto/configuration/blobstore",
         "//pkg/testutil",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_golang_mock//gomock",
