@@ -56,8 +56,8 @@ func (br *concurrencyLimitingBlobReplicator) ReplicateComposite(ctx context.Cont
 }
 
 func (br *concurrencyLimitingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
-	if br.semaphore.Acquire(ctx, 1) != nil {
-		return util.StatusFromContext(ctx)
+	if err := util.AcquireSemaphore(ctx, br.semaphore, 1); err != nil {
+		return err
 	}
 	err := br.base.ReplicateMultiple(ctx, digests)
 	br.semaphore.Release(1)

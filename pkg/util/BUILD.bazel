@@ -8,6 +8,7 @@ go_library(
         "jsonnet.go",
         "non_empty_stack.go",
         "proto.go",
+        "semaphore.go",
         "status.go",
         "tls.go",
         "tls_certificate.go",
@@ -26,6 +27,7 @@ go_library(
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/durationpb",
+        "@org_golang_x_sync//semaphore",
     ],
 )
 
