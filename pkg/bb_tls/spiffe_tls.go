@@ -87,7 +87,7 @@ func NewMTLSConfigFromClientConfiguration(configuration *configuration.ClientCon
 		return nil, err
 	}
 
-	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	tlsConfig, err := GetBaseTLSConfig(configuration.CipherSuites)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func NewMTLSConfigFromServerConfiguration(configuration *configuration.ServerCon
 		return nil, fmt.Errorf("MTLS server private key must be stored in a PEM file")
 	}
 
-	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	tlsConfig, err := GetBaseTLSConfig(configuration.CipherSuites)
 	if err != nil {
 		return nil, err
 	}

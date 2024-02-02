@@ -51,7 +51,7 @@ func init() {
 	}
 }
 
-func getBaseTLSConfig(cipherSuites []string) (*tls.Config, error) {
+func GetBaseTLSConfig(cipherSuites []string) (*tls.Config, error) {
 	tlsConfig := tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
@@ -146,7 +146,7 @@ func NewTLSConfigFromClientConfiguration(configuration *pb.ClientConfiguration) 
 		return nil, nil
 	}
 
-	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	tlsConfig, err := GetBaseTLSConfig(configuration.CipherSuites)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func NewTLSConfigFromServerConfiguration(configuration *pb.ServerConfiguration) 
 		return nil, nil
 	}
 
-	tlsConfig, err := getBaseTLSConfig(configuration.CipherSuites)
+	tlsConfig, err := GetBaseTLSConfig(configuration.CipherSuites)
 	if err != nil {
 		return nil, err
 	}

@@ -34,6 +34,7 @@ go_library(
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
+        "@com_github_spiffe_go_spiffe_v2//svid/x509svid",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
