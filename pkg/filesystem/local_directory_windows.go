@@ -108,10 +108,34 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 	return newLocalDirectoryFromHandle(handle)
 }
 
+// Convert forward-slash drive-letter paths to absolute drive-letter paths.
+// This can come from how build directories are configured for bb-worker on Windows.
+// Where a combination of 'git-bash' and environment variable expansion in jsonnet can create paths
+// that the `filepath` does not detect as absolute.
+//
+// Example: /C:/...
+// Should be C:/...
+func CanonicalizeAbsolutePath(path string) string {
+	if len(path) >= 4 && path[0] == '/' && path[2] == ':' && path[3] == '/' {
+		path = path[1:]
+	}
+
+	return path
+}
+
 func NewLocalDirectory(path string) (DirectoryCloser, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
+	var absPath string
+	var err error
+
+	path = CanonicalizeAbsolutePath(path)
+
+	if filepath.IsAbs(path) {
+		absPath = filepath.FromSlash(path)
+	} else {
+		absPath, err = filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 	absPath = "\\??\\" + absPath
 	return newLocalDirectory(absPath, true)
