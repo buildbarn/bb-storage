@@ -16,6 +16,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/windowsext"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/windows"
 	"google.golang.org/grpc/codes"
@@ -606,7 +607,7 @@ func (d *localDirectory) RemoveAllChildren() error {
 			err = subdirectory.RemoveAllChildren()
 			subdirectory.Close()
 			if err != nil {
-				return err
+				return util.StatusWrapf(err, "%s: ", name)
 			}
 		}
 		err = d.Remove(component)
@@ -624,7 +625,7 @@ func (d *localDirectory) RemoveAll(name path.Component) error {
 		err := subdirectory.RemoveAllChildren()
 		subdirectory.Close()
 		if err != nil {
-			return err
+			return util.StatusWrapf(err, "%s: ", name)
 		}
 		return d.Remove(name)
 	} else if err == syscall.ENOTDIR {
