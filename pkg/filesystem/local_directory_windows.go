@@ -864,7 +864,7 @@ func buildFileLinkInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 
 func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle windows.Handle, newName string) error {
 	var handle windows.Handle
-	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ|windows.FILE_GENERIC_WRITE, oldHandle, oldName, windows.FILE_OPEN, 0)
+	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ, oldHandle, oldName, windows.FILE_OPEN, 0)
 	if err != nil {
 		return err
 	}
