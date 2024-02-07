@@ -460,49 +460,48 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumb
 }
 
 func readdirnames(handle windows.Handle) ([]string, error) {
-	outBufferSize := uint32(512)
-	outBuffer := make([]byte, outBufferSize)
-	firstIteration := true
-	for {
-		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
-			&outBuffer[0], outBufferSize)
-		if err == nil {
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
-			if firstIteration {
-				return []string{}, nil
-			}
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_MORE_DATA {
-			outBufferSize *= 2
-			outBuffer = make([]byte, outBufferSize)
-		} else {
-			return nil, err
-		}
-		firstIteration = false
-	}
+	outBufferSize := uint32(256)
 	names := make([]string, 0)
-	offset := ^(uint32(0))
-	dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
-	for offset != 0 {
-		offset = dirInfoPtr.NextEntryOffset
-		fileNameLen := int(dirInfoPtr.FileNameLength) / 2
-		fileNameUTF16 := make([]uint16, fileNameLen)
-		targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
-		for i := 0; i < fileNameLen; i++ {
-			fileNameUTF16[i] = *(*uint16)(targetPtr)
-			targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
-		}
-		dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
 
-		fileName := windows.UTF16ToString(fileNameUTF16)
-		if fileName == "." || fileName == ".." {
-			continue
+	for {
+		outBufferSize *= 2
+		outBuffer := make([]byte, outBufferSize)
+
+		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo, &outBuffer[0], outBufferSize)
+		if err != nil {
+			if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
+				break
+			}
+			// NB: We have never seen `ERROR_MORE_DATA` during development,
+			// it seems it is never raised. But according to the docs is should be set
+			// and we should proceed with the happy path.
+			if err.(syscall.Errno) != windows.ERROR_MORE_DATA {
+				return []string{}, err
+			}
 		}
-		names = append(names, fileName)
+
+		offset := ^(uint32(0))
+		dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
+		for offset != 0 {
+			offset = dirInfoPtr.NextEntryOffset
+			fileNameLen := int(dirInfoPtr.FileNameLength) / 2
+			fileNameUTF16 := make([]uint16, fileNameLen)
+			targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
+			for i := 0; i < fileNameLen; i++ {
+				fileNameUTF16[i] = *(*uint16)(targetPtr)
+				targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
+			}
+			dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
+
+			fileName := windows.UTF16ToString(fileNameUTF16)
+			if fileName == "." || fileName == ".." {
+				continue
+			}
+			names = append(names, fileName)
+		}
+		continue
 	}
+
 	return names, nil
 }
 
