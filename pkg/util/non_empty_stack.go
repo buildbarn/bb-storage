@@ -34,7 +34,7 @@ func (cw *NonEmptyStack[T]) Push(d T) {
 
 // PopSingle removes the last pushed element from the stack. The return
 // value indicates whether an element was popped successfully. It is not
-// possible to push the final element off the stack.
+// possible to pop the final element off the stack.
 func (cw *NonEmptyStack[T]) PopSingle() (T, bool) {
 	if len(cw.stack) == 1 {
 		var zero T

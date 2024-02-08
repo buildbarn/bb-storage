@@ -1,6 +1,7 @@
 package path
 
 import (
+	"runtime"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -37,6 +38,12 @@ func (rs *resolverState) push(scopeWalker ScopeWalker, path string) error {
 	if path != "" && path[0] == '/' {
 		path = stripOneOrMoreSlashes(path)
 		absolute = true
+	}
+	if runtime.GOOS == "windows" {
+		// filepath.IsAbs
+		if len(path) > 3 && path[1] == ':' && path[2] == '/' {
+			absolute = true
+		}
 	}
 
 	// Push the path without any leading slashes onto the stack, so

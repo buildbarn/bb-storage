@@ -16,6 +16,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/windowsext"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/windows"
 	"google.golang.org/grpc/codes"
@@ -107,10 +108,34 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 	return newLocalDirectoryFromHandle(handle)
 }
 
+// Convert forward-slash drive-letter paths to absolute drive-letter paths.
+// This can come from how build directories are configured for bb-worker on Windows.
+// Where a combination of 'git-bash' and environment variable expansion in jsonnet can create paths
+// that the `filepath` does not detect as absolute.
+//
+// Example: /C:/...
+// Should be C:/...
+func CanonicalizeAbsolutePath(path string) string {
+	if len(path) >= 4 && path[0] == '/' && path[2] == ':' && path[3] == '/' {
+		path = path[1:]
+	}
+
+	return path
+}
+
 func NewLocalDirectory(path string) (DirectoryCloser, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
+	var absPath string
+	var err error
+
+	path = CanonicalizeAbsolutePath(path)
+
+	if filepath.IsAbs(path) {
+		absPath = filepath.FromSlash(path)
+	} else {
+		absPath, err = filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 	absPath = "\\??\\" + absPath
 	return newLocalDirectory(absPath, true)
@@ -390,6 +415,7 @@ func (d *localDirectory) lstat(name path.Component) (FileType, error) {
 	if err != nil {
 		return FileTypeOther, err
 	}
+	defer windows.CloseHandle(handle)
 	var fileInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(handle, &fileInfo)
 	if err != nil {
@@ -435,49 +461,48 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumb
 }
 
 func readdirnames(handle windows.Handle) ([]string, error) {
-	outBufferSize := uint32(512)
-	outBuffer := make([]byte, outBufferSize)
-	firstIteration := true
-	for {
-		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
-			&outBuffer[0], outBufferSize)
-		if err == nil {
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
-			if firstIteration {
-				return []string{}, nil
-			}
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_MORE_DATA {
-			outBufferSize *= 2
-			outBuffer = make([]byte, outBufferSize)
-		} else {
-			return nil, err
-		}
-		firstIteration = false
-	}
+	outBufferSize := uint32(256)
 	names := make([]string, 0)
-	offset := ^(uint32(0))
-	dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
-	for offset != 0 {
-		offset = dirInfoPtr.NextEntryOffset
-		fileNameLen := int(dirInfoPtr.FileNameLength) / 2
-		fileNameUTF16 := make([]uint16, fileNameLen)
-		targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
-		for i := 0; i < fileNameLen; i++ {
-			fileNameUTF16[i] = *(*uint16)(targetPtr)
-			targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
-		}
-		dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
 
-		fileName := windows.UTF16ToString(fileNameUTF16)
-		if fileName == "." || fileName == ".." {
-			continue
+	for {
+		outBufferSize *= 2
+		outBuffer := make([]byte, outBufferSize)
+
+		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo, &outBuffer[0], outBufferSize)
+		if err != nil {
+			if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
+				break
+			}
+			// NB: We have never seen `ERROR_MORE_DATA` during development,
+			// it seems it is never raised. But according to the docs is should be set
+			// and we should proceed with the happy path.
+			if err.(syscall.Errno) != windows.ERROR_MORE_DATA {
+				return []string{}, err
+			}
 		}
-		names = append(names, fileName)
+
+		offset := ^(uint32(0))
+		dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
+		for offset != 0 {
+			offset = dirInfoPtr.NextEntryOffset
+			fileNameLen := int(dirInfoPtr.FileNameLength) / 2
+			fileNameUTF16 := make([]uint16, fileNameLen)
+			targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
+			for i := 0; i < fileNameLen; i++ {
+				fileNameUTF16[i] = *(*uint16)(targetPtr)
+				targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
+			}
+			dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
+
+			fileName := windows.UTF16ToString(fileNameUTF16)
+			if fileName == "." || fileName == ".." {
+				continue
+			}
+			names = append(names, fileName)
+		}
+		continue
 	}
+
 	return names, nil
 }
 
@@ -508,6 +533,7 @@ func (d *localDirectory) Readlink(name path.Component) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer windows.CloseHandle(handle)
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
 	var returned uint32
@@ -606,7 +632,7 @@ func (d *localDirectory) RemoveAllChildren() error {
 			err = subdirectory.RemoveAllChildren()
 			subdirectory.Close()
 			if err != nil {
-				return err
+				return util.StatusWrapf(err, "%s: ", name)
 			}
 		}
 		err = d.Remove(component)
@@ -624,7 +650,7 @@ func (d *localDirectory) RemoveAll(name path.Component) error {
 		err := subdirectory.RemoveAllChildren()
 		subdirectory.Close()
 		if err != nil {
-			return err
+			return util.StatusWrapf(err, "%s: ", name)
 		}
 		return d.Remove(name)
 	} else if err == syscall.ENOTDIR {
@@ -838,7 +864,7 @@ func buildFileLinkInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 
 func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle windows.Handle, newName string) error {
 	var handle windows.Handle
-	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ|windows.FILE_GENERIC_WRITE, oldHandle, oldName, windows.FILE_OPEN, 0)
+	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ, oldHandle, oldName, windows.FILE_OPEN, 0)
 	if err != nil {
 		return err
 	}
@@ -869,7 +895,7 @@ func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle wind
 func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSame bool, err error) {
 	// We want to know a few things before renaming:
 	//  1. Are source and target hard links to the same file? If so, noop.
-	//  2. If target exists and wither source or target is a directory, don't overwrite and report error.
+	//  2. If target exists and whether source or target is a directory, don't overwrite and report error.
 	//  3. If neither is the case, move and, if necessary, replace.
 	var targetHandle windows.Handle
 	err = ntCreateFile(&targetHandle, windows.FILE_READ_ATTRIBUTES, newHandle, newName, windows.FILE_OPEN,
