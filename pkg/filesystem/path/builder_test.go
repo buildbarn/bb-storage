@@ -89,7 +89,7 @@ func TestBuilder(t *testing.T) {
 	t.Run("Reversible1", func(t *testing.T) {
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(false).Return(componentWalker1, nil)
+		scopeWalker.EXPECT().OnRelative().Return(componentWalker1, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("hello")).
 			Return(path.GotDirectory{Child: componentWalker2, IsReversible: true}, nil)
@@ -106,7 +106,7 @@ func TestBuilder(t *testing.T) {
 	t.Run("Reversible2", func(t *testing.T) {
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(false).Return(componentWalker1, nil)
+		scopeWalker.EXPECT().OnRelative().Return(componentWalker1, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		componentWalker1.EXPECT().OnUp().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
@@ -127,7 +127,7 @@ func TestBuilder(t *testing.T) {
 	t.Run("Reversible3", func(t *testing.T) {
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(true).Return(componentWalker1, nil)
+		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker1, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("hello")).
 			Return(path.GotDirectory{Child: componentWalker2, IsReversible: false}, nil)

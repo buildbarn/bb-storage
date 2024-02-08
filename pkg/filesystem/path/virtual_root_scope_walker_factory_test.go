@@ -67,7 +67,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// virtual root directory.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(false).Return(componentWalker, nil)
+		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
 		require.NoError(t, path.Resolve("hello", factory.New(scopeWalker)))
@@ -77,7 +77,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// Absolute paths should have their prefix stripped.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(true).Return(componentWalker, nil)
+		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
 		require.NoError(t, path.Resolve("/root/hello", factory.New(scopeWalker)))
@@ -88,7 +88,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// up in the virtual root directory.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(true).Return(componentWalker1, nil)
+		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker1, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("target")).
 			Return(path.GotDirectory{
@@ -115,7 +115,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// completely unaffected by the virtual root directory.
 		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker1.EXPECT().OnScope(false).Return(componentWalker1, nil)
+		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
@@ -123,7 +123,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 				Target: "b",
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker2.EXPECT().OnScope(false).Return(componentWalker2, nil)
+		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
 		require.NoError(t, path.Resolve("a", factory.New(scopeWalker1)))
@@ -134,7 +134,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// have their prefix stripped.
 		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker1.EXPECT().OnScope(false).Return(componentWalker1, nil)
+		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
@@ -142,7 +142,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 				Target: "/root/b",
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker2.EXPECT().OnScope(true).Return(componentWalker2, nil)
+		scopeWalker2.EXPECT().OnAbsolute().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
 		require.NoError(t, path.Resolve("a", factory.New(scopeWalker1)))
@@ -154,7 +154,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// generate any calls against the successive ScopeWalker.
 		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
 		componentWalker := mock.NewMockComponentWalker(ctrl)
-		scopeWalker1.EXPECT().OnScope(false).Return(componentWalker, nil)
+		scopeWalker1.EXPECT().OnRelative().Return(componentWalker, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{

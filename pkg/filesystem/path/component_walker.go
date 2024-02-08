@@ -49,17 +49,16 @@ type ComponentWalker interface {
 	// OnDirectory is called for every pathname component that must
 	// resolve to a directory or a symbolic link to a directory.
 	//
-	// If the pathname component refers to a directory, this
-	// function will return a GotDirectory containing a new
-	// ComponentWalker against which successive pathname components
-	// can be resolved.
+	// If the pathname component refers to a directory, this function
+	// will return a GotDirectory containing a new ComponentWalker
+	// against which successive pathname components can be resolved.
 	//
 	// If the pathname component refers to a symbolic link, this
-	// function will return a GotSymlink containing a ScopeWalker,
-	// which can be used to perform expansion of the symbolic link.
-	// The Resolve() function will call into OnScope() to signal
-	// whether resolution should continue at the root directory or
-	// at the directory that contained the symbolic link.
+	// function will return a GotSymlink containing a ScopeWalker, which
+	// can be used to perform expansion of the symbolic link. The
+	// Resolve() function will call into OnAbsolute() or OnRealtive() to
+	// signal whether resolution should continue at the root directory
+	// or at the directory that contained the symbolic link.
 	OnDirectory(name Component) (GotDirectoryOrSymlink, error)
 
 	// OnTerminal is called for the potentially last pathname

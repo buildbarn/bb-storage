@@ -42,7 +42,13 @@ func (rs *resolverState) push(scopeWalker ScopeWalker, path string) error {
 	// Push the path without any leading slashes onto the stack, so
 	// that its components may be processed. Apply  them against the
 	// right directory.
-	componentWalker, err := scopeWalker.OnScope(absolute)
+	var componentWalker ComponentWalker
+	var err error
+	if absolute {
+		componentWalker, err = scopeWalker.OnAbsolute()
+	} else {
+		componentWalker, err = scopeWalker.OnRelative()
+	}
 	if err != nil {
 		return err
 	}

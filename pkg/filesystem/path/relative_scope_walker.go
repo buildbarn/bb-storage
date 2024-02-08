@@ -17,9 +17,10 @@ func NewRelativeScopeWalker(componentWalker ComponentWalker) ScopeWalker {
 	}
 }
 
-func (pw *relativeScopeWalker) OnScope(absolute bool) (ComponentWalker, error) {
-	if absolute {
-		return nil, status.Error(codes.InvalidArgument, "Path is absolute, while a relative path was expected")
-	}
+func (pw *relativeScopeWalker) OnAbsolute() (ComponentWalker, error) {
+	return nil, status.Error(codes.InvalidArgument, "Path is absolute, while a relative path was expected")
+}
+
+func (pw *relativeScopeWalker) OnRelative() (ComponentWalker, error) {
 	return pw.componentWalker, nil
 }
