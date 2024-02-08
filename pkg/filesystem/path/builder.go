@@ -115,17 +115,23 @@ type buildingScopeWalker struct {
 	b    *Builder
 }
 
-func (w *buildingScopeWalker) OnScope(absolute bool) (ComponentWalker, error) {
-	componentWalker, err := w.base.OnScope(absolute)
+func (w *buildingScopeWalker) OnAbsolute() (ComponentWalker, error) {
+	componentWalker, err := w.base.OnAbsolute()
 	if err != nil {
 		return nil, err
 	}
-	if absolute {
-		*w.b = Builder{
-			absolute:   true,
-			components: w.b.components[:0],
-			suffix:     "/",
-		}
+	*w.b = Builder{
+		absolute:   true,
+		components: w.b.components[:0],
+		suffix:     "/",
+	}
+	return w.b.getComponentWalker(componentWalker), nil
+}
+
+func (w *buildingScopeWalker) OnRelative() (ComponentWalker, error) {
+	componentWalker, err := w.base.OnRelative()
+	if err != nil {
+		return nil, err
 	}
 	return w.b.getComponentWalker(componentWalker), nil
 }

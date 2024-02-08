@@ -2,7 +2,11 @@ package path
 
 type voidScopeWalker struct{}
 
-func (w voidScopeWalker) OnScope(absolute bool) (ComponentWalker, error) {
+func (w voidScopeWalker) OnAbsolute() (ComponentWalker, error) {
+	return VoidComponentWalker, nil
+}
+
+func (w voidScopeWalker) OnRelative() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 

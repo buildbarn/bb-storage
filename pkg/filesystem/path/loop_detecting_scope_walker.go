@@ -23,8 +23,19 @@ func NewLoopDetectingScopeWalker(base ScopeWalker) ScopeWalker {
 	}
 }
 
-func (w *loopDetectingScopeWalker) OnScope(isAbsolute bool) (ComponentWalker, error) {
-	componentWalker, err := w.base.OnScope(isAbsolute)
+func (w *loopDetectingScopeWalker) OnAbsolute() (ComponentWalker, error) {
+	componentWalker, err := w.base.OnAbsolute()
+	if err != nil {
+		return nil, err
+	}
+	return &loopDetectingComponentWalker{
+		base:         componentWalker,
+		symlinksLeft: w.symlinksLeft,
+	}, nil
+}
+
+func (w *loopDetectingScopeWalker) OnRelative() (ComponentWalker, error) {
+	componentWalker, err := w.base.OnRelative()
 	if err != nil {
 		return nil, err
 	}

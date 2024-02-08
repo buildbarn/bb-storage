@@ -20,7 +20,7 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		// finite number of expansions before failing.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 		componentWalker := mock.NewMockComponentWalker(ctrl)
-		scopeWalker.EXPECT().OnScope(false).Return(componentWalker, nil).Times(41)
+		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil).Times(41)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("foo")).
 			Return(&path.GotSymlink{Parent: scopeWalker, Target: "foo"}, nil).
 			Times(41)
@@ -35,12 +35,12 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		// Simple case where a symbolic link is not self-referential.
 		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker1.EXPECT().OnScope(true).Return(componentWalker1, nil)
+		scopeWalker1.EXPECT().OnAbsolute().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("tmp")).
 			Return(&path.GotSymlink{Parent: scopeWalker2, Target: "private/tmp"}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
-		scopeWalker2.EXPECT().OnScope(false).Return(componentWalker2, nil)
+		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
 		componentWalker2.EXPECT().OnDirectory(path.MustNewComponent("private")).
 			Return(path.GotDirectory{Child: componentWalker3, IsReversible: true}, nil)

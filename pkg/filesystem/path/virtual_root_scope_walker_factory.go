@@ -87,11 +87,11 @@ func (cw *virtualRootNodeCreator) OnUp() (ComponentWalker, error) {
 //
 // The underlying implementation of ScopeWalker has the ability to
 // detect whether the resolved path lies inside or outside of the nested
-// directory hierarchy by monitoring whether ScopeWalker.OnScope() has
-// been called. If this function is called on the wrapped ScopeWalker,
-// but not called on the underlying instance (either initially or after
-// returning a GotSymlink response), the resolved path lies outside the
-// nested root directory.
+// directory hierarchy by monitoring whether a ScopeWalker interface
+// method has been called. If this function is called on the wrapped
+// ScopeWalker, but not called on the underlying instance (either
+// initially or after returning a GotSymlink response), the resolved
+// path lies outside the nested root directory.
 type VirtualRootScopeWalkerFactory struct {
 	rootNode namelessVirtualRootNode
 }
@@ -184,7 +184,7 @@ func (w *virtualRootScopeWalker) getComponentWalker(n *namelessVirtualRootNode) 
 	}
 
 	// We've reached the underlying root directory.
-	root, err := w.base.OnScope(true)
+	root, err := w.base.OnAbsolute()
 	if err != nil {
 		return nil, err
 	}
@@ -194,15 +194,15 @@ func (w *virtualRootScopeWalker) getComponentWalker(n *namelessVirtualRootNode) 
 	}, nil
 }
 
-func (w *virtualRootScopeWalker) OnScope(absolute bool) (ComponentWalker, error) {
-	if absolute {
-		return w.getComponentWalker(w.rootNode)
-	}
+func (w *virtualRootScopeWalker) OnAbsolute() (ComponentWalker, error) {
+	return w.getComponentWalker(w.rootNode)
+}
 
+func (w *virtualRootScopeWalker) OnRelative() (ComponentWalker, error) {
 	// Attempted to resolve a relative path. There is no need to
 	// rewrite any paths. Do wrap the ComponentWalker to ensure
 	// future symlinks respect the virtual root.
-	base, err := w.base.OnScope(false)
+	base, err := w.base.OnRelative()
 	if err != nil {
 		return nil, err
 	}
