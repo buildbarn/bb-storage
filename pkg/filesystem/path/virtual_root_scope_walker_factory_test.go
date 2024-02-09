@@ -70,7 +70,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve("hello", factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("Absolute", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve("/root/hello", factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/root/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("AbsoluteViaAlias", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 			}, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve("/alias/hello", factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/alias/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("Outside", func(t *testing.T) {
@@ -106,8 +106,8 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// the ScopeWalker.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 
-		require.NoError(t, path.Resolve("/", factory.New(scopeWalker)))
-		require.NoError(t, path.Resolve("/hello", factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("SymlinkRelative", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
-		require.NoError(t, path.Resolve("a", factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 
 	t.Run("SymlinkAbsolute", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker2.EXPECT().OnAbsolute().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
-		require.NoError(t, path.Resolve("a", factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 
 	t.Run("SymlinkAbsolute", func(t *testing.T) {
@@ -162,6 +162,6 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 				Target: "/hello",
 			}, nil)
 
-		require.NoError(t, path.Resolve("a", factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 }

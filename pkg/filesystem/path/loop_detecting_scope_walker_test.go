@@ -28,7 +28,7 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "Maximum number of symbolic link redirections reached"),
-			path.Resolve("foo", path.NewLoopDetectingScopeWalker(scopeWalker)))
+			path.Resolve(path.MustNewUNIXParser("foo"), path.NewLoopDetectingScopeWalker(scopeWalker)))
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -49,6 +49,6 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 
 		require.NoError(
 			t,
-			path.Resolve("/tmp", path.NewLoopDetectingScopeWalker(scopeWalker1)))
+			path.Resolve(path.MustNewUNIXParser("/tmp"), path.NewLoopDetectingScopeWalker(scopeWalker1)))
 	})
 }

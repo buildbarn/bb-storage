@@ -32,7 +32,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(p, func(t *testing.T) {
 				builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(p, scopeWalker))
+				require.NoError(t, path.Resolve(path.MustNewUNIXParser(p), scopeWalker))
 				require.Equal(t, p, builder.String())
 			})
 		}
@@ -57,7 +57,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(from, scopeWalker))
+				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker))
 				require.Equal(t, to, builder.String())
 			})
 		}
@@ -75,7 +75,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder, scopeWalker := path.RootBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(from, scopeWalker))
+				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker))
 				require.Equal(t, to, builder.String())
 			})
 		}
@@ -97,7 +97,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker2.EXPECT().OnUp().Return(componentWalker3, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve("hello/..", s))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("hello/.."), s))
 		require.Equal(t, ".", builder.String())
 	})
 
@@ -116,7 +116,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker3.EXPECT().OnUp().Return(componentWalker4, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve("../hello/..", s))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("../hello/.."), s))
 		require.Equal(t, "..", builder.String())
 	})
 
@@ -138,7 +138,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker3.EXPECT().OnUp().Return(componentWalker4, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve("/hello/world/..", s))
+		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/hello/world/.."), s))
 		require.Equal(t, "/hello/", builder.String())
 	})
 }
