@@ -103,8 +103,21 @@
           |||,
         },
         {
+          name: 'Embedded asset generation',
+          run: |||
+            bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |//\1:|' | sort -u)
+            git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |\1/|' | while read o; do
+              if [ -e "bazel-bin/$o" ]; then
+                rm -rf "$o"
+                cp -r "bazel-bin/$o" "$o"
+                find "$o" -type f -exec chmod -x {} +
+              fi
+            done
+          |||,
+        },
+        {
           name: 'Test style conformance',
-          run: 'git diff --exit-code HEAD --',
+          run: 'git add . && git diff --exit-code HEAD --',
         },
         {
           name: 'Golint',

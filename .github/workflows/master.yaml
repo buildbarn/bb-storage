@@ -44,8 +44,12 @@
                "run": "find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true\nbazel build $(bazel query 'kind(\"go_proto_library\", //...)')\nfind bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\ndone\n"
             },
             {
+               "name": "Embedded asset generation",
+               "run": "bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |//\\1:|' | sort -u)\ngit grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |\\1/|' | while read o; do\n  if [ -e \"bazel-bin/$o\" ]; then\n    rm -rf \"$o\"\n    cp -r \"bazel-bin/$o\" \"$o\"\n    find \"$o\" -type f -exec chmod -x {} +\n  fi\ndone\n"
+            },
+            {
                "name": "Test style conformance",
-               "run": "git diff --exit-code HEAD --"
+               "run": "git add . && git diff --exit-code HEAD --"
             },
             {
                "name": "Golint",
