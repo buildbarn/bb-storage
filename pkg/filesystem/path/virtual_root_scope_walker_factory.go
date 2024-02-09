@@ -126,30 +126,43 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 	rootCreator := virtualRootNodeCreator{namelessNode: &wf.rootNode}
 	rootPathBuilder, rootPathWalker := EmptyBuilder.Join(
 		NewAbsoluteScopeWalker(&rootCreator))
-	if err := Resolve(rootPath, rootPathWalker); err != nil {
+
+	path, err := NewUNIXParser(rootPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := Resolve(path, rootPathWalker); err != nil {
 		return nil, util.StatusWrapf(err, "Failed to resolve root path %#v", rootPath)
 	}
 	rootCreator.namelessNode.isRoot = true
 
-	for path, target := range aliases {
+	for alias, target := range aliases {
+		aliasPath, err := NewUNIXParser(alias)
+		if err != nil {
+			return nil, err
+		}
+		targetPath, err := NewUNIXParser(target)
+		if err != nil {
+			return nil, err
+		}
 		// Resolve the location at which we want to create a fictive
 		// symlink that points into the virtual root directory.
 		aliasCreator := virtualRootNodeCreator{namelessNode: &wf.rootNode}
-		if err := Resolve(path, NewAbsoluteScopeWalker(&aliasCreator)); err != nil {
-			return nil, util.StatusWrapf(err, "Failed to resolve alias path %#v", path)
+		if err := Resolve(aliasPath, NewAbsoluteScopeWalker(&aliasCreator)); err != nil {
+			return nil, util.StatusWrapf(err, "Failed to resolve alias path %#v", alias)
 		}
 		if aliasCreator.namedNode == nil {
-			return nil, status.Errorf(codes.InvalidArgument, "Failed to resolve alias path %#v: Last component is not a valid filename", path)
+			return nil, status.Errorf(codes.InvalidArgument, "Failed to resolve alias path %#v: Last component is not a valid filename", alias)
 		}
 		if aliasCreator.namelessNode.up != nil || len(aliasCreator.namelessNode.down) > 0 {
-			return nil, status.Errorf(codes.InvalidArgument, "Failed to resolve alias path %#v: Path resides above an already registered path", path)
+			return nil, status.Errorf(codes.InvalidArgument, "Failed to resolve alias path %#v: Path resides above an already registered path", alias)
 		}
 
 		// Convert the relative target path to an absolute path
 		// underneath the virtual root.
 		targetPathBuilder, targetPathWalker := rootPathBuilder.Join(
 			NewRelativeScopeWalker(VoidComponentWalker))
-		if err := Resolve(target, targetPathWalker); err != nil {
+		if err := Resolve(targetPath, targetPathWalker); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias target %#v", target)
 		}
 		aliasCreator.namedNode.target = targetPathBuilder.String()
