@@ -389,7 +389,10 @@ message TLSClientCertificateAuthenticationPolicy {
   //   "dnsNames": ["example.com", "*.sub.example.com"],
   //
   //   // Contains every Email Subject Alt Name provided.
-  //   "emailAddresses": ["me@example.com"]
+  //   "emailAddresses": ["me@example.com"],
+  //
+  //   // Contains every URI Subject Alt Name provided.
+  //   "uris": ["uri:example:a"]
   // }
   //
   // You could enforce that the DNS name matches an expression:

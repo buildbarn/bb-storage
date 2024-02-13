@@ -14,3 +14,4 @@ subjectAltName = @alt_names
 [ alt_names ]
 DNS.1   = a.example.com
 email.1 = me@example.com
+URI.1 = uri:example:a

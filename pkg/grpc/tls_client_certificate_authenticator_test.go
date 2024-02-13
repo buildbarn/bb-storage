@@ -29,63 +29,64 @@ var (
 	// openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:4096 -keyout key -out crt -extensions extensions -config tls_client_certificate_valid.cnf
 	certificateValid = parseCertificate(`
 -----BEGIN CERTIFICATE-----
-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
+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
-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
+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
+Ww==
 -----END CERTIFICATE-----`)
 	certificateUnrelated = parseCertificate(`
 -----BEGIN CERTIFICATE-----
-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
+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
-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
+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
-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
-8jD/UnfO3BzQHOS8PYIWLW4u
+DWIuZXhhbXBsZS5jb20wDQYJKoZIhvcNAQELBQADggIBADF/3M2UCjdKQ2Ht9jQY
+rPzpM3GsyXCnEST16/RTCTGDmn9gLw0gHMOHRjAUpsRQ148sJvFPuDhL/LnPzxwU
+rNxCyQj3tnh6ye9/2XStRwUor22LvJDMItlAMON6ifolh90fD/0MPFB3Iw0jbv2b
+c9AXZiVaj5uFfyeL9fi53eoK0UXwOoWjVJeTvTlW/976CncqAtW8dWUo9xp7Ajdh
+0J/0frkB4oVN448XD/KM4a0kgFmK8dCLEtwjY9cFJGqvsnvLOyAylvdMT6sXd6BB
+x3SuK8kPpTliqgVfElmy88UPpUNyIVBFq6gR+a30BfoM2Yrh84FKAJHGhKR1XSMq
+oeayLrdzOzxOBYHuEii3wYHMvc+f30tfGLWcCAyvYtrXHtBY2u87nZjK04ASt9+9
+Abk3O8CTwM49b1P60b2F9GOxXT6K69JVRrJqaUKNUDiOKu9K7RQ9DSHLEy8W4LVZ
+l+UtN27XkH+q8YltubjDdv84HAA/9CgiXbVlIeVLCmIehPaofLz9MFf10HTDz/gn
+hMLjxsaanOX+AVRcIDooJg6w05P3SyKz5NR8C7j69JGNNiucrOfFByQ45rzMjjzS
+mDFvCpPgwj29k6xjxCwFNgI/9wEwq5BaOtZ5bm6RgeqGE63RgsZYIfNVfOML0gV1
+zz99b0I42KpaTWavqKDevUg6
 -----END CERTIFICATE-----`)
 )
 
@@ -112,6 +113,11 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 				"emailAddresses": structpb.NewListValue(&structpb.ListValue{
 					Values: []*structpb.Value{
 						structpb.NewStringValue("me@example.com"),
+					},
+				}),
+				"uris": structpb.NewListValue(&structpb.ListValue{
+					Values: []*structpb.Value{
+						structpb.NewStringValue("uri:example:a"),
 					},
 				}),
 			},
@@ -161,7 +167,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 
 	t.Run("NoCAMatch", func(t *testing.T) {
 		// Connection with a certificate that doesn't match the CA.
-		clock.EXPECT().Now().Return(time.Unix(1680000000, 0))
+		clock.EXPECT().Now().Return(time.Unix(1712700000, 0))
 		_, err := aAuthenticator.Authenticate(
 			peer.NewContext(
 				ctx,
@@ -183,7 +189,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	t.Run("Expired", func(t *testing.T) {
 		// Connection with a certificate that is signed by the
 		// right CA, but expired.
-		clock.EXPECT().Now().Return(time.Unix(1700000000, 0))
+		clock.EXPECT().Now().Return(time.Unix(1750000000, 0))
 		_, err := aAuthenticator.Authenticate(
 			peer.NewContext(
 				ctx,
@@ -198,14 +204,14 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 				}))
 		testutil.RequireEqualStatus(
 			t,
-			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid: current time 2023-11-14T22:13:20Z is after 2023-09-29T17:37:02Z"),
+			status.Error(codes.Unauthenticated, "Cannot validate TLS client certificate: x509: certificate has expired or is not yet valid: current time 2025-06-15T15:06:40Z is after 2025-04-09T20:18:01Z"),
 			err)
 	})
 
 	t.Run("ValidationFail", func(t *testing.T) {
 		// Connection with a certificate that is signed by the
 		// right CA, but expired.
-		clock.EXPECT().Now().Return(time.Unix(1680000000, 0))
+		clock.EXPECT().Now().Return(time.Unix(1712700000, 0))
 
 		_, err := bAuthenticator.Authenticate(
 			peer.NewContext(
@@ -227,7 +233,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// Connection with at least one verified chain.
-		clock.EXPECT().Now().Return(time.Unix(1680000000, 0))
+		clock.EXPECT().Now().Return(time.Unix(1712700000, 0))
 		actualMetadata, err := aAuthenticator.Authenticate(
 			peer.NewContext(
 				ctx,

@@ -99,10 +99,16 @@ func getClientCertificateJMESPathSearchContext(cert *x509.Certificate) map[strin
 		emailAddresses = append(emailAddresses, e)
 	}
 
+	uris := make([]any, 0, len(cert.URIs))
+	for _, e := range cert.URIs {
+		uris = append(uris, e.String())
+	}
+
 	// The data structure that users can search over
 	searchContext := map[string]any{
 		"dnsNames":       dnsNames,
 		"emailAddresses": emailAddresses,
+		"uris":           uris,
 	}
 
 	return searchContext
