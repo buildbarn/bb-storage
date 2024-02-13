@@ -354,6 +354,28 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      localBlobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
+	case *pb.BlobAccessConfiguration_Spanner:
+		var digestKeyFormat digest.KeyFormat
+		if backend.Spanner.StorageType == pb.StorageType_ACTION_CACHE {
+			digestKeyFormat = digest.KeyWithInstance
+		} else if backend.Spanner.StorageType == pb.StorageType_CASTORE {
+			digestKeyFormat = digest.KeyWithoutInstance
+		} else {
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Unknown Spanner storage type")
+		}
+		blobAccess, err := blobstore.NewSpannerBlobAccess(
+			backend.Spanner.SpannerDbName,
+			backend.Spanner.GcsBucketName,
+			readBufferFactory,
+			backend.Spanner.StorageType,
+			backend.Spanner.ExpirationDays)
+		if err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create Spanner blob access")
+		}
+		return BlobAccessInfo{
+			BlobAccess: blobAccess,
+			DigestKeyFormat: digestKeyFormat,
+		}, "spanner", nil
 	case *pb.BlobAccessConfiguration_ReadFallback:
 		primary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
 		if err != nil {
