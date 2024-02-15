@@ -63,6 +63,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Deny:
 		return NewDenyAuthenticator(policyKind.Deny), false, nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:
+                // If we're using mTLS, use the allow authenticator instead, because the TLS handshake will take care of
+                // validating the client's identity.
+                if policyKind.TlsClientCertificate.Spiffe != nil {
+			return NewAllowAuthenticator(nil), false, nil
+                }
 		clientCAs := x509.NewCertPool()
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
 			return nil, false, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
@@ -75,11 +80,6 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, false, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
 		}
-                // If we're using mTLS, use the allow authenticator instead, because the TLS handshake will take care of
-                // validating the client's identity.
-                if policyKind.TlsClientCertificate.Spiffe != nil {
-			return NewAllowAuthenticator(nil), false, nil
-                }
 		return NewTLSClientCertificateAuthenticator(
 			clientCAs,
 			clock.SystemClock,
