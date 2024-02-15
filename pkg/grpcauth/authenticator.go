@@ -66,7 +66,8 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
                 // If we're using mTLS, use the allow authenticator instead, because the TLS handshake will take care of
                 // validating the client's identity.
                 if policyKind.TlsClientCertificate.Spiffe != nil {
-			return NewAllowAuthenticator(nil), false, nil
+			var m auth.AuthenticationMetadata
+			return NewAllowAuthenticator(&m), false, nil
                 }
 		clientCAs := x509.NewCertPool()
 		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
