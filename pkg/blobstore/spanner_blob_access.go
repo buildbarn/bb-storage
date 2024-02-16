@@ -35,7 +35,7 @@ import (
 	"sync"
 	"time"
 
-	//remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -526,6 +526,30 @@ func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferF
 		go ba.bulkUpdate(refCh)
 	}
 	return ba, nil
+}
+
+func (ba *spannerBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	// TODO(ragost)
+	if ba.storageType == pb.StorageType_ACTION_CACHE {
+		return &remoteexecution.ServerCapabilities{
+			CacheCapabilities: &remoteexecution.CacheCapabilities{
+				ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
+					UpdateEnabled: true,
+				},
+				SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
+			},
+		}, nil
+	} else if ba.storageType == pb.StorageType_CASTORE {
+		return &remoteexecution.ServerCapabilities{
+			CacheCapabilities: &remoteexecution.CacheCapabilities{
+				DigestFunctions: digest.SupportedDigestFunctions,
+			},
+		}, nil
+	} else {
+		// Code in pkg/blobaccess/configuration/new_blob_access.go should prevent this, but
+		// since that lives in a separate place, let's be sure.
+		panic("Invalid Spanner storage Type configured")
+	}
 }
 
 func (ba *spannerBlobAccess) delete(ctx context.Context, key string) error {
