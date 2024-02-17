@@ -536,13 +536,6 @@ func (ba *spannerBlobAccess) GetCapabilities(ctx context.Context, instanceName d
 					UpdateEnabled: true,
 				},
 				SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
-				DigestFunctions: []remoteexecution.DigestFunction_Value{
-							remoteexecution.DigestFunction_MD5,
-							remoteexecution.DigestFunction_SHA1,
-							remoteexecution.DigestFunction_SHA256,
-							remoteexecution.DigestFunction_SHA384,
-							remoteexecution.DigestFunction_SHA512,
-				},
 			},
 		}, nil
 	} else if ba.storageType == pb.StorageType_CASTORE {
