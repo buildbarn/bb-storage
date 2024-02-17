@@ -541,15 +541,7 @@ func (ba *spannerBlobAccess) GetCapabilities(ctx context.Context, instanceName d
 	} else if ba.storageType == pb.StorageType_CASTORE {
 		return &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				//DigestFunctions: digest.SupportedDigestFunctions,
-				// TODO(ragost): see if we can avoid weird values in GetCapabilities response
-				//DigestFunctions: []remoteexecution.DigestFunction_Value{
-				//			remoteexecution.DigestFunction_MD5,
-				//			remoteexecution.DigestFunction_SHA1,
-				//			remoteexecution.DigestFunction_SHA256,
-				//			remoteexecution.DigestFunction_SHA384,
-				//			remoteexecution.DigestFunction_SHA512,
-				//},
+				DigestFunctions: digest.SupportedDigestFunctions,
 			},
 		}, nil
 	} else {
