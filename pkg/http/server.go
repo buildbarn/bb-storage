@@ -28,10 +28,6 @@ type certInfo struct {
 	privateKey crypto.Signer
 }
 
-var (
-	ci certInfo
-)
-
 // NewServersFromConfigurationAndServe spawns HTTP servers as part of a
 // program.Group, based on a configuration message. The web servers are
 // automatically terminated if the context associated with the group is
@@ -46,6 +42,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 			var cfg *tls.Config
 			if configuration.Tls != nil {
+				var ci certInfo
 				pair := configuration.Tls.GetServerKeyPair()
 				if pair == nil {
 					return fmt.Errorf("MTLS configuration requires a server certificate/key pair")
@@ -66,12 +63,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					}
 					cfg.ClientAuth = tls.NoClientCert
 					ci.mu.Lock()
-					err = loadNewCerts(certPath, keyPath)
+					err = ci.loadNewCerts(certPath, keyPath)
 					ci.mu.Unlock()
 					if err != nil {
 						log.Fatal(err.Error())
 					}
-					cfg.GetCertificate = getCertificate(certPath, keyPath)
+					cfg.GetCertificate = ci.getCertificate(certPath, keyPath)
 				} else {
 					inline := pair.GetInline()
 					if inline != nil {
@@ -99,7 +96,13 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					return server.Close()
 				})
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-					if err := server.ListenAndServe(); err != http.ErrServerClosed {
+					var err error
+					if configuration.Tls != nil {
+						err = server.ListenAndServeTLS("", "")
+					} else {
+						err = server.ListenAndServe()
+					}
+					if err != http.ErrServerClosed {
 						return util.StatusWrapf(err, "Failed to launch HTTP server %#v", server.Addr)
 					}
 					return nil
@@ -110,7 +113,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 	})
 }
 
-func loadNewCerts(certFile, keyFile string) error {
+func (ci *certInfo) loadNewCerts(certFile, keyFile string) error {
 	cb, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return fmt.Errorf("can't read certs: %v", err)
@@ -128,7 +131,7 @@ func loadNewCerts(certFile, keyFile string) error {
 	return nil
 }
 
-func getCertificate(certFile, keyFile string) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (ci *certInfo) getCertificate(certFile, keyFile string) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	return func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		ci.mu.Lock()
 		defer ci.mu.Unlock()
@@ -137,7 +140,7 @@ func getCertificate(certFile, keyFile string) func(*tls.ClientHelloInfo) (*tls.C
 		if time.Now().After(ci.x509Certs[0].NotAfter.Add(time.Minute * -15)) {
 			// Cert is about to expire.  Some external entity is responsible for rotating certs.
 			// Reload the new ones.
-			if err := loadNewCerts(certFile, keyFile); err != nil {
+			if err := ci.loadNewCerts(certFile, keyFile); err != nil {
 				return nil, status.Errorf(codes.FailedPrecondition, "Can't reload certs: %v\n", err)
 			}
 			log.Printf("HTTPS CI: Reload: getCert not before %v not after %v\n", ci.x509Certs[0].NotBefore, ci.x509Certs[0].NotAfter)
