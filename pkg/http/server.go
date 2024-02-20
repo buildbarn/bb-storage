@@ -101,14 +101,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 					var err error
 					if configuration.Tls != nil {
-						//l, err := tls.Listen("tcp", listenAddress, cfg)
-						//if err != nil {
-							//log.Fatal("can't listen: %v", err)
-						//}
-						// For some reason, ListenAndServeTLS isn't picking up the GetCertificate function and
-						// requires file paths, which just happen to not be reloaded when the certs expire.
 						err = server.ListenAndServeTLS("", "")
-						//err = server.Serve(l)
 					} else {
 						err = server.ListenAndServe()
 					}
