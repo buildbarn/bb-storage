@@ -43,7 +43,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			var cfg *tls.Config
 			var certPath, keyPath string
 			if configuration.Tls != nil {
-				var ci certInfo
+				ci := &certInfo{}
 				pair := configuration.Tls.GetServerKeyPair()
 				if pair == nil {
 					return fmt.Errorf("HTTPS TLS configuration requires a server certificate/key pair")
