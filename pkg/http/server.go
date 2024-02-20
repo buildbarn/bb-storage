@@ -42,21 +42,16 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 			var cfg *tls.Config
 			var certPath, keyPath string
-			fmt.Printf("config=%+v\n", configuration)
-			fmt.Printf("Tls=%+v\n", configuration.Tls)
 			if configuration.Tls != nil {
 				var ci certInfo
 				pair := configuration.Tls.GetServerKeyPair()
-				fmt.Printf("pair=%+v\n", pair)
 				if pair == nil {
 					return fmt.Errorf("HTTPS TLS configuration requires a server certificate/key pair")
 				}
 				files := pair.GetFiles()
-				fmt.Printf("files=%+v\n", files)
 				if files != nil {
 					certPath = files.GetCertificatePath()
 					keyPath = files.GetPrivateKeyPath()
-					fmt.Printf("certPath=%s, keyPath=%s\n", certPath, keyPath)
 					if !util.IsPEMFile(certPath) {
 						return fmt.Errorf("HTTPS TLS server certificate must be stored in a PEM file")
 					}
@@ -77,7 +72,6 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					cfg.GetCertificate = ci.getCertificate(certPath, keyPath)
 				} else {
 					inline := pair.GetInline()
-					fmt.Printf("inline=%+v\n", inline)
 					if inline != nil {
 						cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 						if err != nil {
@@ -105,10 +99,15 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 					var err error
 					if configuration.Tls != nil {
-						fmt.Printf("calling ListenAndServeTLS\n")
-						err = server.ListenAndServeTLS(certPath, keyPath)
+						l, err := tls.Listen("tcp", listenAddress, cfg)
+						if err != nil {
+							log.Fatal("can't listen: %v", err)
+						}
+						// For some reason, ListenAndServeTLS isn't picking up the GetCertificate function and
+						// requires file paths, which just happen to not be reloaded when the certs expire.
+						// err = server.ListenAndServeTLS(certPath, keyPath)
+						err = server.Serve(l)
 					} else {
-						fmt.Printf("calling ListenAndServe\n")
 						err = server.ListenAndServe()
 					}
 					if err != http.ErrServerClosed {
