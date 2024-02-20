@@ -45,17 +45,18 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				var ci certInfo
 				pair := configuration.Tls.GetServerKeyPair()
 				if pair == nil {
-					return fmt.Errorf("MTLS configuration requires a server certificate/key pair")
+					return fmt.Errorf("HTTPS TLS configuration requires a server certificate/key pair")
 				}
 				files := pair.GetFiles()
 				if files != nil {
 					certPath := files.GetCertificatePath()
 					keyPath := files.GetPrivateKeyPath()
+					fmt.Printf("certPath=%s, keyPath=%s\n", certPath, keyPath)
 					if !util.IsPEMFile(certPath) {
-						return fmt.Errorf("TLS server certificate must be stored in a PEM file")
+						return fmt.Errorf("HTTPS TLS server certificate must be stored in a PEM file")
 					}
 					if !util.IsPEMFile(keyPath) {
-						return fmt.Errorf("TLS server private key must be stored in a PEM file")
+						return fmt.Errorf("HTTPS TLS server private key must be stored in a PEM file")
 					}
 					cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 					if err != nil {
@@ -70,8 +71,10 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					}
 					cfg.GetCertificate = ci.getCertificate(certPath, keyPath)
 				} else {
+					fmt.Printf("files==nil\n")
 					inline := pair.GetInline()
 					if inline != nil {
+						fmt.Printf("inline!=nil\n")
 						cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 						if err != nil {
 							return err
@@ -82,6 +85,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 							log.Fatal("Invalid server certificate or private key: %v", err)
 						}
 						cfg.Certificates = []tls.Certificate{cert}
+					} else {
+						fmt.Printf("inline==nil\n")
 					}
 				}
 			}
@@ -98,8 +103,10 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 					var err error
 					if configuration.Tls != nil {
+						fmt.Printf("calling ListenAndServeTLS")
 						err = server.ListenAndServeTLS("", "")
 					} else {
+						fmt.Printf("calling ListenAndServe")
 						err = server.ListenAndServe()
 					}
 					if err != http.ErrServerClosed {
