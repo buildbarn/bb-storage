@@ -42,16 +42,16 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 			var cfg *tls.Config
 			fmt.Printf("config=%+v\n", configuration)
-			fmt.Printf("Tls=%+v\n" configuration.Tls)
+			fmt.Printf("Tls=%+v\n", configuration.Tls)
 			if configuration.Tls != nil {
 				var ci certInfo
 				pair := configuration.Tls.GetServerKeyPair()
-				fmt.Printf("pair=%+v\n" pair)
+				fmt.Printf("pair=%+v\n", pair)
 				if pair == nil {
 					return fmt.Errorf("HTTPS TLS configuration requires a server certificate/key pair")
 				}
 				files := pair.GetFiles()
-				fmt.Printf("files=%+v\n" files)
+				fmt.Printf("files=%+v\n", files)
 				if files != nil {
 					certPath := files.GetCertificatePath()
 					keyPath := files.GetPrivateKeyPath()
