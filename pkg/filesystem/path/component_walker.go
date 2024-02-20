@@ -23,7 +23,7 @@ type GotSymlink struct {
 	Parent ScopeWalker
 
 	// The contents of the symbolic link.
-	Target string
+	Target Parser
 }
 
 // GotDirectoryOrSymlink is a union type of GotDirectory and GotSymlink.

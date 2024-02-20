@@ -47,16 +47,17 @@ func (rs *resolverState) resolve() error {
 		case GotDirectory:
 			rs.componentWalker = rv.Child
 		case GotSymlink:
-			target, err := NewUNIXParser(rv.Target)
-			if err != nil {
-				return err
-			}
-			if err := rs.push(rv.Parent, target); err != nil {
+			if err := rs.push(rv.Parent, rv.Target); err != nil {
 				return err
 			}
 		default:
 			panic("Missing result")
-		case nil: // Do nothing
+		case nil:
+			// Parsed a terminal component. This should only be permitted at the
+			// very end of the path resolution process.
+			if len(rs.stack) > 0 {
+				panic("Parser.ParseFirstComponent() did not respect mustBeDirectory")
+			}
 		}
 	}
 

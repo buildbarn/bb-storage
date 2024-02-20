@@ -22,7 +22,7 @@ type namelessVirtualRootNode struct {
 // that point into the root directory.
 type namedVirtualRootNode struct {
 	nameless namelessVirtualRootNode
-	target   string
+	target   Parser
 }
 
 // virtualRootNodeCreator is an implementation of ComponentWalker that
@@ -37,7 +37,7 @@ type virtualRootNodeCreator struct {
 func (cw *virtualRootNodeCreator) OnDirectory(name Component) (GotDirectoryOrSymlink, error) {
 	n, ok := cw.namelessNode.down[name]
 	if ok {
-		if n.nameless.isRoot || n.target != "" {
+		if n.nameless.isRoot || n.target != nil {
 			return nil, status.Error(codes.InvalidArgument, "Path resides at or below an already registered path")
 		}
 	} else {
@@ -129,7 +129,7 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 
 	path, err := NewUNIXParser(rootPath)
 	if err != nil {
-		return nil, err
+		return nil, util.StatusWrapf(err, "Failed to parse root path %#v", rootPath)
 	}
 	if err := Resolve(path, rootPathWalker); err != nil {
 		return nil, util.StatusWrapf(err, "Failed to resolve root path %#v", rootPath)
@@ -139,11 +139,11 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 	for alias, target := range aliases {
 		aliasPath, err := NewUNIXParser(alias)
 		if err != nil {
-			return nil, err
+			return nil, util.StatusWrapf(err, "Failed to parse alias path %#v", rootPath)
 		}
 		targetPath, err := NewUNIXParser(target)
 		if err != nil {
-			return nil, err
+			return nil, util.StatusWrapf(err, "Failed to parse target path %#v", targetPath)
 		}
 		// Resolve the location at which we want to create a fictive
 		// symlink that points into the virtual root directory.
@@ -165,7 +165,11 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 		if err := Resolve(targetPath, targetPathWalker); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias target %#v", target)
 		}
-		aliasCreator.namedNode.target = targetPathBuilder.String()
+		parser, err := NewUNIXParser(targetPathBuilder.String())
+		if err != nil {
+			return nil, err
+		}
+		aliasCreator.namedNode.target = parser
 	}
 	return wf, nil
 }
@@ -242,7 +246,7 @@ func (cw *pendingVirtualRootComponentWalker) OnDirectory(name Component) (GotDir
 		// the full path.
 		return VoidComponentWalker.OnDirectory(name)
 	}
-	if n.target != "" {
+	if n.target != nil {
 		// Found an alias to the underlying root directory.
 		return GotSymlink{
 			Parent: cw.walker,

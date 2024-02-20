@@ -120,7 +120,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: "b",
+				Target: path.MustNewUNIXParser("b"),
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
@@ -139,7 +139,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: "/root/b",
+				Target: path.MustNewUNIXParser("/root/b"),
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnAbsolute().Return(componentWalker2, nil)
@@ -159,7 +159,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: "/hello",
+				Target: path.MustNewUNIXParser("/hello"),
 			}, nil)
 
 		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
