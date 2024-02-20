@@ -58,7 +58,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					if !util.IsPEMFile(keyPath) {
 						return fmt.Errorf("HTTPS TLS server private key must be stored in a PEM file")
 					}
-					cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
+					cfg, err = bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 					if err != nil {
 						return err
 					}
@@ -73,7 +73,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				} else {
 					inline := pair.GetInline()
 					if inline != nil {
-						cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
+						cfg, err = bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 						if err != nil {
 							return err
 						}
@@ -83,6 +83,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 							log.Fatal("Invalid server certificate or private key: %v", err)
 						}
 						cfg.Certificates = []tls.Certificate{cert}
+					} else {
+						log.Fatal("Invalid TLS config -- no certificates found")
 					}
 				}
 			}
@@ -101,7 +103,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					if configuration.Tls != nil {
 						//l, err := tls.Listen("tcp", listenAddress, cfg)
 						//if err != nil {
-						//	log.Fatal("can't listen: %v", err)
+							//log.Fatal("can't listen: %v", err)
 						//}
 						// For some reason, ListenAndServeTLS isn't picking up the GetCertificate function and
 						// requires file paths, which just happen to not be reloaded when the certs expire.
