@@ -41,13 +41,17 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 			var cfg *tls.Config
+			fmt.Printf("config=%+v\n", configuration)
+			fmt.Printf("Tls=%+v\n" configuration.Tls)
 			if configuration.Tls != nil {
 				var ci certInfo
 				pair := configuration.Tls.GetServerKeyPair()
+				fmt.Printf("pair=%+v\n" pair)
 				if pair == nil {
 					return fmt.Errorf("HTTPS TLS configuration requires a server certificate/key pair")
 				}
 				files := pair.GetFiles()
+				fmt.Printf("files=%+v\n" files)
 				if files != nil {
 					certPath := files.GetCertificatePath()
 					keyPath := files.GetPrivateKeyPath()
@@ -71,10 +75,9 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					}
 					cfg.GetCertificate = ci.getCertificate(certPath, keyPath)
 				} else {
-					fmt.Printf("files==nil\n")
 					inline := pair.GetInline()
+					fmt.Printf("inline=%+v\n", inline)
 					if inline != nil {
-						fmt.Printf("inline!=nil\n")
 						cfg, err := bb_tls.GetBaseTLSConfig(configuration.Tls.CipherSuites)
 						if err != nil {
 							return err
@@ -85,8 +88,6 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 							log.Fatal("Invalid server certificate or private key: %v", err)
 						}
 						cfg.Certificates = []tls.Certificate{cert}
-					} else {
-						fmt.Printf("inline==nil\n")
 					}
 				}
 			}
@@ -103,10 +104,10 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 					var err error
 					if configuration.Tls != nil {
-						fmt.Printf("calling ListenAndServeTLS")
+						fmt.Printf("calling ListenAndServeTLS\n")
 						err = server.ListenAndServeTLS("", "")
 					} else {
-						fmt.Printf("calling ListenAndServe")
+						fmt.Printf("calling ListenAndServe\n")
 						err = server.ListenAndServe()
 					}
 					if err != http.ErrServerClosed {
