@@ -108,7 +108,7 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: "b"}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.MustNewUNIXParser("b")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
@@ -122,7 +122,7 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: "b/"}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.MustNewUNIXParser("b/")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
@@ -138,7 +138,7 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("a")).
-			Return(path.GotSymlink{Parent: scopeWalker2, Target: "b"}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker2, Target: path.MustNewUNIXParser("b")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
@@ -154,17 +154,17 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: "b/z"}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.MustNewUNIXParser("b/z")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		scopeWalker3 := mock.NewMockScopeWalker(ctrl)
 		componentWalker2.EXPECT().OnDirectory(path.MustNewComponent("b")).
-			Return(path.GotSymlink{Parent: scopeWalker3, Target: "c/y"}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker3, Target: path.MustNewUNIXParser("c/y")}, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker3.EXPECT().OnRelative().Return(componentWalker3, nil)
 		scopeWalker4 := mock.NewMockScopeWalker(ctrl)
 		componentWalker3.EXPECT().OnDirectory(path.MustNewComponent("c")).
-			Return(path.GotSymlink{Parent: scopeWalker4, Target: "x"}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker4, Target: path.MustNewUNIXParser("x")}, nil)
 		componentWalker4 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker4.EXPECT().OnRelative().Return(componentWalker4, nil)
 		componentWalker5 := mock.NewMockComponentWalker(ctrl)

@@ -22,7 +22,7 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		componentWalker := mock.NewMockComponentWalker(ctrl)
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil).Times(41)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("foo")).
-			Return(&path.GotSymlink{Parent: scopeWalker, Target: "foo"}, nil).
+			Return(&path.GotSymlink{Parent: scopeWalker, Target: path.MustNewUNIXParser("foo")}, nil).
 			Times(41)
 
 		require.Equal(
@@ -38,7 +38,7 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		scopeWalker1.EXPECT().OnAbsolute().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("tmp")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: "private/tmp"}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.MustNewUNIXParser("private/tmp")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
