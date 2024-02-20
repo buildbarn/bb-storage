@@ -41,6 +41,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 			var cfg *tls.Config
+			var certPath, keyPath string
 			fmt.Printf("config=%+v\n", configuration)
 			fmt.Printf("Tls=%+v\n", configuration.Tls)
 			if configuration.Tls != nil {
@@ -53,8 +54,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				files := pair.GetFiles()
 				fmt.Printf("files=%+v\n", files)
 				if files != nil {
-					certPath := files.GetCertificatePath()
-					keyPath := files.GetPrivateKeyPath()
+					certPath = files.GetCertificatePath()
+					keyPath = files.GetPrivateKeyPath()
 					fmt.Printf("certPath=%s, keyPath=%s\n", certPath, keyPath)
 					if !util.IsPEMFile(certPath) {
 						return fmt.Errorf("HTTPS TLS server certificate must be stored in a PEM file")
@@ -105,7 +106,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 					var err error
 					if configuration.Tls != nil {
 						fmt.Printf("calling ListenAndServeTLS\n")
-						err = server.ListenAndServeTLS("", "")
+						err = server.ListenAndServeTLS(certPath, keyPath)
 					} else {
 						fmt.Printf("calling ListenAndServe\n")
 						err = server.ListenAndServe()
