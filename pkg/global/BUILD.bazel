@@ -29,7 +29,7 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@com_github_prometheus_client_golang//prometheus/push",
-        "@com_github_sercand_kuberesolver_v5//:go_default_library",
+        "@com_github_sercand_kuberesolver_v5//:kuberesolver",
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
         "@io_opentelemetry_go_contrib_propagators_b3//:b3",
         "@io_opentelemetry_go_otel//:otel",
