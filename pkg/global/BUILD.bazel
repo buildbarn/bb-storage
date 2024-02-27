@@ -9,6 +9,7 @@ go_library(
         "resource_limits_linux.go",
         "resource_limits_nonunix.go",
         "resource_limits_unix.go",
+        "simple_k8s_client.go",
         "umask_nonunix.go",
         "umask_unix.go",
     ],
@@ -28,6 +29,7 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@com_github_prometheus_client_golang//prometheus/push",
+        "@com_github_sercand_kuberesolver_v5//:go_default_library",
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
         "@io_opentelemetry_go_contrib_propagators_b3//:b3",
         "@io_opentelemetry_go_otel//:otel",
@@ -40,6 +42,7 @@ go_library(
         "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//resolver",
         "@org_golang_google_grpc//status",
     ] + select({
         "@io_bazel_rules_go//go/platform:android": [

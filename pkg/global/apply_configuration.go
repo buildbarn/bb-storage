@@ -28,9 +28,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
+	"github.com/sercand/kuberesolver/v5"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -108,6 +110,26 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		logWriters = append(logWriters, w)
 	}
 	log.SetOutput(io.MultiWriter(logWriters...))
+
+	// gRPC resolvers for connecting to Kubernetes service endpoints
+	// without using cluster internal DNS.
+	for schema, resolverConfiguration := range configuration.GetGrpcKubernetesResolvers() {
+		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(resolverConfiguration.ApiServerHttpClient)
+		if err != nil {
+			return nil, nil, util.StatusWrapf(err, "Failed to create HTTP client for gRPC Kubernetes resolver for schema %#v", schema)
+		}
+		resolver.Register(
+			kuberesolver.NewBuilder(
+				newSimpleK8sClient(
+					&http.Client{
+						Transport: bb_http.NewMetricsRoundTripper(roundTripper, "GRPCKubernetesResolver"),
+					},
+					resolverConfiguration.ApiServerUrl,
+				),
+				schema,
+			),
+		)
+	}
 
 	grpcClientDialer := bb_grpc.NewLazyClientDialer(bb_grpc.BaseClientDialer)
 	var grpcUnaryInterceptors []grpc.UnaryClientInterceptor

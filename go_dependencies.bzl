@@ -238,6 +238,12 @@ def go_dependencies():
         version = "v1.14.4",
     )
     go_repository(
+        name = "com_github_fsnotify_fsnotify",
+        importpath = "github.com/fsnotify/fsnotify",
+        sum = "h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=",
+        version = "v1.6.0",
+    )
+    go_repository(
         name = "com_github_fxtlabs_primes",
         importpath = "github.com/fxtlabs/primes",
         sum = "h1:HOYnhuVrhAVGKdg3rZapII640so7QfXQmkLkefUN/uM=",
@@ -565,6 +571,12 @@ def go_dependencies():
         importpath = "github.com/rogpeppe/go-internal",
         sum = "h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=",
         version = "v1.10.0",
+    )
+    go_repository(
+        name = "com_github_sercand_kuberesolver_v5",
+        importpath = "github.com/sercand/kuberesolver/v5",
+        sum = "h1:CYH+d67G0sGBj7q5wLK61yzqJJ8gLLC8aeprPTHb6yY=",
+        version = "v5.1.1",
     )
     go_repository(
         name = "com_github_sergi_go_diff",

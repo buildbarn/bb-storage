@@ -276,6 +276,17 @@ message Configuration {
   // credentials.
   repeated string grpc_forward_and_reuse_metadata = 8;
 
+  // Register gRPC load balancer resolvers that are capable of
+  // connecting to Kubernetes service endpoints.
+  //
+  // Map keys indicate the name of the URL schema to register. For
+  // example, if "kubernetes" is used you may use address
+  // "kubernetes://storage.buildbarn:8981" to connect to port 8981 of
+  // service "storage" in namespace "buildbarn".
+  //
+  // More details: https://github.com/sercand/kuberesolver
+  map<string, GRPCKubernetesResolver> grpc_kubernetes_resolvers = 16;
+
   // Resource limits to apply on startup using setrlimit(2) to ensure
   // the program is capable of only consuming a finite number of file
   // descriptors or amount of memory.
@@ -308,4 +319,13 @@ message DiagnosticsHTTPServerConfiguration {
   //                  can be used independent of whether Configuration's
   //                  'tracing' option is enabled.
   bool enable_active_spans = 4;
+}
+
+message GRPCKubernetesResolver {
+  // Options to be used by the HTTP client to connect to the Kubernetes
+  // API server.
+  buildbarn.configuration.http.ClientConfiguration api_server_http_client = 1;
+
+  // The URL of the Kubernetes API server.
+  string api_server_url = 2;
 }
