@@ -12,14 +12,6 @@
                "uses": "actions/checkout@v1"
             },
             {
-               "name": "Restore Bazel cache",
-               "uses": "actions/cache@v1",
-               "with": {
-                  "key": "bazel",
-                  "path": "~/.cache/bazel"
-               }
-            },
-            {
                "name": "Gazelle",
                "run": "bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle"
             },
