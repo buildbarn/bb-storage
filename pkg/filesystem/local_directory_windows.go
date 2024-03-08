@@ -502,11 +502,11 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	return list, nil
 }
 
-func (d *localDirectory) Readlink(name path.Component) (string, error) {
+func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 	var handle windows.Handle
 	err := ntCreateFile(&handle, windows.FILE_GENERIC_READ, d.handle, name.String(), windows.FILE_OPEN, windows.FILE_OPEN_REPARSE_POINT)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
@@ -518,18 +518,18 @@ func (d *localDirectory) Readlink(name path.Component) (string, error) {
 			break
 		}
 		if err.(syscall.Errno) == windows.ERROR_NOT_A_REPARSE_POINT {
-			return "", syscall.EINVAL
+			return nil, syscall.EINVAL
 		}
 		if err.(syscall.Errno) == windows.ERROR_INSUFFICIENT_BUFFER {
 			outBufferSize *= 2
 			outBuffer = make([]byte, outBufferSize)
 		} else {
-			return "", err
+			return nil, err
 		}
 	}
 	reparseDataBufferPtr := (*windowsext.REPARSE_DATA_BUFFER)(unsafe.Pointer(&outBuffer[0]))
 	if reparseDataBufferPtr.ReparseTag != windows.IO_REPARSE_TAG_SYMLINK {
-		return "", syscall.EINVAL
+		return nil, syscall.EINVAL
 	}
 	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME[0]))
 	contentPtr := unsafe.Pointer(uintptr(unsafe.Pointer(&symlinkReparseBufferPtr.PathBuffer[0])) + uintptr(symlinkReparseBufferPtr.SubstituteNameOffset))
@@ -539,7 +539,7 @@ func (d *localDirectory) Readlink(name path.Component) (string, error) {
 		contentUTF16[i] = *(*uint16)(contentPtr)
 		contentPtr = unsafe.Pointer(uintptr(contentPtr) + uintptr(2))
 	}
-	return filepath.ToSlash(windows.UTF16ToString(contentUTF16)), nil
+	return path.NewUNIXParser(filepath.ToSlash(windows.UTF16ToString(contentUTF16)))
 }
 
 func (d *localDirectory) Remove(name path.Component) error {
@@ -715,13 +715,17 @@ func getAbsPathByHandle(handle windows.Handle) (string, error) {
 	return windows.UTF16ToString(buffer), nil
 }
 
-func (d *localDirectory) Symlink(oldName string, newName path.Component) error {
+func (d *localDirectory) Symlink(oldNameParser path.Parser, newName path.Component) error {
 	// Creating symlinks on windows requires one of the following:
 	//   1. Run as an administrator.
 	//   2. Developer mode is on.
 	defer runtime.KeepAlive(d)
 
-	oldName = filepath.FromSlash(oldName)
+	oldNamePath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(oldNameParser, scopeWalker); err != nil {
+		return err
+	}
+	oldName := filepath.FromSlash(oldNamePath.String())
 	// Path with one leading slash (but not UNC) should also be considered absolute.
 	isRelative := !(oldName[0] == '\\' || filepath.IsAbs(oldName))
 	// On windows, you have to know if the target is a directory when creating a symlink.

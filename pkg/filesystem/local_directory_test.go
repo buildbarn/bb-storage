@@ -47,7 +47,7 @@ func TestLocalDirectoryEnterFile(t *testing.T) {
 
 func TestLocalDirectoryEnterSymlink(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 	_, err := d.EnterDirectory(path.MustNewComponent("symlink"))
 	require.Equal(t, syscall.ENOTDIR, err)
 	require.NoError(t, d.Close())
@@ -123,7 +123,7 @@ func TestLocalDirectoryLstatFile(t *testing.T) {
 
 func TestLocalDirectoryLstatSymlink(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 	fi, err := d.Lstat(path.MustNewComponent("symlink"))
 	require.NoError(t, err)
 	require.Equal(t, path.MustNewComponent("symlink"), fi.Name())
@@ -143,7 +143,7 @@ func TestLocalDirectoryLstatDirectory(t *testing.T) {
 
 func TestLocalDirectoryMkdirExisting(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 	require.True(t, os.IsExist(d.Mkdir(path.MustNewComponent("symlink"), 0o777)))
 	require.NoError(t, d.Close())
 }
@@ -173,7 +173,7 @@ func TestLocalDirectoryOpenReadNonExistent(t *testing.T) {
 
 func TestLocalDirectoryOpenReadSymlink(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/etc/passwd", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/etc/passwd"), path.MustNewComponent("symlink")))
 	_, err := d.OpenRead(path.MustNewComponent("symlink"))
 	require.Equal(t, syscall.ELOOP, err)
 	require.NoError(t, d.Close())
@@ -195,7 +195,7 @@ func TestLocalDirectoryReadDir(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 
 	// Validate directory listing.
 	files, err := d.ReadDir()
@@ -238,10 +238,12 @@ func TestLocalDirectoryReadlinkFile(t *testing.T) {
 
 func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/foo/bar/baz", path.MustNewComponent("symlink")))
-	target, err := d.Readlink(path.MustNewComponent("symlink"))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/foo/bar/baz"), path.MustNewComponent("symlink")))
+	targetParser, err := d.Readlink(path.MustNewComponent("symlink"))
 	require.NoError(t, err)
-	require.Equal(t, "/foo/bar/baz", target)
+	targetPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	require.NoError(t, path.Resolve(targetParser, scopeWalker))
+	require.Equal(t, "/foo/bar/baz", targetPath.String())
 	require.NoError(t, d.Close())
 }
 
@@ -273,7 +275,7 @@ func TestLocalDirectoryRemoveFile(t *testing.T) {
 
 func TestLocalDirectoryRemoveSymlink(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 	require.NoError(t, d.Remove(path.MustNewComponent("symlink")))
 	_, err := d.OpenRead(path.MustNewComponent("symlink"))
 	require.True(t, os.IsNotExist(err))
@@ -301,13 +303,13 @@ func TestLocalDirectoryRenameSuccess(t *testing.T) {
 func TestLocalDirectorySymlinkExistent(t *testing.T) {
 	d := openTmpDir(t)
 	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
-	require.True(t, os.IsExist(d.Symlink("/", path.MustNewComponent("directory"))))
+	require.True(t, os.IsExist(d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("directory"))))
 	require.NoError(t, d.Close())
 }
 
 func TestLocalDirectorySymlinkSuccess(t *testing.T) {
 	d := openTmpDir(t)
-	require.NoError(t, d.Symlink("/", path.MustNewComponent("symlink")))
+	require.NoError(t, d.Symlink(path.MustNewUNIXParser("/"), path.MustNewComponent("symlink")))
 	require.NoError(t, d.Close())
 }
 

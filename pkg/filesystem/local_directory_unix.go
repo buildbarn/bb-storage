@@ -231,17 +231,17 @@ func (d *localDirectory) ReadDir() ([]FileInfo, error) {
 	return list, nil
 }
 
-func (d *localDirectory) Readlink(name path.Component) (string, error) {
+func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 	defer runtime.KeepAlive(d)
 
 	for l := 128; ; l *= 2 {
 		b := make([]byte, l)
 		n, err := unix.Readlinkat(d.fd, name.String(), b)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if n < l {
-			return string(b[0:n]), nil
+			return path.MustNewUNIXParser(string(b[0:n])), nil
 		}
 	}
 }
@@ -380,10 +380,15 @@ func (d *localDirectory) Rename(oldName path.Component, newDirectory Directory, 
 	})
 }
 
-func (d *localDirectory) Symlink(oldName string, newName path.Component) error {
+func (d *localDirectory) Symlink(oldName path.Parser, newName path.Component) error {
 	defer runtime.KeepAlive(d)
 
-	return unix.Symlinkat(oldName, d.fd, newName.String())
+	oldNamePath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(oldName, scopeWalker); err != nil {
+		return err
+	}
+
+	return unix.Symlinkat(oldNamePath.String(), d.fd, newName.String())
 }
 
 func (d *localDirectory) Sync() error {

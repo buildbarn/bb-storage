@@ -85,7 +85,7 @@ type Directory interface {
 	// ReadDir is the equivalent of os.ReadDir().
 	ReadDir() ([]FileInfo, error)
 	// Readlink is the equivalent of os.Readlink().
-	Readlink(name path.Component) (string, error)
+	Readlink(name path.Component) (path.Parser, error)
 	// Remove is the equivalent of os.Remove().
 	Remove(name path.Component) error
 	// RemoveAll is the equivalent of os.RemoveAll().
@@ -96,7 +96,7 @@ type Directory interface {
 	// Rename is the equivalent of os.Rename().
 	Rename(oldName path.Component, newDirectory Directory, newName path.Component) error
 	// Symlink is the equivalent of os.Symlink().
-	Symlink(oldName string, newName path.Component) error
+	Symlink(oldName path.Parser, newName path.Component) error
 	// Sync the contents of a directory (i.e., the list of names) to
 	// disk. This does not sync the contents of the files
 	// themselves.
