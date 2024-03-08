@@ -873,7 +873,7 @@ func createNTFSHardlink(oldHandle windows.Handle, oldName string, newHandle wind
 func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSame bool, err error) {
 	// We want to know a few things before renaming:
 	//  1. Are source and target hard links to the same file? If so, noop.
-	//  2. If target exists and wither source or target is a directory, don't overwrite and report error.
+	//  2. If target exists and whether source or target is a directory, don't overwrite and report error.
 	//  3. If neither is the case, move and, if necessary, replace.
 	var targetHandle windows.Handle
 	err = ntCreateFile(&targetHandle, windows.FILE_READ_ATTRIBUTES, newHandle, newName, windows.FILE_OPEN,

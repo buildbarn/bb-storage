@@ -28,7 +28,7 @@ type GotSymlink struct {
 
 // GotDirectoryOrSymlink is a union type of GotDirectory and GotSymlink.
 // It is returned by ComponentWalker.OnDirectory(), as that function may
-// return either a direcgory or symbolic link.
+// return either a directory or symbolic link.
 type GotDirectoryOrSymlink interface {
 	isGotDirectoryOrSymlink()
 }
