@@ -194,6 +194,9 @@ message BlobAccessConfiguration {
 
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
+
+    // Actually a hybrid of spanner and GCS.
+    SpannerBlobAccessConfiguration spanner = 28;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -310,6 +313,34 @@ message MirroredBlobAccessConfiguration {
   // the secondary backend to the primary backend in case of
   // inconsistencies.
   BlobReplicatorConfiguration replicator_b_to_a = 4;
+}
+
+message StorageType {
+  enum Value {
+    // Invalid value.
+    UNKNOWN = 0;
+
+    // Action Cache.
+    ACTION_CACHE = 1;
+
+    // Content-Addressable Store.
+    CASTORE = 2;
+  }
+}
+
+message SpannerBlobAccessConfiguration {
+  // Name of Spanner database.
+  string spanner_db_name = 1;
+
+  // Name of GCS bucket.
+  string gcs_bucket_name = 2;
+
+  // Distinguish between the action cache and the CAS to know how to
+  // format the keys for storage objects.
+  StorageType.Value storage_type = 3;
+
+  // Expiration time in days.  The default is 7 days.
+  uint64 expiration_days = 4;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block
