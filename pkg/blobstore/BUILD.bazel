@@ -23,6 +23,7 @@ go_library(
         "read_canarying_blob_access.go",
         "redis_blob_access.go",
         "reference_expanding_blob_access.go",
+        "routing_blob_access.go",
         "size_distinguishing_blob_access.go",
         "validation_caching_read_buffer_factory.go",
         "zip_reading_blob_access.go",

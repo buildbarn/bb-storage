@@ -3,6 +3,7 @@ package configuration
 import (
 	"archive/zip"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -643,6 +644,29 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      blobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_writing", nil
+
+	case *pb.BlobAccessConfiguration_Routing:
+		config := backend.Routing
+		nested, err := nc.NewNestedBlobAccess(config.Backend, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+
+		var router blobstore.Router
+		switch routerConfig := config.Router.(type) {
+		case *pb.RoutingBlobAccessConfiguration_InstanceNameReplacing_:
+			router, err = blobstore.NewInstanceNameReplacing(routerConfig.InstanceNameReplacing.GetInstanceName())
+			if err != nil {
+				return BlobAccessInfo{}, "", err
+			}
+		default:
+			return BlobAccessInfo{}, "", fmt.Errorf("unimplemented RoutingBlobAccess Router: %T", routerConfig)
+		}
+
+		return BlobAccessInfo{
+			BlobAccess:      blobstore.NewRoutingBlobAccess(nested.BlobAccess, router),
+			DigestKeyFormat: nested.DigestKeyFormat,
+		}, "routing", nil
 	}
 	return creator.NewCustomBlobAccess(configuration, nc)
 }
