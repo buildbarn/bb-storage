@@ -206,6 +206,12 @@ message BlobAccessConfiguration {
 
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
+
+    // Route accesses to alternative instance names.
+    //
+    // Prefixing names is possible using DemultiplexingBlobAccessConfiguration;
+    // this backend is useful for rewriting the instance name entirely.
+    RoutingBlobAccessConfiguration routing = 28;
   }
 
   // Was 'circular' (CircularBlobAccess). This backend has been replaced
@@ -980,4 +986,33 @@ message WithLabelsBlobAccessConfiguration {
 
   // A map of string labels to backends that can be referenced.
   map<string, BlobAccessConfiguration> labels = 2;
+}
+
+message RoutingBlobAccessConfiguration {
+  message InstanceNameReplacing {
+    // Instance name that blobs in requests should be changed to.
+    //
+    // Blobs in responses will have the instance name set to the original
+    // incoming instance name, before it was rewritten.
+    string instance_name = 1;
+  }
+
+  // The backend to which requests are forwarded.
+  BlobAccessConfiguration backend = 1;
+
+  oneof router {
+    // Rewrite the instance name wholesale.
+    //
+    // All accesses for blobs for a given instance name will have the instance
+    // name rewritten before the access, and any references returned will have
+    // the instance name rewritten back to that of the outer context.
+    //
+    // For instance: a RoutingBlobAccess with InstanceNameReplacing set to `baz`
+    // might have an incoming request referencing a blob in instance name
+    // `foo/bar`, in which case it will:
+    // * rewrite instance names on blobs in the request to `baz`
+    // * perform the access on `backend`
+    // * rewrite instance names on blobs in the response back to `foo/bar`
+    InstanceNameReplacing instance_name_replacing = 2;
+  }
 }
