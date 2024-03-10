@@ -539,7 +539,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 		contentUTF16[i] = *(*uint16)(contentPtr)
 		contentPtr = unsafe.Pointer(uintptr(contentPtr) + uintptr(2))
 	}
-	return path.NewUNIXParser(filepath.ToSlash(windows.UTF16ToString(contentUTF16)))
+	return path.NewLocalParser(windows.UTF16ToString(contentUTF16))
 }
 
 func (d *localDirectory) Remove(name path.Component) error {
@@ -725,7 +725,10 @@ func (d *localDirectory) Symlink(oldNameParser path.Parser, newName path.Compone
 	if err := path.Resolve(oldNameParser, scopeWalker); err != nil {
 		return err
 	}
-	oldName := filepath.FromSlash(oldNamePath.String())
+	oldName, err := path.GetLocalString(oldNamePath)
+	if err != nil {
+		return err
+	}
 	// Path with one leading slash (but not UNC) should also be considered absolute.
 	isRelative := !(oldName[0] == '\\' || filepath.IsAbs(oldName))
 	// On windows, you have to know if the target is a directory when creating a symlink.

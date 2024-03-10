@@ -241,7 +241,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 			return nil, err
 		}
 		if n < l {
-			return path.MustNewUNIXParser(string(b[0:n])), nil
+			return path.NewLocalParser(string(b[0:n]))
 		}
 	}
 }
@@ -387,8 +387,11 @@ func (d *localDirectory) Symlink(oldName path.Parser, newName path.Component) er
 	if err := path.Resolve(oldName, scopeWalker); err != nil {
 		return err
 	}
-
-	return unix.Symlinkat(oldNamePath.String(), d.fd, newName.String())
+	oldNameStr, err := path.GetLocalString(oldNamePath)
+	if err != nil {
+		return err
+	}
+	return unix.Symlinkat(oldNameStr, d.fd, newName.String())
 }
 
 func (d *localDirectory) Sync() error {

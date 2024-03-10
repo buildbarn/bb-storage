@@ -9,14 +9,14 @@ import (
 
 func TestTrace(t *testing.T) {
 	var p1 *path.Trace
-	require.Equal(t, ".", p1.String())
+	require.Equal(t, ".", p1.GetUNIXString())
 
 	p2 := p1.Append(path.MustNewComponent("a"))
-	require.Equal(t, "a", p2.String())
+	require.Equal(t, "a", p2.GetUNIXString())
 
 	p3 := p2.Append(path.MustNewComponent("b"))
-	require.Equal(t, "a/b", p3.String())
+	require.Equal(t, "a/b", p3.GetUNIXString())
 
 	p4 := p3.Append(path.MustNewComponent("c"))
-	require.Equal(t, "a/b/c", p4.String())
+	require.Equal(t, "a/b/c", p4.GetUNIXString())
 }

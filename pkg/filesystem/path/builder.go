@@ -25,6 +25,11 @@ type Builder struct {
 	suffix               string
 }
 
+var (
+	_ Parser   = &Builder{}
+	_ Stringer = &Builder{}
+)
+
 // EmptyBuilder is a Builder that contains path ".". New instances of
 // Builder that use this path as their starting point can be created by
 // calling EmptyBuilder.Join().
@@ -40,7 +45,9 @@ var RootBuilder = Builder{
 	suffix:   "/",
 }
 
-func (b *Builder) String() string {
+// GetUNIXString returns a string representation of the path for use on
+// UNIX-like operating systems.
+func (b *Builder) GetUNIXString() string {
 	// Emit pathname components.
 	prefix := ""
 	if b.absolute {
@@ -90,6 +97,25 @@ func (b *Builder) getComponentWalker(base ComponentWalker) ComponentWalker {
 		base: base,
 		b:    b,
 	}
+}
+
+// ParseScope is provided, so that Builder implements the Parser
+// interface. This makes it possible to pass instances of Builder
+// directly to Resolve(). This can be used to replay resolution of a
+// previously constructed path.
+func (b *Builder) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
+	if b.absolute {
+		next, err = scopeWalker.OnAbsolute()
+	} else {
+		next, err = scopeWalker.OnRelative()
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	return next, builderRelativeParser{
+		components:      b.components,
+		lastIsDirectory: b.suffix != "",
+	}, nil
 }
 
 // Join another path with the results computed thus far.
@@ -200,4 +226,45 @@ func (cw *buildingComponentWalker) OnUp() (ComponentWalker, error) {
 		cw.b.suffix = ""
 	}
 	return cw.b.getComponentWalker(componentWalker), nil
+}
+
+// builderRelativeParser is an implementation of RelativeParser that is
+// backed by the contents of a Builder. This can be used to replay
+// resolution of a previously constructed path.
+type builderRelativeParser struct {
+	components      []string
+	lastIsDirectory bool
+}
+
+func (rp builderRelativeParser) ParseFirstComponent(componentWalker ComponentWalker, mustBeDirectory bool) (next GotDirectoryOrSymlink, remainder RelativeParser, err error) {
+	// Stop parsing if there are no components left.
+	if len(rp.components) == 0 {
+		return GotDirectory{Child: componentWalker}, nil, nil
+	}
+	name := rp.components[0]
+	remainder = builderRelativeParser{
+		components:      rp.components[1:],
+		lastIsDirectory: rp.lastIsDirectory,
+	}
+
+	// Call one of OnUp(), OnDirectory() or OnTerminal(), depending
+	// on the component name and its location in the path.
+	if name == ".." {
+		parent, err := componentWalker.OnUp()
+		if err != nil {
+			return nil, nil, err
+		}
+		return GotDirectory{Child: parent}, remainder, nil
+	}
+
+	if len(rp.components) > 1 || rp.lastIsDirectory || mustBeDirectory {
+		r, err := componentWalker.OnDirectory(Component{name: name})
+		return r, remainder, err
+	}
+
+	r, err := componentWalker.OnTerminal(Component{name: name})
+	if err != nil || r == nil {
+		return nil, nil, err
+	}
+	return r, nil, nil
 }

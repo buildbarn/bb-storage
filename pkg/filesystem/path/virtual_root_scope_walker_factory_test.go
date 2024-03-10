@@ -15,41 +15,50 @@ import (
 
 func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 	t.Run("InvalidRootPath", func(t *testing.T) {
-		_, err := path.NewVirtualRootScopeWalkerFactory("foo", map[string]string{})
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve root path \"foo\": Path is relative, while an absolute path was expected"), err)
+		_, err := path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("foo"),
+			map[string]string{},
+		)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve root path: Path is relative, while an absolute path was expected"), err)
 	})
 
 	t.Run("InvalidAliasPath", func(t *testing.T) {
-		_, err := path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
-			"bar": "baz",
-		})
+		_, err := path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo"),
+			map[string]string{"bar": "baz"},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"bar\": Path is relative, while an absolute path was expected"), err)
 
-		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
-			"/foo": "baz",
-		})
+		_, err = path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo"),
+			map[string]string{"/foo": "baz"},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides at or below an already registered path"), err)
 
-		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
-			"/foo/bar": "baz",
-		})
+		_, err = path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo"),
+			map[string]string{"/foo/bar": "baz"},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo/bar\": Path resides at or below an already registered path"), err)
 
-		_, err = path.NewVirtualRootScopeWalkerFactory("/foo/bar", map[string]string{
-			"/foo": "baz",
-		})
+		_, err = path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo/bar"),
+			map[string]string{"/foo": "baz"},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides above an already registered path"), err)
 
-		_, err = path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
-			"/bar/..": ".",
-		})
+		_, err = path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo"),
+			map[string]string{"/bar/..": "."},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/bar/..\": Last component is not a valid filename"), err)
 	})
 
 	t.Run("InvalidAliasTarget", func(t *testing.T) {
-		_, err := path.NewVirtualRootScopeWalkerFactory("/foo", map[string]string{
-			"/bar": "/qux",
-		})
+		_, err := path.NewVirtualRootScopeWalkerFactory(
+			path.MustNewUNIXParser("/foo"),
+			map[string]string{"/bar": "/qux"},
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias target \"/qux\": Path is absolute, while a relative path was expected"), err)
 	})
 }
@@ -57,9 +66,10 @@ func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	factory, err := path.NewVirtualRootScopeWalkerFactory("/root", map[string]string{
-		"/alias": "target",
-	})
+	factory, err := path.NewVirtualRootScopeWalkerFactory(
+		path.MustNewUNIXParser("/root"),
+		map[string]string{"/alias": "target"},
+	)
 	require.NoError(t, err)
 
 	t.Run("Relative", func(t *testing.T) {

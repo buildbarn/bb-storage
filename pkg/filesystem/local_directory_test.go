@@ -243,7 +243,7 @@ func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 	require.NoError(t, err)
 	targetPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
 	require.NoError(t, path.Resolve(targetParser, scopeWalker))
-	require.Equal(t, "/foo/bar/baz", targetPath.String())
+	require.Equal(t, "/foo/bar/baz", targetPath.GetUNIXString())
 	require.NoError(t, d.Close())
 }
 

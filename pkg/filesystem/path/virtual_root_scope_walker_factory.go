@@ -115,7 +115,7 @@ type VirtualRootScopeWalkerFactory struct {
 //	"/alias/hello" -> "/target/hello"
 //	"/"            -> Nothing
 //	"/hello"       -> Nothing
-func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string) (*VirtualRootScopeWalkerFactory, error) {
+func NewVirtualRootScopeWalkerFactory(rootPath Parser, aliases map[string]string) (*VirtualRootScopeWalkerFactory, error) {
 	wf := &VirtualRootScopeWalkerFactory{
 		rootNode: namelessVirtualRootNode{
 			down: map[Component]*namedVirtualRootNode{},
@@ -127,19 +127,15 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 	rootPathBuilder, rootPathWalker := EmptyBuilder.Join(
 		NewAbsoluteScopeWalker(&rootCreator))
 
-	path, err := NewUNIXParser(rootPath)
-	if err != nil {
-		return nil, util.StatusWrapf(err, "Failed to parse root path %#v", rootPath)
-	}
-	if err := Resolve(path, rootPathWalker); err != nil {
-		return nil, util.StatusWrapf(err, "Failed to resolve root path %#v", rootPath)
+	if err := Resolve(rootPath, rootPathWalker); err != nil {
+		return nil, util.StatusWrap(err, "Failed to resolve root path")
 	}
 	rootCreator.namelessNode.isRoot = true
 
 	for alias, target := range aliases {
 		aliasPath, err := NewUNIXParser(alias)
 		if err != nil {
-			return nil, util.StatusWrapf(err, "Failed to parse alias path %#v", rootPath)
+			return nil, util.StatusWrapf(err, "Failed to parse alias path %#v", aliasPath)
 		}
 		targetPath, err := NewUNIXParser(target)
 		if err != nil {
@@ -165,11 +161,7 @@ func NewVirtualRootScopeWalkerFactory(rootPath string, aliases map[string]string
 		if err := Resolve(targetPath, targetPathWalker); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias target %#v", target)
 		}
-		parser, err := NewUNIXParser(targetPathBuilder.String())
-		if err != nil {
-			return nil, err
-		}
-		aliasCreator.namedNode.target = parser
+		aliasCreator.namedNode.target = targetPathBuilder
 	}
 	return wf, nil
 }

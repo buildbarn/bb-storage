@@ -16,6 +16,8 @@ type Trace struct {
 	component Component
 }
 
+var _ Stringer = &Trace{}
+
 // Append a pathname component. The original trace is left intact.
 func (t *Trace) Append(component Component) *Trace {
 	return &Trace{
@@ -32,7 +34,9 @@ func (t *Trace) writeToStringBuilder(sb *strings.Builder) {
 	sb.WriteString(t.component.String())
 }
 
-func (t *Trace) String() string {
+// GetUNIXString returns a string representation of the path for use on
+// UNIX-like operating systems.
+func (t *Trace) GetUNIXString() string {
 	if t == nil {
 		return "."
 	}
