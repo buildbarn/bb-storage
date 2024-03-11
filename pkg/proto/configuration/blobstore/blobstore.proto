@@ -195,8 +195,8 @@ message BlobAccessConfiguration {
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
 
-    // Actually a hybrid of spanner and GCS.
-    SpannerBlobAccessConfiguration spanner = 28;
+    // A hybrid of spanner and GCS.
+    SpannerGCSBlobAccessConfiguration spanner_gcs = 28;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -328,7 +328,7 @@ message StorageType {
   }
 }
 
-message SpannerBlobAccessConfiguration {
+message SpannerGCSBlobAccessConfiguration {
   // Name of Spanner database.
   string spanner_db_name = 1;
 
