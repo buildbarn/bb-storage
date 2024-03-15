@@ -91,10 +91,13 @@ oci_register_toolchains(
 #   base_image_repository = "distroless/static",
 # )
 oci_pull(
-    name = "distroless_static",
-    digest = "sha256:fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4",
-    image = "gcr.io/distroless/static",
-    platforms = ["linux/amd64","linux/arm64"],
+    name = "distroless_base",
+    digest = "sha256:ccaef5ee2f1850270d453fdf700a5392534f8d1a8ca2acda391fbb6a06b81c86",
+    image = "gcr.io/distroless/base",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64",
+    ],
 )
 
 gazelle_dependencies()
