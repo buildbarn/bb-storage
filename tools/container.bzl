@@ -1,11 +1,9 @@
-load("@io_bazel_rules_docker//container:container.bzl", "container_push")
+load("@rules_oci//oci:defs.bzl", "oci_push")
 
 def container_push_official(name, image, component):
-    container_push(
+    oci_push(
         name = name,
-        format = "Docker",
         image = image,
-        registry = "ghcr.io",
-        repository = "buildbarn/" + component,
-        tag = "{BUILD_SCM_TIMESTAMP}-{BUILD_SCM_REVISION}",
+        repository = "ghcr.io/buildbarn/" + component,
+        remote_tags = "//tools:stamped_tags",
     )

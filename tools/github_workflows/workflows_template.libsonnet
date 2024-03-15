@@ -41,6 +41,7 @@
       buildAndTestCommand: 'build',
       // Building '//...' is broken for FreeBSD, because rules_docker
       // doesn't want to initialize properly.
+      // TODO(who?): now that rules_docker is removed, this could be revisited
       buildJustBinaries: true,
       extension: '',
     },

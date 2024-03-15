@@ -1,3 +1,4 @@
+load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -10,4 +11,15 @@ go_library(
         "@cc_mvdan_gofumpt//:gofumpt",
         "@org_golang_x_lint//:lint",
     ],
+)
+
+# When built with --stamp, creates a non-deterministic output file for pushing images to a remote registry.
+# With --nostamp, produces a deterministic output so dependents get cache hits.
+expand_template(
+    name = "stamped_tags",
+    out = "_stamped.tags.txt",
+    stamp_substitutions = {"_TAG_": "{BUILD_SCM_TIMESTAMP}-{BUILD_SCM_REVISION}"},
+    substitutions = {"_TAG_": "0.0.0"},
+    template = ["_TAG_"],
+    visibility = ["//visibility:public"],
 )

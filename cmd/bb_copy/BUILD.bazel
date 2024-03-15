@@ -1,6 +1,7 @@
-load("//tools:container.bzl", "container_push_official")
-load("@io_bazel_rules_docker//go:image.bzl", "go_image")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools:container.bzl", "container_push_official")
 
 go_library(
     name = "bb_copy_lib",
@@ -20,18 +21,43 @@ go_library(
     ],
 )
 
-go_binary(
-    name = "bb_copy",
-    embed = [":bb_copy_lib"],
-    pure = "on",
-    visibility = ["//visibility:public"],
-)
+[
+    go_binary(
+        name = "bb_copy-{}".format(goarch),
+        embed = [":bb_copy_lib"],
+        pure = "on",
+        goarch = goarch,
+        goos = "linux",
+        visibility = ["//visibility:public"],
+    )
+    for goarch in ["amd64", "arm64"]
+]
 
-go_image(
+[
+    pkg_tar(
+        name = "tar-{}".format(goarch),
+        srcs = ["bb_copy-{}".format(goarch)],
+        package_dir = "/app/cmd/bb_storage",
+    )
+    for goarch in ["amd64", "arm64"]
+]
+
+[
+    oci_image(
+        name = "image-{}".format(goarch),
+        base = "@distroless_static",
+        entrypoint = ["/app/cmd/bb_storage/bb_copy-{}".format(goarch)],
+        tars = ["tar-{}".format(goarch)],
+    )
+    for goarch in ["amd64", "arm64"]
+]
+
+oci_image_index(
     name = "bb_copy_container",
-    embed = [":bb_copy_lib"],
-    pure = "on",
-    visibility = ["//visibility:public"],
+    images = [
+        ":image-arm64",
+        ":image-amd64",
+    ],
 )
 
 container_push_official(
