@@ -20,7 +20,7 @@ def multiarch_go_image(name, binary):
     )
     oci_image(
         name = image_target,
-        base = "@distroless_base",
+        base = "@distroless_static",
         entrypoint = ["/app/cmd/bb_storage/{}".format(binary)],
         tars = [tar_target],
     )

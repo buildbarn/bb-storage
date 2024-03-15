@@ -81,7 +81,7 @@ oci_register_toolchains(
     crane_version = LATEST_CRANE_VERSION,
 )
 
-# NB: this base image is chosen to exactly match what we had when using rules_docker
+# NB: this base image is chosen to match what we had when using rules_docker
 # prior to March 2024:
 # $ bazel query --output=build @go_image_static//image:image
 # container_import(
@@ -91,9 +91,10 @@ oci_register_toolchains(
 #   base_image_repository = "distroless/static",
 # )
 oci_pull(
-    name = "distroless_base",
+    name = "distroless_static",
+    # Note, we cannot use the same digest as it didn't have an arm64 entry in the index
     digest = "sha256:ccaef5ee2f1850270d453fdf700a5392534f8d1a8ca2acda391fbb6a06b81c86",
-    image = "gcr.io/distroless/base",
+    image = "gcr.io/distroless/static",
     platforms = [
         "linux/amd64",
         "linux/arm64",
