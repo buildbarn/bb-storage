@@ -12,18 +12,20 @@ def multiarch_go_image(name, binary):
     images = []
     tar_target = "_{}.tar".format(name)
     image_target = "_{}.image".format(name)
+
     pkg_tar(
         name = tar_target,
         srcs = [binary],
-        package_dir = "/app/cmd/bb_storage",
         include_runfiles = True,
     )
+
     oci_image(
         name = image_target,
         base = "@distroless_static",
-        entrypoint = ["/app/cmd/bb_storage/{}".format(binary)],
+        entrypoint = ["/app/{}".format(binary)],
         tars = [tar_target],
     )
+
     for arch in ["amd64", "arm64"]:
         arch_image_target = "{}_{}_image".format(name, arch)
         target_platform = "@io_bazel_rules_go//go/toolchain:linux_{}".format(arch)
