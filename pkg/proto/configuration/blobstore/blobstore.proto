@@ -60,7 +60,7 @@ message BlobAccessConfiguration {
     //
     // When replacing a backend with new storage, it will be replicated
     // automatically.
-    TriMirroredBlobAccessConfiguration tri_mirrored = 28;
+    TriMirroredBlobAccessConfiguration tri_mirrored = 29;
 
     // Store blobs on the local system.
     LocalBlobAccessConfiguration local = 15;
