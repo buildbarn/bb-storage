@@ -17,12 +17,13 @@ def multiarch_go_image(name, binary):
         name = tar_target,
         srcs = [binary],
         include_runfiles = True,
+        package_dir = "app",
     )
 
     oci_image(
         name = image_target,
         base = "@distroless_static",
-        entrypoint = ["/app/{}".format(binary)],
+        entrypoint = ["/app/{}".format(binary.removeprefix(":"))],
         tars = [tar_target],
     )
 
