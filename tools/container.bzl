@@ -4,7 +4,7 @@ load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 def multiarch_go_image(name, binary):
     """Create a container image with two variants of the given go_binary target.
-    
+
     Args:
         name: resulting oci_image_index target
         binary: label of a go_binary target; it may be transitioned to another architecture
