@@ -23,7 +23,7 @@ def multiarch_go_image(name, binary):
     oci_image(
         name = image_target,
         base = "@distroless_static",
-        entrypoint = ["/app/{}".format(binary.removeprefix(":"))],
+        entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)],
         tars = [tar_target],
     )
 
