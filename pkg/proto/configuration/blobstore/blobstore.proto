@@ -341,6 +341,11 @@ message SpannerGCSBlobAccessConfiguration {
 
   // Expiration time in days.  The default is 7 days.
   uint64 expiration_days = 4;
+
+  // Optional: Google Cloud Platform (GCP) client options for objects
+  // loaded from GCS
+  buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
+      gcp_client_options = 5;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block

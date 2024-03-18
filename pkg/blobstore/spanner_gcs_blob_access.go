@@ -35,18 +35,16 @@ import (
 	"sync"
 	"time"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
-
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/api/iterator"
+        "google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -67,18 +65,21 @@ const (
 	BE_SPANNER = "SPANNER"
 	BE_GCS     = "GCS"
 
+	// Operations on blobs
 	BE_GET   = "GET"
 	BE_DEL   = "DEL"
 	BE_PUT   = "PUT"
 	BE_FM    = "FINDMISSING"
 	BE_TOUCH = "TOUCH"
 
-	ST_AC  = "AC"
-	ST_CAS = "CAS"
+	// Blob storage locations.
+	// A bitmask makes it easier to support GCS-FUSE when we write small blobs everywhere.
+	LOC_SPANNER = 0x01
+	LOC_GCS	    = 0x02
 )
 
 var (
-	spannerBlobAccessPrometheusMetrics sync.Once
+	spannerGCSBlobAccessPrometheusMetrics sync.Once
 
 	spannerMalformedKeyCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -182,31 +183,32 @@ var (
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
 		[]string{"storage_type", "backend_type", "operation"})
-
-	BEMap = map[pb.StorageType_Value]string{
-		pb.StorageType_CASTORE:      ST_CAS,
-		pb.StorageType_ACTION_CACHE: ST_AC,
-	}
 )
 
-type spannerBlobAccess struct {
+type spannerGCSBlobAccess struct {
 	capabilities.Provider
 
 	spannerClient *spanner.Client
 	gcsBucket     *storage.BucketHandle
 
 	readBufferFactory ReadBufferFactory
-	storageType       pb.StorageType_Value
+	storageType       string
 	daysToLive        uint64        // to avoid converting back and forth
 	expirationAge     time.Duration // same as above, but easier for time calculations
 	refUpdateThresh   time.Duration // when we start updating ReferenceTime
-	refChan           chan string
+	refChan           chan keyLoc
 }
 
 type spannerRecord struct {
 	Key           string
 	InlineData    []byte
 	ReferenceTime time.Time
+}
+
+// Keep track of keys and the storage locations where they reside.
+type keyLoc struct {
+	key	string
+	loc	int
 }
 
 // databaseName is of the form "projects/<project ID>/instances/<instance name>/databases/<database name>".
@@ -359,33 +361,56 @@ func updateGCSDeletionPolicy(ctx context.Context, gcsBucket *storage.BucketHandl
 }
 
 // Convert a digest to the key of the entry in the Spanner database and GCS bucket.
-func (ba *spannerBlobAccess) digestToKey(digest digest.Digest) string {
+func (ba *spannerGCSBlobAccess) digestToKey(digest digest.Digest) string {
 	sz := strconv.FormatInt(digest.GetSizeBytes(), 10)
-	if ba.storageType == pb.StorageType_ACTION_CACHE {
+	if ba.storageType == "AC" {
 		// Instance names are hierarchical, but '/' has special meaning for GCS.
 		// We don't need a hierarchical namespace for storage.
 		instance := strings.ReplaceAll(digest.GetInstanceName().String(), "/", "-")
 		return digest.GetHashString() + "-" + sz + "-" + instance
-	} else if ba.storageType == pb.StorageType_CASTORE {
+	} else if ba.storageType == "CAS" {
 		return digest.GetHashString() + "-" + sz
 	} else {
-		// Code in pkg/blobaccess/configuration/new_blob_access.go should prevent this, but
-		// since that lives in a separate place, let's be sure.
 		panic("Invalid Spanner storage Type configured")
 	}
 }
 
-func (ba *spannerBlobAccess) keyToBlobSize(key string) (int64, error) {
+func (ba *spannerGCSBlobAccess) findLocFromDigest(digest digest.Digest) int {
+	var loc int
+	if ba.storageType == "AC" {
+		panic("Can't call fileLocFromDigest for Action Cache")
+	}
+	sz := digest.GetSizeBytes()
+	if sz > maxSize {
+		loc |= LOC_GCS
+	} else {
+		loc |= LOC_SPANNER
+	}
+	return loc
+}
+
+func (ba *spannerGCSBlobAccess) findLocFromKey(key string) (int, error) {
+	if ba.storageType == "AC" {
+		panic("Can't call fileLocFromKey for Action Cache")
+	}
 	s := strings.Split(key, "-")
 	sz, err := strconv.ParseInt(s[1], 10, 64)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
-	return sz, nil
+	var loc int
+	if sz > maxSize {
+		loc |= LOC_GCS
+	} else {
+		loc |= LOC_SPANNER
+	}
+	return loc, nil
 }
 
-// NewSpannerBlobAccess creates a BlobAccess that uses Spanner and GCS as its backing store.
-func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferFactory ReadBufferFactory, storageType pb.StorageType_Value, daysToLive uint64) (BlobAccess, error) {
+// NewSpannerGCSBlobAccess creates a BlobAccess that uses Spanner and GCS as its backing store.
+func NewSpannerGCSBlobAccess(databaseName string, gcsBucketName string, readBufferFactory ReadBufferFactory, storageType string, daysToLive uint64, capabilitiesProvider capabilities.Provider, clientOpts []option.ClientOption) (BlobAccess, error) {
+	storageType = strings.ToUpper(storageType)
+
 	// If daysToLive is zero, use the default.
 	if daysToLive == 0 {
 		daysToLive = defaultDaysToLive
@@ -398,7 +423,7 @@ func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferF
 	s = strconv.FormatUint(12*daysToLive, 10) + "h" // half of the expiration age
 	refUpdateThresh, _ := time.ParseDuration(s)
 
-	spannerBlobAccessPrometheusMetrics.Do(func() {
+	spannerGCSBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(spannerMalformedKeyCount)
 		prometheus.MustRegister(gcsReftimeUpdateCount)
 		prometheus.MustRegister(gcsReftimeUpdateFailedCount)
@@ -458,7 +483,7 @@ func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferF
 		}
 	}
 
-	storageClient, err := storage.NewClient(ctx)
+	storageClient, err := storage.NewClient(ctx, clientOpts...)
 	if err != nil {
 		spannerClient.Close()
 		log.Printf("Can't create GCS client: %v", err)
@@ -502,16 +527,17 @@ func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferF
 		}
 	}
 
-	log.Printf("NewSpannerBlobAccess type %#+v", storageType)
+	log.Printf("NewSpannerGCSBlobAccess type %s", storageType)
 
 	// FindMissing takes care of updaing the reference time on CAS objects, but we'd like to update
 	// AC objects when they're read, to simulate an LRU cache.  Doing this one at a time is inefficient.
-	var refCh chan string
-	if storageType == pb.StorageType_ACTION_CACHE {
-		refCh = make(chan string, maxRefBulkSz)
+	var refCh chan keyLoc
+	if storageType == "AC" {
+		refCh = make(chan keyLoc, maxRefBulkSz)
 	}
 
-	ba := &spannerBlobAccess{
+	ba := &spannerGCSBlobAccess{
+		Provider:      capabilitiesProvider,
 		spannerClient: spannerClient,
 		gcsBucket:     gcsBucket,
 
@@ -528,73 +554,39 @@ func NewSpannerBlobAccess(databaseName string, gcsBucketName string, readBufferF
 	return ba, nil
 }
 
-func (ba *spannerBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
-	if ba.storageType == pb.StorageType_ACTION_CACHE {
-		return &remoteexecution.ServerCapabilities{
-			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				ActionCacheUpdateCapabilities: &remoteexecution.ActionCacheUpdateCapabilities{
-					UpdateEnabled: true,
-				},
-				SymlinkAbsolutePathStrategy: remoteexecution.SymlinkAbsolutePathStrategy_ALLOWED,
-			},
-		}, nil
-	} else if ba.storageType == pb.StorageType_CASTORE {
-		return &remoteexecution.ServerCapabilities{
-			CacheCapabilities: &remoteexecution.CacheCapabilities{
-				DigestFunctions: digest.SupportedDigestFunctions,
-			},
-		}, nil
-	} else {
-		// Code in pkg/blobaccess/configuration/new_blob_access.go should prevent this, but
-		// since that lives in a separate place, let's be sure.
-		panic("Invalid Spanner storage Type configured")
-	}
-}
-
-func (ba *spannerBlobAccess) delete(ctx context.Context, key string) error {
-	sz, err := ba.keyToBlobSize(key)
-	if err != nil {
-		spannerMalformedKeyCount.Inc()
-		return err
-	}
+func (ba *spannerGCSBlobAccess) delete(ctx context.Context, key string, loc int) error {
 	deleteMut := spanner.Delete(tableName, spanner.Key{key})
 	start := time.Now()
-	_, err = ba.spannerClient.Apply(ctx, []*spanner.Mutation{deleteMut})
-	backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_SPANNER, BE_DEL).Observe(time.Now().Sub(start).Seconds())
+	_, err := ba.spannerClient.Apply(ctx, []*spanner.Mutation{deleteMut})
+	backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_SPANNER, BE_DEL).Observe(time.Now().Sub(start).Seconds())
 	if err != nil {
 		return err
 	}
 
 	// Now if it was also in GCS, delete it there
-	if sz > maxSize {
+	if (loc & LOC_GCS) != 0 {
 		object := ba.gcsBucket.Object(key)
 		start := time.Now()
 		err = object.Delete(ctx)
-		backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_GCS, BE_DEL).Observe(time.Now().Sub(start).Seconds())
+		backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_GCS, BE_DEL).Observe(time.Now().Sub(start).Seconds())
 		return err
 	}
 
 	return nil
 }
 
-func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	//log.Printf("SpannerBlobAccess type %#+v GET digest %s", ba.storageType, digest)
+func (ba *spannerGCSBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+	//log.Printf("SpannerGCSBlobAccess type %#+v GET digest %s", ba.storageType, digest)
 	if err := util.StatusFromContext(ctx); err != nil {
 		return buffer.NewBufferFromError(err)
 	}
 	key := ba.digestToKey(digest)
-	//log.Printf("SpannerBlobAccess GET key is %s", key)
-	sz, err := ba.keyToBlobSize(key)
-	if err != nil {
-		spannerMalformedKeyCount.Inc()
-		log.Printf("GET error key %s: keyToBlobSize failed: %v", key, err)
-		return buffer.NewBufferFromError(err)
-	}
+	//log.Printf("SpannerGCSBlobAccess GET key is %s", key)
 
 	// Grab the row itself
 	now := time.Now().UTC()
 	row, err := ba.spannerClient.Single().ReadRow(ctx, tableName, spanner.Key{key}, []string{"InlineData", "ReferenceTime"})
-	backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_SPANNER, BE_GET).Observe(time.Now().Sub(now).Seconds())
+	backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_SPANNER, BE_GET).Observe(time.Now().Sub(now).Seconds())
 	if err != nil {
 		log.Printf("GET error: ReadRow key %s failed: %v", key, err)
 		return buffer.NewBufferFromError(err)
@@ -609,6 +601,14 @@ func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 		log.Printf("GET error: ToStruct key %s failed: %v", key, err)
 		return buffer.NewBufferFromError(err)
 	}
+
+	var loc int
+	if len(s.InlineData) == 0 {
+		loc |= LOC_GCS
+	} else {
+		loc |= LOC_SPANNER
+	}
+
 	// Exclude expired blobs -- they don't exist anymore; we're waiting for the storage to delete them.
 	if !now.Before(s.ReferenceTime.Add(ba.expirationAge)) {
 		spannerExpiredBlobReadIgnoredCount.Inc()
@@ -619,12 +619,12 @@ func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 	validationFunc := func(dataIsValid bool) {
 		if !dataIsValid {
 			var beType string
-			if sz > maxSize {
+			if (loc & LOC_GCS) != 0 {
 				beType = BE_GCS
 			} else {
 				beType = BE_SPANNER
 			}
-			if err := ba.delete(ctx, key); err == nil {
+			if err := ba.delete(ctx, key, loc); err == nil {
 				spannerMalformedBlobDeletedCount.WithLabelValues(beType).Inc()
 				log.Printf("Blob %s was malformed and has been deleted from Spanner/GCS successfully", digest.String())
 			} else {
@@ -635,14 +635,14 @@ func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 	}
 
 	var b buffer.Buffer
-	if sz > maxSize {
+	if (loc & LOC_GCS) != 0 {
 		// We gotta go get it from GCS
 		obj := ba.gcsBucket.Object(key)
 
 		r, err := obj.NewReader(ctx)
 		if err != nil {
 			// If we couldn't read the bucket, then let's delete it from spanner (and from gcs if we can!)
-			if err2 := ba.delete(ctx, key); err2 == nil {
+			if err2 := ba.delete(ctx, key, loc); err2 == nil {
 				gcsFailedReadDeletedBlobCount.Inc()
 				log.Printf("Blob %s was inaccessible in GCS (due to %v) and has been deleted from Spanner/GCS successfully", digest.String(), err)
 			} else {
@@ -654,9 +654,9 @@ func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 		b = ba.readBufferFactory.NewBufferFromReader(digest, r, validationFunc)
 		b = buffer.WithErrorHandler(
 			b,
-			&spannerErrorHandler{
+			&spannerGCSErrorHandler{
 				start:  time.Now(),
-				sType:  BEMap[ba.storageType],
+				sType:  ba.storageType,
 				beType: BE_GCS,
 				op:     BE_GET,
 			})
@@ -670,13 +670,13 @@ func (ba *spannerBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 	}
 	if ba.refChan != nil && now.After(s.ReferenceTime.Add(ba.refUpdateThresh)) {
 		log.Printf("GET: scheduling touch reftime for key %s reftime %s", key, s.ReferenceTime)
-		ba.refChan <- key
+		ba.refChan <- keyLoc{key: key, loc: loc}
 	}
 	return b
 }
 
-func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	//log.Printf("SpannerBlobAccess type %#+v PUT digest %s", ba.storageType, digest)
+func (ba *spannerGCSBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+	//log.Printf("SpannerGCSBlobAccess type %#+v PUT digest %s", ba.storageType, digest)
 	if err := util.StatusFromContext(ctx); err != nil {
 		b.Discard()
 		return err
@@ -691,23 +691,9 @@ func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 	}
 
 	key := ba.digestToKey(digest)
-	//log.Printf("SpannerBlobAccess PUT key is %s, size %d", key, size)
+	//log.Printf("SpannerGCSBlobAccess PUT key is %s, size %d", key, size)
 
 	var inlineData []byte = nil
-	if ba.storageType == pb.StorageType_CASTORE {
-		statedSize, err := ba.keyToBlobSize(key)
-		if err != nil {
-			spannerMalformedKeyCount.Inc()
-			log.Printf("Put Blob: invalid digest size, key %s: %v", key, err)
-			b.Discard()
-			return err
-		}
-		if statedSize != size {
-			log.Printf("Put Blob: MISMATCH between buffer size (%d) and digest size (%d)", size, statedSize)
-			b.Discard()
-			return fmt.Errorf("Invalid contents digest %s size %d", digest, size)
-		}
-	}
 	now := time.Now().UTC()
 	if size > maxSize {
 		obj := ba.gcsBucket.Object(key)
@@ -721,7 +707,7 @@ func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 		} else {
 			log.Printf("Blob %s can't be copied to GCS, write failed: %v", digest, err)
 		}
-		backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_GCS, BE_PUT).Observe(time.Now().Sub(start).Seconds())
+		backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_GCS, BE_PUT).Observe(time.Now().Sub(start).Seconds())
 		if err != nil {
 			if errors.Is(err, context.Canceled) || status.Code(err) == codes.Canceled {
 				gcsPutFailedContextCanceledCount.Inc()
@@ -733,7 +719,7 @@ func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 			return err
 		}
 		inlineData = nil
-		ba.touchGCSObject(context.Background(), key, now)
+		ba.touchGCSObject(ctx, key, now)
 	} else {
 		inlineData, err = b.ToByteSlice(int(maxSize))
 		if err != nil {
@@ -758,8 +744,8 @@ func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 	}
 
 	start := time.Now()
-	_, err = ba.spannerClient.Apply(context.Background(), []*spanner.Mutation{insertMut})
-	backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_SPANNER, BE_PUT).Observe(time.Now().Sub(start).Seconds())
+	_, err = ba.spannerClient.Apply(ctx, []*spanner.Mutation{insertMut})
+	backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_SPANNER, BE_PUT).Observe(time.Now().Sub(start).Seconds())
 	if err != nil {
 		log.Printf("Can'apply create mutation for Blob %s: %v", digest, err)
 		return err
@@ -768,7 +754,7 @@ func (ba *spannerBlobAccess) Put(ctx context.Context, digest digest.Digest, b bu
 }
 
 // This function is only supported for CAS objects.
-func (ba *spannerBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *spannerGCSBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	if err := util.StatusFromContext(ctx); err != nil {
 		return digest.EmptySet, err
 	}
@@ -776,7 +762,7 @@ func (ba *spannerBlobAccess) FindMissing(ctx context.Context, digests digest.Set
 		return digest.EmptySet, nil
 	}
 	// This funciton isn't supported for the action cache.
-	if ba.storageType == pb.StorageType_ACTION_CACHE {
+	if ba.storageType == "CAS" {
 		return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 	}
 
@@ -796,7 +782,7 @@ func (ba *spannerBlobAccess) FindMissing(ctx context.Context, digests digest.Set
 	stmt.Params["expdays"] = int64(ba.daysToLive)
 	start := time.Now()
 	iter := ba.spannerClient.Single().Query(ctx, stmt)
-	backendOperationsDurationSeconds.WithLabelValues(ST_CAS, BE_SPANNER, BE_FM).Observe(time.Now().Sub(start).Seconds())
+	backendOperationsDurationSeconds.WithLabelValues("CAS", BE_SPANNER, BE_FM).Observe(time.Now().Sub(start).Seconds())
 
 	missing := digest.NewSetBuilder()
 	keyToRefTime := make(map[string]time.Time, digests.Length())
@@ -834,35 +820,36 @@ func (ba *spannerBlobAccess) FindMissing(ctx context.Context, digests digest.Set
 	// Now update the CustomTime metadata attribute for the GCS Blobs we have, and the ReferenceTime field for the
 	// Spanner blobs we have.  GCS blobs also have records in spanner to make FindMissing efficient.
 	now := time.Now().UTC()
-	ksl = make([]string, digests.Length())
+	keys := make([]string, 0, digests.Length())
 	for key, refTime := range keyToRefTime {
 		if now.After(refTime.Add(ba.refUpdateThresh)) {
 			log.Printf("FINDMISSING: scheduling touch reftime for key %s reftime %s", key, refTime)
-			sz, err := ba.keyToBlobSize(key)
+			loc, err := ba.findLocFromKey(key)
 			if err != nil {
 				spannerMalformedKeyCount.Inc()
-				log.Printf("Couldn't extract size from key %s: %v", key, sz)
-			} else if sz > maxSize {
+				log.Printf("Couldn't extract location from key %s", key)
+			}
+			if (loc & LOC_GCS) != 0 {
 				ba.touchGCSObject(context.Background(), key, now)
 			}
-			ksl = append(ksl, key)
+			keys = append(keys, key)
 		}
 	}
-	if len(ksl) != 0 {
-		ba.touchSpannerObjects(context.Background(), ksl, now)
+	if len(keys) != 0 {
+		ba.touchSpannerObjects(context.Background(), keys, now)
 	}
 
 	return missing.Build(), nil
 }
 
-func (ba *spannerBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
+func (ba *spannerGCSBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
 	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
 	return b
 }
 
 // Update the CustomTime metadata attribute for the GCS blob.  We wouldn't want the blob to be deleted while we
 // still refer to it.
-func (ba *spannerBlobAccess) touchGCSObject(ctx context.Context, key string, t time.Time) error {
+func (ba *spannerGCSBlobAccess) touchGCSObject(ctx context.Context, key string, t time.Time) error {
 	gcsReftimeUpdateCount.Inc()
 	obj := ba.gcsBucket.Object(key)
 	attrs := storage.ObjectAttrsToUpdate{
@@ -871,7 +858,7 @@ func (ba *spannerBlobAccess) touchGCSObject(ctx context.Context, key string, t t
 	}
 	start := time.Now()
 	_, err := obj.Update(ctx, attrs)
-	backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_GCS, BE_TOUCH).Observe(time.Now().Sub(start).Seconds())
+	backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_GCS, BE_TOUCH).Observe(time.Now().Sub(start).Seconds())
 	if err != nil {
 		gcsReftimeUpdateFailedCount.Inc()
 		log.Printf("Couldn't update CustomTime for %s: %v", key, err)
@@ -881,7 +868,7 @@ func (ba *spannerBlobAccess) touchGCSObject(ctx context.Context, key string, t t
 }
 
 // Update the ReferenceTime field the Spanner blob.
-func (ba *spannerBlobAccess) touchSpannerObjects(ctx context.Context, keys []string, t time.Time) error {
+func (ba *spannerGCSBlobAccess) touchSpannerObjects(ctx context.Context, keys []string, t time.Time) error {
 	spannerReftimeUpdateCount.Inc()
 	start := time.Now()
 	_, err := ba.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -900,24 +887,26 @@ func (ba *spannerBlobAccess) touchSpannerObjects(ctx context.Context, keys []str
 		}
 		return nil
 	})
-	backendOperationsDurationSeconds.WithLabelValues(BEMap[ba.storageType], BE_SPANNER, BE_TOUCH).Observe(time.Now().Sub(start).Seconds())
+	backendOperationsDurationSeconds.WithLabelValues(ba.storageType, BE_SPANNER, BE_TOUCH).Observe(time.Now().Sub(start).Seconds())
 	return err
 }
 
 // Process deferred access time updates from action cache GET operations.
-func (ba *spannerBlobAccess) bulkUpdate(in <-chan string) {
+func (ba *spannerGCSBlobAccess) bulkUpdate(in <-chan keyLoc) {
 	keys := make([]string, 0, maxRefBulkSz)
+	locs := make([]int, 0, maxRefBulkSz)
 	keyMap := make(map[string]bool, maxRefBulkSz) // used to dedup the list of keys
 	t := time.NewTimer(maxRefHours * time.Hour)
 	timedout := false
 	for {
 		select {
-		case key := <-in:
-			if keyMap[key] {
-				log.Printf("SKIPPING duplicate key %s", key)
+		case kl := <-in:
+			if keyMap[kl.key] {
+				log.Printf("SKIPPING duplicate key %s", kl.key)
 			} else {
-				keyMap[key] = true
-				keys = append(keys, key)
+				keyMap[kl.key] = true
+				keys = append(keys, kl.key)
+				locs = append(locs, kl.loc)
 			}
 		case <-t.C:
 			timedout = true
@@ -931,15 +920,13 @@ func (ba *spannerBlobAccess) bulkUpdate(in <-chan string) {
 			// It's unlikely an AC entry would be so large, but I guess we should handle this just in case
 			// it occurs.  I mean, looking at the ActionResult proto definition, it's possble for it to be
 			// too large to fit in a spanner row.
-			for _, key := range keys {
-				sz, err := ba.keyToBlobSize(key)
-				if err != nil {
-					spannerMalformedKeyCount.Inc()
-				} else if sz > maxSize {
-					go ba.touchGCSObject(context.Background(), key, now)
+			for idx, loc := range locs {
+				if (loc & LOC_GCS) != 0 {
+					go ba.touchGCSObject(context.Background(), keys[idx], now)
 				}
 			}
 			keys = make([]string, 0, maxRefBulkSz)
+			locs = make([]int, 0, maxRefBulkSz)
 			keyMap = make(map[string]bool, maxRefBulkSz)
 		}
 
@@ -959,17 +946,17 @@ func (ba *spannerBlobAccess) bulkUpdate(in <-chan string) {
 	}
 }
 
-type spannerErrorHandler struct {
+type spannerGCSErrorHandler struct {
 	start  time.Time
 	sType  string
 	beType string
 	op     string
 }
 
-func (eh *spannerErrorHandler) OnError(err error) (buffer.Buffer, error) {
+func (eh *spannerGCSErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	return nil, err
 }
 
-func (eh *spannerErrorHandler) Done() {
+func (eh *spannerGCSErrorHandler) Done() {
 	backendOperationsDurationSeconds.WithLabelValues(eh.sType, eh.beType, eh.op).Observe(time.Now().Sub(eh.start).Seconds())
 }
