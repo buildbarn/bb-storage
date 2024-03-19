@@ -3,7 +3,6 @@ package configuration
 import (
 	"archive/zip"
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -358,11 +357,10 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_SpannerGcs:
-		fmt.Printf("SpannerGcs: storage type %s\n", storageTypeName)
 		var digestKeyFormat digest.KeyFormat
-		if storageTypeName == "AC" {
+		if storageTypeName == "ac" {
 			digestKeyFormat = digest.KeyWithInstance
-		} else if storageTypeName == "CAS" {
+		} else if storageTypeName == "cas" {
 			digestKeyFormat = digest.KeyWithoutInstance
 		} else {
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Unknown SpannerGcs storage type")
