@@ -369,8 +369,9 @@ message SpannerGCSBlobAccessConfiguration {
   // format the keys for storage objects.
   StorageType.Value storage_type = 3;
 
-  // Expiration time in days.  The default is 7 days.
-  uint64 expiration_days = 4;
+  // Expiration time -- how long blobs live in the cache without being referenced
+  // before being evicted.  Default is 7 days.
+  google.protobuf.Duration expiration_time = 4;
 
   // Optional: Google Cloud Platform (GCP) client options for objects
   // loaded from GCS
