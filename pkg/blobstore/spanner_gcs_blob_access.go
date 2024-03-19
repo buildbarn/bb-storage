@@ -424,10 +424,10 @@ func NewSpannerGCSBlobAccess(databaseName string, gcsBucketName string, readBuff
 	} else {
 		daysToLive = uint64(roundUpToDay(expirationTime) / nsecsPerDay)
 	}
+	log.Printf("daysToLive = %d", daysToLive)
 	expirationTime = time.Duration(daysToLive * nsecsPerDay)
 	// The reference time update threshold is half of the expiration age
 	refUpdateThresh := expirationTime / 2
-	fmt.Printf("daysToLive = %d, expirationTime = %d, refUpdateThresh = %d\n", daysToLive, expirationTime, refUpdateThresh)
 
 	spannerGCSBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(spannerMalformedKeyCount)
@@ -768,7 +768,7 @@ func (ba *spannerGCSBlobAccess) FindMissing(ctx context.Context, digests digest.
 		return digest.EmptySet, nil
 	}
 	// This funciton isn't supported for the action cache.
-	if ba.storageType == "CAS" {
+	if ba.storageType == "AC" {
 		return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 	}
 

@@ -358,9 +358,9 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_SpannerGcs:
 		var digestKeyFormat digest.KeyFormat
-		if storageTypeName == "AC" {
+		if storageTypeName == "ac" {
 			digestKeyFormat = digest.KeyWithInstance
-		} else if storageTypeName == "CAS" {
+		} else if storageTypeName == "cas" {
 			digestKeyFormat = digest.KeyWithoutInstance
 		} else {
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Unknown SpannerGcs storage type")
