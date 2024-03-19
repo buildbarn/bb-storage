@@ -768,7 +768,7 @@ func (ba *spannerGCSBlobAccess) FindMissing(ctx context.Context, digests digest.
 		return digest.EmptySet, nil
 	}
 	// This funciton isn't supported for the action cache.
-	if ba.storageType == "CAS" {
+	if ba.storageType == "AC" {
 		return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 	}
 
