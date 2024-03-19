@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.tls;
 
 import "google/protobuf/duration.proto";
+import "pkg/proto/configuration/spiffe/spiffe.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls";
 
@@ -42,6 +43,11 @@ message ClientConfiguration {
   // x509 Key-Pair to use for client TLS. No client
   // certificate/private key is used when left unset.
   X509KeyPair client_key_pair = 6;
+
+  // When using SPIFFE IDs, it makes no sense to validate hostnames or
+  // IP addresses.  Setting this disables that logic during the TLS
+  // handshake, because validation is handled by the SPIFFE authorizer.
+  buildbarn.configuration.spiffe.SubjectMatcher spiffe = 7;
 }
 
 message ServerConfiguration {
@@ -63,6 +69,9 @@ message ServerConfiguration {
 
   // x509 Key-Pair to use for server TLS.
   X509KeyPair server_key_pair = 4;
+
+  // Whether to validate client certs for mTLS.
+  bool validate_client_certs = 5;
 }
 
 message X509KeyPair {

@@ -6,6 +6,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
+import "pkg/proto/configuration/spiffe/spiffe.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
@@ -426,6 +427,9 @@ message TLSClientCertificateAuthenticationPolicy {
   //
   //     `{}`
   string metadata_extraction_jmespath_expression = 4;
+
+  // Spiffe
+  buildbarn.configuration.spiffe.SubjectMatcher spiffe = 5;
 }
 
 message TracingMethodConfiguration {

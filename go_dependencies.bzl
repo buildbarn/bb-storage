@@ -449,8 +449,8 @@ def go_dependencies():
     go_repository(
         name = "com_github_konsorten_go_windows_terminal_sequences",
         importpath = "github.com/konsorten/go-windows-terminal-sequences",
-        sum = "h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=",
-        version = "v1.0.1",
+        sum = "h1:CE8S1cTafDpPvMhIxNJKvHsGVBgn1xWYf1NbHQhywc8=",
+        version = "v1.0.3",
     )
     go_repository(
         name = "com_github_kr_pretty",
@@ -527,8 +527,8 @@ def go_dependencies():
     go_repository(
         name = "com_github_pkg_errors",
         importpath = "github.com/pkg/errors",
-        sum = "h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
-        version = "v0.8.1",
+        sum = "h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=",
+        version = "v0.9.1",
     )
     go_repository(
         name = "com_github_pmezard_go_difflib",
@@ -587,8 +587,14 @@ def go_dependencies():
     go_repository(
         name = "com_github_sirupsen_logrus",
         importpath = "github.com/sirupsen/logrus",
-        sum = "h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=",
-        version = "v1.4.2",
+        sum = "h1:UBcNElsrwanuuMsnGSlYmtmgbb23qDR5dG+6X6Oo89I=",
+        version = "v1.6.0",
+    )
+    go_repository(
+        name = "com_github_spiffe_go_spiffe_v2",
+        importpath = "github.com/spiffe/go-spiffe/v2",
+        sum = "h1:ou8ywBGFdYdG4BXjB/EBk2ND3OhtAwiMxLEbYcUS+ts=",
+        version = "v2.0.0-beta.8",
     )
     go_repository(
         name = "com_github_stretchr_objx",
@@ -613,6 +619,12 @@ def go_dependencies():
         importpath = "github.com/yuin/goldmark",
         sum = "h1:fVcFKWvrslecOb/tg+Cc05dkeYx540o0FuFt3nUVDoE=",
         version = "v1.4.13",
+    )
+    go_repository(
+        name = "com_github_zeebo_errs",
+        importpath = "github.com/zeebo/errs",
+        sum = "h1:5NFypMTuSdoySVTqlNs1dEoU21QVamMQJxW/Fii5O7g=",
+        version = "v1.2.2",
     )
     go_repository(
         name = "com_google_cloud_go",

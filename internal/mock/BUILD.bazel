@@ -196,11 +196,20 @@ gomock(
     name = "grpc",
     out = "grpc.go",
     interfaces = [
-        "Authenticator",
         "ClientDialer",
         "ClientFactory",
     ],
     library = "//pkg/grpc",
+    package = "mock",
+)
+
+gomock(
+    name = "grpcauth",
+    out = "grpcauth.go",
+    interfaces = [
+        "Authenticator",
+    ],
+    library = "//pkg/grpcauth",
     mock_names = {"Authenticator": "MockGRPCAuthenticator"},
     package = "mock",
 )
@@ -319,6 +328,7 @@ go_library(
         "filesystem.go",
         "filesystem_path.go",
         "grpc.go",
+        "grpcauth.go",
         "grpc_go.go",
         "http.go",
         "jwt.go",

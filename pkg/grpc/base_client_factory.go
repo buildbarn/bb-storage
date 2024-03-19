@@ -2,9 +2,11 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"net/url"
 
+	"github.com/buildbarn/bb-storage/pkg/bb_tls"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
@@ -52,7 +54,13 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	// Optional: TLS.
-	tlsConfig, err := util.NewTLSConfigFromClientConfiguration(config.Tls)
+	var err error
+	var tlsConfig *tls.Config
+	if config.Tls != nil && config.Tls.Spiffe != nil {
+		tlsConfig, err = bb_tls.NewMTLSConfigFromClientConfiguration(config.Tls)
+	} else {
+		tlsConfig, err = bb_tls.NewTLSConfigFromClientConfiguration(config.Tls)
+	}
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create TLS configuration")
 	}

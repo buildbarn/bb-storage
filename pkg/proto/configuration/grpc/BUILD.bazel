@@ -9,6 +9,7 @@ proto_library(
     deps = [
         "//pkg/proto/auth:auth_proto",
         "//pkg/proto/configuration/jwt:jwt_proto",
+        "//pkg/proto/configuration/spiffe:spiffe_proto",
         "//pkg/proto/configuration/tls:tls_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
@@ -23,6 +24,7 @@ go_proto_library(
     deps = [
         "//pkg/proto/auth",
         "//pkg/proto/configuration/jwt",
+        "//pkg/proto/configuration/spiffe",
         "//pkg/proto/configuration/tls",
     ],
 )

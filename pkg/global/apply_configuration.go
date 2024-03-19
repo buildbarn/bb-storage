@@ -13,6 +13,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
@@ -84,7 +85,7 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 // ApplyConfiguration applies configuration options to the running
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
-func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_grpc.ClientFactory, error) {
+func ApplyConfiguration(configuration *pb.Configuration, filesystems []string) (*LifecycleState, bb_grpc.ClientFactory, error) {
 	// Set the umask, if requested.
 	if setUmaskConfiguration := configuration.GetSetUmask(); setUmaskConfiguration != nil {
 		if err := setUmask(setUmaskConfiguration.Umask); err != nil {
@@ -150,6 +151,38 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 				util.DecimalExponentialBuckets(-3, 6, 2)))
 		grpcUnaryInterceptors = append(grpcUnaryInterceptors, grpc_prometheus.UnaryClientInterceptor)
 		grpcStreamInterceptors = append(grpcStreamInterceptors, grpc_prometheus.StreamClientInterceptor)
+
+		// If there are file systems to monitor, start the goroutine to sample the file systems statistics periodically.
+		if len(filesystems) != 0 {
+			go func() {
+				fsStats := prometheus.NewGaugeVec(
+					prometheus.GaugeOpts{
+						Namespace: "buildbarn",
+						Subsystem: "system",
+						Name:      "fs_stats",
+						Help:      "File system usage statistics",
+					},
+					[]string{"fs_name", "resource"})
+				prometheus.MustRegister(fsStats)
+				for {
+					for _, fs := range filesystems {
+						var sbuf syscall.Statfs_t
+						err := syscall.Statfs(fs, &sbuf)
+						if err != nil {
+							log.Print("Failed to get filesystem stats: ", err)
+							continue
+						}
+						// Calculate % blocks used.
+						bu := 100.0 * float64(sbuf.Blocks - sbuf.Bavail) / float64(sbuf.Blocks)
+						// Calculate % inodes used.
+						iu := 100.0 * float64(sbuf.Files - sbuf.Ffree) / float64(sbuf.Files)
+						fsStats.WithLabelValues(fs, "blocks").Set(bu)
+						fsStats.WithLabelValues(fs, "inodes").Set(iu)
+					}
+					time.Sleep(30*time.Second)
+				}
+			}()
+		}
 	}
 
 	// Perform tracing using OpenTelemetry.

@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_google_protobuf//:duration_proto",
+        "//pkg/proto/configuration/spiffe:spiffe_proto",
     ],
 )
 
@@ -16,6 +17,9 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls",
     proto = ":tls_proto",
     visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/spiffe",
+    ],
 )
 
 go_library(

@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.auth;
 
 import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/spiffe/spiffe.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth";
 
@@ -36,6 +37,9 @@ message AuthorizerConfiguration {
     // "instanceName" corresponds to the REv2 instance name that was
     // part of the client request.
     string jmespath_expression = 4;
+
+    // Allow based on Spiffe-IDs
+    SpiffeAuthorizer spiffe = 5;
   }
 }
 
@@ -43,4 +47,21 @@ message InstanceNameAuthorizer {
   // Instance name prefixes to which access is allowed.
   // The empty string may be used to indicate all instance names.
   repeated string allowed_instance_name_prefixes = 1;
+}
+
+// SpiffeAuthorizer  maps instance names to Spiffe-Subject matchers.
+//
+// An example configuration might look like
+//  {
+// 	spiffe:{
+// 		instanceNameSubjectMap:{
+// 			"foo":{
+// 				allowedSpiffeIds:{"example.com":"workload-1"}
+// 			}
+// 		}
+// 	}
+// }
+message SpiffeAuthorizer {
+  map<string, buildbarn.configuration.spiffe.SubjectMatcher>
+      instance_name_subject_map = 1;
 }

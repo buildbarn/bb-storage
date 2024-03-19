@@ -2,11 +2,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "testutil",
-    srcs = ["testutil.go"],
+    srcs = [
+        "testutil.go",
+        "fake_certs.go",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/testutil",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/clock",
         "@com_github_golang_mock//gomock",
+        "@com_github_spiffe_go_spiffe_v2//spiffeid",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",

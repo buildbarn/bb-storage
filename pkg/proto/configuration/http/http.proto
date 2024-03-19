@@ -54,6 +54,10 @@ message ServerConfiguration {
   // the authorization layer. The authentication metadata may be used to
   // store the username or sets of permissions.
   AuthenticationPolicy authentication_policy = 2;
+
+  // Optional TLS configuration for the BuildBarn HTTP servers.
+  // TLS is not enabled when left unset.
+  buildbarn.configuration.tls.ServerConfiguration tls = 3;
 }
 
 message AuthenticationPolicy {
