@@ -60,6 +60,7 @@ const (
 	maxRefBulkSz            = 600 // Maximum number of hashes to gather before doing a bulk reftime update
 	maxRefHours             = 1   // Maximum time to wait before updating reference times
 	defaultDaysToLive       = 7
+	nsecsPerDay              = 86400000000000
 
 	// Labels for backend metrics
 	BE_SPANNER = "SPANNER"
@@ -407,21 +408,26 @@ func (ba *spannerGCSBlobAccess) findLocFromKey(key string) (int, error) {
 	return loc, nil
 }
 
+func roundUpToDay(d time.Duration) time.Duration {
+	return ((d + nsecsPerDay - 1) / nsecsPerDay) * nsecsPerDay
+}
+
 // NewSpannerGCSBlobAccess creates a BlobAccess that uses Spanner and GCS as its backing store.
-func NewSpannerGCSBlobAccess(databaseName string, gcsBucketName string, readBufferFactory ReadBufferFactory, storageType string, daysToLive uint64, capabilitiesProvider capabilities.Provider, clientOpts []option.ClientOption) (BlobAccess, error) {
+func NewSpannerGCSBlobAccess(databaseName string, gcsBucketName string, readBufferFactory ReadBufferFactory, storageType string, expirationTime time.Duration, capabilitiesProvider capabilities.Provider, clientOpts []option.ClientOption) (BlobAccess, error) {
 	storageType = strings.ToUpper(storageType)
 
-	// If daysToLive is zero, use the default.
-	if daysToLive == 0 {
+	// If expirationTime is zero, use the default.  Otherwise round it up to
+	// an integral number of days.
+	var daysToLive uint64
+	if expirationTime == 0 {
 		daysToLive = defaultDaysToLive
+	} else {
+		daysToLive = uint64(roundUpToDay(expirationTime) / nsecsPerDay)
 	}
-	s := strconv.FormatUint(24*daysToLive, 10) + "h"
-	expirationAge, err := time.ParseDuration(s)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid expirationDays value configured: %v", err)
-	}
-	s = strconv.FormatUint(12*daysToLive, 10) + "h" // half of the expiration age
-	refUpdateThresh, _ := time.ParseDuration(s)
+	expirationTime = time.Duration(daysToLive * nsecsPerDay)
+	// The reference time update threshold is half of the expiration age
+	refUpdateThresh := expirationTime / 2
+	fmt.Printf("daysToLive = %d, expirationTime = %d, refUpdateThresh = %d\n", daysToLive, expirationTime, refUpdateThresh)
 
 	spannerGCSBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(spannerMalformedKeyCount)
@@ -544,7 +550,7 @@ func NewSpannerGCSBlobAccess(databaseName string, gcsBucketName string, readBuff
 		readBufferFactory: readBufferFactory,
 		storageType:       storageType,
 		daysToLive:        daysToLive,
-		expirationAge:     expirationAge,
+		expirationAge:     expirationTime,
 		refUpdateThresh:   refUpdateThresh,
 		refChan:           refCh,
 	}

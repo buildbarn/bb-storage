@@ -376,12 +376,20 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			}
 		}
 
+		var expirationTime time.Duration
+		exp := backend.SpannerGcs.ExpirationTime
+		if exp != nil {
+			if err := exp.CheckValid(); err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to parse expirationTime")
+			}
+			expirationTime = exp.AsDuration()
+		}
 		blobAccess, err := blobstore.NewSpannerGCSBlobAccess(
 			backend.SpannerGcs.SpannerDbName,
 			backend.SpannerGcs.GcsBucketName,
 			readBufferFactory,
 			storageTypeName,
-			backend.SpannerGcs.ExpirationDays,
+			expirationTime,
 			creator.GetDefaultCapabilitiesProvider(),
 			clientOptions)
 		if err != nil {
