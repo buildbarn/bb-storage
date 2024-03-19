@@ -3,6 +3,7 @@ package configuration
 import (
 	"archive/zip"
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -357,6 +358,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_SpannerGcs:
+		fmt.Printf("SpannerGcs: storage type %s\n", storageTypeName)
 		var digestKeyFormat digest.KeyFormat
 		if storageTypeName == "AC" {
 			digestKeyFormat = digest.KeyWithInstance
