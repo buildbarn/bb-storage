@@ -365,18 +365,14 @@ message SpannerGCSBlobAccessConfiguration {
   // Name of GCS bucket.
   string gcs_bucket_name = 2;
 
-  // Distinguish between the action cache and the CAS to know how to
-  // format the keys for storage objects.
-  StorageType.Value storage_type = 3;
-
   // Expiration time -- how long blobs live in the cache without being referenced
   // before being evicted.  Default is 7 days.
-  google.protobuf.Duration expiration_time = 4;
+  google.protobuf.Duration expiration_time = 3;
 
   // Optional: Google Cloud Platform (GCP) client options for objects
   // loaded from GCS
   buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
-      gcp_client_options = 5;
+      gcp_client_options = 4;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block
