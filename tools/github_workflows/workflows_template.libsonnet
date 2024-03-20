@@ -60,12 +60,12 @@
         // container images get published once again.
         // https://github.com/GoogleCloudPlatform/container-definitions/issues/12037
         {
-          name: 'Installing Bazel',
-          run: 'curl -L https://github.com/bazelbuild/bazel/releases/download/6.0.0/bazel-6.0.0-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
-        },
-        {
           name: 'Check out source code',
           uses: 'actions/checkout@v1',
+        },
+        {
+          name: 'Installing Bazel',
+          run: 'v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
         },
         {
           name: 'Gazelle',
