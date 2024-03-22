@@ -94,12 +94,12 @@ oci_register_toolchains(
 # )
 oci_pull(
     name = "distroless_static",
-    # Note, we cannot use the same digest as it didn't have an arm64 entry in the index
-    digest = "sha256:ccaef5ee2f1850270d453fdf700a5392534f8d1a8ca2acda391fbb6a06b81c86",
+    #NB: cannot use the same digest as above, as it predates having an arm64 entry in the index
+    digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
     image = "gcr.io/distroless/static",
     platforms = [
         "linux/amd64",
-        "linux/arm64",
+        "linux/arm64/v8",
     ],
 )
 
