@@ -27,19 +27,13 @@ def multiarch_go_image(name, binary):
         tars = [tar_target],
     )
 
-    for arch in ["amd64", "arm64"]:
-        arch_image_target = "{}_{}_image".format(name, arch)
-        target_platform = "@io_bazel_rules_go//go/toolchain:linux_{}".format(arch)
-        images.append(arch_image_target)
-        platform_transition_filegroup(
-            name = arch_image_target,
-            srcs = [image_target],
-            target_platform = target_platform,
-        )
-
     oci_image_index(
         name = name,
-        images = images,
+        image = image_target,
+        platforms = [
+            "@io_bazel_rules_go//go/toolchain:linux_{}".format(arch)
+            for arch in ["amd64", "arm64"]
+        ],
     )
 
 def container_push_official(name, image, component):

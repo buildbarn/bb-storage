@@ -24,9 +24,10 @@ register_expand_template_toolchains()
 
 http_archive(
     name = "rules_oci",
-    sha256 = "4a276e9566c03491649eef63f27c2816cc222f41ccdebd97d2c5159e84917c3b",
-    strip_prefix = "rules_oci-1.7.4",
-    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v1.7.4/rules_oci-v1.7.4.tar.gz",
+    sha256 = "c78e700939d6b6e83ff2dbc5a79e516c03e6a3b4aa123471c5fb0140b5aefac0",
+    strip_prefix = "rules_oci-d53a9f41536b8fdad772c98bd327223c72ba1197",
+    # HEAD of https://github.com/bazel-contrib/rules_oci/pull/531/files
+    url = "https://github.com/bazel-contrib/rules_oci/archive/d53a9f41536b8fdad772c98bd327223c72ba1197.tar.gz",
 )
 
 http_archive(
@@ -83,18 +84,8 @@ oci_register_toolchains(
     crane_version = LATEST_CRANE_VERSION,
 )
 
-# NB: this base image is chosen to match what we had when using rules_docker
-# prior to March 2024:
-# $ bazel query --output=build @go_image_static//image:image
-# container_import(
-#   name = "image",
-#   base_image_digest = "sha256:fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4",
-#   base_image_registry = "gcr.io",
-#   base_image_repository = "distroless/static",
-# )
 oci_pull(
     name = "distroless_static",
-    #NB: cannot use the same digest as above, as it predates having an arm64 entry in the index
     digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
     image = "gcr.io/distroless/static",
     platforms = [
