@@ -12,9 +12,21 @@ http_archive(
 )
 
 http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz"],
+    name = "aspect_bazel_lib",
+    sha256 = "6c25c59581041ede31e117693047f972cc4700c89acf913658dc89d04c338f8d",
+    strip_prefix = "bazel-lib-2.5.3",
+    url = "https://github.com/aspect-build/bazel-lib/releases/download/v2.5.3/bazel-lib-v2.5.3.tar.gz",
+)
+
+load("@aspect_bazel_lib//lib:repositories.bzl", "register_expand_template_toolchains")
+
+register_expand_template_toolchains()
+
+http_archive(
+    name = "rules_oci",
+    sha256 = "4a276e9566c03491649eef63f27c2816cc222f41ccdebd97d2c5159e84917c3b",
+    strip_prefix = "rules_oci-1.7.4",
+    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v1.7.4/rules_oci-v1.7.4.tar.gz",
 )
 
 http_archive(
@@ -36,7 +48,7 @@ http_archive(
     ],
 )
 
-load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 # Override the version of gomock to one that includes support for
 # generating mocks for function types. We can't do this through go.mod,
@@ -61,21 +73,25 @@ go_rules_dependencies()
 
 go_register_toolchains(version = "1.21.5")
 
-load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
-
-container_repositories()
-
-load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
-
-container_deps()
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
 gazelle_dependencies()
 
-load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
+load("@rules_oci//oci:pull.bzl", "oci_pull")
+load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "oci_register_toolchains")
 
-_go_image_repos()
+oci_register_toolchains(
+    name = "oci",
+    crane_version = LATEST_CRANE_VERSION,
+)
+
+oci_pull(
+    name = "distroless_static",
+    digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
+    image = "gcr.io/distroless/static",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64/v8",
+    ],
+)
 
 http_archive(
     name = "com_github_bazelbuild_buildtools",
