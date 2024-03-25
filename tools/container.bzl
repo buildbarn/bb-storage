@@ -25,6 +25,9 @@ def multiarch_go_image(name, binary):
         base = "@distroless_static",
         entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)],
         tars = [tar_target],
+        # Don't build un-transitioned images, as the default target architecture might be unsupported
+        # For example when building on linux-i386.
+        tags = ["manual"],
     )
 
     for arch in ["amd64", "arm64"]:
