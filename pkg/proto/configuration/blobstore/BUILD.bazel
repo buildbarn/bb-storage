@@ -1,6 +1,6 @@
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
     name = "blobstore_proto",
@@ -13,10 +13,10 @@ proto_library(
         "//pkg/proto/configuration/digest:digest_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/http:http_proto",
-        "@com_google_protobuf//:duration_proto",
-        "@com_google_protobuf//:empty_proto",
-        "@com_google_protobuf//:timestamp_proto",
         "@googleapis//google/rpc:status_proto",
+        "@protobuf//:duration_proto",
+        "@protobuf//:empty_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 

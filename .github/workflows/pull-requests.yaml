@@ -12,12 +12,16 @@
                "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
             },
             {
+               "name": "Bazel mod tidy",
+               "run": "bazel mod tidy"
+            },
+            {
                "name": "Gazelle",
-               "run": "bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle"
+               "run": "rm $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle"
             },
             {
                "name": "Buildifier",
-               "run": "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl && bazel run @com_github_bazelbuild_buildtools//:buildifier"
+               "run": "bazel run @com_github_bazelbuild_buildtools//:buildifier"
             },
             {
                "name": "Gofmt",
@@ -49,35 +53,35 @@
             },
             {
                "name": "linux_amd64: build and test",
-               "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //..."
+               "run": "bazel test --test_output=errors --platforms=@rules_go//go/toolchain:linux_amd64 //..."
             },
             {
                "name": "linux_386: build and test",
-               "run": "bazel test --test_output=errors --platforms=@io_bazel_rules_go//go/toolchain:linux_386 //..."
+               "run": "bazel test --test_output=errors --platforms=@rules_go//go/toolchain:linux_386 //..."
             },
             {
                "name": "linux_arm: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:linux_arm //..."
             },
             {
                "name": "linux_arm64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:linux_arm64 //..."
             },
             {
                "name": "darwin_amd64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64 //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:darwin_amd64 //..."
             },
             {
                "name": "darwin_arm64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64 //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:darwin_arm64 //..."
             },
             {
                "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
+               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
             },
             {
                "name": "windows_amd64: build and test",
-               "run": "bazel build --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //..."
             }
          ]
       }

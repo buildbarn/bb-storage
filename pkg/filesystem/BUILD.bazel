@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "filesystem",
@@ -19,37 +19,37 @@ go_library(
     deps = [
         "//pkg/filesystem/path",
     ] + select({
-        "@io_bazel_rules_go//go/platform:android": [
+        "@rules_go//go/platform:android": [
             "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//unix",
         ],
-        "@io_bazel_rules_go//go/platform:darwin": [
+        "@rules_go//go/platform:darwin": [
             "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//unix",
         ],
-        "@io_bazel_rules_go//go/platform:freebsd": [
+        "@rules_go//go/platform:freebsd": [
             "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//unix",
         ],
-        "@io_bazel_rules_go//go/platform:ios": [
+        "@rules_go//go/platform:ios": [
             "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//unix",
         ],
-        "@io_bazel_rules_go//go/platform:linux": [
+        "@rules_go//go/platform:linux": [
             "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//unix",
         ],
-        "@io_bazel_rules_go//go/platform:windows": [
+        "@rules_go//go/platform:windows": [
             "//pkg/filesystem/windowsext",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
@@ -64,10 +64,10 @@ go_test(
     srcs = [
         "local_directory_test.go",
     ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
+        "@rules_go//go/platform:darwin": [
             "local_directory_darwin_test.go",
         ],
-        "@io_bazel_rules_go//go/platform:ios": [
+        "@rules_go//go/platform:ios": [
             "local_directory_darwin_test.go",
         ],
         "//conditions:default": [],

@@ -1,13 +1,6 @@
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-
-go_library(
-    name = "bb_replicator",
-    embed = [":bb_replicator_go_proto"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator",
-    visibility = ["//visibility:public"],
-)
 
 proto_library(
     name = "bb_replicator_proto",
@@ -30,4 +23,11 @@ go_proto_library(
         "//pkg/proto/configuration/global",
         "//pkg/proto/configuration/grpc",
     ],
+)
+
+go_library(
+    name = "bb_replicator",
+    embed = [":bb_replicator_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_replicator",
+    visibility = ["//visibility:public"],
 )

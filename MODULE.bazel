@@ -1,0 +1,178 @@
+module(name = "com_github_buildbarn_bb_storage")
+
+bazel_dep(name = "aspect_bazel_lib", version = "2.6.0")
+bazel_dep(name = "aspect_rules_js", version = "1.39.1")
+bazel_dep(name = "gazelle", version = "0.35.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
+bazel_dep(name = "jsonnet_go", version = "0.20.0", repo_name = "google_jsonnet_go")
+bazel_dep(name = "protobuf", version = "23.1")
+bazel_dep(name = "rules_go", version = "0.46.0")
+bazel_dep(name = "rules_oci", version = "1.7.5")
+bazel_dep(name = "rules_pkg", version = "0.10.1")
+bazel_dep(name = "rules_proto", version = "6.0.0-rc2")
+bazel_dep(name = "toolchains_llvm", version = "1.0.0")
+
+git_override(
+    module_name = "gazelle",
+    commit = "f5a5c5dc90b4d6a39f0f47d770eba27c6c1c1877",
+    init_submodules = True,
+    patches = [
+        "//:patches/gazelle/dont-flatten-srcs.diff",
+        "//:patches/gazelle/googleapis.diff",
+    ],
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+)
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.22.1")
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+go_deps.gazelle_override(
+    build_file_generation = "on",
+    directives = [
+        "gazelle:resolve proto go build/bazel/semver/semver.proto //build/bazel/semver",
+        "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
+        "gazelle:resolve proto go google/longrunning/operations.proto @com_google_cloud_go_longrunning//autogen/longrunningpb",
+        "gazelle:resolve proto go google/rpc/status.proto @org_golang_google_genproto_googleapis_rpc//status",
+        "gazelle:resolve proto google/api/annotations.proto @googleapis//google/api:annotations_proto",
+        "gazelle:resolve proto google/longrunning/operations.proto @googleapis//google/longrunning:operations_proto",
+        "gazelle:resolve proto google/rpc/status.proto @googleapis//google/rpc:status_proto",
+    ],
+    path = "github.com/bazelbuild/remote-apis",
+)
+go_deps.gazelle_override(
+    build_file_generation = "on",
+    path = "github.com/google/go-jsonnet",
+)
+go_deps.module_override(
+    patches = ["//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
+    path = "github.com/golang/mock",
+)
+go_deps.module_override(
+    patches = ["//:patches/com_github_golang_protobuf/service-registrar.diff"],
+    path = "github.com/golang/protobuf",
+)
+go_deps.module_override(
+    patches = ["//:patches/com_github_google_go_jsonnet/no-astgen.diff"],
+    path = "github.com/google/go-jsonnet",
+)
+go_deps.module_override(
+    patches = ["//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
+    path = "github.com/grpc-ecosystem/go-grpc-prometheus",
+)
+go_deps.module_override(
+    patches = ["//:patches/org_golang_google_genproto_googleapis_bytestream/service-registrar.diff"],
+    path = "google.golang.org/genproto/googleapis/bytestream",
+)
+go_deps.module_override(
+    patches = ["//:patches/org_golang_x_lint/generic.diff"],
+    path = "golang.org/x/lint",
+)
+go_deps.module_override(
+    patches = ["//:patches/org_golang_x_oauth2/injectable-clock.diff"],
+    path = "golang.org/x/oauth2",
+)
+use_repo(
+    go_deps,
+    "cc_mvdan_gofumpt",
+    "com_github_aohorodnyk_mimeheader",
+    "com_github_aws_aws_sdk_go_v2",
+    "com_github_aws_aws_sdk_go_v2_config",
+    "com_github_aws_aws_sdk_go_v2_credentials",
+    "com_github_aws_aws_sdk_go_v2_service_s3",
+    "com_github_aws_aws_sdk_go_v2_service_sts",
+    "com_github_bazelbuild_buildtools",
+    "com_github_bazelbuild_remote_apis",
+    "com_github_fxtlabs_primes",
+    "com_github_go_jose_go_jose_v3",
+    "com_github_golang_mock",
+    "com_github_google_go_jsonnet",
+    "com_github_google_uuid",
+    "com_github_gorilla_mux",
+    "com_github_grpc_ecosystem_go_grpc_middleware",
+    "com_github_grpc_ecosystem_go_grpc_prometheus",
+    "com_github_jmespath_go_jmespath",
+    "com_github_klauspost_compress",
+    "com_github_lazybeaver_xorshift",
+    "com_github_prometheus_client_golang",
+    "com_github_prometheus_client_model",
+    "com_github_prometheus_common",
+    "com_github_sercand_kuberesolver_v5",
+    "com_github_stretchr_testify",
+    "com_google_cloud_go_longrunning",
+    "com_google_cloud_go_storage",
+    "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
+    "io_opentelemetry_go_contrib_propagators_b3",
+    "io_opentelemetry_go_otel",
+    "io_opentelemetry_go_otel_exporters_jaeger",
+    "io_opentelemetry_go_otel_exporters_otlp_otlptrace",
+    "io_opentelemetry_go_otel_sdk",
+    "io_opentelemetry_go_otel_trace",
+    "io_opentelemetry_go_proto_otlp",
+    "org_golang_google_api",
+    "org_golang_google_genproto_googleapis_bytestream",
+    "org_golang_google_genproto_googleapis_rpc",
+    "org_golang_google_grpc",
+    "org_golang_google_protobuf",
+    "org_golang_x_lint",
+    "org_golang_x_oauth2",
+    "org_golang_x_sync",
+    "org_golang_x_sys",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "com_github_twbs_bootstrap",
+    build_file_content = """exports_files(["css/bootstrap.min.css", "js/bootstrap.min.js"])""",
+    sha256 = "395342b2974e3350560e65752d36aab6573652b11cc6cb5ef79a2e5e83ad64b1",
+    strip_prefix = "bootstrap-5.1.0-dist",
+    urls = ["https://github.com/twbs/bootstrap/releases/download/v5.1.0/bootstrap-5.1.0-dist.zip"],
+)
+
+http_archive(
+    name = "io_bazel_rules_jsonnet",
+    sha256 = "d20270872ba8d4c108edecc9581e2bb7f320afab71f8caa2f6394b5202e8a2c3",
+    strip_prefix = "rules_jsonnet-0.4.0",
+    urls = ["https://github.com/bazelbuild/rules_jsonnet/archive/0.4.0.tar.gz"],
+)
+
+http_archive(
+    name = "io_opentelemetry_proto",
+    build_file_content = """
+proto_library(
+    name = "common_proto",
+    srcs = ["opentelemetry/proto/common/v1/common.proto"],
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "464bc2b348e674a1a03142e403cbccb01be8655b6de0f8bfe733ea31fcd421be",
+    strip_prefix = "opentelemetry-proto-0.19.0",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v0.19.0.tar.gz"],
+)
+
+llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
+llvm.toolchain(
+    llvm_version = "14.0.0",
+)
+use_repo(llvm, "llvm_toolchain_llvm")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
+npm.npm_translate_lock(
+    name = "npm",
+    pnpm_lock = "//:pnpm-lock.yaml",
+)
+use_repo(npm, "npm")
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "distroless_static",
+    digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
+    image = "gcr.io/distroless/static",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64/v8",
+    ],
+)
+use_repo(oci, "distroless_static")
