@@ -69,12 +69,16 @@
           run: 'v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
         },
         {
+          name: 'Bazel mod tidy',
+          run: 'bazel mod tidy',
+        },
+        {
           name: 'Gazelle',
-          run: 'bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro go_dependencies.bzl%go_dependencies -prune && bazel run //:gazelle',
+          run: "rm $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle",
         },
         {
           name: 'Buildifier',
-          run: "sed '/^$/d' go_dependencies.bzl > go_dependencies.bzl.new && mv go_dependencies.bzl.new go_dependencies.bzl && bazel run @com_github_bazelbuild_buildtools//:buildifier",
+          run: 'bazel run @com_github_bazelbuild_buildtools//:buildifier',
         },
         {
           name: 'Gofmt',
@@ -122,7 +126,7 @@
       ] + std.flattenArrays([
         [{
           name: platform.name + ': build and test',
-          run: ('bazel %s --platforms=@io_bazel_rules_go//go/toolchain:%s ' % [
+          run: ('bazel %s --platforms=@rules_go//go/toolchain:%s ' % [
                   platform.buildAndTestCommand,
                   platform.name,
                 ]) + (
@@ -137,7 +141,7 @@
               {
                 name: '%s: copy %s' % [platform.name, binary],
                 local executable = binary + platform.extension,
-                run: 'rm -f %s && bazel run --run_under cp --platforms=@io_bazel_rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
+                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],

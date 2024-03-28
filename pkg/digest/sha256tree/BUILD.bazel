@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "sha256tree",
@@ -15,7 +15,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/digest/sha256tree",
     visibility = ["//visibility:public"],
     deps = select({
-        "@io_bazel_rules_go//go/platform:amd64": [
+        "@rules_go//go/platform:amd64": [
             "@org_golang_x_sys//cpu",
         ],
         "//conditions:default": [],

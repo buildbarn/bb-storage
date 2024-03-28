@@ -32,7 +32,7 @@ def multiarch_go_image(name, binary):
 
     for arch in ["amd64", "arm64"]:
         arch_image_target = "{}_{}_image".format(name, arch)
-        target_platform = "@io_bazel_rules_go//go/toolchain:linux_{}".format(arch)
+        target_platform = "@rules_go//go/toolchain:linux_" + arch
         images.append(arch_image_target)
         platform_transition_filegroup(
             name = arch_image_target,

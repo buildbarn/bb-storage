@@ -14,6 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.13
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.6
+	github.com/bazelbuild/buildtools v0.0.0-20240313121412-66c605173954
 	github.com/bazelbuild/remote-apis v0.0.0-20231221155620-d20ae8b97fd3
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.1

@@ -1,5 +1,5 @@
 load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "tools",
@@ -9,6 +9,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@cc_mvdan_gofumpt//:gofumpt",
+        "@com_github_bazelbuild_buildtools//buildifier",
         "@org_golang_x_lint//:lint",
     ],
 )
