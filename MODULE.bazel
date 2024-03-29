@@ -41,10 +41,6 @@ go_deps.gazelle_override(
     ],
     path = "github.com/bazelbuild/remote-apis",
 )
-go_deps.gazelle_override(
-    build_file_generation = "on",
-    path = "github.com/google/go-jsonnet",
-)
 go_deps.module_override(
     patches = ["//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
     path = "github.com/golang/mock",
@@ -52,10 +48,6 @@ go_deps.module_override(
 go_deps.module_override(
     patches = ["//:patches/com_github_golang_protobuf/service-registrar.diff"],
     path = "github.com/golang/protobuf",
-)
-go_deps.module_override(
-    patches = ["//:patches/com_github_google_go_jsonnet/no-astgen.diff"],
-    path = "github.com/google/go-jsonnet",
 )
 go_deps.module_override(
     patches = ["//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
@@ -87,7 +79,6 @@ use_repo(
     "com_github_fxtlabs_primes",
     "com_github_go_jose_go_jose_v3",
     "com_github_golang_mock",
-    "com_github_google_go_jsonnet",
     "com_github_google_uuid",
     "com_github_gorilla_mux",
     "com_github_grpc_ecosystem_go_grpc_middleware",
@@ -133,9 +124,9 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_jsonnet",
-    sha256 = "d20270872ba8d4c108edecc9581e2bb7f320afab71f8caa2f6394b5202e8a2c3",
-    strip_prefix = "rules_jsonnet-0.4.0",
-    urls = ["https://github.com/bazelbuild/rules_jsonnet/archive/0.4.0.tar.gz"],
+    sha256 = "c51ba0dba41d667fa5c64e56e252ba54be093e5ae764af6470dabca901f373eb",
+    strip_prefix = "rules_jsonnet-0.5.0",
+    urls = ["https://github.com/bazelbuild/rules_jsonnet/archive/0.5.0.tar.gz"],
 )
 
 http_archive(

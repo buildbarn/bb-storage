@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "3b066913c0f98ddd501290812d711e743dab8d29fe65a0a6db1a07cfe4fb09fa",
+  "moduleFileHash": "89daf0ee67ee79d83c72f9be832656d5b4d84597fa87b33f553f1199e7d2f828",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -74,7 +74,6 @@
             "com_github_fxtlabs_primes": "com_github_fxtlabs_primes",
             "com_github_go_jose_go_jose_v3": "com_github_go_jose_go_jose_v3",
             "com_github_golang_mock": "com_github_golang_mock",
-            "com_github_google_go_jsonnet": "com_github_google_go_jsonnet",
             "com_github_google_uuid": "com_github_google_uuid",
             "com_github_gorilla_mux": "com_github_gorilla_mux",
             "com_github_grpc_ecosystem_go_grpc_middleware": "com_github_grpc_ecosystem_go_grpc_middleware",
@@ -144,19 +143,6 @@
               }
             },
             {
-              "tagName": "gazelle_override",
-              "attributeValues": {
-                "build_file_generation": "on",
-                "path": "github.com/google/go-jsonnet"
-              },
-              "devDependency": false,
-              "location": {
-                "file": "@@//:MODULE.bazel",
-                "line": 44,
-                "column": 25
-              }
-            },
-            {
               "tagName": "module_override",
               "attributeValues": {
                 "patches": [
@@ -167,7 +153,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 48,
+                "line": 44,
                 "column": 24
               }
             },
@@ -182,22 +168,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 52,
-                "column": 24
-              }
-            },
-            {
-              "tagName": "module_override",
-              "attributeValues": {
-                "patches": [
-                  "//:patches/com_github_google_go_jsonnet/no-astgen.diff"
-                ],
-                "path": "github.com/google/go-jsonnet"
-              },
-              "devDependency": false,
-              "location": {
-                "file": "@@//:MODULE.bazel",
-                "line": 56,
+                "line": 48,
                 "column": 24
               }
             },
@@ -212,7 +183,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 60,
+                "line": 52,
                 "column": 24
               }
             },
@@ -227,7 +198,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 64,
+                "line": 56,
                 "column": 24
               }
             },
@@ -242,7 +213,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 68,
+                "line": 60,
                 "column": 24
               }
             },
@@ -257,7 +228,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 72,
+                "line": 64,
                 "column": 24
               }
             }
@@ -295,24 +266,24 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 126,
+                "line": 117,
                 "column": 13
               }
             },
             {
               "tagName": "@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
               "attributeValues": {
-                "sha256": "d20270872ba8d4c108edecc9581e2bb7f320afab71f8caa2f6394b5202e8a2c3",
-                "strip_prefix": "rules_jsonnet-0.4.0",
+                "sha256": "c51ba0dba41d667fa5c64e56e252ba54be093e5ae764af6470dabca901f373eb",
+                "strip_prefix": "rules_jsonnet-0.5.0",
                 "urls": [
-                  "https://github.com/bazelbuild/rules_jsonnet/archive/0.4.0.tar.gz"
+                  "https://github.com/bazelbuild/rules_jsonnet/archive/0.5.0.tar.gz"
                 ],
                 "name": "io_bazel_rules_jsonnet"
               },
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 134,
+                "line": 125,
                 "column": 13
               }
             },
@@ -330,7 +301,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 141,
+                "line": 132,
                 "column": 13
               }
             }
@@ -344,7 +315,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 155,
+            "line": 146,
             "column": 21
           },
           "imports": {
@@ -360,7 +331,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 156,
+                "line": 147,
                 "column": 15
               }
             }
@@ -374,7 +345,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 161,
+            "line": 152,
             "column": 20
           },
           "imports": {
@@ -391,7 +362,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 162,
+                "line": 153,
                 "column": 23
               }
             }
@@ -405,7 +376,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 168,
+            "line": 159,
             "column": 20
           },
           "imports": {
@@ -427,7 +398,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 169,
+                "line": 160,
                 "column": 9
               }
             }
@@ -6344,25 +6315,6 @@
               "version": "v1.26.2"
             }
           },
-          "com_github_google_go_jsonnet": {
-            "bzlFile": "@@gazelle~//internal:go_repository.bzl",
-            "ruleClassName": "go_repository",
-            "attributes": {
-              "importpath": "github.com/google/go-jsonnet",
-              "build_directives": [],
-              "build_file_generation": "on",
-              "build_extra_args": [],
-              "patches": [
-                "@@//:patches/com_github_google_go_jsonnet/no-astgen.diff"
-              ],
-              "patch_args": [
-                "-p0"
-              ],
-              "sum": "h1:WG4TTSARuV7bSm4PMB4ohjxe33IHT5WVTrJSU33uT4g=",
-              "replace": "",
-              "version": "v0.20.0"
-            }
-          },
           "com_github_beorn7_perks": {
             "bzlFile": "@@gazelle~//internal:go_repository.bzl",
             "ruleClassName": "go_repository",
@@ -7138,7 +7090,7 @@
                 "com_github_fxtlabs_primes": "github.com/fxtlabs/primes",
                 "com_github_go_jose_go_jose_v3": "github.com/go-jose/go-jose/v3",
                 "com_github_golang_mock": "github.com/golang/mock",
-                "com_github_google_go_jsonnet": "github.com/google/go-jsonnet",
+                "@jsonnet_go~": "github.com/google/go-jsonnet",
                 "com_github_google_uuid": "github.com/google/uuid",
                 "com_github_gorilla_mux": "github.com/gorilla/mux",
                 "com_github_grpc_ecosystem_go_grpc_middleware": "github.com/grpc-ecosystem/go-grpc-middleware",
@@ -7299,7 +7251,6 @@
             "com_github_fxtlabs_primes",
             "com_github_go_jose_go_jose_v3",
             "com_github_golang_mock",
-            "com_github_google_go_jsonnet",
             "com_github_google_uuid",
             "com_github_gorilla_mux",
             "com_github_grpc_ecosystem_go_grpc_middleware",
