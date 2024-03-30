@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "89daf0ee67ee79d83c72f9be832656d5b4d84597fa87b33f553f1199e7d2f828",
+  "moduleFileHash": "004251768638476572e1cab2d0e94e0a7944862337587eaed3813780225d3e27",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -135,11 +135,11 @@
                 ],
                 "path": "github.com/bazelbuild/remote-apis"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 31,
-                "column": 25
+                "line": 79,
+                "column": 29
               }
             },
             {
@@ -150,11 +150,11 @@
                 ],
                 "path": "github.com/golang/mock"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 44,
-                "column": 24
+                "line": 92,
+                "column": 28
               }
             },
             {
@@ -165,11 +165,11 @@
                 ],
                 "path": "github.com/golang/protobuf"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 48,
-                "column": 24
+                "line": 96,
+                "column": 28
               }
             },
             {
@@ -180,11 +180,11 @@
                 ],
                 "path": "github.com/grpc-ecosystem/go-grpc-prometheus"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 52,
-                "column": 24
+                "line": 100,
+                "column": 28
               }
             },
             {
@@ -195,11 +195,11 @@
                 ],
                 "path": "google.golang.org/genproto/googleapis/bytestream"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 56,
-                "column": 24
+                "line": 104,
+                "column": 28
               }
             },
             {
@@ -210,11 +210,11 @@
                 ],
                 "path": "golang.org/x/lint"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 60,
-                "column": 24
+                "line": 108,
+                "column": 28
               }
             },
             {
@@ -225,15 +225,15 @@
                 ],
                 "path": "golang.org/x/oauth2"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 64,
-                "column": 24
+                "line": 112,
+                "column": 28
               }
             }
           ],
-          "hasDevUseExtension": false,
+          "hasDevUseExtension": true,
           "hasNonDevUseExtension": true
         },
         {
@@ -266,7 +266,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 117,
+                "line": 119,
                 "column": 13
               }
             },
@@ -283,7 +283,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 125,
+                "line": 127,
                 "column": 13
               }
             },
@@ -301,7 +301,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 132,
+                "line": 134,
                 "column": 13
               }
             }
@@ -315,7 +315,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 146,
+            "line": 148,
             "column": 21
           },
           "imports": {
@@ -331,7 +331,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 147,
+                "line": 149,
                 "column": 15
               }
             }
@@ -345,7 +345,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 152,
+            "line": 154,
             "column": 20
           },
           "imports": {
@@ -362,7 +362,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 153,
+                "line": 155,
                 "column": 23
               }
             }
@@ -376,7 +376,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 159,
+            "line": 161,
             "column": 20
           },
           "imports": {
@@ -398,7 +398,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 160,
+                "line": 162,
                 "column": 9
               }
             }
