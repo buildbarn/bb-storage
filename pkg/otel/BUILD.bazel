@@ -1,4 +1,4 @@
-load("@npm//:purgecss/package_json.bzl", purgecss_bin = "bin")
+load("@com_github_buildbarn_bb_storage_npm//:purgecss/package_json.bzl", purgecss_bin = "bin")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(

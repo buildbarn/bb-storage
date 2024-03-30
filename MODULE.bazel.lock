@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "004251768638476572e1cab2d0e94e0a7944862337587eaed3813780225d3e27",
+  "moduleFileHash": "219b751b9e4428867030dbdb481924646b11940911b5a93c69bd5e47d3b5a3f2",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -349,14 +349,15 @@
             "column": 20
           },
           "imports": {
-            "npm": "npm"
+            "com_github_buildbarn_bb_storage_npm": "com_github_buildbarn_bb_storage_npm"
           },
           "devImports": [],
           "tags": [
             {
               "tagName": "npm_translate_lock",
               "attributeValues": {
-                "name": "npm",
+                "name": "com_github_buildbarn_bb_storage_npm",
+                "link_workspace": "com_github_buildbarn_bb_storage",
                 "pnpm_lock": "//:pnpm-lock.yaml"
               },
               "devDependency": false,
@@ -376,7 +377,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 161,
+            "line": 162,
             "column": 20
           },
           "imports": {
@@ -398,7 +399,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 162,
+                "line": 163,
                 "column": 9
               }
             }
@@ -4189,124 +4190,17 @@
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "npm__fs.realpath__1.0.0": {
+          "com_github_buildbarn_bb_storage_npm__minimatch__5.1.6": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "fs.realpath",
-              "version": "1.0.0",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==",
-              "url": "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__nanoid__3.3.4": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "nanoid",
-              "version": "3.3.4",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-MqBkQh/OHTS2egovRtLk45wEyNXwF+cokD+1YPf9u5VfJiRdAiRwB2froX5Co9Rh20xs4siNPm8naNotSD6RBw==",
-              "url": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.4.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__glob__8.1.0": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "glob",
-              "version": "8.1.0",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==",
-              "url": "https://registry.npmjs.org/glob/-/glob-8.1.0.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__minimatch__5.1.6__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
             "attributes": {
               "package": "minimatch",
               "version": "5.1.6",
-              "dev": false,
               "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "deps": {
-                "brace-expansion": "2.0.1"
-              },
-              "transitive_closure": {
-                "balanced-match": [
-                  "1.0.2"
-                ],
-                "brace-expansion": [
-                  "2.0.1"
-                ],
-                "minimatch": [
-                  "5.1.6"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__once__1.4.0": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "once",
-              "version": "1.4.0",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==",
-              "url": "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
+              "integrity": "sha512-lKwV/1brpG6mBUFHtb7NUmtABCb2WZZmm2wNiOA5hAb8VdCS4B3dtMWyvcoViccwAW/COERjXLt0zP1zXUN26g==",
+              "url": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.6.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -4320,90 +4214,7 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__util-deprecate__1.0.2__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
-            "attributes": {
-              "package": "util-deprecate",
-              "version": "1.0.2",
-              "dev": false,
-              "root_package": "",
-              "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "util-deprecate": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__brace-expansion__2.0.1__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
-            "attributes": {
-              "package": "brace-expansion",
-              "version": "2.0.1",
-              "dev": false,
-              "root_package": "",
-              "link_packages": {},
-              "deps": {
-                "balanced-match": "1.0.2"
-              },
-              "transitive_closure": {
-                "balanced-match": [
-                  "1.0.2"
-                ],
-                "brace-expansion": [
-                  "2.0.1"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__util-deprecate__1.0.2": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "util-deprecate",
-              "version": "1.0.2",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
-              "url": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__postcss-selector-parser__6.0.11__links": {
+          "com_github_buildbarn_bb_storage_npm__postcss-selector-parser__6.0.11__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
@@ -4432,24 +4243,59 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__balanced-match__1.0.2": {
+          "com_github_buildbarn_bb_storage_npm__minimatch__5.1.6__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "minimatch",
+              "version": "5.1.6",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {
+                "brace-expansion": "2.0.1"
+              },
+              "transitive_closure": {
+                "balanced-match": [
+                  "1.0.2"
+                ],
+                "brace-expansion": [
+                  "2.0.1"
+                ],
+                "minimatch": [
+                  "5.1.6"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__wrappy__1.0.2": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "balanced-match",
+              "package": "wrappy",
               "version": "1.0.2",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "integrity": "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==",
-              "url": "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz",
+              "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==",
+              "url": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -4463,96 +4309,18 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__cssesc__3.0.0": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "cssesc",
-              "version": "3.0.0",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==",
-              "url": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__commander__9.5.0__links": {
+          "com_github_buildbarn_bb_storage_npm__fs.realpath__1.0.0__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
-              "package": "commander",
-              "version": "9.5.0",
-              "dev": false,
-              "root_package": "",
-              "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "commander": [
-                  "9.5.0"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__cssesc__3.0.0__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
-            "attributes": {
-              "package": "cssesc",
-              "version": "3.0.0",
-              "dev": false,
-              "root_package": "",
-              "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "cssesc": [
-                  "3.0.0"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__picocolors__1.0.0__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
-            "attributes": {
-              "package": "picocolors",
+              "package": "fs.realpath",
               "version": "1.0.0",
               "dev": false,
               "root_package": "",
               "link_packages": {},
               "deps": {},
               "transitive_closure": {
-                "picocolors": [
+                "fs.realpath": [
                   "1.0.0"
                 ]
               },
@@ -4561,14 +4329,165 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__inherits__2.0.4__links": {
+          "com_github_buildbarn_bb_storage_npm__util-deprecate__1.0.2__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "util-deprecate",
+              "version": "1.0.2",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
+                "util-deprecate": [
+                  "1.0.2"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__postcss__8.4.21__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "postcss",
+              "version": "8.4.21",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {
+                "nanoid": "3.3.4",
+                "picocolors": "1.0.0",
+                "source-map-js": "1.0.2"
+              },
+              "transitive_closure": {
+                "nanoid": [
+                  "3.3.4"
+                ],
+                "picocolors": [
+                  "1.0.0"
+                ],
+                "postcss": [
+                  "8.4.21"
+                ],
+                "source-map-js": [
+                  "1.0.2"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__inherits__2.0.4": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "inherits",
+              "version": "2.0.4",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
+              "url": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__commander__9.5.0": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "commander",
+              "version": "9.5.0",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==",
+              "url": "https://registry.npmjs.org/commander/-/commander-9.5.0.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__inflight__1.0.6__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "inflight",
+              "version": "1.0.6",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {
+                "once": "1.4.0",
+                "wrappy": "1.0.2"
+              },
+              "transitive_closure": {
+                "inflight": [
+                  "1.0.6"
+                ],
+                "once": [
+                  "1.4.0"
+                ],
+                "wrappy": [
+                  "1.0.2"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__inherits__2.0.4__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
@@ -4588,24 +4507,24 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__commander__9.5.0": {
+          "com_github_buildbarn_bb_storage_npm__inflight__1.0.6": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "commander",
-              "version": "9.5.0",
+              "package": "inflight",
+              "version": "1.0.6",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "integrity": "sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==",
-              "url": "https://registry.npmjs.org/commander/-/commander-9.5.0.tgz",
+              "integrity": "sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==",
+              "url": "https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -4619,17 +4538,17 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__brace-expansion__2.0.1": {
+          "com_github_buildbarn_bb_storage_npm__util-deprecate__1.0.2": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "brace-expansion",
-              "version": "2.0.1",
+              "package": "util-deprecate",
+              "version": "1.0.2",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "integrity": "sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==",
-              "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.1.tgz",
+              "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
+              "url": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -4643,7 +4562,7 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__glob__8.1.0__links": {
+          "com_github_buildbarn_bb_storage_npm__glob__8.1.0__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
@@ -4693,48 +4612,45 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__balanced-match__1.0.2__links": {
+          "com_github_buildbarn_bb_storage_npm__postcss-selector-parser__6.0.11": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
+            "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "balanced-match",
-              "version": "1.0.2",
-              "dev": false,
+              "package": "postcss-selector-parser",
+              "version": "6.0.11",
               "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "balanced-match": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
+              "integrity": "sha512-zbARubNdogI9j7WY4nQJBiNqQf3sLS3wCP4WfOidu+p28LofJqDH1tcXypGrcmMHhDk2t9wGhCsYe/+szLTy1g==",
+              "url": "https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-6.0.11.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
             }
           },
-          "npm__purgecss__5.0.0": {
+          "com_github_buildbarn_bb_storage_npm__purgecss__5.0.0": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
               "package": "purgecss",
               "version": "5.0.0",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {
                 "": [
                   "purgecss"
@@ -4755,194 +4671,17 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__inflight__1.0.6": {
+          "com_github_buildbarn_bb_storage_npm__source-map-js__1.0.2": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "inflight",
-              "version": "1.0.6",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==",
-              "url": "https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_translate_lock.bzl",
-            "ruleClassName": "npm_translate_lock_rule",
-            "attributes": {
-              "pnpm_lock": "@@//:pnpm-lock.yaml",
-              "update_pnpm_lock": false,
-              "use_home_npmrc": false,
-              "patches": {},
-              "patch_args": {},
-              "custom_postinstalls": {},
-              "package_visibility": {},
-              "prod": false,
-              "public_hoist_packages": {},
-              "dev": false,
-              "no_optional": false,
-              "lifecycle_hooks": {
-                "*": [
-                  "preinstall",
-                  "install",
-                  "postinstall"
-                ]
-              },
-              "lifecycle_hooks_envs": {},
-              "lifecycle_hooks_execution_requirements": {
-                "*": [
-                  "no-sandbox"
-                ]
-              },
-              "lifecycle_hooks_use_default_shell_env": {
-                "*": "false"
-              },
-              "replace_packages": {},
-              "bins": {},
-              "external_repository_action_cache": ".aspect/rules/external_repository_action_cache",
-              "link_workspace": "",
-              "root_package": ".",
-              "additional_file_contents": {},
-              "repositories_bzl_filename": "repositories.bzl",
-              "defs_bzl_filename": "defs.bzl",
-              "generate_bzl_library_targets": false,
-              "data": [],
-              "preupdate": [],
-              "quiet": true,
-              "node_toolchain_prefix": "nodejs",
-              "use_pnpm": "@@aspect_rules_js~~pnpm~pnpm//:package/bin/pnpm.cjs",
-              "yq_toolchain_prefix": "yq",
-              "npm_package_target_name": "{dirname}",
-              "use_starlark_yaml_parser": false,
-              "bzlmod": true
-            }
-          },
-          "npm__inherits__2.0.4": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "inherits",
-              "version": "2.0.4",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
-              "url": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__wrappy__1.0.2__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
-            "attributes": {
-              "package": "wrappy",
-              "version": "1.0.2",
-              "dev": false,
-              "root_package": "",
-              "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "wrappy": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__minimatch__5.1.6": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "minimatch",
-              "version": "5.1.6",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-lKwV/1brpG6mBUFHtb7NUmtABCb2WZZmm2wNiOA5hAb8VdCS4B3dtMWyvcoViccwAW/COERjXLt0zP1zXUN26g==",
-              "url": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.6.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__source-map-js__1.0.2__links": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
             "attributes": {
               "package": "source-map-js",
               "version": "1.0.2",
-              "dev": false,
               "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "deps": {},
-              "transitive_closure": {
-                "source-map-js": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
-            }
-          },
-          "npm__wrappy__1.0.2": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "wrappy",
-              "version": "1.0.2",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==",
-              "url": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz",
+              "integrity": "sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==",
+              "url": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.0.2.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -4956,75 +4695,55 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__once__1.4.0__links": {
+          "com_github_buildbarn_bb_storage_npm__balanced-match__1.0.2": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
+            "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "once",
-              "version": "1.4.0",
-              "dev": false,
+              "package": "balanced-match",
+              "version": "1.0.2",
               "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "deps": {
-                "wrappy": "1.0.2"
-              },
-              "transitive_closure": {
-                "once": [
-                  "1.4.0"
-                ],
-                "wrappy": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
+              "integrity": "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==",
+              "url": "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
             }
           },
-          "npm__inflight__1.0.6__links": {
+          "com_github_buildbarn_bb_storage_npm__cssesc__3.0.0": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_links",
+            "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "inflight",
-              "version": "1.0.6",
-              "dev": false,
+              "package": "cssesc",
+              "version": "3.0.0",
               "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "deps": {
-                "once": "1.4.0",
-                "wrappy": "1.0.2"
-              },
-              "transitive_closure": {
-                "inflight": [
-                  "1.0.6"
-                ],
-                "once": [
-                  "1.4.0"
-                ],
-                "wrappy": [
-                  "1.0.2"
-                ]
-              },
-              "lifecycle_build_target": false,
-              "lifecycle_hooks_env": [],
-              "lifecycle_hooks_execution_requirements": [],
-              "lifecycle_hooks_use_default_shell_env": false,
-              "bins": {},
-              "npm_translate_lock_repo": "npm",
-              "package_visibility": [
-                "//visibility:public"
-              ],
-              "replace_package": ""
+              "integrity": "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==",
+              "url": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
             }
           },
-          "npm__nanoid__3.3.4__links": {
+          "com_github_buildbarn_bb_storage_npm__nanoid__3.3.4__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
@@ -5044,14 +4763,161 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__purgecss__5.0.0__links": {
+          "com_github_buildbarn_bb_storage_npm__brace-expansion__2.0.1": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "brace-expansion",
+              "version": "2.0.1",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==",
+              "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.1.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__glob__8.1.0": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "glob",
+              "version": "8.1.0",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==",
+              "url": "https://registry.npmjs.org/glob/-/glob-8.1.0.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__fs.realpath__1.0.0": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "fs.realpath",
+              "version": "1.0.0",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==",
+              "url": "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__postcss__8.4.21": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "postcss",
+              "version": "8.4.21",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-tP7u/Sn/dVxK2NnruI4H9BG+x+Wxz6oeZ1cJ8P6G/PZY0IKk4k/63TDsQf2kQq3+qoJeLm2kIBUNlZe3zgb4Zg==",
+              "url": "https://registry.npmjs.org/postcss/-/postcss-8.4.21.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__commander__9.5.0__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "commander",
+              "version": "9.5.0",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
+                "commander": [
+                  "9.5.0"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__picocolors__1.0.0": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_rule",
+            "attributes": {
+              "package": "picocolors",
+              "version": "1.0.0",
+              "root_package": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "link_packages": {},
+              "integrity": "sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==",
+              "url": "https://registry.npmjs.org/picocolors/-/picocolors-1.0.0.tgz",
+              "commit": "",
+              "patch_args": [],
+              "patches": [],
+              "custom_postinstall": "",
+              "npm_auth": "",
+              "npm_auth_basic": "",
+              "npm_auth_username": "",
+              "npm_auth_password": "",
+              "lifecycle_hooks": [],
+              "extra_build_content": "",
+              "generate_bzl_library_targets": false
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__purgecss__5.0.0__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
@@ -5131,24 +4997,24 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__source-map-js__1.0.2": {
+          "com_github_buildbarn_bb_storage_npm__nanoid__3.3.4": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "source-map-js",
-              "version": "1.0.2",
+              "package": "nanoid",
+              "version": "3.3.4",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "integrity": "sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==",
-              "url": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.0.2.tgz",
+              "integrity": "sha512-MqBkQh/OHTS2egovRtLk45wEyNXwF+cokD+1YPf9u5VfJiRdAiRwB2froX5Co9Rh20xs4siNPm8naNotSD6RBw==",
+              "url": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.4.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -5162,17 +5028,17 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__postcss__8.4.21": {
+          "com_github_buildbarn_bb_storage_npm__once__1.4.0": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_rule",
             "attributes": {
-              "package": "postcss",
-              "version": "8.4.21",
+              "package": "once",
+              "version": "1.4.0",
               "root_package": "",
-              "link_workspace": "",
+              "link_workspace": "com_github_buildbarn_bb_storage",
               "link_packages": {},
-              "integrity": "sha512-tP7u/Sn/dVxK2NnruI4H9BG+x+Wxz6oeZ1cJ8P6G/PZY0IKk4k/63TDsQf2kQq3+qoJeLm2kIBUNlZe3zgb4Zg==",
-              "url": "https://registry.npmjs.org/postcss/-/postcss-8.4.21.tgz",
+              "integrity": "sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==",
+              "url": "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
               "commit": "",
               "patch_args": [],
               "patches": [],
@@ -5186,30 +5052,213 @@
               "generate_bzl_library_targets": false
             }
           },
-          "npm__postcss__8.4.21__links": {
+          "com_github_buildbarn_bb_storage_npm": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_translate_lock.bzl",
+            "ruleClassName": "npm_translate_lock_rule",
+            "attributes": {
+              "pnpm_lock": "@@//:pnpm-lock.yaml",
+              "update_pnpm_lock": false,
+              "use_home_npmrc": false,
+              "patches": {},
+              "patch_args": {},
+              "custom_postinstalls": {},
+              "package_visibility": {},
+              "prod": false,
+              "public_hoist_packages": {},
+              "dev": false,
+              "no_optional": false,
+              "lifecycle_hooks": {
+                "*": [
+                  "preinstall",
+                  "install",
+                  "postinstall"
+                ]
+              },
+              "lifecycle_hooks_envs": {},
+              "lifecycle_hooks_execution_requirements": {
+                "*": [
+                  "no-sandbox"
+                ]
+              },
+              "lifecycle_hooks_use_default_shell_env": {
+                "*": "false"
+              },
+              "replace_packages": {},
+              "bins": {},
+              "external_repository_action_cache": ".aspect/rules/external_repository_action_cache",
+              "link_workspace": "com_github_buildbarn_bb_storage",
+              "root_package": ".",
+              "additional_file_contents": {},
+              "repositories_bzl_filename": "repositories.bzl",
+              "defs_bzl_filename": "defs.bzl",
+              "generate_bzl_library_targets": false,
+              "data": [],
+              "preupdate": [],
+              "quiet": true,
+              "node_toolchain_prefix": "nodejs",
+              "use_pnpm": "@@aspect_rules_js~~pnpm~pnpm//:package/bin/pnpm.cjs",
+              "yq_toolchain_prefix": "yq",
+              "npm_package_target_name": "{dirname}",
+              "use_starlark_yaml_parser": false,
+              "bzlmod": true
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__balanced-match__1.0.2__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
-              "package": "postcss",
-              "version": "8.4.21",
+              "package": "balanced-match",
+              "version": "1.0.2",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
+                "balanced-match": [
+                  "1.0.2"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__cssesc__3.0.0__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "cssesc",
+              "version": "3.0.0",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
+                "cssesc": [
+                  "3.0.0"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__brace-expansion__2.0.1__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "brace-expansion",
+              "version": "2.0.1",
               "dev": false,
               "root_package": "",
               "link_packages": {},
               "deps": {
-                "nanoid": "3.3.4",
-                "picocolors": "1.0.0",
-                "source-map-js": "1.0.2"
+                "balanced-match": "1.0.2"
               },
               "transitive_closure": {
-                "nanoid": [
-                  "3.3.4"
+                "balanced-match": [
+                  "1.0.2"
                 ],
+                "brace-expansion": [
+                  "2.0.1"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__picocolors__1.0.0__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "picocolors",
+              "version": "1.0.0",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
                 "picocolors": [
                   "1.0.0"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__once__1.4.0__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "once",
+              "version": "1.4.0",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {
+                "wrappy": "1.0.2"
+              },
+              "transitive_closure": {
+                "once": [
+                  "1.4.0"
                 ],
-                "postcss": [
-                  "8.4.21"
-                ],
+                "wrappy": [
+                  "1.0.2"
+                ]
+              },
+              "lifecycle_build_target": false,
+              "lifecycle_hooks_env": [],
+              "lifecycle_hooks_execution_requirements": [],
+              "lifecycle_hooks_use_default_shell_env": false,
+              "bins": {},
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
+              "package_visibility": [
+                "//visibility:public"
+              ],
+              "replace_package": ""
+            }
+          },
+          "com_github_buildbarn_bb_storage_npm__source-map-js__1.0.2__links": {
+            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
+            "ruleClassName": "npm_import_links",
+            "attributes": {
+              "package": "source-map-js",
+              "version": "1.0.2",
+              "dev": false,
+              "root_package": "",
+              "link_packages": {},
+              "deps": {},
+              "transitive_closure": {
                 "source-map-js": [
                   "1.0.2"
                 ]
@@ -5219,26 +5268,26 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
             }
           },
-          "npm__fs.realpath__1.0.0__links": {
+          "com_github_buildbarn_bb_storage_npm__wrappy__1.0.2__links": {
             "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
             "ruleClassName": "npm_import_links",
             "attributes": {
-              "package": "fs.realpath",
-              "version": "1.0.0",
+              "package": "wrappy",
+              "version": "1.0.2",
               "dev": false,
               "root_package": "",
               "link_packages": {},
               "deps": {},
               "transitive_closure": {
-                "fs.realpath": [
-                  "1.0.0"
+                "wrappy": [
+                  "1.0.2"
                 ]
               },
               "lifecycle_build_target": false,
@@ -5246,59 +5295,11 @@
               "lifecycle_hooks_execution_requirements": [],
               "lifecycle_hooks_use_default_shell_env": false,
               "bins": {},
-              "npm_translate_lock_repo": "npm",
+              "npm_translate_lock_repo": "com_github_buildbarn_bb_storage_npm",
               "package_visibility": [
                 "//visibility:public"
               ],
               "replace_package": ""
-            }
-          },
-          "npm__postcss-selector-parser__6.0.11": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "postcss-selector-parser",
-              "version": "6.0.11",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-zbARubNdogI9j7WY4nQJBiNqQf3sLS3wCP4WfOidu+p28LofJqDH1tcXypGrcmMHhDk2t9wGhCsYe/+szLTy1g==",
-              "url": "https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-6.0.11.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
-            }
-          },
-          "npm__picocolors__1.0.0": {
-            "bzlFile": "@@aspect_rules_js~//npm/private:npm_import.bzl",
-            "ruleClassName": "npm_import_rule",
-            "attributes": {
-              "package": "picocolors",
-              "version": "1.0.0",
-              "root_package": "",
-              "link_workspace": "",
-              "link_packages": {},
-              "integrity": "sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==",
-              "url": "https://registry.npmjs.org/picocolors/-/picocolors-1.0.0.tgz",
-              "commit": "",
-              "patch_args": [],
-              "patches": [],
-              "custom_postinstall": "",
-              "npm_auth": "",
-              "npm_auth_basic": "",
-              "npm_auth_username": "",
-              "npm_auth_password": "",
-              "lifecycle_hooks": [],
-              "extra_build_content": "",
-              "generate_bzl_library_targets": false
             }
           }
         },

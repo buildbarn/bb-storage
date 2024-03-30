@@ -1,6 +1,6 @@
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+load("@com_github_buildbarn_bb_storage_npm//:defs.bzl", "npm_link_all_packages")
 load("@gazelle//:def.bzl", "gazelle")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 
 # gazelle:go_grpc_compilers @rules_go//proto:go_grpc
 # gazelle:prefix github.com/buildbarn/bb-storage

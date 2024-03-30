@@ -153,10 +153,11 @@ use_repo(llvm, "llvm_toolchain_llvm")
 
 npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
 npm.npm_translate_lock(
-    name = "npm",
+    name = "com_github_buildbarn_bb_storage_npm",
+    link_workspace = "com_github_buildbarn_bb_storage",
     pnpm_lock = "//:pnpm-lock.yaml",
 )
-use_repo(npm, "npm")
+use_repo(npm, "com_github_buildbarn_bb_storage_npm")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
