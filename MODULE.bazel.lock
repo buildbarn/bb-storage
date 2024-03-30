@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "219b751b9e4428867030dbdb481924646b11940911b5a93c69bd5e47d3b5a3f2",
+  "moduleFileHash": "76fa05f1ef785b93e90f614e038ecde33195b26f23e90de70d71d11ee762837c",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -321,14 +321,16 @@
           "imports": {
             "llvm_toolchain_llvm": "llvm_toolchain_llvm"
           },
-          "devImports": [],
+          "devImports": [
+            "llvm_toolchain_llvm"
+          ],
           "tags": [
             {
               "tagName": "toolchain",
               "attributeValues": {
                 "llvm_version": "14.0.0"
               },
-              "devDependency": false,
+              "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
                 "line": 149,
@@ -336,8 +338,8 @@
               }
             }
           ],
-          "hasDevUseExtension": false,
-          "hasNonDevUseExtension": true
+          "hasDevUseExtension": true,
+          "hasNonDevUseExtension": false
         },
         {
           "extensionBzlFile": "@aspect_rules_js//npm:extensions.bzl",
