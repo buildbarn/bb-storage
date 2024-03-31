@@ -7,7 +7,7 @@ proto_library(
     srcs = ["auth.proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "@io_opentelemetry_proto//:common_proto",
+        "@opentelemetry-proto//:common_proto",
         "@protobuf//:struct_proto",
     ],
 )

@@ -9,7 +9,7 @@ proto_library(
     deps = [
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/http:http_proto",
-        "@io_opentelemetry_proto//:common_proto",
+        "@opentelemetry-proto//:common_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:wrappers_proto",

@@ -5,6 +5,7 @@ bazel_dep(name = "aspect_rules_js", version = "1.39.1")
 bazel_dep(name = "gazelle", version = "0.35.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
 bazel_dep(name = "jsonnet_go", version = "0.20.0", repo_name = "google_jsonnet_go")
+bazel_dep(name = "opentelemetry-proto", version = "1.1.0")
 bazel_dep(name = "protobuf", version = "23.1")
 bazel_dep(name = "rules_go", version = "0.46.0")
 bazel_dep(name = "rules_oci", version = "1.7.5")
@@ -126,20 +127,6 @@ http_archive(
     sha256 = "c51ba0dba41d667fa5c64e56e252ba54be093e5ae764af6470dabca901f373eb",
     strip_prefix = "rules_jsonnet-0.5.0",
     urls = ["https://github.com/bazelbuild/rules_jsonnet/archive/0.5.0.tar.gz"],
-)
-
-http_archive(
-    name = "io_opentelemetry_proto",
-    build_file_content = """
-proto_library(
-    name = "common_proto",
-    srcs = ["opentelemetry/proto/common/v1/common.proto"],
-    visibility = ["//visibility:public"],
-)
-""",
-    sha256 = "464bc2b348e674a1a03142e403cbccb01be8655b6de0f8bfe733ea31fcd421be",
-    strip_prefix = "opentelemetry-proto-0.19.0",
-    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v0.19.0.tar.gz"],
 )
 
 llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm", dev_dependency = True)

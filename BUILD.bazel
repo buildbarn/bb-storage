@@ -17,7 +17,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve proto google/protobuf/timestamp.proto @protobuf//:timestamp_proto
 # gazelle:resolve proto google/protobuf/wrappers.proto @protobuf//:wrappers_proto
 # gazelle:resolve proto google/rpc/status.proto @googleapis//google/rpc:status_proto
-# gazelle:resolve proto opentelemetry/proto/common/v1/common.proto @io_opentelemetry_proto//:common_proto
+# gazelle:resolve proto opentelemetry/proto/common/v1/common.proto @opentelemetry-proto//:common_proto
 gazelle(
     name = "gazelle",
 )
