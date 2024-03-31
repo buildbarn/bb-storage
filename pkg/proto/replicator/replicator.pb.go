@@ -7,11 +7,7 @@
 package replicator
 
 import (
-	context "context"
 	v2 "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -197,84 +193,4 @@ func file_pkg_proto_replicator_replicator_proto_init() {
 	file_pkg_proto_replicator_replicator_proto_rawDesc = nil
 	file_pkg_proto_replicator_replicator_proto_goTypes = nil
 	file_pkg_proto_replicator_replicator_proto_depIdxs = nil
-}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConnInterface
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
-
-// ReplicatorClient is the client API for Replicator service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type ReplicatorClient interface {
-	ReplicateBlobs(ctx context.Context, in *ReplicateBlobsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-}
-
-type replicatorClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewReplicatorClient(cc grpc.ClientConnInterface) ReplicatorClient {
-	return &replicatorClient{cc}
-}
-
-func (c *replicatorClient) ReplicateBlobs(ctx context.Context, in *ReplicateBlobsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/buildbarn.replicator.Replicator/ReplicateBlobs", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ReplicatorServer is the server API for Replicator service.
-type ReplicatorServer interface {
-	ReplicateBlobs(context.Context, *ReplicateBlobsRequest) (*emptypb.Empty, error)
-}
-
-// UnimplementedReplicatorServer can be embedded to have forward compatible implementations.
-type UnimplementedReplicatorServer struct {
-}
-
-func (*UnimplementedReplicatorServer) ReplicateBlobs(context.Context, *ReplicateBlobsRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicateBlobs not implemented")
-}
-
-func RegisterReplicatorServer(s grpc.ServiceRegistrar, srv ReplicatorServer) {
-	s.RegisterService(&_Replicator_serviceDesc, srv)
-}
-
-func _Replicator_ReplicateBlobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplicateBlobsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ReplicatorServer).ReplicateBlobs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/buildbarn.replicator.Replicator/ReplicateBlobs",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReplicatorServer).ReplicateBlobs(ctx, req.(*ReplicateBlobsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _Replicator_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "buildbarn.replicator.Replicator",
-	HandlerType: (*ReplicatorServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "ReplicateBlobs",
-			Handler:    _Replicator_ReplicateBlobs_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/replicator/replicator.proto",
 }

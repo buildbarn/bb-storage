@@ -14,7 +14,10 @@ proto_library(
 
 go_proto_library(
     name = "fsac_go_proto",
-    compilers = ["@rules_go//proto:go_grpc"],
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/fsac",
     proto = ":fsac_proto",
     visibility = ["//visibility:public"],

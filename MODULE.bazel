@@ -79,6 +79,7 @@ go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependen
 go_deps_dev.gazelle_override(
     build_file_generation = "on",
     directives = [
+        "gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2",
         "gazelle:resolve proto go build/bazel/semver/semver.proto //build/bazel/semver",
         "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
         "gazelle:resolve proto go google/longrunning/operations.proto @com_google_cloud_go_longrunning//autogen/longrunningpb",
@@ -92,10 +93,6 @@ go_deps_dev.gazelle_override(
 go_deps_dev.module_override(
     patches = ["//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
     path = "github.com/golang/mock",
-)
-go_deps_dev.module_override(
-    patches = ["//:patches/com_github_golang_protobuf/service-registrar.diff"],
-    path = "github.com/golang/protobuf",
 )
 go_deps_dev.module_override(
     patches = ["//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],

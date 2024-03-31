@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "76fa05f1ef785b93e90f614e038ecde33195b26f23e90de70d71d11ee762837c",
+  "moduleFileHash": "bb120a5fa3b95a82eaa01371c308c3bfaa7b102fa6542a17c342b9862a8b69b5",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -125,6 +125,7 @@
               "attributeValues": {
                 "build_file_generation": "on",
                 "directives": [
+                  "gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2",
                   "gazelle:resolve proto go build/bazel/semver/semver.proto //build/bazel/semver",
                   "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
                   "gazelle:resolve proto go google/longrunning/operations.proto @com_google_cloud_go_longrunning//autogen/longrunningpb",
@@ -153,22 +154,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 92,
-                "column": 28
-              }
-            },
-            {
-              "tagName": "module_override",
-              "attributeValues": {
-                "patches": [
-                  "//:patches/com_github_golang_protobuf/service-registrar.diff"
-                ],
-                "path": "github.com/golang/protobuf"
-              },
-              "devDependency": true,
-              "location": {
-                "file": "@@//:MODULE.bazel",
-                "line": 96,
+                "line": 93,
                 "column": 28
               }
             },
@@ -183,7 +169,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 100,
+                "line": 97,
                 "column": 28
               }
             },
@@ -198,7 +184,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 104,
+                "line": 101,
                 "column": 28
               }
             },
@@ -213,7 +199,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 108,
+                "line": 105,
                 "column": 28
               }
             },
@@ -228,7 +214,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 112,
+                "line": 109,
                 "column": 28
               }
             }
@@ -266,7 +252,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 119,
+                "line": 116,
                 "column": 13
               }
             },
@@ -283,7 +269,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 127,
+                "line": 124,
                 "column": 13
               }
             },
@@ -301,7 +287,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 134,
+                "line": 131,
                 "column": 13
               }
             }
@@ -315,7 +301,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 148,
+            "line": 145,
             "column": 21
           },
           "imports": {
@@ -333,7 +319,7 @@
               "devDependency": true,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 149,
+                "line": 146,
                 "column": 15
               }
             }
@@ -347,7 +333,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 154,
+            "line": 151,
             "column": 20
           },
           "imports": {
@@ -365,7 +351,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 155,
+                "line": 152,
                 "column": 23
               }
             }
@@ -379,7 +365,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 162,
+            "line": 159,
             "column": 20
           },
           "imports": {
@@ -401,7 +387,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 163,
+                "line": 160,
                 "column": 9
               }
             }
@@ -6660,12 +6646,8 @@
               "build_directives": [],
               "build_file_generation": "auto",
               "build_extra_args": [],
-              "patches": [
-                "@@//:patches/com_github_golang_protobuf/service-registrar.diff"
-              ],
-              "patch_args": [
-                "-p0"
-              ],
+              "patches": [],
+              "patch_args": [],
               "sum": "h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg=",
               "replace": "",
               "version": "v1.5.3"
@@ -7028,6 +7010,7 @@
             "attributes": {
               "importpath": "github.com/bazelbuild/remote-apis",
               "build_directives": [
+                "gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2",
                 "gazelle:resolve proto go build/bazel/semver/semver.proto //build/bazel/semver",
                 "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
                 "gazelle:resolve proto go google/longrunning/operations.proto @com_google_cloud_go_longrunning//autogen/longrunningpb",
