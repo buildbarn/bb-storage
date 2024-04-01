@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "468d93e1077942adeda5ccc25ac1b47ba8bb0571e1feb0f742cb4410bac46afe",
+  "moduleFileHash": "bb652f0dd1de32eacdd781eccda23a843ae25cca65f680f1e44949d52439e914",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -364,7 +364,7 @@
         "aspect_rules_js": "aspect_rules_js@1.39.1",
         "gazelle": "gazelle@_",
         "googleapis": "googleapis@0.0.0-20240326-1c8d509c5",
-        "google_jsonnet_go": "jsonnet_go@0.20.0",
+        "jsonnet_go": "jsonnet_go@0.20.0",
         "opentelemetry-proto": "opentelemetry-proto@1.1.0",
         "protobuf": "protobuf@23.1",
         "rules_go": "rules_go@0.46.0",
