@@ -8,6 +8,7 @@ bazel_dep(name = "jsonnet_go", version = "0.20.0", repo_name = "google_jsonnet_g
 bazel_dep(name = "opentelemetry-proto", version = "1.1.0")
 bazel_dep(name = "protobuf", version = "23.1")
 bazel_dep(name = "rules_go", version = "0.46.0")
+bazel_dep(name = "rules_jsonnet", version = "0.5.0")
 bazel_dep(name = "rules_oci", version = "1.7.5")
 bazel_dep(name = "rules_pkg", version = "0.10.1")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc2")
@@ -120,13 +121,6 @@ http_archive(
     sha256 = "395342b2974e3350560e65752d36aab6573652b11cc6cb5ef79a2e5e83ad64b1",
     strip_prefix = "bootstrap-5.1.0-dist",
     urls = ["https://github.com/twbs/bootstrap/releases/download/v5.1.0/bootstrap-5.1.0-dist.zip"],
-)
-
-http_archive(
-    name = "io_bazel_rules_jsonnet",
-    sha256 = "c51ba0dba41d667fa5c64e56e252ba54be093e5ae764af6470dabca901f373eb",
-    strip_prefix = "rules_jsonnet-0.5.0",
-    urls = ["https://github.com/bazelbuild/rules_jsonnet/archive/0.5.0.tar.gz"],
 )
 
 llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm", dev_dependency = True)
