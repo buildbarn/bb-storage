@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "bb652f0dd1de32eacdd781eccda23a843ae25cca65f680f1e44949d52439e914",
+  "moduleFileHash": "60627b14818a474fb982b7e76f31cb682e02bf3b586d174e73c8fe1b3c252846",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -368,7 +368,7 @@
         "opentelemetry-proto": "opentelemetry-proto@1.1.0",
         "protobuf": "protobuf@23.1",
         "rules_go": "rules_go@0.46.0",
-        "rules_jsonnet": "rules_jsonnet@0.5.0",
+        "rules_jsonnet": "rules_jsonnet@0.6.0",
         "rules_oci": "rules_oci@1.7.5",
         "rules_pkg": "rules_pkg@0.10.1",
         "rules_proto": "rules_proto@6.0.0-rc2",
@@ -1125,15 +1125,16 @@
         }
       }
     },
-    "rules_jsonnet@0.5.0": {
+    "rules_jsonnet@0.6.0": {
       "name": "rules_jsonnet",
-      "version": "0.5.0",
-      "key": "rules_jsonnet@0.5.0",
+      "version": "0.6.0",
+      "key": "rules_jsonnet@0.6.0",
       "repoName": "io_bazel_rules_jsonnet",
       "executionPlatformsToRegister": [],
       "toolchainsToRegister": [],
       "extensionUsages": [],
       "deps": {
+        "bazel_skylib": "bazel_skylib@1.5.0",
         "jsonnet": "jsonnet@0.20.0",
         "google_jsonnet_go": "jsonnet_go@0.20.0",
         "bazel_tools": "bazel_tools@_",
@@ -1144,14 +1145,11 @@
         "ruleClassName": "http_archive",
         "attributes": {
           "urls": [
-            "https://github.com/bazelbuild/rules_jsonnet/archive/refs/tags/0.5.0.tar.gz"
+            "https://github.com/bazelbuild/rules_jsonnet/releases/download/0.6.0/rules_jsonnet-0.6.0.tar.gz"
           ],
-          "integrity": "sha256-xRug26QdZn+lxk5W4lK6VL4JPlrnZK9kcNq8qQHzc+s=",
-          "strip_prefix": "rules_jsonnet-0.5.0",
-          "remote_patches": {
-            "https://bcr.bazel.build/modules/rules_jsonnet/0.5.0/patches/add_module_dot_bazel.patch": "sha256-qkrjrjVpcuo+ykWoNtrUr6yZDbTcMJC+48/rgeAVfNM=",
-            "https://bcr.bazel.build/modules/rules_jsonnet/0.5.0/patches/add_examples_module_dot_bazel.patch": "sha256-AikVRYmO8oFBEnvZCO1Dk0Er7KYhMDl2b3Zo+M9VVyg="
-          },
+          "integrity": "sha256-4Js8CG7po47gztv/lnGXAL0BIdeITQGTZkr/XqMgEo0=",
+          "strip_prefix": "rules_jsonnet-0.6.0",
+          "remote_patches": {},
           "remote_patch_strip": 0
         }
       }

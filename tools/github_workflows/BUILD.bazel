@@ -3,7 +3,6 @@ load("@rules_jsonnet//jsonnet:jsonnet.bzl", "jsonnet_library", "jsonnet_to_json"
 jsonnet_library(
     name = "workflows_template",
     srcs = ["workflows_template.libsonnet"],
-    imports = ["../.."],
     visibility = ["//visibility:public"],
 )
 
