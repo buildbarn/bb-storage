@@ -240,6 +240,16 @@ message BlobAccessConfiguration {
   //
   // https://github.com/buildbarn/bb-adrs/blob/master/0004-icas.md
   reserved 10;
+
+  // If set, will add an extra `metrics_tag` key-value pair to exported metrics,
+  // which simplifies gathering targeted metrics for a particular backend
+  // without resorting to complex/fragile queries.
+  //
+  // In particular, setting this on a `label` backend will create unique
+  // counters for accesses following that path, rather than sharing counters for
+  // all instances of the backend with that particular label. This allows for
+  // unique counts when using labeled backends.
+  string metrics_tag = 28;
 }
 
 message ReadCachingBlobAccessConfiguration {
