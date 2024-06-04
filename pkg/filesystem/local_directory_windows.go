@@ -395,6 +395,7 @@ func (d *localDirectory) lstat(name path.Component) (FileType, error) {
 	if err != nil {
 		return FileTypeOther, err
 	}
+	defer windows.CloseHandle(handle)
 	var fileInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(handle, &fileInfo)
 	if err != nil {
@@ -515,6 +516,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer windows.CloseHandle(handle)
 	outBufferSize := uint32(512)
 	outBuffer := make([]byte, outBufferSize)
 	var returned uint32
