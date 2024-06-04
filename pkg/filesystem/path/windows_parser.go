@@ -7,49 +7,61 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func stripUNIXSeparators(p string) string {
-	for {
+func stripWindowsSeparators(p string) string {
+	for p != "" && (p[0] == '/' || p[0] == '\\') {
 		p = p[1:]
-		if p == "" || p[0] != '/' {
-			return p
-		}
 	}
+	return p
 }
 
-type unixParser struct {
+type windowsParser struct {
 	path string
 }
 
-// NewUNIXParser creates a Parser for Unix paths that can be used in Resolve.
-func NewUNIXParser(path string) (Parser, error) {
-	// Unix-style paths are generally passed to system calls that
+type windowsRelativeParser struct {
+	path string
+}
+
+// NewWindowsParser creates a Parser for Windows paths that can be used in Resolve.
+func NewWindowsParser(path string) (Parser, error) {
+	// Windows paths are generally passed to system calls that
 	// accept C strings. There is no way these can accept null
 	// bytes.
 	if strings.ContainsRune(path, '\x00') {
 		return nil, status.Error(codes.InvalidArgument, "Path contains a null byte")
 	}
-
-	return &unixParser{path}, nil
+	return &windowsParser{path}, nil
 }
 
-// MustNewUNIXParser is identical to NewUNIXParser, except that it panics
+// MustNewWindowsParser is identical to NewWindowsParser, except that it panics
 // upon failure.
-func MustNewUNIXParser(path string) Parser {
-	parser, err := NewUNIXParser(path)
+func MustNewWindowsParser(path string) Parser {
+	parser, err := NewWindowsParser(path)
 	if err != nil {
 		panic(err)
 	}
 	return parser
 }
 
-func (p unixParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
-	if p.path != "" && p.path[0] == '/' {
+func (p windowsParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
+	// Parse for drive letter.
+	if len(p.path) >= 2 && ((p.path[0] >= 'A' && p.path[0] <= 'Z') ||
+		(p.path[0] >= 'a' && p.path[0] <= 'z')) && p.path[1] == ':' {
+		next, err = scopeWalker.OnDriveLetter(rune(p.path[0] &^ 0x20))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return next, windowsRelativeParser{stripWindowsSeparators(p.path[2:])}, nil
+	}
+
+	if len(p.path) >= 1 && p.path[0] == '\\' || p.path[0] == '/' {
 		next, err = scopeWalker.OnAbsolute()
 		if err != nil {
 			return nil, nil, err
 		}
 
-		return next, unixRelativeParser{stripUNIXSeparators(p.path)}, nil
+		return next, windowsRelativeParser{stripWindowsSeparators(p.path)}, nil
 	}
 
 	next, err = scopeWalker.OnRelative()
@@ -57,25 +69,23 @@ func (p unixParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, r
 		return nil, nil, err
 	}
 
-	return next, unixRelativeParser{p.path}, nil
+	return next, windowsRelativeParser{p.path}, nil
 }
 
-type unixRelativeParser struct {
-	path string
-}
-
-func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker, mustBeDirectory bool) (next GotDirectoryOrSymlink, remainder RelativeParser, err error) {
+func (rp windowsRelativeParser) ParseFirstComponent(componentWalker ComponentWalker, mustBeDirectory bool) (next GotDirectoryOrSymlink, remainder RelativeParser, err error) {
 	var name string
 	terminal := false
-	if slash := strings.IndexByte(rp.path, '/'); slash == -1 {
-		// Path no longer contains a slash. Consume it entirely.
+
+	separator := strings.IndexAny(rp.path, "/\\")
+	if separator == -1 {
+		// Path no longer contains a separator. Consume it entirely.
 		terminal = true
 		name = rp.path
 		remainder = nil
 	} else {
-		name = rp.path[:slash]
-		rp.path = stripUNIXSeparators(rp.path[slash:])
-		remainder = unixRelativeParser{rp.path}
+		name = rp.path[:separator]
+		rp.path = stripWindowsSeparators(rp.path[separator:])
+		remainder = windowsRelativeParser{rp.path}
 	}
 
 	switch name {
@@ -95,9 +105,9 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 	}
 
 	// A filename that was followed by a
-	// slash, or we are symlink expanding
+	// separator, or we are symlink expanding
 	// one or more paths that are followed
-	// by a slash. This component must yield
+	// by a separator. This component must yield
 	// a directory or symlink.
 	if mustBeDirectory || !terminal {
 		r, err := componentWalker.OnDirectory(Component{

@@ -2,6 +2,11 @@ package path
 
 import (
 	"strings"
+	"unicode"
+
+	"github.com/buildbarn/bb-storage/pkg/util"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Builder for normalized pathname strings.
@@ -20,6 +25,7 @@ import (
 // system.
 type Builder struct {
 	absolute             bool
+	driveLetter          rune
 	components           []string
 	firstReversibleIndex int
 	suffix               string
@@ -45,6 +51,15 @@ var RootBuilder = Builder{
 	suffix:   "/",
 }
 
+// NewDriveLetterBuilder returns a builder rooted at a Windows drive.
+func NewDriveLetterBuilder(drive rune) Builder {
+	return Builder{
+		absolute:    false,
+		driveLetter: drive,
+		suffix:      "/",
+	}
+}
+
 // GetUNIXString returns a string representation of the path for use on
 // UNIX-like operating systems.
 func (b *Builder) GetUNIXString() string {
@@ -66,10 +81,47 @@ func (b *Builder) GetUNIXString() string {
 	return out.String()
 }
 
+// GetWindowsString returns a string representation of the path for use on
+// Windows.
+func (b *Builder) GetWindowsString() (string, error) {
+	// Emit pathname components.
+	var out strings.Builder
+	prefix := ""
+
+	if b.driveLetter != 0 {
+		out.WriteString(string(b.driveLetter))
+		out.WriteString(":")
+		prefix = "\\"
+	} else if b.absolute {
+		prefix = "\\"
+	}
+
+	for _, component := range b.components {
+		if err := validateWindowsPathComponent(component); err != nil {
+			return "", util.StatusWrapf(err, "In %#v", b.components)
+		}
+
+		out.WriteString(prefix)
+		out.WriteString(component)
+		prefix = "\\"
+	}
+
+	// Emit trailing slash in case the path refers to a directory, or a dot or
+	// slash if the path is empty. The suffix may have been constructed by
+	// platform-independent code that uses forward slashes. To construct a
+	// Windows path we must use a backslash.
+	suffix := b.suffix
+	if suffix == "/" {
+		suffix = "\\"
+	}
+	out.WriteString(suffix)
+	return out.String(), nil
+}
+
 func (b *Builder) addTrailingSlash() {
 	if len(b.components) == 0 {
 		// An empty path. Ensure we either emit a "/" or ".",
-		// depending on whether the path is absolute.
+		// depending on whether the path is absolute/drive letter.
 		if b.absolute {
 			b.suffix = "/"
 		} else {
@@ -104,7 +156,9 @@ func (b *Builder) getComponentWalker(base ComponentWalker) ComponentWalker {
 // directly to Resolve(). This can be used to replay resolution of a
 // previously constructed path.
 func (b *Builder) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
-	if b.absolute {
+	if b.driveLetter != 0 {
+		next, err = scopeWalker.OnDriveLetter(b.driveLetter)
+	} else if b.absolute {
 		next, err = scopeWalker.OnAbsolute()
 	} else {
 		next, err = scopeWalker.OnRelative()
@@ -150,6 +204,20 @@ func (w *buildingScopeWalker) OnAbsolute() (ComponentWalker, error) {
 		absolute:   true,
 		components: w.b.components[:0],
 		suffix:     "/",
+	}
+	return w.b.getComponentWalker(componentWalker), nil
+}
+
+func (w *buildingScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	componentWalker, err := w.base.OnDriveLetter(drive)
+	if err != nil {
+		return nil, err
+	}
+	*w.b = Builder{
+		absolute:    true,
+		driveLetter: drive,
+		components:  w.b.components[:0],
+		suffix:      "/",
 	}
 	return w.b.getComponentWalker(componentWalker), nil
 }
@@ -267,4 +335,11 @@ func (rp builderRelativeParser) ParseFirstComponent(componentWalker ComponentWal
 		return nil, nil, err
 	}
 	return r, nil, nil
+}
+
+func validateWindowsPathComponent(component string) error {
+	if strings.ContainsFunc(component, unicode.IsControl) || strings.ContainsAny(component, "<>:\"/\\|?*") {
+		return status.Errorf(codes.InvalidArgument, "Path component contains a control character or invalid character %#v.", component)
+	}
+	return nil
 }

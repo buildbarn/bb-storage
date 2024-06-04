@@ -4,4 +4,5 @@ package path
 // converted to string representations.
 type Stringer interface {
 	GetUNIXString() string
+	GetWindowsString() (string, error)
 }

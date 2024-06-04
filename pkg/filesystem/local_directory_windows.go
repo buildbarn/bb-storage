@@ -109,11 +109,7 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 }
 
 func NewLocalDirectory(path string) (DirectoryCloser, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
-	}
-	absPath = "\\??\\" + absPath
+	absPath := "\\??\\" + path
 	return newLocalDirectory(absPath, true)
 }
 

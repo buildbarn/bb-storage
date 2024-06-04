@@ -26,12 +26,28 @@ func (t *Trace) Append(component Component) *Trace {
 	}
 }
 
-func (t *Trace) writeToStringBuilder(sb *strings.Builder) {
+func (t *Trace) writeToUNIXStringBuilder(sb *strings.Builder) {
 	if t.parent != nil {
-		t.parent.writeToStringBuilder(sb)
+		t.parent.writeToUNIXStringBuilder(sb)
 		sb.WriteByte('/')
 	}
 	sb.WriteString(t.component.String())
+}
+
+func (t *Trace) writeToWindowsStringBuilder(sb *strings.Builder) error {
+	if t.parent != nil {
+		if err := t.parent.writeToWindowsStringBuilder(sb); err != nil {
+			return err
+		}
+		sb.WriteByte('\\')
+	}
+
+	if err := validateWindowsPathComponent(t.component.String()); err != nil {
+		return err
+	}
+
+	sb.WriteString(t.component.String())
+	return nil
 }
 
 // GetUNIXString returns a string representation of the path for use on
@@ -41,6 +57,19 @@ func (t *Trace) GetUNIXString() string {
 		return "."
 	}
 	var sb strings.Builder
-	t.writeToStringBuilder(&sb)
+	t.writeToUNIXStringBuilder(&sb)
 	return sb.String()
+}
+
+// GetWindowsString returns a string representation of the path for use on Windows.
+func (t *Trace) GetWindowsString() (string, error) {
+	if t == nil {
+		return ".", nil
+	}
+
+	var sb strings.Builder
+	if err := t.writeToWindowsStringBuilder(&sb); err != nil {
+		return "", err
+	}
+	return sb.String(), nil
 }

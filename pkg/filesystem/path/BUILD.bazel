@@ -21,6 +21,7 @@ go_library(
         "virtual_root_scope_walker_factory.go",
         "void_component_walker.go",
         "void_scope_walker.go",
+        "windows_parser.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/filesystem/path",
     visibility = ["//visibility:public"],
