@@ -167,7 +167,7 @@ func (d *localDirectory) openNt(name path.Component, access, disposition uint32,
 	var options uint32 = windows.FILE_NON_DIRECTORY_FILE | windows.FILE_SYNCHRONOUS_IO_NONALERT
 	if openReparsePoint {
 		options |= windows.FILE_OPEN_REPARSE_POINT
-		// Do not overwrite file attributes. Use dispostion FILE_OPEN.
+		// Do not overwrite file attributes. Use disposition FILE_OPEN.
 		err := ntCreateFile(&handle, access, d.handle, name.String(), windows.FILE_OPEN, options)
 		if err != nil {
 			// The file does not exist, so it cannot be a reparse point.
@@ -440,49 +440,51 @@ func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumb
 }
 
 func readdirnames(handle windows.Handle) ([]string, error) {
-	outBufferSize := uint32(512)
-	outBuffer := make([]byte, outBufferSize)
-	firstIteration := true
-	for {
-		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo,
-			&outBuffer[0], outBufferSize)
-		if err == nil {
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
-			if firstIteration {
-				return []string{}, nil
-			}
-			break
-		}
-		if err.(syscall.Errno) == windows.ERROR_MORE_DATA {
-			outBufferSize *= 2
-			outBuffer = make([]byte, outBufferSize)
-		} else {
-			return nil, err
-		}
-		firstIteration = false
-	}
+	filledSize := uint32(256)
 	names := make([]string, 0)
-	offset := ^(uint32(0))
-	dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
-	for offset != 0 {
-		offset = dirInfoPtr.NextEntryOffset
-		fileNameLen := int(dirInfoPtr.FileNameLength) / 2
-		fileNameUTF16 := make([]uint16, fileNameLen)
-		targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
-		for i := 0; i < fileNameLen; i++ {
-			fileNameUTF16[i] = *(*uint16)(targetPtr)
-			targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
-		}
-		dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
 
-		fileName := windows.UTF16ToString(fileNameUTF16)
-		if fileName == "." || fileName == ".." {
-			continue
+	for {
+		outBufferSize := uint32(filledSize * 2)
+		outBuffer := make([]byte, outBufferSize)
+		err := windows.GetFileInformationByHandleEx(handle, windows.FileFullDirectoryInfo, &outBuffer[0], outBufferSize)
+		if err != nil {
+			// Require a bigger buffer.
+			if err.(syscall.Errno) == windows.ERROR_MORE_DATA {
+				filledSize *= 2
+				continue
+			}
+			// Done.
+			if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
+				break
+			}
+
+			return []string{}, err
 		}
-		names = append(names, fileName)
+
+		offset := ^(uint32(0))
+		filledSize = 0
+		dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
+		for offset != 0 {
+			offset = dirInfoPtr.NextEntryOffset
+			fileNameLen := int(dirInfoPtr.FileNameLength) / 2
+			filledSize += uint32(unsafe.Sizeof(windowsext.FILE_FULL_DIR_INFO{})) + uint32(dirInfoPtr.FileNameLength)
+
+			fileNameUTF16 := make([]uint16, fileNameLen)
+			targetPtr := unsafe.Pointer(&dirInfoPtr.FileName[0])
+			for i := 0; i < fileNameLen; i++ {
+				fileNameUTF16[i] = *(*uint16)(targetPtr)
+				targetPtr = unsafe.Pointer(uintptr(targetPtr) + uintptr(2))
+			}
+			dirInfoPtr = (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(uintptr(unsafe.Pointer(dirInfoPtr)) + uintptr(offset)))
+
+			fileName := windows.UTF16ToString(fileNameUTF16)
+			if fileName == "." || fileName == ".." {
+				continue
+			}
+			names = append(names, fileName)
+		}
 	}
+
 	return names, nil
 }
 
