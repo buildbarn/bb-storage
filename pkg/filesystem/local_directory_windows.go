@@ -16,6 +16,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/windowsext"
+	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/windows"
 	"google.golang.org/grpc/codes"
@@ -586,24 +587,29 @@ func (d *localDirectory) Remove(name path.Component) error {
 
 // On NTFS mount point is a reparse point, no need to unmount.
 func (d *localDirectory) RemoveAllChildren() error {
+	return d.removeAllChildren(nil)
+}
+
+func (d *localDirectory) removeAllChildren(dPath *path.Trace) error {
 	defer runtime.KeepAlive(d)
 
 	names, err := readdirnames(d.handle)
 	if err != nil {
-		return err
+		return util.StatusWrapf(err, "Failed to read contents of directory %#v", dPath.GetUNIXString())
 	}
 	for _, name := range names {
 		component := path.MustNewComponent(name)
 		fileType, err := d.lstat(component)
+		childPath := dPath.Append(component)
 		if err != nil {
-			return err
+			return util.StatusWrapf(err, "Failed to stat component %#v", childPath)
 		}
 		if fileType == FileTypeDirectory {
 			subdirectory, err := d.enter(component, true)
 			if err != nil {
-				return err
+				return util.StatusWrapf(err, "Failed to enter component %#v", childPath)
 			}
-			err = subdirectory.RemoveAllChildren()
+			err = subdirectory.removeAllChildren(childPath)
 			subdirectory.Close()
 			if err != nil {
 				return err
@@ -611,7 +617,7 @@ func (d *localDirectory) RemoveAllChildren() error {
 		}
 		err = d.Remove(component)
 		if err != nil {
-			return err
+			return util.StatusWrapf(err, "Failed to remove component %#v", childPath)
 		}
 	}
 	return nil
