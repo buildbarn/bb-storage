@@ -6,6 +6,10 @@ func (w voidScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 
+func (w voidScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	return VoidComponentWalker, nil
+}
+
 func (w voidScopeWalker) OnRelative() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }

@@ -34,6 +34,17 @@ func (w *loopDetectingScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	}, nil
 }
 
+func (w *loopDetectingScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	componentWalker, err := w.base.OnDriveLetter(drive)
+	if err != nil {
+		return nil, err
+	}
+	return &loopDetectingComponentWalker{
+		base:         componentWalker,
+		symlinksLeft: w.symlinksLeft,
+	}, nil
+}
+
 func (w *loopDetectingScopeWalker) OnRelative() (ComponentWalker, error) {
 	componentWalker, err := w.base.OnRelative()
 	if err != nil {

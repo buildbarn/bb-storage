@@ -2,6 +2,10 @@ package path
 
 import (
 	"strings"
+	"unicode"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Component of a pathname. This type is nothing more than a string that
@@ -32,4 +36,16 @@ func MustNewComponent(name string) Component {
 
 func (c Component) String() string {
 	return c.name
+}
+
+// validateWindowsComponent returns true if the provided pathname
+// component is valid for use on Windows.
+func validateWindowsComponent(component string) error {
+	if strings.ContainsFunc(component, unicode.IsControl) {
+		return status.Error(codes.InvalidArgument, "Pathname component contains control characters")
+	}
+	if strings.ContainsAny(component, "<>:\"/\\|?*") {
+		return status.Error(codes.InvalidArgument, "Pathname component contains reserved characters")
+	}
+	return nil
 }

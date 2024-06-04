@@ -24,3 +24,7 @@ func (pw *absoluteScopeWalker) OnRelative() (ComponentWalker, error) {
 func (pw *absoluteScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return pw.componentWalker, nil
 }
+
+func (pw *absoluteScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	return pw.componentWalker, nil
+}

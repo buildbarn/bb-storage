@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func stripOneOrMoreSlashes(p string) string {
+func stripUNIXSeparators(p string) string {
 	for {
 		p = p[1:]
 		if p == "" || p[0] != '/' {
@@ -49,7 +49,7 @@ func (p unixParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, r
 			return nil, nil, err
 		}
 
-		return next, unixRelativeParser{stripOneOrMoreSlashes(p.path)}, nil
+		return next, unixRelativeParser{stripUNIXSeparators(p.path)}, nil
 	}
 
 	next, err = scopeWalker.OnRelative()
@@ -74,7 +74,7 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 		remainder = nil
 	} else {
 		name = rp.path[:slash]
-		rp.path = stripOneOrMoreSlashes(rp.path[slash:])
+		rp.path = stripUNIXSeparators(rp.path[slash:])
 		remainder = unixRelativeParser{rp.path}
 	}
 

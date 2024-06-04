@@ -207,6 +207,10 @@ func (w *virtualRootScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return w.getComponentWalker(w.rootNode)
 }
 
+func (w *virtualRootScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	return w.getComponentWalker(w.rootNode)
+}
+
 func (w *virtualRootScopeWalker) OnRelative() (ComponentWalker, error) {
 	// Attempted to resolve a relative path. There is no need to
 	// rewrite any paths. Do wrap the ComponentWalker to ensure

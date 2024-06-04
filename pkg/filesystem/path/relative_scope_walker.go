@@ -21,6 +21,10 @@ func (pw *relativeScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return nil, status.Error(codes.InvalidArgument, "Path is absolute, while a relative path was expected")
 }
 
+func (pw *relativeScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+	return nil, status.Error(codes.InvalidArgument, "Path has a drive letter, while a relative path was expected")
+}
+
 func (pw *relativeScopeWalker) OnRelative() (ComponentWalker, error) {
 	return pw.componentWalker, nil
 }

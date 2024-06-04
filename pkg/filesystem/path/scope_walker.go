@@ -7,7 +7,9 @@ type ScopeWalker interface {
 	// One of these functions is called right before processing the
 	// first component in the path (if any). Based on the
 	// characteristics of the path. Absolute paths are handled through
-	// OnAbsolute(), and relative paths require OnRelative().
+	// OnAbsolute(), and relative paths require OnRelative(). On Windows
+	// absolute paths can also start with a drive letter, which is handled
+	// through OnDriveLetter().
 	//
 	// These functions can be used by the implementation to determine
 	// whether path resolution needs to be relative to the current
@@ -25,4 +27,5 @@ type ScopeWalker interface {
 	// system.
 	OnAbsolute() (ComponentWalker, error)
 	OnRelative() (ComponentWalker, error)
+	OnDriveLetter(drive rune) (ComponentWalker, error)
 }
