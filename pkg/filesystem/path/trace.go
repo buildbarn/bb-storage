@@ -2,6 +2,8 @@ package path
 
 import (
 	"strings"
+
+	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 // Trace of a path.
@@ -26,10 +28,10 @@ func (t *Trace) Append(component Component) *Trace {
 	}
 }
 
-func (t *Trace) writeToStringBuilder(sb *strings.Builder) {
+func (t *Trace) writeToStringBuilder(separator byte, sb *strings.Builder) {
 	if t.parent != nil {
-		t.parent.writeToStringBuilder(sb)
-		sb.WriteByte('/')
+		t.parent.writeToStringBuilder(separator, sb)
+		sb.WriteByte(separator)
 	}
 	sb.WriteString(t.component.String())
 }
@@ -41,6 +43,27 @@ func (t *Trace) GetUNIXString() string {
 		return "."
 	}
 	var sb strings.Builder
-	t.writeToStringBuilder(&sb)
+	t.writeToStringBuilder('/', &sb)
 	return sb.String()
+}
+
+// GetWindowsString returns a string representation of the path for use
+// on Windows.
+func (t *Trace) GetWindowsString() (string, error) {
+	if t == nil {
+		return ".", nil
+	}
+
+	// Ensure that we only emit paths with filenames that are valid
+	// on Windows.
+	for tValidate := t; tValidate != nil; tValidate = tValidate.parent {
+		componentStr := tValidate.component.String()
+		if err := validateWindowsComponent(componentStr); err != nil {
+			return "", util.StatusWrapf(err, "Invalid pathname component %#v", componentStr)
+		}
+	}
+
+	var sb strings.Builder
+	t.writeToStringBuilder('\\', &sb)
+	return sb.String(), nil
 }

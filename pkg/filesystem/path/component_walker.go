@@ -56,9 +56,10 @@ type ComponentWalker interface {
 	// If the pathname component refers to a symbolic link, this
 	// function will return a GotSymlink containing a ScopeWalker, which
 	// can be used to perform expansion of the symbolic link. The
-	// Resolve() function will call into OnAbsolute() or OnRelative() to
-	// signal whether resolution should continue at the root directory
-	// or at the directory that contained the symbolic link.
+	// Resolve() function will call into OnAbsolute(), OnRelative() or
+	// OnDriveLetter() to signal whether resolution should continue at
+	// the root directory or at the directory that contained the
+	// symbolic link.
 	OnDirectory(name Component) (GotDirectoryOrSymlink, error)
 
 	// OnTerminal is called for the potentially last pathname

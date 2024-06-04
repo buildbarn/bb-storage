@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustGetWindowsString(p path.Stringer) string {
+	s, err := p.GetWindowsString()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func TestBuilder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
@@ -16,7 +24,7 @@ func TestBuilder(t *testing.T) {
 	// resolved without making any assumptions about the layout of
 	// the underlying file system. ".." elements should not be
 	// removed from paths.
-	t.Run("Identity", func(t *testing.T) {
+	t.Run("UNIXIdentity", func(t *testing.T) {
 		for _, p := range []string{
 			".",
 			"..",
@@ -42,9 +50,122 @@ func TestBuilder(t *testing.T) {
 		}
 	})
 
+	t.Run("WindowsParseUNIXPaths", func(t *testing.T) {
+		for _, data := range [][]string{
+			{".", "."},
+			{"..", ".."},
+			{"/", "\\"},
+			{"hello", "hello"},
+			{"hello/", "hello\\"},
+			{"hello/..", "hello\\.."},
+			{"/hello/", "\\hello\\"},
+			{"/hello/..", "\\hello\\.."},
+			{"/hello/../world", "\\hello\\..\\world"},
+			{"/hello/../world/", "\\hello\\..\\world\\"},
+			{"/hello/../world/foo", "\\hello\\..\\world\\foo"},
+		} {
+			p := data[0]
+			expected := data[1]
+			t.Run(p, func(t *testing.T) {
+				// Windows Parser, compare Windows and UNIX string identity.
+				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(path.NewWindowsParser(p), scopewalker1))
+				require.Equal(t, expected, mustGetWindowsString(builder1))
+				require.Equal(t, p, builder1.GetUNIXString())
+
+				builder2, scopewalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(builder1, scopewalker2))
+				require.Equal(t, expected, mustGetWindowsString(builder2))
+				require.Equal(t, p, builder2.GetUNIXString())
+			})
+		}
+	})
+
+	t.Run("WindowsIdentity", func(t *testing.T) {
+		for _, p := range []string{
+			"C:\\",
+			"C:\\hello\\",
+			"C:\\hello\\..",
+			"C:\\hello\\..\\world",
+			"C:\\hello\\..\\world\\",
+			"C:\\hello\\..\\world\\foo",
+			"C:\\hello\\..\\world\\foo",
+		} {
+			t.Run(p, func(t *testing.T) {
+				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(path.NewWindowsParser(p), scopewalker1))
+				require.Equal(t, p, mustGetWindowsString(builder1))
+
+				builder2, scopewalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(builder1, scopewalker2))
+				require.Equal(t, p, mustGetWindowsString(builder2))
+			})
+		}
+	})
+
+	t.Run("WindowsParseAndWriteUNIXPaths", func(t *testing.T) {
+		for _, data := range [][]string{
+			{"C:\\", "/"},
+			{"C:\\.", "/"},
+			{"C:\\hello\\", "/hello/"},
+			{"C:\\hello\\.", "/hello/"},
+			{"C:\\hello\\..", "/hello/.."},
+			{"C:\\hello\\.\\world", "/hello/world"},
+			{"C:\\hello\\..\\world", "/hello/../world"},
+			{"C:\\hello\\..\\world\\", "/hello/../world/"},
+			{"C:\\hello\\..\\world\\foo", "/hello/../world/foo"},
+			{"C:\\hello\\\\..\\world\\foo", "/hello/../world/foo"},
+		} {
+			p := data[0]
+			expected := data[1]
+			t.Run(p, func(t *testing.T) {
+				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(path.NewWindowsParser(p), scopewalker1))
+				require.Equal(t, expected, builder1.GetUNIXString())
+
+				builder2, scopewalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(builder1, scopewalker2))
+				require.Equal(t, expected, builder2.GetUNIXString())
+			})
+		}
+	})
+
+	t.Run("WindowsParseCasing", func(t *testing.T) {
+		for _, data := range [][]string{
+			{"./bar", "bar"},
+			{"./bar\\", "bar\\"},
+			{"c:", "C:\\"},
+			{"c:.", "C:\\"},
+			{"c:Hello", "C:\\Hello"},
+			{"c:\\", "C:\\"},
+			{"c:\\.", "C:\\"},
+			{"c:\\Hello\\", "C:\\Hello\\"},
+			{"c:\\Hello\\.", "C:\\Hello\\"},
+			{"c:\\Hello\\..", "C:\\Hello\\.."},
+			{"c:\\Hello\\.\\world", "C:\\Hello\\world"},
+			{"c:\\Hello\\..\\world", "C:\\Hello\\..\\world"},
+			{"c:\\Hello\\..\\world", "C:\\Hello\\..\\world"},
+			{"c:\\Hello\\..\\world\\", "C:\\Hello\\..\\world\\"},
+			{"c:\\Hello\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
+			{"c:\\\\Hello\\\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
+		} {
+			p := data[0]
+			expected := data[1]
+			t.Run(p, func(t *testing.T) {
+				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(path.NewWindowsParser(p), scopewalker1))
+				require.Equal(t, expected, mustGetWindowsString(builder1))
+
+				builder2, scopewalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(builder1, scopewalker2))
+				require.Equal(t, expected, mustGetWindowsString(builder2))
+			})
+		}
+	})
+
 	// The following paths can be normalized, even when making no
 	// assumptions about the layout of the underlying file system.
-	t.Run("Normalized", func(t *testing.T) {
+	t.Run("UNIXNormalized", func(t *testing.T) {
 		for from, to := range map[string]string{
 			"":            ".",
 			"./":          ".",
@@ -67,6 +188,33 @@ func TestBuilder(t *testing.T) {
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
 				require.NoError(t, path.Resolve(builder1, scopeWalker2))
 				require.Equal(t, to, builder2.GetUNIXString())
+			})
+		}
+	})
+
+	t.Run("WindowsNormalized", func(t *testing.T) {
+		for from, to := range map[string]string{
+			"":            ".",
+			"./":          ".",
+			"./.":         ".",
+			"../":         "..",
+			"../.":        "..",
+			"//":          "\\",
+			"/.":          "\\",
+			"/./":         "\\",
+			"/..":         "\\",
+			"/../":        "\\",
+			"/hello/.":    "\\hello\\",
+			"/hello/../.": "\\hello\\..",
+		} {
+			t.Run(from, func(t *testing.T) {
+				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker1))
+				require.Equal(t, to, mustGetWindowsString(builder1))
+
+				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.NoError(t, path.Resolve(builder1, scopeWalker2))
+				require.Equal(t, to, mustGetWindowsString(builder2))
 			})
 		}
 	})
