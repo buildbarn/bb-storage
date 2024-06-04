@@ -51,6 +51,7 @@ go_library(
         ],
         "@rules_go//go/platform:windows": [
             "//pkg/filesystem/windowsext",
+            "//pkg/util",
             "@org_golang_google_grpc//codes",
             "@org_golang_google_grpc//status",
             "@org_golang_x_sys//windows",
