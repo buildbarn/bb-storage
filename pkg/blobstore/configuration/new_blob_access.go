@@ -18,6 +18,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
@@ -217,7 +218,11 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		} else {
 			// Persistency is enabled. Reload previous
 			// persistent state from disk.
-			persistentStateDirectory, err := filesystem.NewLocalDirectory(persistent.StateDirectoryPath)
+			parser, err := path.NewLocalParser(persistent.StateDirectoryPath)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to parse persistent state directory path %#v", persistent.StateDirectoryPath)
+			}
+			persistentStateDirectory, err := filesystem.NewLocalDirectory(parser)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
 			}
