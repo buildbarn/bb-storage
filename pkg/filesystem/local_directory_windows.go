@@ -108,8 +108,16 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 	return newLocalDirectoryFromHandle(handle)
 }
 
-func NewLocalDirectory(path string) (DirectoryCloser, error) {
-	absPath := "\\??\\" + path
+func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
+	directoryPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(directoryParser, scopeWalker); err != nil {
+		return nil, util.StatusWrap(err, "Failed to resolve directory")
+	}
+	pathString, err := path.GetLocalString(directoryPath)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
+	}
+	absPath := "\\??\\" + pathString
 	return newLocalDirectory(absPath, true)
 }
 

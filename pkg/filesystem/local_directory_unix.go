@@ -33,8 +33,17 @@ func newLocalDirectoryFromFileDescriptor(fd int) (*localDirectory, error) {
 
 // NewLocalDirectory creates a directory handle that corresponds to a
 // local path on the system.
-func NewLocalDirectory(path string) (DirectoryCloser, error) {
-	fd, err := unix.Openat(unix.AT_FDCWD, path, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
+func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
+	directoryPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(directoryParser, scopeWalker); err != nil {
+		return nil, util.StatusWrap(err, "Failed to resolve directory")
+	}
+	pathString, err := path.GetLocalString(directoryPath)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
+	}
+
+	fd, err := unix.Openat(unix.AT_FDCWD, pathString, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}

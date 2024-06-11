@@ -37,6 +37,7 @@ go_library(
         "//pkg/digest",
         "//pkg/eviction",
         "//pkg/filesystem",
+        "//pkg/filesystem/path",
         "//pkg/grpc",
         "//pkg/http",
         "//pkg/program",

@@ -13,13 +13,13 @@ import (
 )
 
 func openTmpDir(t *testing.T) filesystem.DirectoryCloser {
-	d, err := filesystem.NewLocalDirectory(t.TempDir())
+	d, err := filesystem.NewLocalDirectory(path.NewLocalParser(t.TempDir()))
 	require.NoError(t, err)
 	return d
 }
 
 func TestLocalDirectoryCreationFailure(t *testing.T) {
-	_, err := filesystem.NewLocalDirectory("/nonexistent")
+	_, err := filesystem.NewLocalDirectory(path.NewUNIXParser("/nonexistent"))
 	require.True(t, os.IsNotExist(err))
 }
 
