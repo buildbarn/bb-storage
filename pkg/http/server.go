@@ -21,17 +21,30 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				return err
 			}
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
+
+			tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls)
+			if err != nil {
+				return err
+			}
+
 			for _, listenAddress := range configuration.ListenAddresses {
 				server := http.Server{
-					Addr:    listenAddress,
-					Handler: authenticatedHandler,
+					Addr:      listenAddress,
+					Handler:   authenticatedHandler,
+					TLSConfig: tlsConfig,
 				}
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 					<-ctx.Done()
 					return server.Close()
 				})
 				group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-					if err := server.ListenAndServe(); err != http.ErrServerClosed {
+					var err error
+					if tlsConfig == nil {
+						err = server.ListenAndServe()
+					} else {
+						err = server.ListenAndServeTLS("", "")
+					}
+					if err != http.ErrServerClosed {
 						return util.StatusWrapf(err, "Failed to launch HTTP server %#v", server.Addr)
 					}
 					return nil
