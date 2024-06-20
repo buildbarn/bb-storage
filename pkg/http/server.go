@@ -22,7 +22,10 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}
 			authenticatedHandler := NewAuthenticatingHandler(handler, authenticator)
 
-			tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls)
+			tlsConfig, err := util.NewTLSConfigFromServerConfiguration(
+				configuration.Tls,
+				/* requestClientCertificate = */ false,
+			)
 			if err != nil {
 				return err
 			}

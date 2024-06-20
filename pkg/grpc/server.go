@@ -36,7 +36,7 @@ func init() {
 func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, needsPeerTransportCredentials, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
+		authenticator, needsPeerTransportCredentials, requestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
 		if err != nil {
 			return err
 		}
@@ -70,7 +70,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable TLS transport credentials if provided.
 		hasCredsOption := false
-		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls); err != nil {
+		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls, requestTLSClientCertificate); err != nil {
 			return err
 		} else if tlsConfig != nil {
 			hasCredsOption = true

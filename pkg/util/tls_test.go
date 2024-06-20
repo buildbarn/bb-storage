@@ -279,7 +279,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 	t.Run("Disabled", func(t *testing.T) {
 		// When the TLS configuration is nil, TLS should be left
 		// disabled.
-		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(nil)
+		tlsConfig, err := util.NewTLSConfigFromServerConfiguration(nil, false)
 		require.NoError(t, err)
 		require.Nil(t, tlsConfig)
 	})
@@ -297,7 +297,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 						},
 					},
 				},
-			})
+			},
+			/* requestClientCertificate = */ true,
+		)
 		require.NoError(t, err)
 		cert, err := tlsConfig.GetCertificate(nil)
 		require.NoError(t, err)
@@ -323,7 +325,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 						},
 					},
 				},
-			})
+			},
+			/* requestClientCertificate = */ true,
+		)
 		require.NoError(t, err)
 		cert, err := tlsConfig.GetCertificate(nil)
 		require.NoError(t, err)
@@ -346,7 +350,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 						},
 					},
 				},
-			})
+			},
+			/* requestClientCertificate = */ false,
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Invalid certificate or private key: tls: failed to find any PEM data in certificate input"), err)
 	})
 
@@ -362,7 +368,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 						},
 					},
 				},
-			})
+			},
+			/* requestClientCertificate = */ false,
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Invalid certificate file or private key file: tls: failed to find any PEM data in certificate input"), err)
 	})
 
@@ -378,7 +386,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 						},
 					},
 				},
-			})
+			},
+			/* requestClientCertificate = */ false,
+		)
 		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Failed to read certificate file: open /missing-cert.pem: no such file or directory"), err)
 	})
 
@@ -400,7 +410,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 					"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				},
-			})
+			},
+			/* requestClientCertificate = */ false,
+		)
 		require.NoError(t, err)
 		cert, err := tlsConfig.GetCertificate(nil)
 		require.NoError(t, err)
@@ -408,7 +420,6 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 		tlsConfig.GetCertificate = nil
 		require.Equal(t, &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ClientAuth: tls.RequestClientCert,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -432,7 +443,9 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 				CipherSuites: []string{
 					"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385",
 				},
-			})
+			},
+			/* requestClientCertificate = */ false,
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unsupported cipher suite: \"TLS_ECDHE_ECDSA_WITH_AES_257_GCM_SHA385\""), err)
 	})
 }

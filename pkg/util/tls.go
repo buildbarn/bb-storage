@@ -179,7 +179,7 @@ func NewTLSConfigFromClientConfiguration(configuration *pb.ClientConfiguration) 
 // object based on parameters specified in a Protobuf message for use
 // with a TLS server. This Protobuf message is embedded in Buildbarn
 // configuration files.
-func NewTLSConfigFromServerConfiguration(configuration *pb.ServerConfiguration) (*tls.Config, error) {
+func NewTLSConfigFromServerConfiguration(configuration *pb.ServerConfiguration, requestClientCertificate bool) (*tls.Config, error) {
 	tlsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(tlsCertificateNotAfterTimeSeconds)
 		prometheus.MustRegister(tlsCertificateNotBeforeTimeSeconds)
@@ -193,7 +193,9 @@ func NewTLSConfigFromServerConfiguration(configuration *pb.ServerConfiguration) 
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig.ClientAuth = tls.RequestClientCert
+	if requestClientCertificate {
+		tlsConfig.ClientAuth = tls.RequestClientCert
+	}
 
 	if configuration.ServerKeyPair == nil {
 		return nil, StatusWrapWithCode(err, codes.InvalidArgument, "Missing server_key_pair configuration")
