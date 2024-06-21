@@ -64,8 +64,9 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 		remainder = nil
 	} else {
 		name = rp.path[:slash]
-		rp.path = stripUNIXSeparators(rp.path[slash:])
-		remainder = unixRelativeParser{rp.path}
+		remainder = unixRelativeParser{
+			path: stripUNIXSeparators(rp.path[slash:]),
+		}
 	}
 
 	switch name {
