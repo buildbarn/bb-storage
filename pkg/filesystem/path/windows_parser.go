@@ -56,10 +56,8 @@ type windowsRelativeParser struct {
 
 func (rp windowsRelativeParser) ParseFirstComponent(componentWalker ComponentWalker, mustBeDirectory bool) (next GotDirectoryOrSymlink, remainder RelativeParser, err error) {
 	var name string
-	terminal := false
 	if separator := strings.IndexAny(rp.path, "/\\"); separator == -1 {
 		// Path no longer contains a separator. Consume it entirely.
-		terminal = true
 		name = rp.path
 		remainder = nil
 	} else {
@@ -91,7 +89,7 @@ func (rp windowsRelativeParser) ParseFirstComponent(componentWalker ComponentWal
 	// A filename that was followed by a separator, or we are
 	// symlink expanding one or more paths that are followed by a
 	// separator. This component must yield a directory or symlink.
-	if mustBeDirectory || !terminal {
+	if mustBeDirectory || remainder != nil {
 		r, err := componentWalker.OnDirectory(Component{
 			name: name,
 		})
@@ -116,5 +114,5 @@ func (rp windowsRelativeParser) ParseFirstComponent(componentWalker ComponentWal
 	return GotSymlink{
 		Parent: r.Parent,
 		Target: r.Target,
-	}, remainder, nil
+	}, nil, nil
 }
