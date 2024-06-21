@@ -21,28 +21,18 @@ type unixParser struct {
 }
 
 // NewUNIXParser creates a Parser for Unix paths that can be used in Resolve.
-func NewUNIXParser(path string) (Parser, error) {
-	// Unix-style paths are generally passed to system calls that
-	// accept C strings. There is no way these can accept null
-	// bytes.
-	if strings.ContainsRune(path, '\x00') {
-		return nil, status.Error(codes.InvalidArgument, "Path contains a null byte")
-	}
-
-	return &unixParser{path}, nil
-}
-
-// MustNewUNIXParser is identical to NewUNIXParser, except that it panics
-// upon failure.
-func MustNewUNIXParser(path string) Parser {
-	parser, err := NewUNIXParser(path)
-	if err != nil {
-		panic(err)
-	}
-	return parser
+func NewUNIXParser(path string) Parser {
+	return &unixParser{path}
 }
 
 func (p unixParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
+	// Unix-style paths are generally passed to system calls that
+	// accept C strings. There is no way these can accept null
+	// bytes.
+	if strings.ContainsRune(p.path, '\x00') {
+		return nil, nil, status.Error(codes.InvalidArgument, "Path contains a null byte")
+	}
+
 	if p.path != "" && p.path[0] == '/' {
 		next, err = scopeWalker.OnAbsolute()
 		if err != nil {
