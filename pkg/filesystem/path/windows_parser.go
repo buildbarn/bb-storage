@@ -64,8 +64,9 @@ func (rp windowsRelativeParser) ParseFirstComponent(componentWalker ComponentWal
 		remainder = nil
 	} else {
 		name = rp.path[:separator]
-		rp.path = stripWindowsSeparators(rp.path[separator:])
-		remainder = windowsRelativeParser{rp.path}
+		remainder = windowsRelativeParser{
+			path: stripWindowsSeparators(rp.path[separator:]),
+		}
 	}
 
 	switch name {
