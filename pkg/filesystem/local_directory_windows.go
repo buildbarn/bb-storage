@@ -536,7 +536,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 		contentUTF16[i] = *(*uint16)(contentPtr)
 		contentPtr = unsafe.Pointer(uintptr(contentPtr) + uintptr(2))
 	}
-	return path.NewLocalParser(windows.UTF16ToString(contentUTF16))
+	return path.NewLocalParser(windows.UTF16ToString(contentUTF16)), nil
 }
 
 func (d *localDirectory) Remove(name path.Component) error {

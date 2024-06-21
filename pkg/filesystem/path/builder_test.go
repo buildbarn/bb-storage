@@ -40,7 +40,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(p, func(t *testing.T) {
 				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(path.MustNewUNIXParser(p), scopewalker1))
+				require.NoError(t, path.Resolve(path.NewUNIXParser(p), scopewalker1))
 				require.Equal(t, p, builder1.GetUNIXString())
 
 				builder2, scopewalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -182,7 +182,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker1))
+				require.NoError(t, path.Resolve(path.NewUNIXParser(from), scopeWalker1))
 				require.Equal(t, to, builder1.GetUNIXString())
 
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -209,7 +209,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker1))
+				require.NoError(t, path.Resolve(path.NewUNIXParser(from), scopeWalker1))
 				require.Equal(t, to, mustGetWindowsString(builder1))
 
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -231,7 +231,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.RootBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(path.MustNewUNIXParser(from), scopeWalker1))
+				require.NoError(t, path.Resolve(path.NewUNIXParser(from), scopeWalker1))
 				require.Equal(t, to, builder1.GetUNIXString())
 
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -257,7 +257,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker2.EXPECT().OnUp().Return(componentWalker3, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("hello/.."), s))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("hello/.."), s))
 		require.Equal(t, ".", builder.GetUNIXString())
 	})
 
@@ -276,7 +276,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker3.EXPECT().OnUp().Return(componentWalker4, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("../hello/.."), s))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("../hello/.."), s))
 		require.Equal(t, "..", builder.GetUNIXString())
 	})
 
@@ -298,7 +298,7 @@ func TestBuilder(t *testing.T) {
 		componentWalker3.EXPECT().OnUp().Return(componentWalker4, nil)
 
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/hello/world/.."), s))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello/world/.."), s))
 		require.Equal(t, "/hello/", builder.GetUNIXString())
 	})
 }

@@ -241,7 +241,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 			return nil, err
 		}
 		if n < l {
-			return path.NewLocalParser(string(b[0:n]))
+			return path.NewLocalParser(string(b[0:n])), nil
 		}
 	}
 }

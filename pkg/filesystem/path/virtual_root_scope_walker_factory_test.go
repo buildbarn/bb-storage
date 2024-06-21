@@ -16,7 +16,7 @@ import (
 func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 	t.Run("InvalidRootPath", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("foo"),
+			path.NewUNIXParser("foo"),
 			map[string]string{},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve root path: Path is relative, while an absolute path was expected"), err)
@@ -24,31 +24,31 @@ func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 
 	t.Run("InvalidAliasPath", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo"),
+			path.NewUNIXParser("/foo"),
 			map[string]string{"bar": "baz"},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"bar\": Path is relative, while an absolute path was expected"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo"),
+			path.NewUNIXParser("/foo"),
 			map[string]string{"/foo": "baz"},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides at or below an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo"),
+			path.NewUNIXParser("/foo"),
 			map[string]string{"/foo/bar": "baz"},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo/bar\": Path resides at or below an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo/bar"),
+			path.NewUNIXParser("/foo/bar"),
 			map[string]string{"/foo": "baz"},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/foo\": Path resides above an already registered path"), err)
 
 		_, err = path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo"),
+			path.NewUNIXParser("/foo"),
 			map[string]string{"/bar/..": "."},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias path \"/bar/..\": Last component is not a valid filename"), err)
@@ -56,7 +56,7 @@ func TestVirtualRootScopeWalkerFactoryCreationFailure(t *testing.T) {
 
 	t.Run("InvalidAliasTarget", func(t *testing.T) {
 		_, err := path.NewVirtualRootScopeWalkerFactory(
-			path.MustNewUNIXParser("/foo"),
+			path.NewUNIXParser("/foo"),
 			map[string]string{"/bar": "/qux"},
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to resolve alias target \"/qux\": Path is absolute, while a relative path was expected"), err)
@@ -67,7 +67,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	factory, err := path.NewVirtualRootScopeWalkerFactory(
-		path.MustNewUNIXParser("/root"),
+		path.NewUNIXParser("/root"),
 		map[string]string{"/alias": "target"},
 	)
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("hello"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("Absolute", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/root/hello"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/root/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("AbsoluteViaAlias", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 			}, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/alias/hello"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/alias/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("Outside", func(t *testing.T) {
@@ -116,8 +116,8 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		// the ScopeWalker.
 		scopeWalker := mock.NewMockScopeWalker(ctrl)
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/"), factory.New(scopeWalker)))
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/hello"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/"), factory.New(scopeWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello"), factory.New(scopeWalker)))
 	})
 
 	t.Run("SymlinkRelative", func(t *testing.T) {
@@ -130,13 +130,13 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: path.MustNewUNIXParser("b"),
+				Target: path.NewUNIXParser("b"),
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 
 	t.Run("SymlinkAbsolute", func(t *testing.T) {
@@ -149,13 +149,13 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: path.MustNewUNIXParser("/root/b"),
+				Target: path.NewUNIXParser("/root/b"),
 			}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnAbsolute().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 
 	t.Run("SymlinkAbsolute", func(t *testing.T) {
@@ -169,9 +169,9 @@ func TestVirtualRootScopeWalkerFactoryCreationSuccess(t *testing.T) {
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("a")).
 			Return(&path.GotSymlink{
 				Parent: scopeWalker2,
-				Target: path.MustNewUNIXParser("/hello"),
+				Target: path.NewUNIXParser("/hello"),
 			}, nil)
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("a"), factory.New(scopeWalker1)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), factory.New(scopeWalker1)))
 	})
 }

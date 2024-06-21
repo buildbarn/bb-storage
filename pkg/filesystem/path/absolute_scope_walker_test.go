@@ -19,7 +19,7 @@ func TestAbsoluteScopeWalker(t *testing.T) {
 		componentWalker := mock.NewMockComponentWalker(ctrl)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.MustNewUNIXParser("/hello"), path.NewAbsoluteScopeWalker(componentWalker)))
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello"), path.NewAbsoluteScopeWalker(componentWalker)))
 	})
 
 	t.Run("Relative", func(t *testing.T) {
@@ -28,6 +28,6 @@ func TestAbsoluteScopeWalker(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "Path is relative, while an absolute path was expected"),
-			path.Resolve(path.MustNewUNIXParser("hello"), path.NewAbsoluteScopeWalker(componentWalker)))
+			path.Resolve(path.NewUNIXParser("hello"), path.NewAbsoluteScopeWalker(componentWalker)))
 	})
 }
