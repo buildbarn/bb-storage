@@ -56,10 +56,8 @@ type unixRelativeParser struct {
 
 func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker, mustBeDirectory bool) (next GotDirectoryOrSymlink, remainder RelativeParser, err error) {
 	var name string
-	terminal := false
 	if slash := strings.IndexByte(rp.path, '/'); slash == -1 {
 		// Path no longer contains a slash. Consume it entirely.
-		terminal = true
 		name = rp.path
 		remainder = nil
 	} else {
@@ -71,10 +69,9 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 
 	switch name {
 	case "", ".":
-		// An explicit "." entry, or an empty component.
-		// Empty components can occur if paths end with
-		// one or more slashes. Treat "foo/" as identical
-		// to "foo/."
+		// An explicit "." entry, or an empty component. Empty
+		// components can occur if paths end with one or more
+		// slashes. Treat "foo/" as identical to "foo/."
 		return GotDirectory{Child: componentWalker}, remainder, nil
 	case "..":
 		// Traverse to the parent directory.
@@ -85,12 +82,10 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 		return GotDirectory{Child: parent}, remainder, nil
 	}
 
-	// A filename that was followed by a
-	// slash, or we are symlink expanding
-	// one or more paths that are followed
-	// by a slash. This component must yield
-	// a directory or symlink.
-	if mustBeDirectory || !terminal {
+	// A filename that was followed by a slash, or we are symlink
+	// expanding one or more paths that are followed by a slash.
+	// This component must yield a directory or symlink.
+	if mustBeDirectory || remainder != nil {
 		r, err := componentWalker.OnDirectory(Component{
 			name: name,
 		})
@@ -105,15 +100,15 @@ func (rp unixRelativeParser) ParseFirstComponent(componentWalker ComponentWalker
 		name: name,
 	})
 	if err != nil || r == nil {
-		// Path resolution ended with
-		// any file other than a symlink.
+		// Path resolution ended with any file other than a
+		// symlink.
 		return nil, nil, err
 	}
 
-	// Observed a symlink at the end of a
-	// path. We should continue to run.
+	// Observed a symlink at the end of a path. We should continue
+	// to run.
 	return GotSymlink{
 		Parent: r.Parent,
 		Target: r.Target,
-	}, remainder, nil
+	}, nil, nil
 }
