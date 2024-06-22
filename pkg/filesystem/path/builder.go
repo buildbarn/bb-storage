@@ -48,15 +48,6 @@ var RootBuilder = Builder{
 	suffix:   "/",
 }
 
-// NewDriveLetterBuilder returns a builder rooted at a Windows drive.
-func NewDriveLetterBuilder(drive rune) Builder {
-	return Builder{
-		absolute:    false,
-		driveLetter: drive,
-		suffix:      "/",
-	}
-}
-
 // GetUNIXString returns a string representation of the path for use on
 // UNIX-like operating systems.
 func (b *Builder) GetUNIXString() string {
