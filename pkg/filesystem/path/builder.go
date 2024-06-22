@@ -261,6 +261,7 @@ func (cw *buildingComponentWalker) OnTerminal(name Component) (*GotSymlink, erro
 	}
 	if r == nil {
 		cw.b.components = append(cw.b.components, name.String())
+		cw.b.firstReversibleIndex = len(cw.b.components)
 		cw.b.suffix = ""
 		return nil, nil
 	}

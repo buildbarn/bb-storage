@@ -301,4 +301,28 @@ func TestBuilder(t *testing.T) {
 		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello/world/.."), s))
 		require.Equal(t, "/hello/", builder.GetUNIXString())
 	})
+
+	// OnTerminal() does not allow returning information whether the
+	// component is reversible. This means that joining and
+	// appending ".." can't necessarily be simplified.
+	t.Run("OnTerminalIsNonReversible", func(t *testing.T) {
+		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
+		componentWalker1 := mock.NewMockComponentWalker(ctrl)
+		scopeWalker1.EXPECT().OnAbsolute().Return(componentWalker1, nil)
+		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("hello"))
+
+		builder1, s1 := path.EmptyBuilder.Join(scopeWalker1)
+		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello"), s1))
+		require.Equal(t, "/hello", builder1.GetUNIXString())
+
+		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
+		componentWalker2 := mock.NewMockComponentWalker(ctrl)
+		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
+		componentWalker3 := mock.NewMockComponentWalker(ctrl)
+		componentWalker2.EXPECT().OnUp().Return(componentWalker3, nil)
+
+		builder2, s2 := builder1.Join(scopeWalker2)
+		require.NoError(t, path.Resolve(path.NewUNIXParser(".."), s2))
+		require.Equal(t, "/hello/..", builder2.GetUNIXString())
+	})
 }
