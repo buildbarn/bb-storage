@@ -1,7 +1,6 @@
 package random
 
 import (
-	"math/rand"
 	"time"
 )
 
@@ -12,9 +11,9 @@ type SingleThreadedGenerator interface {
 	// Generates a number in range [0.0, 1.0).
 	Float64() float64
 	// Generates a number in range [0, n), where n is of type int64.
-	Int63n(n int64) int64
+	Int64N(n int64) int64
 	// Generates a number in range [0, n), where n is of type int.
-	Intn(n int) int
+	IntN(n int) int
 	// Generates arbitrary bytes of data. This method is guaranteed
 	// to succeed.
 	Read(p []byte) (int, error)
@@ -24,9 +23,7 @@ type SingleThreadedGenerator interface {
 	Uint64() uint64
 }
 
-var _ SingleThreadedGenerator = (*rand.Rand)(nil)
-
 // Duration that is randomly generated that lies between [0, maximum).
 func Duration(generator SingleThreadedGenerator, maximum time.Duration) time.Duration {
-	return time.Duration(generator.Int63n(maximum.Nanoseconds())) * time.Nanosecond
+	return time.Duration(generator.Int64N(maximum.Nanoseconds())) * time.Nanosecond
 }

@@ -22,17 +22,17 @@ func TestSingleThreadedGenerator(t *testing.T) {
 				}
 			})
 
-			t.Run("Int63n", func(t *testing.T) {
+			t.Run("Int64N", func(t *testing.T) {
 				for i := 0; i < 100; i++ {
-					v := generator.Int63n(42)
+					v := generator.Int64N(42)
 					require.LessOrEqual(t, int64(0), v)
 					require.Greater(t, int64(42), v)
 				}
 			})
 
-			t.Run("Intn", func(t *testing.T) {
+			t.Run("IntN", func(t *testing.T) {
 				for i := 0; i < 100; i++ {
-					v := generator.Intn(42)
+					v := generator.IntN(42)
 					require.LessOrEqual(t, 0, v)
 					require.Greater(t, 42, v)
 				}

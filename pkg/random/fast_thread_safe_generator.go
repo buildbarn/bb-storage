@@ -1,55 +1,38 @@
 package random
 
 import (
-	"sync"
+	"math/rand/v2"
 )
 
-type fastThreadSafeGenerator struct {
-	lock      sync.Mutex
-	generator SingleThreadedGenerator
+type fastThreadSafeGenerator struct{}
+
+func (fastThreadSafeGenerator) IsThreadSafe() {}
+
+func (fastThreadSafeGenerator) Float64() float64 {
+	return rand.Float64()
 }
 
-func (g *fastThreadSafeGenerator) IsThreadSafe() {}
-
-func (g *fastThreadSafeGenerator) Float64() float64 {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	return g.generator.Float64()
+func (fastThreadSafeGenerator) Int64N(n int64) int64 {
+	return rand.Int64N(n)
 }
 
-func (g *fastThreadSafeGenerator) Int63n(n int64) int64 {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	return g.generator.Int63n(n)
+func (fastThreadSafeGenerator) IntN(n int) int {
+	return rand.IntN(n)
 }
 
-func (g *fastThreadSafeGenerator) Intn(n int) int {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	return g.generator.Intn(n)
+func (fastThreadSafeGenerator) Read(p []byte) (int, error) {
+	return mustCryptoRandRead(p)
 }
 
-func (g *fastThreadSafeGenerator) Read(p []byte) (int, error) {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	return g.generator.Read(p)
+func (fastThreadSafeGenerator) Shuffle(n int, swap func(i, j int)) {
+	rand.Shuffle(n, swap)
 }
 
-func (g *fastThreadSafeGenerator) Shuffle(n int, swap func(i, j int)) {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	g.generator.Shuffle(n, swap)
-}
-
-func (g *fastThreadSafeGenerator) Uint64() uint64 {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	return g.generator.Uint64()
+func (fastThreadSafeGenerator) Uint64() uint64 {
+	return rand.Uint64()
 }
 
 // FastThreadSafeGenerator is an instance of ThreadSafeGenerator that is
 // not suitable for cryptographic purposes. The generator is randomly
 // seeded on startup.
-var FastThreadSafeGenerator ThreadSafeGenerator = &fastThreadSafeGenerator{
-	generator: NewFastSingleThreadedGenerator(),
-}
+var FastThreadSafeGenerator ThreadSafeGenerator = fastThreadSafeGenerator{}

@@ -22,7 +22,7 @@ func NewRRSet[T any]() Set[T] {
 func (s *rrSet[T]) Insert(value T) {
 	// Insert element into a random location in the list, opening up
 	// space by moving an existing element to the end of the list.
-	index := s.generator.Intn(len(s.elements) + 1)
+	index := s.generator.IntN(len(s.elements) + 1)
 	if index == len(s.elements) {
 		s.elements = append(s.elements, value)
 	} else {

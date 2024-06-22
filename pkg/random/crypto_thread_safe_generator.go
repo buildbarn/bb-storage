@@ -4,7 +4,7 @@ import (
 	crypto_rand "crypto/rand"
 	"encoding/binary"
 	"fmt"
-	math_rand "math/rand"
+	math_rand "math/rand/v2"
 )
 
 func mustCryptoRandRead(p []byte) (int, error) {
@@ -15,38 +15,28 @@ func mustCryptoRandRead(p []byte) (int, error) {
 	return n, nil
 }
 
-type cryptoSource64 struct{}
+type cryptoSource struct{}
 
-func (s cryptoSource64) Int63() int64 {
-	return int64(s.Uint64() >> 1)
-}
-
-func (s cryptoSource64) Uint64() uint64 {
+func (s cryptoSource) Uint64() uint64 {
 	var b [8]byte
 	mustCryptoRandRead(b[:])
 	return binary.LittleEndian.Uint64(b[:])
 }
 
-func (s cryptoSource64) Seed(seed int64) {
-	panic("Crypto source cannot be seeded")
-}
-
-var _ math_rand.Source64 = cryptoSource64{}
+var _ math_rand.Source = cryptoSource{}
 
 type cryptoThreadSafeGenerator struct {
 	*math_rand.Rand
 }
 
-func (g cryptoThreadSafeGenerator) IsThreadSafe() {}
+func (cryptoThreadSafeGenerator) IsThreadSafe() {}
 
-func (g cryptoThreadSafeGenerator) Read(p []byte) (int, error) {
-	// Call into crypto_rand.Read() directly, as opposed to using
-	// math_rand.Rand.Read().
+func (cryptoThreadSafeGenerator) Read(p []byte) (int, error) {
 	return mustCryptoRandRead(p)
 }
 
 // CryptoThreadSafeGenerator is an instance of ThreadSafeGenerator that is
 // suitable for cryptographic purposes.
 var CryptoThreadSafeGenerator ThreadSafeGenerator = cryptoThreadSafeGenerator{
-	Rand: math_rand.New(cryptoSource64{}),
+	Rand: math_rand.New(cryptoSource{}),
 }
