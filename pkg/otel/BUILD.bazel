@@ -28,7 +28,7 @@ go_library(
         "@io_opentelemetry_go_proto_otlp//collector/trace/v1:trace",
         "@io_opentelemetry_go_proto_otlp//common/v1:common",
         "@io_opentelemetry_go_proto_otlp//trace/v1:trace",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
     ],

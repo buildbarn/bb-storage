@@ -16,8 +16,7 @@ bazel_dep(name = "toolchains_llvm", version = "1.0.0")
 
 git_override(
     module_name = "gazelle",
-    commit = "f5a5c5dc90b4d6a39f0f47d770eba27c6c1c1877",
-    init_submodules = True,
+    commit = "4d0129d7adae33e8e648d3624aff8fa8f93f375b",
     patches = [
         "//:patches/gazelle/dont-flatten-srcs.diff",
         "//:patches/gazelle/googleapis.diff",

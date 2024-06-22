@@ -1,40 +1,40 @@
 diff --git language/go/generate.go language/go/generate.go
-index 53e397a..38855c6 100644
+index 9e3ed9a..af460a1 100644
 --- language/go/generate.go
 +++ language/go/generate.go
-@@ -483,7 +483,7 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
+@@ -594,7 +594,7 @@ func (g *generator) generateLib(pkg *goPackage, embeds []string) *rule.Rule {
  	} else {
  		visibility = g.commonVisibility(pkg.importPath)
  	}
--	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embed)
-+	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embed, true)
+-	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embeds)
++	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embeds, true)
  	g.setImportAttrs(goLibrary, pkg.importPath)
  	return goLibrary
  }
-@@ -512,7 +512,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
+@@ -623,7 +623,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
  		return goBinary // empty
  	}
  	visibility := g.commonVisibility(pkg.importPath)
--	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, library)
-+	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, library, true)
+-	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, []string{library})
++	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, []string{library}, true)
  	return goBinary
  }
  
-@@ -552,7 +552,7 @@ func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
- 		if test.hasInternalTest {
- 			embed = library
+@@ -665,7 +665,7 @@ func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
+ 				embeds = append(embeds, library)
+ 			}
  		}
--		g.setCommonAttrs(goTest, pkg.rel, nil, test, embed)
-+		g.setCommonAttrs(goTest, pkg.rel, nil, test, embed, false)
+-		g.setCommonAttrs(goTest, pkg.rel, nil, test, embeds)
++		g.setCommonAttrs(goTest, pkg.rel, nil, test, embeds, false)
  		if pkg.hasTestdata {
  			goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
  		}
-@@ -629,9 +629,13 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
+@@ -718,9 +718,13 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
  	return r
  }
  
--func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {
-+func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string, flattenSrcs bool) {
+-func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embeds []string) {
++func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embeds []string, flattenSrcs bool) {
  	if !target.sources.isEmpty() {
 -		r.SetAttr("srcs", target.sources.buildFlat())
 +		if flattenSrcs {
