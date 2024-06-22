@@ -189,9 +189,10 @@ func (w *buildingScopeWalker) OnAbsolute() (ComponentWalker, error) {
 		return nil, err
 	}
 	*w.b = Builder{
-		absolute:   true,
-		components: w.b.components[:0],
-		suffix:     "/",
+		absolute:    true,
+		driveLetter: w.b.driveLetter,
+		components:  w.b.components[:0],
+		suffix:      "/",
 	}
 	return w.b.getComponentWalker(componentWalker), nil
 }

@@ -325,4 +325,28 @@ func TestBuilder(t *testing.T) {
 		require.NoError(t, path.Resolve(path.NewUNIXParser(".."), s2))
 		require.Equal(t, "/hello/..", builder2.GetUNIXString())
 	})
+
+	// When encountering a symlink target that is an absolute path
+	// without a drive letter, we should assume the path resolves to
+	// a location on the same drive.
+	t.Run("DriveLetterWithAbsoluteSymlink", func(t *testing.T) {
+		scopeWalker1 := mock.NewMockScopeWalker(ctrl)
+		componentWalker1 := mock.NewMockComponentWalker(ctrl)
+		scopeWalker1.EXPECT().OnDriveLetter('C').Return(componentWalker1, nil)
+		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
+		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("hello")).Return(
+			&path.GotSymlink{
+				Parent: scopeWalker2,
+				Target: path.NewWindowsParser("\\world"),
+			},
+			nil,
+		)
+		componentWalker2 := mock.NewMockComponentWalker(ctrl)
+		scopeWalker2.EXPECT().OnAbsolute().Return(componentWalker2, nil)
+		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("world"))
+
+		builder1, s1 := path.EmptyBuilder.Join(scopeWalker1)
+		require.NoError(t, path.Resolve(path.NewWindowsParser("C:\\hello"), s1))
+		require.Equal(t, "C:\\world", mustGetWindowsString(builder1))
+	})
 }
