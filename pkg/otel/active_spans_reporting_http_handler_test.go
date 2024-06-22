@@ -238,7 +238,7 @@ func TestActiveSpansReportingHTTPHandler(t *testing.T) {
 								<tbody>
 									<tr>
 										<th>array</th>
-										<td>[1 2 3 4]</td>
+										<td>[1,2,3,4]</td>
 									</tr>
 									<tr>
 										<th>bool</th>

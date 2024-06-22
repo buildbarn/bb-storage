@@ -298,6 +298,10 @@ func (s *activeSpan) AddEvent(name string, options ...trace.EventOption) {
 	s.base.AddEvent(name, options...)
 }
 
+func (s *activeSpan) AddLink(link trace.Link) {
+	s.base.AddLink(link)
+}
+
 func (s *activeSpan) IsRecording() bool {
 	// Return true, even though the underlying span may not be
 	// recording. This ensures that the creator of the span
