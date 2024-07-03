@@ -52,6 +52,10 @@ func TestSingleThreadedGenerator(t *testing.T) {
 				}
 			})
 
+			t.Run("Uint32", func(t *testing.T) {
+				generator.Uint32()
+			})
+
 			t.Run("Uint64", func(t *testing.T) {
 				generator.Uint64()
 			})

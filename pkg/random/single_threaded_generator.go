@@ -19,6 +19,8 @@ type SingleThreadedGenerator interface {
 	Read(p []byte) (int, error)
 	// Shuffle the elements in a list.
 	Shuffle(n int, swap func(i, j int))
+	// Generates an arbitrary 32-bit integer value.
+	Uint32() uint32
 	// Generates an arbitrary 64-bit integer value.
 	Uint64() uint64
 }

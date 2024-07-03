@@ -28,6 +28,10 @@ func (fastThreadSafeGenerator) Shuffle(n int, swap func(i, j int)) {
 	rand.Shuffle(n, swap)
 }
 
+func (fastThreadSafeGenerator) Uint32() uint32 {
+	return rand.Uint32()
+}
+
 func (fastThreadSafeGenerator) Uint64() uint64 {
 	return rand.Uint64()
 }
