@@ -35,7 +35,7 @@ func (p windowsParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker
 		}
 	}
 
-	if len(p.path) >= 1 && p.path[0] == '\\' || p.path[0] == '/' {
+	if len(p.path) >= 1 && (p.path[0] == '\\' || p.path[0] == '/') {
 		next, err = scopeWalker.OnAbsolute()
 		if err != nil {
 			return nil, nil, err

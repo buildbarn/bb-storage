@@ -209,7 +209,7 @@ func TestBuilder(t *testing.T) {
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
-				require.NoError(t, path.Resolve(path.NewUNIXParser(from), scopeWalker1))
+				require.NoError(t, path.Resolve(path.NewWindowsParser(from), scopeWalker1))
 				require.Equal(t, to, mustGetWindowsString(builder1))
 
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
