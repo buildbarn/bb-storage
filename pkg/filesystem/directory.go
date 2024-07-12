@@ -3,6 +3,7 @@ package filesystem
 import (
 	"io"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
@@ -137,5 +138,45 @@ func NopDirectoryCloser(d Directory) DirectoryCloser {
 }
 
 func (d nopDirectoryCloser) Close() error {
+	return nil
+}
+
+// ReferenceCountedDirectoryCloser is a decorator for DirectoryCloser that
+// adds reference counting. This makes it possible to duplicate it, and
+// call Close() on it multiple times.
+type ReferenceCountedDirectoryCloser struct {
+	DirectoryCloser
+	refcount atomic.Int32
+}
+
+// NewReferenceCountedDirectoryCloser creates a new
+// ReferenceCountedDirectoryCloser against which Close() can be called
+// exactly once.
+func NewReferenceCountedDirectoryCloser(directory DirectoryCloser) *ReferenceCountedDirectoryCloser {
+	d := &ReferenceCountedDirectoryCloser{
+		DirectoryCloser: directory,
+	}
+	d.refcount.Store(1)
+	return d
+}
+
+// Duplicate the ReferenceCountedDirectoryCloser by increasing its
+// reference count.
+func (d *ReferenceCountedDirectoryCloser) Duplicate() *ReferenceCountedDirectoryCloser {
+	if newRefcount := d.refcount.Add(1); newRefcount <= 1 {
+		panic("Invalid reference count")
+	}
+	return d
+}
+
+// Close the ReferenceCountedDirectoryCloser by decreasing its reference
+// count. If the reference count reaches zero, the underlying directory
+// is closed.
+func (d *ReferenceCountedDirectoryCloser) Close() error {
+	if newRefcount := d.refcount.Add(-1); newRefcount == 0 {
+		return d.DirectoryCloser.Close()
+	} else if newRefcount < 0 {
+		panic("Invalid reference count")
+	}
 	return nil
 }
