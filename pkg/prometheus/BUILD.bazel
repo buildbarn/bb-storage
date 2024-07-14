@@ -25,8 +25,8 @@ go_test(
         ":prometheus",
         "//internal/mock",
         "//pkg/testutil",
-        "@com_github_golang_mock//gomock",
         "@com_github_prometheus_client_model//go",
         "@com_github_stretchr_testify//require",
+        "@org_uber_go_mock//gomock",
     ],
 )

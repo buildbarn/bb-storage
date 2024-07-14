@@ -13,7 +13,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -21,6 +20,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestByteStreamServer(t *testing.T) {

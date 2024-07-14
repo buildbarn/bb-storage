@@ -12,13 +12,14 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {

@@ -18,7 +18,6 @@ require (
 	github.com/bazelbuild/remote-apis v0.0.0-20240409135018-1f36c310b28d
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.3
-	github.com/golang/mock v1.6.0
 	github.com/google/go-jsonnet v0.20.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -40,6 +39,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.27.0
 	go.opentelemetry.io/otel/trace v1.27.0
 	go.opentelemetry.io/proto/otlp v1.3.1
+	go.uber.org/mock v0.4.0
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.7.0

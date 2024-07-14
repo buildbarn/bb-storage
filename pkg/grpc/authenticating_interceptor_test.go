@@ -8,7 +8,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
@@ -18,6 +17,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/proto/otlp/common/v1"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestAuthenticatingUnaryInterceptor(t *testing.T) {

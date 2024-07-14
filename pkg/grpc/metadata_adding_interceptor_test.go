@@ -6,12 +6,13 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestMetadataAddingUnaryClientInterceptor(t *testing.T) {

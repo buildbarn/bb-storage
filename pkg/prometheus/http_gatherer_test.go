@@ -10,9 +10,10 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/prometheus"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
+
+	"go.uber.org/mock/gomock"
 )
 
 func ptr[T any](val T) *T {

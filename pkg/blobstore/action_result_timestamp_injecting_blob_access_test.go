@@ -11,10 +11,11 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {

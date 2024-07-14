@@ -9,7 +9,6 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -18,6 +17,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/proto/otlp/common/v1"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestAllAuthenticatorZero(t *testing.T) {

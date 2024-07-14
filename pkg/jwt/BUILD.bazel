@@ -53,10 +53,10 @@ go_test(
         "//pkg/eviction",
         "//pkg/random",
         "//pkg/testutil",
-        "@com_github_golang_mock//gomock",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_uber_go_mock//gomock",
     ],
 )

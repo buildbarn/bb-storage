@@ -5,12 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"go.uber.org/mock/gomock"
 )
 
 // RequireEqualProto asserts that the two passed protocol buffer

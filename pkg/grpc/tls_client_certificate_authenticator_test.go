@@ -13,7 +13,6 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +21,8 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"go.uber.org/mock/gomock"
 )
 
 var (

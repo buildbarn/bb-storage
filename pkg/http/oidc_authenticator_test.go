@@ -15,7 +15,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/proto/http/oidc"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
@@ -26,6 +25,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func protoMustMarshal(m proto.Message) []byte {

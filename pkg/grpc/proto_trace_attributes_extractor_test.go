@@ -9,7 +9,6 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
@@ -19,6 +18,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestProtoTraceAttributesExtractor(t *testing.T) {

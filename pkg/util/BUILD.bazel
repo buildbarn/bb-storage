@@ -44,11 +44,11 @@ go_test(
         "//internal/mock",
         "//pkg/proto/configuration/tls",
         "//pkg/testutil",
-        "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//types/known/durationpb",
+        "@org_uber_go_mock//gomock",
     ],
 )

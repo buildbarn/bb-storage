@@ -6,10 +6,11 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/otel"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/sdk/trace"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestMaximumRateSampler(t *testing.T) {

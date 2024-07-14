@@ -9,12 +9,13 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestAnyAuthenticatorZero(t *testing.T) {
