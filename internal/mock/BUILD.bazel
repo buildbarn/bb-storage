@@ -13,6 +13,8 @@ gomock(
         "Writer",
     ],
     library = "//internal/mock/aliases",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -23,6 +25,8 @@ gomock(
         "Authorizer",
     ],
     library = "//pkg/auth",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -36,6 +40,8 @@ gomock(
         "ReadWriterAt",
     ],
     library = "//pkg/blobstore",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -61,6 +67,8 @@ gomock(
         "PersistentStateStore",
     ],
     library = "//pkg/blobstore/local",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -69,6 +77,8 @@ gomock(
     out = "blobstore_replication.go",
     interfaces = ["BlobReplicator"],
     library = "//pkg/blobstore/replication",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -77,6 +87,8 @@ gomock(
     out = "blobstore_sharding.go",
     interfaces = ["ShardPermuter"],
     library = "//pkg/blobstore/sharding",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -85,6 +97,8 @@ gomock(
     out = "blobstore_slicing.go",
     interfaces = ["BlobSlicer"],
     library = "//pkg/blobstore/slicing",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -93,6 +107,8 @@ gomock(
     out = "blockdevice.go",
     interfaces = ["BlockDevice"],
     library = "//pkg/blockdevice",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -106,6 +122,8 @@ gomock(
         "ReadAtCloser",
     ],
     library = "//pkg/blobstore/buffer",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -117,6 +135,8 @@ gomock(
         "DemultiplexedBuildQueueGetter",
     ],
     library = "//pkg/builder",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -126,6 +146,8 @@ gomock(
     interfaces = ["Provider"],
     library = "//pkg/capabilities",
     mock_names = {"Provider": "MockCapabilitiesProvider"},
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -137,6 +159,8 @@ gomock(
         "Timer",
     ],
     library = "//pkg/clock",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -145,6 +169,8 @@ gomock(
     out = "cloud_aws.go",
     interfaces = ["S3Client"],
     library = "//pkg/cloud/aws",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -157,6 +183,8 @@ gomock(
         "StorageObjectHandle",
     ],
     library = "//pkg/cloud/gcp",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -165,6 +193,8 @@ gomock(
     out = "digest.go",
     interfaces = ["InstanceNameMatcher"],
     library = "//pkg/digest",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -178,6 +208,8 @@ gomock(
         "FileReadWriter",
     ],
     library = "//pkg/filesystem",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -189,6 +221,8 @@ gomock(
         "ScopeWalker",
     ],
     library = "//pkg/filesystem/path",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -202,6 +236,8 @@ gomock(
     ],
     library = "//pkg/grpc",
     mock_names = {"Authenticator": "MockGRPCAuthenticator"},
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -218,6 +254,8 @@ gomock(
         "UnaryInvoker",
     ],
     library = "@org_golang_google_grpc//:grpc",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -227,6 +265,8 @@ gomock(
     interfaces = ["Authenticator"],
     library = "//pkg/http",
     mock_names = {"Authenticator": "MockHTTPAuthenticator"},
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -238,6 +278,8 @@ gomock(
         "SignatureValidator",
     ],
     library = "//pkg/jwt",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -247,6 +289,8 @@ gomock(
     interfaces = ["Gatherer"],
     library = "@com_github_prometheus_client_golang//prometheus",
     mock_names = {"Gatherer": "MockPrometheusGatherer"},
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -255,6 +299,8 @@ gomock(
     out = "random.go",
     interfaces = ["ThreadSafeGenerator"],
     library = "//pkg/random",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -266,6 +312,8 @@ gomock(
         "Execution_WaitExecutionServer",
     ],
     library = "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -283,6 +331,8 @@ gomock(
         "Tracer": "BareMockTracer",
         "TracerProvider": "BareMockTracerProvider",
     },
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -295,6 +345,8 @@ gomock(
         "UUIDGenerator",
     ],
     library = "//pkg/util",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -350,7 +402,6 @@ go_library(
         "//pkg/util",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
-        "@com_github_golang_mock//gomock",
         "@com_github_google_uuid//:uuid",
         "@com_github_prometheus_client_model//go",
         "@com_google_cloud_go_longrunning//autogen/longrunningpb",
@@ -361,5 +412,6 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_uber_go_mock//gomock",
     ],
 )

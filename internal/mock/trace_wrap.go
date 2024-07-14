@@ -1,9 +1,9 @@
 package mock
 
 import (
-	"github.com/golang/mock/gomock"
-
 	"go.opentelemetry.io/otel/trace/embedded"
+
+	"go.uber.org/mock/gomock"
 )
 
 // WrappedMockSpan is a wrapper around the gomock stub for trace.Span.

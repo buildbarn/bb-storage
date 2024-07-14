@@ -47,7 +47,6 @@ go_test(
         ":otel",
         "//internal/mock",
         "//pkg/testutil",
-        "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//codes",
@@ -56,6 +55,7 @@ go_test(
         "@io_opentelemetry_go_proto_otlp//common/v1:common",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_uber_go_mock//gomock",
     ],
 )
 

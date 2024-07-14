@@ -42,7 +42,6 @@ use_repo(
     "com_github_bazelbuild_remote_apis",
     "com_github_fxtlabs_primes",
     "com_github_go_jose_go_jose_v3",
-    "com_github_golang_mock",
     "com_github_google_uuid",
     "com_github_gorilla_mux",
     "com_github_grpc_ecosystem_go_grpc_middleware",
@@ -74,6 +73,7 @@ use_repo(
     "org_golang_x_oauth2",
     "org_golang_x_sync",
     "org_golang_x_sys",
+    "org_uber_go_mock",
 )
 
 go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependency = True)
@@ -92,10 +92,6 @@ go_deps_dev.gazelle_override(
     path = "github.com/bazelbuild/remote-apis",
 )
 go_deps_dev.module_override(
-    patches = ["//:patches/com_github_golang_mock/mocks-for-funcs.diff"],
-    path = "github.com/golang/mock",
-)
-go_deps_dev.module_override(
     patches = ["//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
     path = "github.com/grpc-ecosystem/go-grpc-prometheus",
 )
@@ -110,6 +106,10 @@ go_deps_dev.module_override(
 go_deps_dev.module_override(
     patches = ["//:patches/org_golang_x_oauth2/injectable-clock.diff"],
     path = "golang.org/x/oauth2",
+)
+go_deps_dev.module_override(
+    patches = ["//:patches/org_uber_go_mock/mocks-for-funcs.diff"],
+    path = "go.uber.org/mock",
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

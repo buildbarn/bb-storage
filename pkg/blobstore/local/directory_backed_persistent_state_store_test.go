@@ -11,11 +11,12 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestDirectoryBackedPersistentStateStore(t *testing.T) {
