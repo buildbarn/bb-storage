@@ -15,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
@@ -28,6 +29,7 @@ import (
 	"github.com/fxtlabs/primes"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/api/option"
 	"google.golang.org/grpc/status"
 )
 
@@ -355,6 +357,49 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      localBlobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
+	case *pb.BlobAccessConfiguration_SpannerGcs:
+		var digestKeyFormat digest.KeyFormat
+		if storageTypeName == "ac" {
+			digestKeyFormat = digest.KeyWithInstance
+		} else if storageTypeName == "cas" {
+			digestKeyFormat = digest.KeyWithoutInstance
+		} else {
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Unknown SpannerGcs storage type")
+		}
+
+		var clientOptions []option.ClientOption
+		var err error
+		if gcpClientOpts := backend.SpannerGcs.GcpClientOptions; gcpClientOpts != nil {
+			// Unused currently, but here for future expansion
+			clientOptions, err = gcp.NewClientOptionsFromConfiguration(gcpClientOpts, "")
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create GCP client options")
+			}
+		}
+
+		var expirationTime time.Duration
+		exp := backend.SpannerGcs.ExpirationTime
+		if exp != nil {
+			if err := exp.CheckValid(); err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to parse expirationTime")
+			}
+			expirationTime = exp.AsDuration()
+		}
+		blobAccess, err := blobstore.NewSpannerGCSBlobAccess(
+			backend.SpannerGcs.SpannerDbName,
+			backend.SpannerGcs.GcsBucketName,
+			readBufferFactory,
+			storageTypeName,
+			expirationTime,
+			creator.GetDefaultCapabilitiesProvider(),
+			clientOptions)
+		if err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create SpannerGcs blob access")
+		}
+		return BlobAccessInfo{
+			BlobAccess: blobAccess,
+			DigestKeyFormat: digestKeyFormat,
+		}, "SpannerGcs", nil
 	case *pb.BlobAccessConfiguration_ReadFallback:
 		primary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
 		if err != nil {
