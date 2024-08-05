@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
+	"math"
 	"net/http"
 	"net/url"
 
@@ -14,6 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/security/advancedtls"
 	"google.golang.org/grpc/status"
 )
 
@@ -33,6 +36,43 @@ func NewBaseClientFactory(dialer ClientDialer, unaryInterceptors []grpc.UnaryCli
 		unaryInterceptors:  unaryInterceptors[:len(unaryInterceptors):len(unaryInterceptors)],
 		streamInterceptors: streamInterceptors[:len(streamInterceptors):len(streamInterceptors)],
 	}
+}
+
+func newClientDialOptionsFromTLSConfig(tlsConfig *tls.Config) ([]grpc.DialOption, error) {
+	if tlsConfig == nil {
+		return []grpc.DialOption{grpc.WithInsecure()}, nil
+	}
+
+	opts := advancedtls.Options{
+		MinTLSVersion: tlsConfig.MinVersion,
+		MaxTLSVersion: tlsConfig.MaxVersion,
+		CipherSuites:  tlsConfig.CipherSuites,
+		IdentityOptions: advancedtls.IdentityCertificateOptions{
+			GetIdentityCertificatesForClient: tlsConfig.GetClientCertificate,
+		},
+		RootOptions: advancedtls.RootCertificateOptions{
+			RootCertificates: tlsConfig.RootCAs,
+		},
+	}
+	// advancedtls checks MinTLSVersion > MaxTLSVersion before applying
+	// defaults:
+	// https://github.com/grpc/grpc-go/blob/master/security/advancedtls/advancedtls.go#L243-L245
+	// If setting a default minimum, set math.MaxUint16 as the Max to get around
+	// this check.
+	if opts.MaxTLSVersion == 0 && opts.MinTLSVersion >= 0 {
+		opts.MaxTLSVersion = math.MaxUint16
+	}
+
+	tc, err := advancedtls.NewClientCreds(&opts)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to configure GRPC client TLS")
+	}
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(tc)}
+	if tlsConfig.ServerName != "" {
+		dialOptions = append(dialOptions, grpc.WithAuthority(tlsConfig.ServerName))
+	}
+
+	return dialOptions, nil
 }
 
 func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.ClientConfiguration) (grpc.ClientConnInterface, error) {
@@ -56,11 +96,11 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create TLS configuration")
 	}
-	if tlsConfig != nil {
-		dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		dialOptions = append(dialOptions, grpc.WithInsecure())
+	tlsDialOpts, err := newClientDialOptionsFromTLSConfig(tlsConfig)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to convert TLS configuration")
 	}
+	dialOptions = append(dialOptions, tlsDialOpts...)
 
 	if windowSize := config.InitialWindowSizeBytes; windowSize != 0 {
 		dialOptions = append(dialOptions, grpc.WithInitialWindowSize(windowSize))
