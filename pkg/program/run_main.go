@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 // runMainErrorLogger is used by RunMain() to capture errors returned by
@@ -73,12 +74,23 @@ func RunMain(routine Routine) {
 			if err := process.Signal(receivedSignal); err != nil {
 				panic(err)
 			}
+
 			// This code should not be reached, if it
 			// weren't for the fact that process.Signal()
 			// does not guarantee that the signal is
-			// delivered to the same thread. More details:
+			// delivered to the same thread.
+			//
+			// Furthermore, signal.Reset() does not reset
+			// signals that are delivered via the process
+			// group, but ignored by the process itself.
+			// Fall back to calling os.Exit() if we don't
+			// get terminated via signal delivery.
+			//
+			// More details:
 			// https://github.com/golang/go/issues/19326
-			select {}
+			// https://github.com/golang/go/issues/46321
+			time.Sleep(5)
+			os.Exit(1)
 		})
 	}()
 
