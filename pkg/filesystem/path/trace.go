@@ -67,3 +67,19 @@ func (t *Trace) GetWindowsString() (string, error) {
 	t.writeToStringBuilder('\\', &sb)
 	return sb.String(), nil
 }
+
+// ToList returns the pathname components contained in the trace to a list.
+func (t *Trace) ToList() []Component {
+	count := 0
+	for tCount := t; tCount != nil; tCount = tCount.parent {
+		count++
+	}
+
+	components := make([]Component, count)
+	for count > 0 {
+		count--
+		components[count] = t.component
+		t = t.parent
+	}
+	return components
+}

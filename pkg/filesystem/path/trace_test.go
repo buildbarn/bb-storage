@@ -59,4 +59,27 @@ func TestTrace(t *testing.T) {
 			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid pathname component \"b?\": Pathname component contains reserved characters"), err)
 		}
 	})
+
+	t.Run("ToList", func(t *testing.T) {
+		var p1 *path.Trace
+		require.Empty(t, p1.ToList())
+
+		p2 := p1.Append(path.MustNewComponent("a"))
+		require.Equal(t, []path.Component{
+			path.MustNewComponent("a"),
+		}, p2.ToList())
+
+		p3 := p2.Append(path.MustNewComponent("b"))
+		require.Equal(t, []path.Component{
+			path.MustNewComponent("a"),
+			path.MustNewComponent("b"),
+		}, p3.ToList())
+
+		p4 := p3.Append(path.MustNewComponent("c"))
+		require.Equal(t, []path.Component{
+			path.MustNewComponent("a"),
+			path.MustNewComponent("b"),
+			path.MustNewComponent("c"),
+		}, p4.ToList())
+	})
 }
