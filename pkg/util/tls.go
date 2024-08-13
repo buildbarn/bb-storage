@@ -31,7 +31,7 @@ var (
 			Name:      "certificate_not_before_time_seconds",
 			Help:      "The value of the \"Not Before\" field of the TLS certificate.",
 		},
-		[]string{"dns_name", "certificate_usage"})
+		[]string{"dns_name", "uri", "ip_address", "certificate_usage"})
 	tlsCertificateNotAfterTimeSeconds = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "buildbarn",
@@ -39,7 +39,7 @@ var (
 			Name:      "certificate_not_after_time_seconds",
 			Help:      "The value of the \"Not After\" field of the TLS certificate.",
 		},
-		[]string{"dns_name", "certificate_usage"})
+		[]string{"dns_name", "uri", "ip_address", "certificate_usage"})
 )
 
 func init() {
@@ -74,8 +74,18 @@ func updateTLSCertificateExpiry(cert *tls.Certificate, certificateUsage string) 
 		return err
 	}
 	for _, dnsName := range leaf.DNSNames {
-		tlsCertificateNotBeforeTimeSeconds.WithLabelValues(dnsName, certificateUsage).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
-		tlsCertificateNotAfterTimeSeconds.WithLabelValues(dnsName, certificateUsage).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+		tlsCertificateNotBeforeTimeSeconds.WithLabelValues(dnsName, "", "", certificateUsage).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
+		tlsCertificateNotAfterTimeSeconds.WithLabelValues(dnsName, "", "", certificateUsage).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+	}
+	for _, uri := range leaf.URIs {
+		uriStr := uri.String()
+		tlsCertificateNotBeforeTimeSeconds.WithLabelValues("", uriStr, "", certificateUsage).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
+		tlsCertificateNotAfterTimeSeconds.WithLabelValues("", uriStr, "", certificateUsage).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
+	}
+	for _, ip := range leaf.IPAddresses {
+		ipStr := ip.String()
+		tlsCertificateNotBeforeTimeSeconds.WithLabelValues("", "", ipStr, certificateUsage).Set(float64(leaf.NotBefore.UnixNano()) / 1e9)
+		tlsCertificateNotAfterTimeSeconds.WithLabelValues("", "", ipStr, certificateUsage).Set(float64(leaf.NotAfter.UnixNano()) / 1e9)
 	}
 	return nil
 }
