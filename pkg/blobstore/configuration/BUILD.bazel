@@ -25,6 +25,7 @@ go_library(
         "//pkg/blobstore/grpcclients",
         "//pkg/blobstore/local",
         "//pkg/blobstore/mirrored",
+        "//pkg/blobstore/quorum",
         "//pkg/blobstore/readcaching",
         "//pkg/blobstore/readfallback",
         "//pkg/blobstore/replication",
