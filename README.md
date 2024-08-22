@@ -171,4 +171,6 @@ There is a [#buildbarn channel on buildteamworld.slack.com](https://bit.ly/2SG1a
 that you can join to get in touch with other people who use and hack on
 Buildbarn.
 
-# [Commercial Support & Hosting](https://github.com/buildbarn#commercial-support)
+# Commercial Support & Hosting
+
+Via our [partners](https://github.com/buildbarn#commercial-support) commercial support & hosting can be procured.
