@@ -171,22 +171,4 @@ There is a [#buildbarn channel on buildteamworld.slack.com](https://bit.ly/2SG1a
 that you can join to get in touch with other people who use and hack on
 Buildbarn.
 
-# Commercial Support
-
-Buildbarn has an active and enthusiastic community. Though we try to help and
-support those who have issues or questions, sometimes organisations need more
-dedicated support. The following is a list of community members who you can
-contact if you require commercial support. Please submit a PR if you wish to
-have your name listed here. Having a name listed is not necessarily an
-endorsement.
-
-- [Finn Ball](mailto:finn.ball@codificasolutions.com) - Freelance Consultant
-- [Fredrik Medley](mailto:fredrik@meroton.com) - Consultant
-
-## Commercial Hosting and Professional Services
-
-[Meroton](https://www.meroton.com/services/) - Cloud Hosted Buildbarn and Services
-
-Buildbarn does not encourage commercial forks and is willing to engage with
-organisations to merge changes upstream in order to be maintained by the
-community.
+# [Commercial Support & Hosting](https://github.com/buildbarn#commercial-support)
