@@ -218,7 +218,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		} else {
 			// Persistency is enabled. Reload previous
 			// persistent state from disk.
-			persistentStateDirectory, err := filesystem.NewLocalDirectory(path.NewLocalParser(persistent.StateDirectoryPath))
+			persistentStateDirectory, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(persistent.StateDirectoryPath))
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
 			}

@@ -38,7 +38,7 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 	if err := path.Resolve(directoryParser, scopeWalker); err != nil {
 		return nil, util.StatusWrap(err, "Failed to resolve directory")
 	}
-	pathString, err := path.GetLocalString(directoryPath)
+	pathString, err := path.LocalFormat.GetString(directoryPath)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
 	}
@@ -250,7 +250,7 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 			return nil, err
 		}
 		if n < l {
-			return path.NewLocalParser(string(b[0:n])), nil
+			return path.LocalFormat.NewParser(string(b[0:n])), nil
 		}
 	}
 }
@@ -396,7 +396,7 @@ func (d *localDirectory) Symlink(oldName path.Parser, newName path.Component) er
 	if err := path.Resolve(oldName, scopeWalker); err != nil {
 		return err
 	}
-	oldNameStr, err := path.GetLocalString(oldNamePath)
+	oldNameStr, err := path.LocalFormat.GetString(oldNamePath)
 	if err != nil {
 		return err
 	}

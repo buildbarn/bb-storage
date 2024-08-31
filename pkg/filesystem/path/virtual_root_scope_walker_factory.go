@@ -136,7 +136,7 @@ func NewVirtualRootScopeWalkerFactory(rootPath Parser, aliases map[string]string
 		// Resolve the location at which we want to create a fictive
 		// symlink that points into the virtual root directory.
 		aliasCreator := virtualRootNodeCreator{namelessNode: &wf.rootNode}
-		if err := Resolve(NewUNIXParser(alias), NewAbsoluteScopeWalker(&aliasCreator)); err != nil {
+		if err := Resolve(UNIXFormat.NewParser(alias), NewAbsoluteScopeWalker(&aliasCreator)); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias path %#v", alias)
 		}
 		if aliasCreator.namedNode == nil {
@@ -150,7 +150,7 @@ func NewVirtualRootScopeWalkerFactory(rootPath Parser, aliases map[string]string
 		// underneath the virtual root.
 		targetPathBuilder, targetPathWalker := rootPathBuilder.Join(
 			NewRelativeScopeWalker(VoidComponentWalker))
-		if err := Resolve(NewUNIXParser(target), targetPathWalker); err != nil {
+		if err := Resolve(UNIXFormat.NewParser(target), targetPathWalker); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias target %#v", target)
 		}
 		aliasCreator.namedNode.target = targetPathBuilder

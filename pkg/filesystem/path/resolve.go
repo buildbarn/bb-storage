@@ -70,7 +70,7 @@ func (rs *resolverState) resolve() error {
 // call against a ScopeWalker or ComponentWalker object is made. This
 // object is responsible for registering the path traversal and
 // returning symbolic link contents. Unix-style paths can be created
-// with NewUNIXParser.
+// with UNIXFormat.NewParser().
 //
 // This function only implements the core algorithm for path resolution.
 // Features like symlink loop detection, chrooting, etc. should all be
