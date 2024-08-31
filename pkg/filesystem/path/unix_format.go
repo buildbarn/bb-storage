@@ -7,6 +7,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type unixFormat struct{}
+
+func (unixFormat) NewParser(path string) Parser {
+	return unixParser{path}
+}
+
+func (unixFormat) GetString(s Stringer) (string, error) {
+	return s.GetUNIXString(), nil
+}
+
+// UNIXFormat is capable of parsing UNIX-style pathname strings, and
+// stringifying parsed paths in that format as well.
+var UNIXFormat Format = unixFormat{}
+
 func stripUNIXSeparators(p string) string {
 	for {
 		p = p[1:]
@@ -18,11 +32,6 @@ func stripUNIXSeparators(p string) string {
 
 type unixParser struct {
 	path string
-}
-
-// NewUNIXParser creates a Parser for Unix paths that can be used in Resolve.
-func NewUNIXParser(path string) Parser {
-	return &unixParser{path}
 }
 
 func (p unixParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {

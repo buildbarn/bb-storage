@@ -22,7 +22,7 @@ func TestResolve(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "Path contains a null byte"),
-			path.Resolve(path.NewUNIXParser("hello\x00world"), scopeWalker),
+			path.Resolve(path.UNIXFormat.NewParser("hello\x00world"), scopeWalker),
 		)
 	})
 
@@ -31,7 +31,7 @@ func TestResolve(t *testing.T) {
 		componentWalker := mock.NewMockComponentWalker(ctrl)
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser(""), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser(""), scopeWalker))
 	})
 
 	t.Run("Dot", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestResolve(t *testing.T) {
 		componentWalker := mock.NewMockComponentWalker(ctrl)
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("."), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("."), scopeWalker))
 	})
 
 	t.Run("SingleFileRelative", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestResolve(t *testing.T) {
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("hello"), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("hello"), scopeWalker))
 	})
 
 	t.Run("SingleFileAbsolute", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestResolve(t *testing.T) {
 		scopeWalker.EXPECT().OnAbsolute().Return(componentWalker, nil)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("hello"))
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("/hello"), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("/hello"), scopeWalker))
 	})
 
 	t.Run("SingleDirectoryWithSlash", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestResolve(t *testing.T) {
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("hello")).
 			Return(path.GotDirectory{Child: componentWalker2}, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("hello/"), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("hello/"), scopeWalker))
 	})
 
 	t.Run("SingleDirectoryWithSlashDot", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestResolve(t *testing.T) {
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("hello")).
 			Return(path.GotDirectory{Child: componentWalker2}, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("hello/."), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("hello/."), scopeWalker))
 	})
 
 	t.Run("MultipleComponents", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestResolve(t *testing.T) {
 		componentWalker5.EXPECT().OnUp().Return(componentWalker6, nil)
 		componentWalker6.EXPECT().OnTerminal(path.MustNewComponent("d"))
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("./a////../b/c/../d"), scopeWalker))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("./a////../b/c/../d"), scopeWalker))
 	})
 
 	t.Run("SymlinkWithoutSlash", func(t *testing.T) {
@@ -110,12 +110,12 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.NewUNIXParser("b")}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.UNIXFormat.NewParser("b")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker2.EXPECT().OnTerminal(path.MustNewComponent("b"))
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), scopeWalker1))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("a"), scopeWalker1))
 	})
 
 	t.Run("SymlinkWithSlashInSymlink", func(t *testing.T) {
@@ -124,14 +124,14 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.NewUNIXParser("b/")}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.UNIXFormat.NewParser("b/")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
 		componentWalker2.EXPECT().OnDirectory(path.MustNewComponent("b")).
 			Return(path.GotDirectory{Child: componentWalker3}, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), scopeWalker1))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("a"), scopeWalker1))
 	})
 
 	t.Run("SymlinkWithSlashInPath", func(t *testing.T) {
@@ -140,14 +140,14 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnDirectory(path.MustNewComponent("a")).
-			Return(path.GotSymlink{Parent: scopeWalker2, Target: path.NewUNIXParser("b")}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker2, Target: path.UNIXFormat.NewParser("b")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
 		componentWalker2.EXPECT().OnDirectory(path.MustNewComponent("b")).
 			Return(path.GotDirectory{Child: componentWalker3}, nil)
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("a/"), scopeWalker1))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("a/"), scopeWalker1))
 	})
 
 	t.Run("SymlinkInSymlinkInSymlink", func(t *testing.T) {
@@ -156,17 +156,17 @@ func TestResolve(t *testing.T) {
 		scopeWalker1.EXPECT().OnRelative().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("a")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.NewUNIXParser("b/z")}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.UNIXFormat.NewParser("b/z")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		scopeWalker3 := mock.NewMockScopeWalker(ctrl)
 		componentWalker2.EXPECT().OnDirectory(path.MustNewComponent("b")).
-			Return(path.GotSymlink{Parent: scopeWalker3, Target: path.NewUNIXParser("c/y")}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker3, Target: path.UNIXFormat.NewParser("c/y")}, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker3.EXPECT().OnRelative().Return(componentWalker3, nil)
 		scopeWalker4 := mock.NewMockScopeWalker(ctrl)
 		componentWalker3.EXPECT().OnDirectory(path.MustNewComponent("c")).
-			Return(path.GotSymlink{Parent: scopeWalker4, Target: path.NewUNIXParser("x")}, nil)
+			Return(path.GotSymlink{Parent: scopeWalker4, Target: path.UNIXFormat.NewParser("x")}, nil)
 		componentWalker4 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker4.EXPECT().OnRelative().Return(componentWalker4, nil)
 		componentWalker5 := mock.NewMockComponentWalker(ctrl)
@@ -177,6 +177,6 @@ func TestResolve(t *testing.T) {
 			Return(path.GotDirectory{Child: componentWalker6}, nil)
 		componentWalker6.EXPECT().OnTerminal(path.MustNewComponent("z"))
 
-		require.NoError(t, path.Resolve(path.NewUNIXParser("a"), scopeWalker1))
+		require.NoError(t, path.Resolve(path.UNIXFormat.NewParser("a"), scopeWalker1))
 	})
 }

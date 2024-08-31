@@ -6,6 +6,20 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
+type windowsFormat struct{}
+
+func (windowsFormat) NewParser(path string) Parser {
+	return windowsParser{path: path}
+}
+
+func (windowsFormat) GetString(s Stringer) (string, error) {
+	return s.GetWindowsString()
+}
+
+// WindowsFormat is capable of parsing Windows-style pathname strings, and
+// stringifying parsed paths in that format as well.
+var WindowsFormat Format = windowsFormat{}
+
 func stripWindowsSeparators(p string) string {
 	for p != "" && (p[0] == '/' || p[0] == '\\') {
 		p = p[1:]
@@ -15,12 +29,6 @@ func stripWindowsSeparators(p string) string {
 
 type windowsParser struct {
 	path string
-}
-
-// NewWindowsParser creates a Parser for Windows paths that can be used
-// in Resolve.
-func NewWindowsParser(path string) Parser {
-	return &windowsParser{path}
 }
 
 func (p windowsParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {

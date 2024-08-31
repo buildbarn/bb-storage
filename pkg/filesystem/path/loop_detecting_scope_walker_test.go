@@ -23,13 +23,13 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		componentWalker := mock.NewMockComponentWalker(ctrl)
 		scopeWalker.EXPECT().OnRelative().Return(componentWalker, nil).Times(41)
 		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("foo")).
-			Return(&path.GotSymlink{Parent: scopeWalker, Target: path.NewUNIXParser("foo")}, nil).
+			Return(&path.GotSymlink{Parent: scopeWalker, Target: path.UNIXFormat.NewParser("foo")}, nil).
 			Times(41)
 
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "Maximum number of symbolic link redirections reached"),
-			path.Resolve(path.NewUNIXParser("foo"), path.NewLoopDetectingScopeWalker(scopeWalker)))
+			path.Resolve(path.UNIXFormat.NewParser("foo"), path.NewLoopDetectingScopeWalker(scopeWalker)))
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 		scopeWalker1.EXPECT().OnAbsolute().Return(componentWalker1, nil)
 		scopeWalker2 := mock.NewMockScopeWalker(ctrl)
 		componentWalker1.EXPECT().OnTerminal(path.MustNewComponent("tmp")).
-			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.NewUNIXParser("private/tmp")}, nil)
+			Return(&path.GotSymlink{Parent: scopeWalker2, Target: path.UNIXFormat.NewParser("private/tmp")}, nil)
 		componentWalker2 := mock.NewMockComponentWalker(ctrl)
 		scopeWalker2.EXPECT().OnRelative().Return(componentWalker2, nil)
 		componentWalker3 := mock.NewMockComponentWalker(ctrl)
@@ -50,6 +50,6 @@ func TestLoopDetectingScopeWalker(t *testing.T) {
 
 		require.NoError(
 			t,
-			path.Resolve(path.NewUNIXParser("/tmp"), path.NewLoopDetectingScopeWalker(scopeWalker1)))
+			path.Resolve(path.UNIXFormat.NewParser("/tmp"), path.NewLoopDetectingScopeWalker(scopeWalker1)))
 	})
 }
