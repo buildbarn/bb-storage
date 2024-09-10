@@ -7,7 +7,7 @@ proto_library(
     srcs = ["iscc.proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:timestamp_proto",
@@ -23,7 +23,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/iscc",
     proto = ":iscc_proto",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution"],
+    deps = ["@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto"],
 )
 
 go_library(
