@@ -61,7 +61,7 @@
             },
             {
                "name": "linux_amd64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.linux_amd64",
                   "path": "bb_copy"
@@ -73,7 +73,7 @@
             },
             {
                "name": "linux_amd64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.linux_amd64",
                   "path": "bb_replicator"
@@ -85,7 +85,7 @@
             },
             {
                "name": "linux_amd64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.linux_amd64",
                   "path": "bb_storage"
@@ -101,7 +101,7 @@
             },
             {
                "name": "linux_386: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.linux_386",
                   "path": "bb_copy"
@@ -113,7 +113,7 @@
             },
             {
                "name": "linux_386: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.linux_386",
                   "path": "bb_replicator"
@@ -125,7 +125,7 @@
             },
             {
                "name": "linux_386: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.linux_386",
                   "path": "bb_storage"
@@ -141,7 +141,7 @@
             },
             {
                "name": "linux_arm: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.linux_arm",
                   "path": "bb_copy"
@@ -153,7 +153,7 @@
             },
             {
                "name": "linux_arm: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.linux_arm",
                   "path": "bb_replicator"
@@ -165,7 +165,7 @@
             },
             {
                "name": "linux_arm: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.linux_arm",
                   "path": "bb_storage"
@@ -181,7 +181,7 @@
             },
             {
                "name": "linux_arm64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.linux_arm64",
                   "path": "bb_copy"
@@ -193,7 +193,7 @@
             },
             {
                "name": "linux_arm64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.linux_arm64",
                   "path": "bb_replicator"
@@ -205,7 +205,7 @@
             },
             {
                "name": "linux_arm64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.linux_arm64",
                   "path": "bb_storage"
@@ -221,7 +221,7 @@
             },
             {
                "name": "darwin_amd64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.darwin_amd64",
                   "path": "bb_copy"
@@ -233,7 +233,7 @@
             },
             {
                "name": "darwin_amd64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.darwin_amd64",
                   "path": "bb_replicator"
@@ -245,7 +245,7 @@
             },
             {
                "name": "darwin_amd64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.darwin_amd64",
                   "path": "bb_storage"
@@ -261,7 +261,7 @@
             },
             {
                "name": "darwin_arm64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.darwin_arm64",
                   "path": "bb_copy"
@@ -273,7 +273,7 @@
             },
             {
                "name": "darwin_arm64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.darwin_arm64",
                   "path": "bb_replicator"
@@ -285,7 +285,7 @@
             },
             {
                "name": "darwin_arm64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.darwin_arm64",
                   "path": "bb_storage"
@@ -301,7 +301,7 @@
             },
             {
                "name": "freebsd_amd64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.freebsd_amd64",
                   "path": "bb_copy"
@@ -313,7 +313,7 @@
             },
             {
                "name": "freebsd_amd64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.freebsd_amd64",
                   "path": "bb_replicator"
@@ -325,7 +325,7 @@
             },
             {
                "name": "freebsd_amd64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.freebsd_amd64",
                   "path": "bb_storage"
@@ -341,7 +341,7 @@
             },
             {
                "name": "windows_amd64: upload bb_copy",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_copy.windows_amd64",
                   "path": "bb_copy.exe"
@@ -353,7 +353,7 @@
             },
             {
                "name": "windows_amd64: upload bb_replicator",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_replicator.windows_amd64",
                   "path": "bb_replicator.exe"
@@ -365,7 +365,7 @@
             },
             {
                "name": "windows_amd64: upload bb_storage",
-               "uses": "actions/upload-artifact@v2-preview",
+               "uses": "actions/upload-artifact@v4",
                "with": {
                   "name": "bb_storage.windows_amd64",
                   "path": "bb_storage.exe"

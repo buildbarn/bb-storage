@@ -145,7 +145,7 @@
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],
-                uses: 'actions/upload-artifact@v2-preview',
+                uses: 'actions/upload-artifact@v4',
                 with: {
                   name: '%s.%s' % [binary, platform.name],
                   path: binary + platform.extension,
