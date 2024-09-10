@@ -425,7 +425,7 @@ message LocalBlobAccessConfiguration {
   // there is only a 0.1^16 chance that inserting an entry prematurely
   // displaces another object from storage.
   //
-  // Recommended value: 8
+  // Recommended value: 16
   uint32 key_location_map_maximum_get_attempts = 2;
 
   // The number of mutations that a Put() on the key-location map may
@@ -435,7 +435,7 @@ message LocalBlobAccessConfiguration {
   // displaced. Because of that, it is recommended to set this field to
   // a small multiple of the maximum Get() attempts.
   //
-  // Recommended value: 32
+  // Recommended value: 64
   int64 key_location_map_maximum_put_attempts = 3;
 
   // The number of blocks, where attempting to access any data stored
