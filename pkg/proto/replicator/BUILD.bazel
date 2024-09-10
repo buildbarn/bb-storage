@@ -7,7 +7,7 @@ proto_library(
     srcs = ["replicator.proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",
         "@protobuf//:empty_proto",
     ],
 )
@@ -21,7 +21,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/replicator",
     proto = ":replicator_proto",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution"],
+    deps = ["@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto"],
 )
 
 go_library(

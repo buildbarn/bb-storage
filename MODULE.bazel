@@ -2,6 +2,7 @@ module(name = "com_github_buildbarn_bb_storage")
 
 bazel_dep(name = "aspect_bazel_lib", version = "2.8.1")
 bazel_dep(name = "aspect_rules_js", version = "2.0.1")
+bazel_dep(name = "bazel_remote_apis", version = "0.0.0")
 bazel_dep(name = "gazelle", version = "0.38.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
 bazel_dep(name = "jsonnet_go", version = "0.20.0")
@@ -13,6 +14,13 @@ bazel_dep(name = "rules_oci", version = "1.8.0")
 bazel_dep(name = "rules_pkg", version = "1.0.1")
 bazel_dep(name = "rules_proto", version = "6.0.2")
 bazel_dep(name = "toolchains_llvm", version = "1.1.2")
+
+git_override(
+    module_name = "bazel_remote_apis",
+    commit = "9a250a0f817fe63a426ede43b133c3dc4549d75f",
+    patches = ["//:patches/bazel_remote_apis/grpc-v2.diff"],
+    remote = "https://github.com/bazelbuild/remote-apis.git",
+)
 
 git_override(
     module_name = "gazelle",
@@ -39,7 +47,6 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_service_s3",
     "com_github_aws_aws_sdk_go_v2_service_sts",
     "com_github_bazelbuild_buildtools",
-    "com_github_bazelbuild_remote_apis",
     "com_github_fxtlabs_primes",
     "com_github_go_jose_go_jose_v3",
     "com_github_google_uuid",
@@ -78,20 +85,6 @@ use_repo(
 )
 
 go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependency = True)
-go_deps_dev.gazelle_override(
-    build_file_generation = "on",
-    directives = [
-        "gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2",
-        "gazelle:resolve proto go build/bazel/semver/semver.proto //build/bazel/semver",
-        "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
-        "gazelle:resolve proto go google/longrunning/operations.proto @com_google_cloud_go_longrunning//autogen/longrunningpb",
-        "gazelle:resolve proto go google/rpc/status.proto @org_golang_google_genproto_googleapis_rpc//status",
-        "gazelle:resolve proto google/api/annotations.proto @googleapis//google/api:annotations_proto",
-        "gazelle:resolve proto google/longrunning/operations.proto @googleapis//google/longrunning:operations_proto",
-        "gazelle:resolve proto google/rpc/status.proto @googleapis//google/rpc:status_proto",
-    ],
-    path = "github.com/bazelbuild/remote-apis",
-)
 go_deps_dev.module_override(
     patches = ["//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
     path = "github.com/grpc-ecosystem/go-grpc-prometheus",
