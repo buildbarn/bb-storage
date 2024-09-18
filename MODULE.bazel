@@ -25,10 +25,7 @@ git_override(
 git_override(
     module_name = "gazelle",
     commit = "4d0129d7adae33e8e648d3624aff8fa8f93f375b",
-    patches = [
-        "//:patches/gazelle/dont-flatten-srcs.diff",
-        "//:patches/gazelle/googleapis.diff",
-    ],
+    patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
 )
 
