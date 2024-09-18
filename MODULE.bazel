@@ -17,8 +17,7 @@ bazel_dep(name = "toolchains_llvm", version = "1.1.2")
 
 git_override(
     module_name = "bazel_remote_apis",
-    commit = "9a250a0f817fe63a426ede43b133c3dc4549d75f",
-    patches = ["//:patches/bazel_remote_apis/grpc-v2.diff"],
+    commit = "de1d77b12feb81f96909f0410991c3c966d9d8e7",
     remote = "https://github.com/bazelbuild/remote-apis.git",
 )
 
