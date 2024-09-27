@@ -105,7 +105,7 @@
         {
           name: 'Embedded asset generation',
           run: |||
-            bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |//\1:|' | sort -u)
+            bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |//\1:|; s|"||g; s| .*||' | sort -u)
             git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |\1/|' | while read o; do
               if [ -e "bazel-bin/$o" ]; then
                 rm -rf "$o"
