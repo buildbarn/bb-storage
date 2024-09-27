@@ -397,6 +397,7 @@
    "on": {
       "push": {
          "branches": [
+            "main",
             "master"
          ]
       }

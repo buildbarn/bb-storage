@@ -184,12 +184,12 @@
   getWorkflows(binaries, containers): {
     'master.yaml': {
       name: 'master',
-      on: { push: { branches: ['master'] } },
+      on: { push: { branches: ['main', 'master'] } },
       jobs: getJobs(binaries, containers, true),
     },
     'pull-requests.yaml': {
       name: 'pull-requests',
-      on: { pull_request: { branches: ['master'] } },
+      on: { pull_request: { branches: ['main', 'master'] } },
       jobs: getJobs(binaries, containers, false),
     },
   },
