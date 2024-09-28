@@ -95,11 +95,13 @@
         {
           name: 'Protobuf generation',
           run: |||
-            find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
-            bazel build $(bazel query --output=label 'kind("go_proto_library", //...)')
-            find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
-              cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')
-            done
+            if [ -d bazel-bin/pkg/proto ]; then
+              find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
+              bazel build $(bazel query --output=label 'kind("go_proto_library", //...)')
+              find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
+                cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')
+              done
+            fi
           |||,
         },
         {
