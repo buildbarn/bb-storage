@@ -143,7 +143,12 @@
               {
                 name: '%s: copy %s' % [platform.name, binary],
                 local executable = binary + platform.extension,
-                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
+                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [
+                  executable,
+                  platform.name + if enableCgo then '_cgo' else '',
+                  binary,
+                  executable,
+                ],
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],
