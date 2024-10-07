@@ -53,7 +53,7 @@
     },
   ],
 
-  local getJobs(binaries, containers, doUpload) = {
+  local getJobs(binaries, containers, doUpload, enableCgo) = {
     build_and_test: {
       'runs-on': 'ubuntu-latest',
       steps: [
@@ -130,7 +130,7 @@
           name: platform.name + ': build and test',
           run: ('bazel %s --platforms=@rules_go//go/toolchain:%s ' % [
                   platform.buildAndTestCommand,
-                  platform.name,
+                  platform.name + if enableCgo then '_cgo' else '',
                 ]) + (
             if platform.buildJustBinaries
             then std.join(' ', ['//cmd/' + binary for binary in binaries])
@@ -143,7 +143,12 @@
               {
                 name: '%s: copy %s' % [platform.name, binary],
                 local executable = binary + platform.extension,
-                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [executable, platform.name, binary, executable],
+                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [
+                  executable,
+                  platform.name + if enableCgo then '_cgo' else '',
+                  binary,
+                  executable,
+                ],
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],
@@ -187,12 +192,12 @@
     'master.yaml': {
       name: 'master',
       on: { push: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, true),
+      jobs: getJobs(binaries, containers, true, false),
     },
     'pull-requests.yaml': {
       name: 'pull-requests',
       on: { pull_request: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, false),
+      jobs: getJobs(binaries, containers, false, false),
     },
   },
 }
