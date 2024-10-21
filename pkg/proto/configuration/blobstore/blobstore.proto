@@ -194,6 +194,9 @@ message BlobAccessConfiguration {
 
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
+
+    // A hybrid of spanner and GCS.
+    SpannerGCSBlobAccessConfiguration spanner_gcs = 28;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -310,6 +313,23 @@ message MirroredBlobAccessConfiguration {
   // the secondary backend to the primary backend in case of
   // inconsistencies.
   BlobReplicatorConfiguration replicator_b_to_a = 4;
+}
+
+message SpannerGCSBlobAccessConfiguration {
+  // Name of Spanner database.
+  string spanner_db_name = 1;
+
+  // Name of GCS bucket.
+  string gcs_bucket_name = 2;
+
+  // Expiration time -- how long blobs live in the cache without being referenced
+  // before being evicted.  Default is 7 days.
+  google.protobuf.Duration expiration_time = 3;
+
+  // Optional: Google Cloud Platform (GCP) client options for objects
+  // loaded from GCS
+  buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
+      gcp_client_options = 4;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block
