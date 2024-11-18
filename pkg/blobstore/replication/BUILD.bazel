@@ -7,6 +7,7 @@ go_library(
         "concurrency_limiting_blob_replicator.go",
         "deduplicating_blob_replicator.go",
         "local_blob_replicator.go",
+        "metrics_blob_replicator.go",
         "nested_blob_replicator.go",
         "noop_blob_replicator.go",
         "queued_blob_replicator.go",

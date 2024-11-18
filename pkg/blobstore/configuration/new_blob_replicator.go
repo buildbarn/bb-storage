@@ -3,6 +3,7 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -17,20 +18,21 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
+	var configuredBlobReplicator replication.BlobReplicator
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_ConcurrencyLimiting:
 		base, err := NewBlobReplicatorFromConfiguration(mode.ConcurrencyLimiting.Base, source, sink, creator)
 		if err != nil {
 			return nil, err
 		}
-		return replication.NewConcurrencyLimitingBlobReplicator(
+		configuredBlobReplicator = replication.NewConcurrencyLimitingBlobReplicator(
 			base,
 			sink.BlobAccess,
-			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency)), nil
+			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency))
 	case *pb.BlobReplicatorConfiguration_Local:
-		return replication.NewLocalBlobReplicator(source, sink.BlobAccess), nil
+		configuredBlobReplicator = replication.NewLocalBlobReplicator(source, sink.BlobAccess)
 	case *pb.BlobReplicatorConfiguration_Noop:
-		return replication.NewNoopBlobReplicator(source), nil
+		configuredBlobReplicator = replication.NewNoopBlobReplicator(source)
 	case *pb.BlobReplicatorConfiguration_Queued:
 		base, err := NewBlobReplicatorFromConfiguration(mode.Queued.Base, source, sink, creator)
 		if err != nil {
@@ -40,8 +42,13 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 		if err != nil {
 			return nil, err
 		}
-		return replication.NewQueuedBlobReplicator(source, base, existenceCache), nil
+		configuredBlobReplicator = replication.NewQueuedBlobReplicator(source, base, existenceCache)
 	default:
-		return creator.NewCustomBlobReplicator(configuration, source, sink)
+		var err error
+		configuredBlobReplicator, err = creator.NewCustomBlobReplicator(configuration, source, sink)
+		if err != nil {
+			return nil, err
+		}
 	}
+	return replication.NewMetricsBlobReplicator(configuredBlobReplicator, clock.SystemClock), nil
 }

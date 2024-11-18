@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -28,6 +29,26 @@ var (
 			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
 		},
 		[]string{"storage_type", "operation"})
+
+	flatBlobAccessRefreshLatencySeconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "buildbarn",
+			Subsystem: "blobstore",
+			Name:      "flat_blob_access_refresh_latency_seconds",
+			Help:      "Time spent refreshing blobs in seconds",
+			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
+		},
+		[]string{"storage_type", "operation"})
+
+	flatBlobAccessRefreshSizeBytes = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "buildbarn",
+			Subsystem: "blobstore",
+			Name:      "flat_blob_access_refresh_size_bytes",
+			Help:      "Size of blobs being refreshed in bytes",
+			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
+		},
+		[]string{"storage_type", "operation"})
 )
 
 type flatBlobAccess struct {
@@ -43,6 +64,11 @@ type flatBlobAccess struct {
 	refreshesGet              prometheus.Observer
 	refreshesGetFromComposite prometheus.Observer
 	refreshesFindMissing      prometheus.Observer
+
+	refreshLatencyGet              prometheus.Observer
+	refreshLatencyGetFromComposite prometheus.Observer
+	refreshLatencyFindMissing      prometheus.Observer
+	refreshSizeGet                 prometheus.Observer
 }
 
 // NewFlatBlobAccess creates a BlobAccess that forwards all calls to
@@ -54,6 +80,8 @@ type flatBlobAccess struct {
 func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshes)
+		prometheus.MustRegister(flatBlobAccessRefreshLatencySeconds)
+		prometheus.MustRegister(flatBlobAccessRefreshSizeBytes)
 	})
 
 	return &flatBlobAccess{
@@ -67,6 +95,11 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		refreshesGet:              flatBlobAccessRefreshes.WithLabelValues(storageType, "Get"),
 		refreshesGetFromComposite: flatBlobAccessRefreshes.WithLabelValues(storageType, "GetFromComposite"),
 		refreshesFindMissing:      flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
+
+		refreshLatencyGet:              flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "Get"),
+		refreshLatencyGetFromComposite: flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "GetFromComposite"),
+		refreshLatencyFindMissing:      flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "FindMissing"),
+		refreshSizeGet:                 flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "Get"),
 	}
 }
 
@@ -105,14 +138,16 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 	ba.lock.RUnlock()
 
 	// Blob was found, but it needs to be refreshed to ensure it
-	// doesn't disappear. Retry loading the blob a second time, this
-	// time holding a write lock. This allows us to mutate the
-	// key-location map or allocate new space to copy the blob on
-	// the fly.
-	//
-	// TODO: Instead of copying data on the fly, should this be done
-	// immediately, so that we can prevent potential duplication by
-	// picking up the refresh lock?
+    // doesn't disappear. Retry loading the blob a second time, this
+    // time holding a write lock. This allows us to mutate the
+    // key-location map or allocate new space to copy the blob on
+    // the fly.
+    //
+    // TODO: Instead of copying data on the fly, should this be done
+    // immediately, so that we can prevent potential duplication by
+    // picking up the refresh lock?
+	refreshStart := time.Now()
+
 	ba.lock.Lock()
 	location, err = ba.keyLocationMap.Get(key)
 	if err != nil {
@@ -127,6 +162,8 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 		ba.lock.Unlock()
 		return b
 	}
+
+	ba.refreshSizeGet.Observe(float64(location.SizeBytes))
 
 	// Allocate space for the copy.
 	putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
@@ -145,6 +182,7 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 		_, err := ba.finalizePut(putFinalizer, key)
 		if err == nil {
 			ba.refreshesGet.Observe(1)
+			ba.refreshLatencyGet.Observe(time.Since(refreshStart).Seconds())
 		}
 		ba.lock.Unlock()
 		if err != nil {
