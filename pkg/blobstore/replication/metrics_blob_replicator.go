@@ -22,7 +22,7 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "replicator_operations_duration_seconds",
+			Name:      "blob_replicator_operations_duration_seconds",
 			Help:      "Amount of time spent per operation on blob replicator, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
@@ -32,7 +32,7 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "replicator_operations_blob_size_bytes",
+			Name:      "blob_replicator_operations_blob_size_bytes",
 			Help:      "Size of blobs being replicated, in bytes.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
@@ -42,7 +42,7 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
-			Name:      "replicator_operations_batch_size",
+			Name:      "blob_replicator_operations_batch_size",
 			Help:      "Number of blobs in batch replication requests.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
 		},
@@ -135,13 +135,7 @@ func (r *metricsBlobReplicator) ReplicateMultiple(ctx context.Context, digests d
 
 	timeStart := r.clock.Now()
 	r.multipleBatchSize.Observe(float64(digests.Length()))
-	totalSizeBytes := float64(0)
-	for _, digest := range digests {
-		if sizeBytes, err := r.replicator.GetSizeBytes(ctx, digest); err == nil {
-			totalSizeBytes += float64(sizeBytes)
-		}
-	}
-	r.multipleBlobSizeBytes.Observe(totalSizeBytes)
+	// TODO: Add blob size metrics.
 
 	err := r.replicator.ReplicateMultiple(ctx, digests)
 	r.updateDurationSeconds(r.multipleDurationSeconds, status.Code(err), timeStart)
