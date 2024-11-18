@@ -50,18 +50,18 @@ var (
 )
 
 type metricsBlobReplicator struct {
-	replicator   BlobReplicator
-	clock        clock.Clock
-	source       string
-	destination  string
+	replicator  BlobReplicator
+	clock       clock.Clock
+	source      string
+	destination string
 
-	singleDurationSeconds          prometheus.ObserverVec
-	singleBlobSizeBytes           prometheus.Observer
-	compositeDurationSeconds      prometheus.ObserverVec
-	compositeBlobSizeBytes       prometheus.Observer
-	multipleDurationSeconds      prometheus.ObserverVec
-	multipleBatchSize           prometheus.Observer
-	multipleBlobSizeBytes       prometheus.ObserverVec
+	singleDurationSeconds    prometheus.ObserverVec
+	singleBlobSizeBytes      prometheus.Observer
+	compositeDurationSeconds prometheus.ObserverVec
+	compositeBlobSizeBytes   prometheus.Observer
+	multipleDurationSeconds  prometheus.ObserverVec
+	multipleBatchSize        prometheus.Observer
+	multipleBlobSizeBytes    prometheus.Observer
 }
 
 // NewMetricsBlobReplicator creates a wrapper around BlobReplicator that adds
@@ -74,29 +74,21 @@ func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock) Blob
 	})
 
 	return &metricsBlobReplicator{
-		replicator:  replicator,
-		clock:       clock,
+		replicator: replicator,
+		clock:      clock,
 		singleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
-			"operation":   "ReplicateSingle",
-		}),
-		singleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues(
 			"operation": "ReplicateSingle",
 		}),
+		singleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateSingle"),
 		compositeDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateComposite",
 		}),
-		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues(
-			"operation": "ReplicateComposite",
-		}),
+		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite"),
 		multipleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
-			"operation":   "ReplicateMultiple",
+			"operation": "ReplicateMultiple",
 		}),
-		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues(
-			"operation": "ReplicateMultiple",
-		),
-		multipleBatchSize: replicatorOperationsBatchSize.WithLabelValues(
-			"operation": "ReplicateMultiple",
-		),
+		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple"),
+		multipleBatchSize:     replicatorOperationsBatchSize.WithLabelValues("ReplicateMultiple"),
 	}
 }
 
