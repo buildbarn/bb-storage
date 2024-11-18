@@ -69,6 +69,8 @@ type flatBlobAccess struct {
 	refreshLatencyGetFromComposite prometheus.Observer
 	refreshLatencyFindMissing      prometheus.Observer
 	refreshSizeGet                 prometheus.Observer
+	refreshSizeGetFromComposite    prometheus.Observer
+	refreshSizeFindMissing        prometheus.Observer
 }
 
 // NewFlatBlobAccess creates a BlobAccess that forwards all calls to
@@ -100,6 +102,8 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		refreshLatencyGetFromComposite: flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "GetFromComposite"),
 		refreshLatencyFindMissing:      flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "FindMissing"),
 		refreshSizeGet:                 flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "Get"),
+		refreshSizeGetFromComposite:    flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "GetFromComposite"),
+		refreshSizeFindMissing:        flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "FindMissing"),
 	}
 }
 
@@ -239,6 +243,8 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 	var bParentSlicing buffer.Buffer
 	var putFinalizer LocationBlobPutFinalizer
 	parentGetter, needsRefresh := ba.locationBlobMap.Get(parentLocation)
+	// Add refresh start time
+	refreshStart := time.Now()
 	if needsRefresh {
 		// The parent object needs to be refreshed and sliced.
 		bParent := parentGetter(parentDigest)
@@ -284,11 +290,14 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 	ba.lock.Lock()
 	if needsRefresh {
 		parentLocation, err = ba.finalizePut(putFinalizer, parentKey)
+		// Add size metric before refresh
+        ba.refreshSizeGetFromComposite.Observe(float64(parentLocation.SizeBytes))
 		if err != nil {
 			ba.lock.Unlock()
 			bChild.Discard()
 			return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to refresh blob"))
 		}
+		ba.refreshLatencyGetFromComposite.Observe(time.Since(refreshStart).Seconds())
 		ba.refreshesGetFromComposite.Observe(1)
 	}
 
@@ -389,7 +398,8 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	// one thread.
 	ba.refreshLock.Lock()
 	defer ba.refreshLock.Unlock()
-
+	// Add refresh start time before the refresh loop
+    refreshStart := time.Now()
 	blobsRefreshedSuccessfully := 0
 	ba.lock.Lock()
 	for _, blobToRefresh := range blobsToRefresh {
@@ -399,6 +409,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 				// Blob is present and still needs to be
 				// refreshed. Allocate space for a copy.
 				b := getter(blobToRefresh.digest)
+				ba.refreshSizeFindMissing.Observe(float64(location.SizeBytes))
 				putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
 				ba.lock.Unlock()
 				if err != nil {
@@ -429,5 +440,6 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	}
 	ba.lock.Unlock()
 	ba.refreshesFindMissing.Observe(float64(blobsRefreshedSuccessfully))
+	ba.refreshLatencyFindMissing.Observe(time.Since(refreshStart).Seconds())
 	return missing.Build(), nil
 }
