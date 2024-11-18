@@ -66,7 +66,7 @@ type metricsBlobReplicator struct {
 
 // NewMetricsBlobReplicator creates a wrapper around BlobReplicator that adds
 // Prometheus metrics for monitoring replication operations.
-func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock) BlobReplicator {
+func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, storageTypeName string) BlobReplicator {
 	replicatorOperationsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(replicatorOperationsDurationSeconds)
 		prometheus.MustRegister(replicatorOperationsBlobSizeBytes)
@@ -78,17 +78,20 @@ func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock) Blob
 		clock:      clock,
 		singleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateSingle",
+			"storage":   storageTypeName,
 		}),
-		singleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateSingle"),
+		singleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateSingle", storageTypeName),
 		compositeDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateComposite",
+			"storage":   storageTypeName,
 		}),
-		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite"),
+		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite", storageTypeName),
 		multipleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
-			"operation": "ReplicateMultiple",
+			"operation": "ReplicateMultiple",	
+			"storage":   storageTypeName,
 		}),
-		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple"),
-		multipleBatchSize:     replicatorOperationsBatchSize.WithLabelValues("ReplicateMultiple"),
+		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple", storageTypeName),
+		multipleBatchSize:     replicatorOperationsBatchSize.WithLabelValues("ReplicateMultiple", storageTypeName),
 	}
 }
 

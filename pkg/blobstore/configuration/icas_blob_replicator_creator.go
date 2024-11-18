@@ -14,7 +14,7 @@ type icasBlobReplicatorCreator struct{}
 func (brc icasBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc)
+		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc, "icas")
 		if err != nil {
 			return nil, err
 		}

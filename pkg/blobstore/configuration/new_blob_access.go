@@ -76,7 +76,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadCaching.Replicator, slow.BlobAccess, fast, creator)
+		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadCaching.Replicator, slow.BlobAccess, fast, creator, storageTypeName)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -131,11 +131,11 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicatorAToB, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator)
+		replicatorAToB, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator, storageTypeName)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicatorBToA, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator)
+		replicatorBToA, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator, storageTypeName)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -364,7 +364,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary.BlobAccess, primary, creator)
+		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary.BlobAccess, primary, creator, storageTypeName)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
