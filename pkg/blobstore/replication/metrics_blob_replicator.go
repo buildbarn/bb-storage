@@ -87,7 +87,7 @@ func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, stor
 		}),
 		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite", storageTypeName),
 		multipleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
-			"operation": "ReplicateMultiple",	
+			"operation": "ReplicateMultiple",
 			"storage":   storageTypeName,
 		}),
 		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple", storageTypeName),
