@@ -81,7 +81,7 @@ type flatBlobAccess struct {
 // any hierarchy.
 func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(flatBlobAccessRefreshes)
+		prometheus.MustRegister(flatBlobAccessRefreshesBlobs)
 		prometheus.MustRegister(flatBlobAccessRefreshesLatencySeconds)
 		prometheus.MustRegister(flatBlobAccessRefreshesSizeBytes)
 	})
@@ -94,9 +94,9 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		digestKeyFormat: digestKeyFormat,
 		lock:            lock,
 
-		refreshesGet:              flatBlobAccessRefreshes.WithLabelValues(storageType, "Get"),
-		refreshesGetFromComposite: flatBlobAccessRefreshes.WithLabelValues(storageType, "GetFromComposite"),
-		refreshesFindMissing:      flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
+		refreshesGet:              flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "Get"),
+		refreshesGetFromComposite: flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "GetFromComposite"),
+		refreshesFindMissing:      flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "FindMissing"),
 
 		refreshesLatencyGet:              flatBlobAccessRefreshesLatencySeconds.WithLabelValues(storageType, "Get"),
 		refreshesLatencyGetFromComposite: flatBlobAccessRefreshesLatencySeconds.WithLabelValues(storageType, "GetFromComposite"),
