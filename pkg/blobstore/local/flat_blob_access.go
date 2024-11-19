@@ -20,7 +20,7 @@ import (
 var (
 	flatBlobAccessPrometheusMetrics sync.Once
 
-	flatBlobAccessRefreshes = prometheus.NewHistogramVec(
+	flatBlobAccessRefreshesBlobs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -30,7 +30,7 @@ var (
 		},
 		[]string{"storage_type", "operation"})
 
-	flatBlobAccessRefreshLatencySeconds = prometheus.NewHistogramVec(
+	flatBlobAccessRefreshesLatencySeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -40,7 +40,7 @@ var (
 		},
 		[]string{"storage_type", "operation"})
 
-	flatBlobAccessRefreshSizeBytes = prometheus.NewHistogramVec(
+	flatBlobAccessRefreshesSizeBytes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -82,8 +82,8 @@ type flatBlobAccess struct {
 func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshes)
-		prometheus.MustRegister(flatBlobAccessRefreshLatencySeconds)
-		prometheus.MustRegister(flatBlobAccessRefreshSizeBytes)
+		prometheus.MustRegister(flatBlobAccessRefreshesLatencySeconds)
+		prometheus.MustRegister(flatBlobAccessRefreshesSizeBytes)
 	})
 
 	return &flatBlobAccess{
@@ -98,12 +98,12 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		refreshesGetFromComposite: flatBlobAccessRefreshes.WithLabelValues(storageType, "GetFromComposite"),
 		refreshesFindMissing:      flatBlobAccessRefreshes.WithLabelValues(storageType, "FindMissing"),
 
-		refreshesLatencyGet:              flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "Get"),
-		refreshesLatencyGetFromComposite: flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "GetFromComposite"),
-		refreshesLatencyFindMissing:      flatBlobAccessRefreshLatencySeconds.WithLabelValues(storageType, "FindMissing"),
-		refreshesSizeGet:                 flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "Get"),
-		refreshesSizeGetFromComposite:    flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "GetFromComposite"),
-		refreshesSizeFindMissing:         flatBlobAccessRefreshSizeBytes.WithLabelValues(storageType, "FindMissing"),
+		refreshesLatencyGet:              flatBlobAccessRefreshesLatencySeconds.WithLabelValues(storageType, "Get"),
+		refreshesLatencyGetFromComposite: flatBlobAccessRefreshesLatencySeconds.WithLabelValues(storageType, "GetFromComposite"),
+		refreshesLatencyFindMissing:      flatBlobAccessRefreshesLatencySeconds.WithLabelValues(storageType, "FindMissing"),
+		refreshesSizeGet:                 flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "Get"),
+		refreshesSizeGetFromComposite:    flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "GetFromComposite"),
+		refreshesSizeFindMissing:         flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "FindMissing"),
 	}
 }
 
@@ -400,7 +400,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	// Add refresh start time before the refresh loop
 	refreshStart := time.Now()
 	blobsRefreshedSuccessfully := 0
-	blobRefreshSizeBytes := 0
+	var blobRefreshSizeBytes int64
 	ba.lock.Lock()
 	for _, blobToRefresh := range blobsToRefresh {
 		if location, err := ba.keyLocationMap.Get(blobToRefresh.key); err == nil {
@@ -409,7 +409,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 				// Blob is present and still needs to be
 				// refreshed. Allocate space for a copy.
 				b := getter(blobToRefresh.digest)
-				blobRefreshSizeBytes += int(location.SizeBytes)
+				blobRefreshSizeBytes += location.SizeBytes
 				putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
 				ba.lock.Unlock()
 				if err != nil {

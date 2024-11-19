@@ -18,7 +18,7 @@ import (
 var (
 	replicatorOperationsPrometheusMetrics sync.Once
 
-	replicatorOperationsDurationSeconds = prometheus.NewHistogramVec(
+	blobReplicatorOperationsDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -28,7 +28,7 @@ var (
 		},
 		[]string{"operation"})
 
-	replicatorOperationsBlobSizeBytes = prometheus.NewHistogramVec(
+	blobReplicatorOperationsBlobSizeBytes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -38,7 +38,7 @@ var (
 		},
 		[]string{"operation"})
 
-	replicatorOperationsBatchSize = prometheus.NewHistogramVec(
+	blobReplicatorOperationsBatchSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
@@ -68,30 +68,30 @@ type metricsBlobReplicator struct {
 // Prometheus metrics for monitoring replication operations.
 func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, storageTypeName string) BlobReplicator {
 	replicatorOperationsPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(replicatorOperationsDurationSeconds)
-		prometheus.MustRegister(replicatorOperationsBlobSizeBytes)
-		prometheus.MustRegister(replicatorOperationsBatchSize)
+		prometheus.MustRegister(blobReplicatorOperationsDurationSeconds)
+		prometheus.MustRegister(blobReplicatorOperationsBlobSizeBytes)
+		prometheus.MustRegister(blobReplicatorOperationsBatchSize)
 	})
 
 	return &metricsBlobReplicator{
 		replicator: replicator,
 		clock:      clock,
-		singleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
+		singleDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateSingle",
 			"storage":   storageTypeName,
 		}),
-		singleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateSingle", storageTypeName),
-		compositeDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
+		singleBlobSizeBytes: blobReplicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateSingle", storageTypeName),
+		compositeDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateComposite",
 			"storage":   storageTypeName,
 		}),
-		compositeBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite", storageTypeName),
-		multipleDurationSeconds: replicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
+		compositeBlobSizeBytes: blobReplicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateComposite", storageTypeName),
+		multipleDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"operation": "ReplicateMultiple",
 			"storage":   storageTypeName,
 		}),
-		multipleBlobSizeBytes: replicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple", storageTypeName),
-		multipleBatchSize:     replicatorOperationsBatchSize.WithLabelValues("ReplicateMultiple", storageTypeName),
+		multipleBlobSizeBytes: blobReplicatorOperationsBlobSizeBytes.WithLabelValues("ReplicateMultiple", storageTypeName),
+		multipleBatchSize:     blobReplicatorOperationsBatchSize.WithLabelValues("ReplicateMultiple", storageTypeName),
 	}
 }
 
