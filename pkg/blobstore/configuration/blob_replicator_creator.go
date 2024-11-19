@@ -16,4 +16,8 @@ type BlobReplicatorCreator interface {
 	// type. For example, sending replication requests over gRPC is
 	// only supported for the Content Addressable Storage.
 	NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error)
+
+	// GetStorageTypeName() returns the name of the storage type that
+	// this BlobReplicatorCreator is able to create BlobReplicators for.
+	GetStorageTypeName() string
 }

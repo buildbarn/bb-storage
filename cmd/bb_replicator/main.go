@@ -54,7 +54,6 @@ func main() {
 			source.BlobAccess,
 			sink,
 			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
-			"cas",
 		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create replicator")

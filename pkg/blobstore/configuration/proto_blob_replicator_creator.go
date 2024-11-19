@@ -14,3 +14,7 @@ type protoBlobReplicatorCreator struct{}
 func (brc protoBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	return nil, status.Error(codes.InvalidArgument, "Configuration did not contain a supported replicator")
 }
+
+func (brc protoBlobReplicatorCreator) GetStorageTypeName() string {
+	return ""
+}

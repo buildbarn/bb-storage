@@ -14,14 +14,15 @@ import (
 
 // NewBlobReplicatorFromConfiguration creates a BlobReplicator object
 // based on a configuration file.
-func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator, storageTypeName string) (replication.BlobReplicator, error) {
+func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
+	storageTypeName := creator.GetStorageTypeName()
 	var configuredBlobReplicator replication.BlobReplicator
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_ConcurrencyLimiting:
-		base, err := NewBlobReplicatorFromConfiguration(mode.ConcurrencyLimiting.Base, source, sink, creator, storageTypeName)
+		base, err := NewBlobReplicatorFromConfiguration(mode.ConcurrencyLimiting.Base, source, sink, creator)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +35,7 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 	case *pb.BlobReplicatorConfiguration_Noop:
 		configuredBlobReplicator = replication.NewNoopBlobReplicator(source)
 	case *pb.BlobReplicatorConfiguration_Queued:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Queued.Base, source, sink, creator, storageTypeName)
+		base, err := NewBlobReplicatorFromConfiguration(mode.Queued.Base, source, sink, creator)
 		if err != nil {
 			return nil, err
 		}

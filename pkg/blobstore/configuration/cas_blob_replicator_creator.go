@@ -24,10 +24,14 @@ func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobRepli
 	}
 }
 
+func (brc *casBlobReplicatorCreator) GetStorageTypeName() string {
+	return "cas"
+}
+
 func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc, "cas")
+		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc)
 		if err != nil {
 			return nil, err
 		}
