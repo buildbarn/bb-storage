@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
@@ -97,7 +98,34 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, false, false, util.StatusWrap(err, "Failed to compile peer credentials metadata extraction JMESPath expression")
 		}
 		return NewPeerCredentialsAuthenticator(metadataExtractor), true, false, nil
+	case *configuration.AuthenticationPolicy_Remote:
+		authenticator, err := NewRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote.Backend, grpcClientFactory)
+		if err != nil {
+			return nil, false, false, err
+		}
+		return NewRemoteRequestAuthenticator(authenticator, policyKind.Remote.Headers), false, false, nil
 	default:
 		return nil, false, false, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}
+}
+
+// NewRequestHeadersAuthenticatorFromConfiguration creates an Authenticator that
+// forwards authentication requests to a remote gRPC service. This is a
+// convenient way to integrate custom authentication processes.
+func NewRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
+	grpcClient, err := grpcClientFactory.NewClientFromConfiguration(configuration.Endpoint)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
+	}
+	evictionSet, err := eviction.NewSetFromConfiguration[auth.RemoteAuthenticatorCacheKey](configuration.CacheReplacementPolicy)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Cache replacement policy for remote authentication")
+	}
+	return auth.NewRemoteAuthenticator(
+		grpcClient,
+		configuration.Scope,
+		clock.SystemClock,
+		eviction.NewMetricsSet(evictionSet, "remote_authenticator"),
+		int(configuration.MaximumCacheSize),
+	), nil
 }
