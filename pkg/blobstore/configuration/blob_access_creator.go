@@ -36,9 +36,6 @@ type BlobAccessCreator interface {
 	// GetReadBufferFactory() returns operations that can be used by
 	// BlobAccess to create Buffer objects to return data.
 	GetReadBufferFactory() blobstore.ReadBufferFactory
-	// GetStorageTypeName() returns a short string that identifies
-	// the purpose of this storage (e.g., "ac", "cas").
-	GetStorageTypeName() string
 	// GetCapabilitiesProvider() returns a provider of REv2
 	// ServerCapabilities messages that should be returned for
 	// backends that can't report their own capabilities. This
