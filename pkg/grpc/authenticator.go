@@ -25,7 +25,7 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group) (Authenticator, bool, bool, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group, grpcClientFactory ClientFactory) (Authenticator, bool, bool, error) {
 	if policy == nil {
 		return nil, false, false, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
@@ -41,7 +41,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		needsPeerTransportCredentials := false
 		requestTLSClientCertificate := false
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, false, false, err
 			}
@@ -55,7 +55,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		needsPeerTransportCredentials := false
 		requestTLSClientCertificate := false
 		for _, childConfiguration := range policyKind.All.Policies {
-			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, false, false, err
 			}
