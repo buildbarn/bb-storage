@@ -15,6 +15,7 @@ go_library(
         "metrics_handler.go",
         "metrics_round_tripper.go",
         "oidc_authenticator.go",
+        "request_headers_authenticator.go",
         "server.go",
         "status_code.go",
     ],
@@ -50,6 +51,7 @@ go_test(
         "allow_authenticator_test.go",
         "deny_authenticator_test.go",
         "oidc_authenticator_test.go",
+        "request_headers_authenticator_test.go",
     ],
     deps = [
         ":http",
