@@ -3,6 +3,7 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
@@ -17,7 +18,7 @@ import (
 type AuthorizerFactory interface {
 	// NewAuthorizerFromConfiguration constructs an authorizer based on
 	// options specified in a configuration message.
-	NewAuthorizerFromConfiguration(configuration *pb.AuthorizerConfiguration) (auth.Authorizer, error)
+	NewAuthorizerFromConfiguration(configuration *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error)
 }
 
 // DefaultAuthorizerFactory constructs deduplicated authorizers based on
@@ -30,7 +31,7 @@ type BaseAuthorizerFactory struct{}
 
 // NewAuthorizerFromConfiguration constructs an authorizer based on
 // options specified in a configuration message.
-func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration) (auth.Authorizer, error) {
+func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
 	if config == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authorizer configuration not specified")
 	}
@@ -77,14 +78,14 @@ func NewDeduplicatingAuthorizerFactory(base AuthorizerFactory) AuthorizerFactory
 }
 
 // NewAuthorizerFromConfiguration creates an Authorizer based on the passed configuration.
-func (af *deduplicatingAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration) (auth.Authorizer, error) {
+func (af *deduplicatingAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
 	keyBytes, err := protojson.Marshal(config)
 	key := string(keyBytes)
 	if err != nil {
 		return nil, err
 	}
 	if _, ok := af.known[key]; !ok {
-		a, err := af.base.NewAuthorizerFromConfiguration(config)
+		a, err := af.base.NewAuthorizerFromConfiguration(config, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}
