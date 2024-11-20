@@ -6,6 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
@@ -148,7 +149,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			executeAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetExecuteAuthorizer())
+			executeAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetExecuteAuthorizer())
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create execute authorizer")
 			}
@@ -225,11 +226,11 @@ func newNonScannableBlobAccess(dependenciesGroup program.Group, configuration *b
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
 	}
 
-	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
+	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
-	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
+	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
@@ -247,15 +248,15 @@ func newScannableBlobAccess(dependenciesGroup program.Group, configuration *bb_s
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
 	}
 
-	getAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
+	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
-	putAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
+	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
-	findMissingAuthorizer, err := auth.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer)
+	findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
 	}
