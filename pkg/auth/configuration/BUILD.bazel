@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/digest",
+        "//pkg/grpc",
         "//pkg/proto/configuration/auth",
         "//pkg/util",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
