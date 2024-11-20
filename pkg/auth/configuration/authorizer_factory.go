@@ -2,7 +2,9 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -56,6 +58,22 @@ func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.Authori
 			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to compile JMESPath expression")
 		}
 		return auth.NewJMESPathExpressionAuthorizer(expression), nil
+	case *pb.AuthorizerConfiguration_Remote:
+		grpcClient, err := grpcClientFactory.NewClientFromConfiguration(policy.Remote.Endpoint)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create authorizer RPC client")
+		}
+		evictionSet, err := eviction.NewSetFromConfiguration[auth.RemoteAuthorizerCacheKey](policy.Remote.CacheReplacementPolicy)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Cache replacement policy for remote authorization")
+		}
+		return auth.NewRemoteAuthorizer(
+			grpcClient,
+			policy.Remote.Scope,
+			clock.SystemClock,
+			eviction.NewMetricsSet(evictionSet, "remote_authorizer"),
+			int(policy.Remote.MaximumCacheSize),
+		), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Unknown authorizer configuration")
 	}

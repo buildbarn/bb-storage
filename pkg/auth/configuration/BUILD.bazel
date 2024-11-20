@@ -7,7 +7,9 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/auth",
+        "//pkg/clock",
         "//pkg/digest",
+        "//pkg/eviction",
         "//pkg/grpc",
         "//pkg/proto/configuration/auth",
         "//pkg/util",

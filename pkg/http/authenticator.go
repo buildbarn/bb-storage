@@ -125,6 +125,25 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, err
 		}
 		return NewAcceptHeaderAuthenticator(base, policyKind.AcceptHeader.MediaTypes), nil
+	case *configuration.AuthenticationPolicy_Remote:
+		// TODO: With auth.RequestHeadersPolicy = oneof {auth.Jwt, auth.Remote}
+		// in the .proto definitions, the HTTP and gRPC authentication policy
+		// code could be unified. Unfortunately, that creates the .proto
+		// dependency cycle below:
+		//
+		//     grpc.ServerConfiguration ->
+		//     grpc.AuthenticationPolicy ->
+		//     auth.RequestHeadersAuthenticator ->
+		//     auth.RemoteAuthenticator ->
+		//     grpc.ClientConfiguration
+		//
+		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
+		// `grpc_server.proto` and `grpc_tracing_method.proto`.
+		backend, err := grpc.NewRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		if err != nil {
+			return nil, err
+		}
+		return NewRequestHeadersAuthenticator(backend, policyKind.Remote.Headers)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}
