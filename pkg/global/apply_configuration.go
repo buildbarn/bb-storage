@@ -58,7 +58,7 @@ type LifecycleState struct {
 // MarkReadyAndWait can be called to report that the program has started
 // successfully. The application should now be reported as being healthy
 // and ready, and receive incoming requests if applicable.
-func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
+func (ls *LifecycleState) MarkReadyAndWait(group program.Group, grpcClientFactory bb_grpc.ClientFactory) {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
 	if ls.config != nil {
@@ -77,7 +77,8 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 		bb_http.NewServersFromConfigurationAndServe(
 			ls.config.HttpServers,
 			bb_http.NewMetricsHandler(router, "Diagnostics"),
-			group)
+			group,
+			grpcClientFactory)
 	}
 }
 

@@ -23,6 +23,7 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/clock",
+        "//pkg/grpc",
         "//pkg/jwt",
         "//pkg/program",
         "//pkg/proto/configuration/http",

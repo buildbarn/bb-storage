@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
@@ -31,7 +32,7 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group) (Authenticator, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group, grpcClientFactory grpc.ClientFactory) (Authenticator, error) {
 	if policy == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
@@ -45,7 +46,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, err
 			}
@@ -119,7 +120,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			cookieAEAD,
 			clock.SystemClock)
 	case *configuration.AuthenticationPolicy_AcceptHeader:
-		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group)
+		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}
