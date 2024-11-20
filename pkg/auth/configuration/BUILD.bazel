@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "configuration",
+    srcs = ["authorizer_factory.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/auth/configuration",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/auth",
+        "//pkg/digest",
+        "//pkg/proto/configuration/auth",
+        "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)
