@@ -95,7 +95,7 @@
         {
           name: 'Protobuf generation',
           run: |||
-            if [ -d bazel-bin/pkg/proto ]; then
+            if [ -d pkg/proto ]; then
               find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
               bazel build $(bazel query --output=label 'kind("go_proto_library", //...)')
               find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
