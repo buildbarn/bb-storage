@@ -68,9 +68,9 @@ type flatBlobAccess struct {
 	refreshesBlobsDurationGet              prometheus.Observer
 	refreshesBlobsDurationGetFromComposite prometheus.Observer
 	refreshesBlobsDurationFindMissing      prometheus.Observer
-	refreshesBlobsSizeGet                 prometheus.Observer
-	refreshesBlbosSizeGetFromComposite    prometheus.Observer
-	refreshesBlobsSizeFindMissing         prometheus.Observer
+	refreshesBlobsSizeGet                  prometheus.Observer
+	refreshesBlbosSizeGetFromComposite     prometheus.Observer
+	refreshesBlobsSizeFindMissing          prometheus.Observer
 }
 
 // NewFlatBlobAccess creates a BlobAccess that forwards all calls to
@@ -101,9 +101,9 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 		refreshesBlobsDurationGet:              flatBlobAccessRefreshesDurationSeconds.WithLabelValues(storageType, "Get"),
 		refreshesBlobsDurationGetFromComposite: flatBlobAccessRefreshesDurationSeconds.WithLabelValues(storageType, "GetFromComposite"),
 		refreshesBlobsDurationFindMissing:      flatBlobAccessRefreshesDurationSeconds.WithLabelValues(storageType, "FindMissing"),
-		refreshesBlobsSizeGet:                 flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "Get"),
-		refreshesBlbosSizeGetFromComposite:    flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "GetFromComposite"),
-		refreshesBlobsSizeFindMissing:         flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "FindMissing"),
+		refreshesBlobsSizeGet:                  flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "Get"),
+		refreshesBlbosSizeGetFromComposite:     flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "GetFromComposite"),
+		refreshesBlobsSizeFindMissing:          flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "FindMissing"),
 	}
 }
 
