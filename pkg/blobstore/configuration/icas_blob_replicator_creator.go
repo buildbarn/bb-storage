@@ -23,3 +23,7 @@ func (brc icasBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.B
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain a supported replicator")
 	}
 }
+
+func (brc icasBlobReplicatorCreator) GetStorageTypeName() string {
+	return "icas"
+}

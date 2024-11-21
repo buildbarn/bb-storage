@@ -60,10 +60,6 @@ func (bac *casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFact
 	return blobstore.CASReadBufferFactory
 }
 
-func (bac *casBlobAccessCreator) GetStorageTypeName() string {
-	return "cas"
-}
-
 func (bac *casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return casCapabilitiesProvider
 }

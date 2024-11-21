@@ -32,10 +32,6 @@ func (bac *icasBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFac
 	return blobstore.ICASReadBufferFactory
 }
 
-func (bac *icasBlobAccessCreator) GetStorageTypeName() string {
-	return "icas"
-}
-
 func (bac *icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return nil
 }
