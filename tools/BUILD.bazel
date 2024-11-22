@@ -1,18 +1,6 @@
-load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
-load("@rules_go//go:def.bzl", "go_library")
+# gazelle:ignore
 
-go_library(
-    name = "tools",
-    srcs = ["deps.go"],
-    importpath = "github.com/buildbarn/bb-storage/tools",
-    tags = ["manual"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "@cc_mvdan_gofumpt//:gofumpt",
-        "@com_github_bazelbuild_buildtools//buildifier",
-        "@org_golang_x_lint//:lint",
-    ],
-)
+load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
 
 # When built with --stamp, creates a non-deterministic output file for pushing images to a remote registry.
 # With --nostamp, produces a deterministic output so dependents get cache hits.
