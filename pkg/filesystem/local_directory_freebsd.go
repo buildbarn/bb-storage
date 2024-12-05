@@ -8,12 +8,15 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // rawDeviceNumber is the equivalent of POSIX dev_t.
 type rawDeviceNumber = uint64
+
+const oflagSearch = unix.O_SEARCH
 
 func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	// Though mknodat() exists on FreeBSD, device nodes created
