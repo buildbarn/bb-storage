@@ -18,6 +18,8 @@ import (
 // rawDeviceNumber is the equivalent of POSIX dev_t.
 type rawDeviceNumber = uint64
 
+const oflagSearch = unix.O_PATH
+
 func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	defer runtime.KeepAlive(d)
 

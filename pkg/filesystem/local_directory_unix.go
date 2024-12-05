@@ -43,7 +43,7 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
 	}
 
-	fd, err := unix.Openat(unix.AT_FDCWD, pathString, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
+	fd, err := unix.Openat(unix.AT_FDCWD, pathString, unix.O_DIRECTORY|unix.O_NOFOLLOW|oflagSearch, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 func (d *localDirectory) enter(name path.Component) (*localDirectory, error) {
 	defer runtime.KeepAlive(d)
 
-	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY, 0)
+	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|oflagSearch, 0)
 	if err != nil {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
@@ -406,7 +406,19 @@ func (d *localDirectory) Symlink(oldName path.Parser, newName path.Component) er
 func (d *localDirectory) Sync() error {
 	defer runtime.KeepAlive(d)
 
-	return unix.Fsync(d.fd)
+	// Linux doesn't permit calling fsync() on directories opened
+	// with O_PATH. Reopen the directory with O_RDONLY.
+	dfd := d.fd
+	if runtime.GOOS == "linux" {
+		var err error
+		dfd, err = unix.Openat(d.fd, ".", unix.O_DIRECTORY|unix.O_RDONLY, 0)
+		if err != nil {
+			return err
+		}
+		defer unix.Close(dfd)
+	}
+
+	return unix.Fsync(dfd)
 }
 
 func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) error {

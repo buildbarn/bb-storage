@@ -16,6 +16,8 @@ import (
 // rawDeviceNumber is the equivalent of POSIX dev_t.
 type rawDeviceNumber = int32
 
+const oflagSearch = unix.O_SEARCH
+
 func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Darwin")
 }
