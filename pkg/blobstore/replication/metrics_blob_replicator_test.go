@@ -1,4 +1,4 @@
-package replication
+package replication_test
 
 import (
 	"testing"
