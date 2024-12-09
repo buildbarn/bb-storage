@@ -41,6 +41,7 @@ go_test(
     srcs = [
         "deduplicating_blob_replicator_test.go",
         "local_blob_replicator_test.go",
+        "metrics_blob_replicator_test.go",
         "nested_blob_replicator_test.go",
         "queued_blob_replicator_test.go",
     ],
