@@ -11,7 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
-	
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

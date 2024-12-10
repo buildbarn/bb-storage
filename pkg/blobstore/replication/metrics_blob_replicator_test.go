@@ -2,18 +2,20 @@ package replication_test
 
 import (
 	"context"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"testing"
 	"time"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestNewMetricsBlobReplicator(t *testing.T) {
