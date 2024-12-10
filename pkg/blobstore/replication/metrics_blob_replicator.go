@@ -11,7 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
-
+	
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,7 +27,7 @@ var (
 			Help:      "Amount of time spent per operation on blob replicator, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation", "grpc_code"})
 
 	blobReplicatorOperationsBlobSizeBytes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
