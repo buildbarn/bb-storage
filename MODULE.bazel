@@ -135,7 +135,7 @@ use_repo(npm, "com_github_buildbarn_bb_storage_npm")
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "distroless_static",
-    digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
+    digest = "sha256:3f2b64ef97bd285e36132c684e6b2ae8f2723293d09aae046196cca64251acac",
     image = "gcr.io/distroless/static",
     platforms = [
         "linux/amd64",
