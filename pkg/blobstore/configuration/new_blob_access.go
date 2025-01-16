@@ -546,7 +546,10 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		}).NewNestedBlobAccess(config.Backend, creator)
 	case *pb.BlobAccessConfiguration_Label:
 		if labelBackend, ok := nc.labels[backend.Label]; ok {
-			return labelBackend, nil
+			return BlobAccessInfo{
+				BlobAccess:      blobstore.NewMetricsBlobAccess(labelBackend.BlobAccess, clock.SystemClock, creator.GetStorageTypeName(), "label", configuration.GetMetricsTag()),
+				DigestKeyFormat: labelBackend.DigestKeyFormat,
+			}, nil
 		}
 		return BlobAccessInfo{}, status.Errorf(codes.InvalidArgument, "Label %#v not declared", backend.Label)
 	}
@@ -556,7 +559,7 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		return BlobAccessInfo{}, err
 	}
 	return BlobAccessInfo{
-		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, creator.GetStorageTypeName(), backendType),
+		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, creator.GetStorageTypeName(), backendType, configuration.GetMetricsTag()),
 		DigestKeyFormat: backend.DigestKeyFormat,
 	}, nil
 }
