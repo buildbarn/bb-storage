@@ -188,6 +188,13 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 			NewMetadataExtractingAndForwardingStreamClientInterceptor(extractor))
 	}
 
+	// Optional: service config.
+	if serviceConfig := config.DefaultServiceConfig; serviceConfig != "" {
+		dialOptions = append(
+			dialOptions,
+			grpc.WithDefaultServiceConfig(serviceConfig))
+	}
+
 	dialOptions = append(
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
