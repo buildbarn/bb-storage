@@ -12,7 +12,8 @@ option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grp
 
 message ClientConfiguration {
   // Address of the gRPC server to which to connect. This string may be
-  // in the form of "address:port" or "unix:///path/of/unix/socket".
+  // in the form of "address:port", "unix:///path/of/unix/socket", or
+  // "dns:///url:port".
   string address = 1;
 
   // TLS configuration. TLS is not enabled when left unset.
@@ -116,6 +117,11 @@ message ClientConfiguration {
   // /build.bazel.remote.execution.v2.Execution/Execute
   // /google.bytestream.ByteStream/Read
   map<string, TracingMethodConfiguration> tracing = 11;
+
+  // The gRPC connection's default service config.  See grpc-go
+  // WithDefaultServiceConfig. Note that the address should use dns:/// schema
+  // when LB config is round-robin.
+  string default_service_config = 13;
 }
 
 message ClientKeepaliveConfiguration {
