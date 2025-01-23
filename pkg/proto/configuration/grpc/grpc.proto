@@ -4,6 +4,7 @@ package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
@@ -118,10 +119,12 @@ message ClientConfiguration {
   // /google.bytestream.ByteStream/Read
   map<string, TracingMethodConfiguration> tracing = 11;
 
-  // The gRPC connection's default service config.  See grpc-go
-  // WithDefaultServiceConfig. Note that the address should use dns:/// schema
-  // when LB config is round-robin.
-  string default_service_config = 13;
+  // The gRPC connection's default service config. Note that the address
+  // should use the dns:/// schema when the load balancing policy is
+  // round-robin.
+  //
+  // More details: https://grpc.io/docs/guides/service-config/
+  google.protobuf.Struct default_service_config = 13;
 }
 
 message ClientKeepaliveConfiguration {

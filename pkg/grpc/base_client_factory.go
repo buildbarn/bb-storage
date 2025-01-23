@@ -189,10 +189,14 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	// Optional: service config.
-	if serviceConfig := config.DefaultServiceConfig; serviceConfig != "" {
+	if serviceConfig := config.DefaultServiceConfig; serviceConfig != nil {
+		serviceConfigJSON, err := serviceConfig.MarshalJSON()
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to marshal default service config")
+		}
 		dialOptions = append(
 			dialOptions,
-			grpc.WithDefaultServiceConfig(serviceConfig))
+			grpc.WithDefaultServiceConfig(string(serviceConfigJSON)))
 	}
 
 	dialOptions = append(
