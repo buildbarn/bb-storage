@@ -12,6 +12,7 @@ proto_library(
         "//pkg/proto/configuration/tls:tls_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
+        "@protobuf//:struct_proto",
     ],
 )
 
