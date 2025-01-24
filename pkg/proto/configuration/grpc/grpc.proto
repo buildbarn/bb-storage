@@ -6,6 +6,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/auth/auth.proto";
+import "pkg/proto/configuration/eviction/eviction.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -365,6 +366,13 @@ message AuthenticationPolicy {
     // LOCAL_PEERCRED is used, which is typically capable of returning
     // up to 16 group memberships.
     string peer_credentials_jmespath_expression = 6;
+
+    // Forwards the authentication task to a remote server. This can be a
+    // convenient way to integrate custom authentication processes, for example
+    // if a proxy has already performed authentication where the resulting HTTP
+    // request's headers need to be verified and processed in a custom way to
+    // produce buildbarn.auth.AuthenticationMetadata.
+    RemoteAuthenticationPolicy remote = 8;
   }
 }
 
@@ -438,6 +446,28 @@ message TLSClientCertificateAuthenticationPolicy {
   //
   //     `{}`
   string metadata_extraction_jmespath_expression = 4;
+}
+
+message RemoteAuthenticationPolicy {
+  // Headers from the incoming gRPC request to forward to the remote
+  // authenticator.
+  repeated string headers = 1;
+
+  // The remote buildbarn.auth.AuthenticationServer to grant or deny access the
+  // gRPC request.
+  ClientConfiguration endpoint = 2;
+
+  // Additional literal input to the remote authenticator.
+  google.protobuf.Value scope = 3;
+
+  // Maximum number of authentication responses to cache in memory. This speeds
+  // up successive requests made with the same metadata.
+  int32 maximum_cache_size = 4;
+
+  // The cache replacement policy that should be applied to the token
+  // cache. It is advised that this is set to LEAST_RECENTLY_USED.
+  buildbarn.configuration.eviction.CacheReplacementPolicy
+      cache_replacement_policy = 5;
 }
 
 message TracingMethodConfiguration {
