@@ -3,6 +3,9 @@ syntax = "proto3";
 package buildbarn.configuration.auth;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "pkg/proto/configuration/eviction/eviction.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth";
 
@@ -36,6 +39,9 @@ message AuthorizerConfiguration {
     // "instanceName" corresponds to the REv2 instance name that was
     // part of the client request.
     string jmespath_expression = 4;
+
+    // Forwards the authorizing task to a remote server.
+    RemoteAuthorizer remote = 7;
   }
 }
 
@@ -43,4 +49,23 @@ message InstanceNameAuthorizer {
   // Instance name prefixes to which access is allowed.
   // The empty string may be used to indicate all instance names.
   repeated string allowed_instance_name_prefixes = 1;
+}
+
+message RemoteAuthorizer {
+  // The remote buildbarn.auth.AuthorizerServer to connect.
+  buildbarn.configuration.grpc.ClientConfiguration endpoint = 1;
+
+  // A description of, for example, what subsystem is being accessed and what
+  // kind of request is being made. This passed to a
+  // buildbarn.auth.AuthorizeRequest in literal form.
+  google.protobuf.Value scope = 2;
+
+  // Maximum number of authorizer responses to cache in memory. This speeds
+  // up successive requests made with the same metadata.
+  int32 maximum_cache_size = 3;
+
+  // The cache replacement policy that should be applied to the token
+  // cache. It is advised that this is set to LEAST_RECENTLY_USED.
+  buildbarn.configuration.eviction.CacheReplacementPolicy
+      cache_replacement_policy = 4;
 }
