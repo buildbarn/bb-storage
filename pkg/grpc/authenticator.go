@@ -103,7 +103,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, false, false, err
 		}
-		return NewRemoteRequestAuthenticator(authenticator, policyKind.Remote.Headers), false, false, nil
+		return NewRequestHeadersAuthenticator(authenticator, policyKind.Remote.Headers), false, false, nil
 	default:
 		return nil, false, false, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}
@@ -117,11 +117,11 @@ func NewRequestHeadersAuthenticatorFromConfiguration(configuration *configuratio
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
 	}
-	evictionSet, err := eviction.NewSetFromConfiguration[auth.RemoteAuthenticatorCacheKey](configuration.CacheReplacementPolicy)
+	evictionSet, err := eviction.NewSetFromConfiguration[auth.RemoteRequestHeadersAuthenticatorCacheKey](configuration.CacheReplacementPolicy)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Cache replacement policy for remote authentication")
 	}
-	return auth.NewRemoteAuthenticator(
+	return auth.NewRemoteRequestHeadersAuthenticator(
 		grpcClient,
 		configuration.Scope,
 		clock.SystemClock,

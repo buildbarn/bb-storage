@@ -21,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestRemoteAuthenticatorFailure(t *testing.T) {
+func TestRemoteRequestHeadersAuthenticatorFailure(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -33,11 +33,11 @@ func TestRemoteAuthenticatorFailure(t *testing.T) {
 		).Return(status.Error(codes.Unavailable, "Server offline"))
 		clock.EXPECT().Now().Return(time.Unix(1000, 0))
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		// authMetadata, err := authenticator.Authenticate(ctx)
@@ -60,11 +60,11 @@ func TestRemoteAuthenticatorFailure(t *testing.T) {
 		})
 		clock.EXPECT().Now().Return(time.Unix(1000, 0))
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		// authMetadata, err := authenticator.Authenticate(ctx)
@@ -76,7 +76,7 @@ func TestRemoteAuthenticatorFailure(t *testing.T) {
 	})
 }
 
-func TestRemoteAuthenticatorSuccess(t *testing.T) {
+func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	remoteService := func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
@@ -135,11 +135,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 		).DoAndReturn(remoteService)
 		clock.EXPECT().Now().Return(time.Unix(1000, 0))
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		authMetadata, err := authenticator.Authenticate(ctx, map[string][]string{"Authorization": {"allow1", "token2"}})
@@ -168,11 +168,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 		).DoAndReturn(remoteService)
 		clock.EXPECT().Now().Return(time.Unix(1000, 0))
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		_, err := authenticator.Authenticate(ctx, map[string][]string{"Authorization": {"deny3", "token4"}})
@@ -186,11 +186,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 		client := mock.NewMockClientConnInterface(ctrl)
 		clock := mock.NewMockClock(ctrl)
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 
@@ -216,11 +216,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 
 		clock.EXPECT().Now().Return(time.Unix(1000, 0)).AnyTimes()
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			2, // Only two spaces in this test.
 		)
 
@@ -261,11 +261,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 
 		clock.EXPECT().Now().Return(time.Unix(1000, 0)).AnyTimes()
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		doAuth := func(token string, done chan<- struct{}) {
@@ -356,11 +356,11 @@ func TestRemoteAuthenticatorSuccess(t *testing.T) {
 
 		clock.EXPECT().Now().Return(time.Unix(1000, 0)).AnyTimes()
 
-		authenticator := auth.NewRemoteAuthenticator(
+		authenticator := auth.NewRemoteRequestHeadersAuthenticator(
 			client,
 			structpb.NewStringValue("auth-scope"),
 			clock,
-			eviction.NewLRUSet[auth.RemoteAuthenticatorCacheKey](),
+			eviction.NewLRUSet[auth.RemoteRequestHeadersAuthenticatorCacheKey](),
 			100,
 		)
 		doAuth := func(token string, done chan<- struct{}, verdict string) {

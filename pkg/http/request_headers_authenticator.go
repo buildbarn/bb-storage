@@ -8,15 +8,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type remoteRequestAuthenticator struct {
+type requestHeadersAuthenticator struct {
 	remoteAuthenticator auth.RequestHeadersAuthenticator
 	headerKeys          []string
 }
 
-// NewRemoteRequestAuthenticator creates a new Authenticator for incoming gRPC
+// NewRequestHeadersAuthenticator creates a new Authenticator for incoming gRPC
 // requests that forwards configured headers to a remote service for
 // authentication. The result from the remote service is cached.
-func NewRemoteRequestAuthenticator(
+func NewRequestHeadersAuthenticator(
 	remoteAuthenticator auth.RequestHeadersAuthenticator,
 	headerKeys []string,
 ) (Authenticator, error) {
@@ -25,13 +25,13 @@ func NewRemoteRequestAuthenticator(
 			return nil, status.Errorf(codes.InvalidArgument, "Header key %#v is not canonical, did you mean %#v?", key, canonicalHeaderKey)
 		}
 	}
-	return &remoteRequestAuthenticator{
+	return &requestHeadersAuthenticator{
 		remoteAuthenticator: remoteAuthenticator,
 		headerKeys:          headerKeys,
 	}, nil
 }
 
-func (a *remoteRequestAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) (*auth.AuthenticationMetadata, error) {
+func (a *requestHeadersAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) (*auth.AuthenticationMetadata, error) {
 	requestHeaders := make(map[string][]string, len(a.headerKeys))
 	for _, key := range a.headerKeys {
 		if values, ok := r.Header[key]; ok {

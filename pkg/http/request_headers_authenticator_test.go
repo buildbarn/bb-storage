@@ -40,7 +40,7 @@ func TestRemoteHttpRequestAuthenticator(t *testing.T) {
 			Public: structpb.NewStringValue("You're totally who you say you are"),
 		}), nil)
 
-		authenticator, err := bb_http.NewRemoteRequestAuthenticator(
+		authenticator, err := bb_http.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{
 				"Authorization",
@@ -64,7 +64,7 @@ func TestRemoteHttpRequestAuthenticator(t *testing.T) {
 			ctx, map[string][]string{},
 		).Return(nil, status.Error(codes.Unauthenticated, "Server offline"))
 
-		authenticator, err := bb_http.NewRemoteRequestAuthenticator(
+		authenticator, err := bb_http.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{},
 		)
@@ -80,7 +80,7 @@ func TestRemoteHttpRequestAuthenticator(t *testing.T) {
 	// The current implementation forwards headers in canonical form, so don't
 	// allow configuring headers in other forms as that may confuse the users.
 	t.Run("OnlyAcceptCanonicalHeaders", func(t *testing.T) {
-		_, err := bb_http.NewRemoteRequestAuthenticator(
+		_, err := bb_http.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{"Non-CANONICAL-Header"},
 		)

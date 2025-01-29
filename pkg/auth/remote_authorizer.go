@@ -25,8 +25,11 @@ type remoteAuthorizer struct {
 	clock            clock.Clock
 	maximumCacheSize int
 
-	lock            sync.Mutex
-	cachedResponses map[RemoteAuthorizerCacheKey]*remoteAuthorizerCacheEntry
+	lock sync.Mutex
+	// The channel is closed when the response is ready. If the response is
+	// missing from cachedResponses, the request failed and should be retried.
+	pendingRequests map[RemoteAuthorizerCacheKey]<-chan struct{}
+	cachedResponses map[RemoteAuthorizerCacheKey]remoteAuthorizerResponse
 	evictionSet     eviction.Set[RemoteAuthorizerCacheKey]
 }
 
@@ -34,29 +37,9 @@ type remoteAuthorizer struct {
 // remoteAuthorizer.
 type RemoteAuthorizerCacheKey [sha256.Size]byte
 
-type remoteAuthorizerCacheEntry struct {
-	ready          <-chan struct{}
-	valid          bool
+type remoteAuthorizerResponse struct {
 	expirationTime time.Time
 	err            error
-}
-
-func (ce *remoteAuthorizerCacheEntry) IsReady() bool {
-	select {
-	case <-ce.ready:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsValid returns false if a new remote request should be made.
-func (ce *remoteAuthorizerCacheEntry) IsValid(now time.Time) bool {
-	if !ce.valid {
-		// Error response on the remote request, make a new request.
-		return false
-	}
-	return now.Before(ce.expirationTime)
 }
 
 // NewRemoteAuthorizer creates a new Authorizer which asks a remote gRPC
@@ -76,7 +59,8 @@ func NewRemoteAuthorizer(
 		clock:            clock,
 		maximumCacheSize: maximumCacheSize,
 
-		cachedResponses: make(map[RemoteAuthorizerCacheKey]*remoteAuthorizerCacheEntry),
+		pendingRequests: make(map[RemoteAuthorizerCacheKey]<-chan struct{}),
+		cachedResponses: make(map[RemoteAuthorizerCacheKey]remoteAuthorizerResponse),
 		evictionSet:     evictionSet,
 	}
 }
@@ -106,87 +90,98 @@ func (a *remoteAuthorizer) authorizeSingle(ctx context.Context, instanceName dig
 	for {
 		a.lock.Lock()
 		now := a.clock.Now()
-		entry := a.getAndTouchCacheEntry(requestKey)
-		if entry == nil || (entry.IsReady() && !entry.IsValid(now)) {
-			// No valid cache entry available. Deduplicate requests by creating a
-			// pending cached response.
-			responseReady := make(chan struct{})
-			entry = &remoteAuthorizerCacheEntry{
-				ready: responseReady,
-			}
-			a.cachedResponses[requestKey] = entry
+		if response, ok := a.getAndTouchCacheEntry(requestKey); ok && response.expirationTime.After(now) {
 			a.lock.Unlock()
-
+			return response.err
+		}
+		// No valid cache entry available. Deduplicate requests.
+		if responseReady, ok := a.pendingRequests[requestKey]; ok {
+			a.lock.Unlock()
+			// Wait for the remote request to finish.
+			select {
+			case <-ctx.Done():
+				return util.StatusFromContext(ctx)
+			case <-responseReady:
+				a.lock.Lock()
+				// Check whether the remote authentication call succeeded.
+				response, ok := a.cachedResponses[requestKey]
+				a.lock.Unlock()
+				if ok {
+					// Note that the expiration time is not checked, as the
+					// response is as fresh as it can be.
+					return response.err
+				}
+				// The remote authentication call failed. Retry.
+			}
+		} else {
+			// No pending request. Create one.
+			responseReady := make(chan struct{})
+			a.pendingRequests[requestKey] = responseReady
+			a.lock.Unlock()
 			// Perform the remote authentication request.
-			expirationTime, err := a.authorizeRemotely(ctx, request)
-			if expirationTime == nil {
-				// The response should not be cached.
-				entry.valid = false
-				close(responseReady)
+			response, err := a.authorizeRemotely(ctx, request)
+			a.lock.Lock()
+			delete(a.pendingRequests, requestKey)
+			close(responseReady)
+			if err != nil {
+				a.lock.Unlock()
 				return err
 			}
-			entry.valid = true
-			entry.expirationTime = *expirationTime
-			entry.err = err
-			close(responseReady)
-			return entry.err
-		}
-		a.lock.Unlock()
-
-		// Wait for the remote request to finish.
-		select {
-		case <-ctx.Done():
-			return util.StatusFromContext(ctx)
-		case <-entry.ready:
-			// Check whether the remote authentication call succeeded, otherwise
-			// retry with our own ctx.
-			if entry.valid {
-				// Note that the expiration time is not checked, as the response
-				// is as fresh as it can be.
-				return entry.err
-			}
+			a.insertCacheEntry(requestKey, response)
+			a.lock.Unlock()
+			return response.err
 		}
 	}
 }
 
-func (a *remoteAuthorizer) getAndTouchCacheEntry(requestKey RemoteAuthorizerCacheKey) *remoteAuthorizerCacheEntry {
+func (a *remoteAuthorizer) getAndTouchCacheEntry(requestKey RemoteAuthorizerCacheKey) (remoteAuthorizerResponse, bool) {
 	if entry, ok := a.cachedResponses[requestKey]; ok {
 		// Cache contains a matching entry.
 		a.evictionSet.Touch(requestKey)
-		return entry
+		return entry, true
 	}
-
-	// Cache contains no matching entry. Free up space, so that the
-	// caller may insert a new entry.
-	for len(a.cachedResponses) >= a.maximumCacheSize {
-		delete(a.cachedResponses, a.evictionSet.Peek())
-		a.evictionSet.Remove()
-	}
-	a.evictionSet.Insert(requestKey)
-	return nil
+	return remoteAuthorizerResponse{}, false
 }
 
-func (a *remoteAuthorizer) authorizeRemotely(ctx context.Context, request *auth_pb.AuthorizeRequest) (*time.Time, error) {
-	// The default expirationTime has already passed.
-	expirationTime := time.Time{}
+func (a *remoteAuthorizer) insertCacheEntry(requestKey RemoteAuthorizerCacheKey, response remoteAuthorizerResponse) {
+	if _, ok := a.cachedResponses[requestKey]; ok {
+		a.evictionSet.Touch(requestKey)
+	} else {
+		// Cache contains no matching entry. Free up space, so that the
+		// caller may insert a new entry.
+		for len(a.cachedResponses) >= a.maximumCacheSize {
+			delete(a.cachedResponses, a.evictionSet.Peek())
+			a.evictionSet.Remove()
+		}
+		a.evictionSet.Insert(requestKey)
+	}
+	a.cachedResponses[requestKey] = response
+}
+
+func (a *remoteAuthorizer) authorizeRemotely(ctx context.Context, request *auth_pb.AuthorizeRequest) (remoteAuthorizerResponse, error) {
+	ret := remoteAuthorizerResponse{
+		// The default expirationTime has already passed.
+		expirationTime: time.Time{},
+	}
 
 	response, err := a.remoteAuthClient.Authorize(ctx, request)
 	if err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.PermissionDenied, "Remote authorization failed")
+		return ret, util.StatusWrapWithCode(err, codes.PermissionDenied, "Remote authorization failed")
 	}
 
 	// An invalid expiration time indicates that the response should not be cached.
 	if response.GetCacheExpirationTime().IsValid() {
 		// Note that the expiration time might still be valid for non-allow verdicts.
-		expirationTime = response.GetCacheExpirationTime().AsTime()
+		ret.expirationTime = response.GetCacheExpirationTime().AsTime()
 	}
 
 	switch verdict := response.GetVerdict().(type) {
 	case *auth_pb.AuthorizeResponse_Allow:
-		return &expirationTime, nil
+		// noop
 	case *auth_pb.AuthorizeResponse_Deny:
-		return &expirationTime, status.Error(codes.PermissionDenied, verdict.Deny)
+		ret.err = status.Error(codes.PermissionDenied, verdict.Deny)
 	default:
-		return &expirationTime, status.Error(codes.PermissionDenied, "Invalid authorize verdict")
+		ret.err = status.Error(codes.PermissionDenied, "Invalid authorize verdict")
 	}
+	return ret, nil
 }

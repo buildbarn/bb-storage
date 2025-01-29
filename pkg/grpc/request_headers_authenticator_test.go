@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestRemoteRequestAuthenticator(t *testing.T) {
+func TestRequestHeadersAuthenticator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	md := metadata.New(
 		map[string]string{
@@ -42,7 +42,7 @@ func TestRemoteRequestAuthenticator(t *testing.T) {
 			Public: structpb.NewStringValue("You're totally who you say you are"),
 		}), nil)
 
-		authenticator := bb_grpc.NewRemoteRequestAuthenticator(
+		authenticator := bb_grpc.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{
 				"Authorization",
@@ -63,7 +63,7 @@ func TestRemoteRequestAuthenticator(t *testing.T) {
 			grpcCtx, map[string][]string{},
 		).Return(nil, status.Error(codes.Unavailable, "Server offline"))
 
-		authenticator := bb_grpc.NewRemoteRequestAuthenticator(
+		authenticator := bb_grpc.NewRequestHeadersAuthenticator(
 			backend,
 			headerKeys,
 		)

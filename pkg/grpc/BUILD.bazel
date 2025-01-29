@@ -27,7 +27,7 @@ go_library(
         "peer_transport_credentials_linux.go",
         "proto_trace_attributes_extractor.go",
         "proxy_dialer.go",
-        "remote_request_authenticator.go",
+        "request_headers_authenticator.go",
         "request_metadata_tracing_interceptor.go",
         "server.go",
         "tls_client_certificate_authenticator.go",
@@ -102,7 +102,7 @@ go_test(
         "metadata_forwarding_and_reusing_interceptor_test.go",
         "peer_credentials_authenticator_test.go",
         "proto_trace_attributes_extractor_test.go",
-        "remote_request_authenticator_test.go",
+        "request_headers_authenticator_test.go",
         "request_metadata_tracing_interceptor_test.go",
         "tls_client_certificate_authenticator_test.go",
     ] + select({

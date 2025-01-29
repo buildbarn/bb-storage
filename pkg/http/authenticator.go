@@ -130,7 +130,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, err
 		}
-		return NewRemoteRequestAuthenticator(backend, policyKind.Remote.Headers)
+		return NewRequestHeadersAuthenticator(backend, policyKind.Remote.Headers)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

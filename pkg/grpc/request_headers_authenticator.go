@@ -9,25 +9,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type remoteRequestAuthenticator struct {
-	remoteAuthenticator auth.RequestHeadersAuthenticator
-	headerKeys          []string
+type requestHeadersAuthenticator struct {
+	authenticator auth.RequestHeadersAuthenticator
+	headerKeys    []string
 }
 
-// NewRemoteRequestAuthenticator creates a new Authenticator for incoming gRPC
+// NewRequestHeadersAuthenticator creates a new Authenticator for incoming gRPC
 // requests that forwards configured headers to a remote service for
 // authentication. The result from the remote service is cached.
-func NewRemoteRequestAuthenticator(
-	remoteAuthenticator auth.RequestHeadersAuthenticator,
+func NewRequestHeadersAuthenticator(
+	authenticator auth.RequestHeadersAuthenticator,
 	headerKeys []string,
 ) Authenticator {
-	return &remoteRequestAuthenticator{
-		remoteAuthenticator: remoteAuthenticator,
-		headerKeys:          headerKeys,
+	return &requestHeadersAuthenticator{
+		authenticator: authenticator,
+		headerKeys:    headerKeys,
 	}
 }
 
-func (a *remoteRequestAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
+func (a *requestHeadersAuthenticator) Authenticate(ctx context.Context) (*auth.AuthenticationMetadata, error) {
 	metadata, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "Not called from within an incoming gRPC context")
@@ -38,5 +38,5 @@ func (a *remoteRequestAuthenticator) Authenticate(ctx context.Context) (*auth.Au
 			requestHeaders[key] = values
 		}
 	}
-	return a.remoteAuthenticator.Authenticate(ctx, requestHeaders)
+	return a.authenticator.Authenticate(ctx, requestHeaders)
 }
