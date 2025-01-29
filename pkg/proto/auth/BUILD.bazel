@@ -8,12 +8,18 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "@opentelemetry-proto//:common_proto",
+        "@protobuf//:empty_proto",
         "@protobuf//:struct_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 
 go_proto_library(
     name = "auth_go_proto",
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/auth",
     proto = ":auth_proto",
     visibility = ["//visibility:public"],
