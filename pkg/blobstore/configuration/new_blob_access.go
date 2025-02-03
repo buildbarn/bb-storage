@@ -85,40 +85,42 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			DigestKeyFormat: slow.DigestKeyFormat,
 		}, "read_caching", nil
 	case *pb.BlobAccessConfiguration_Sharding:
-		backends := make([]blobstore.BlobAccess, 0, len(backend.Sharding.Shards))
-		weights := make([]uint32, 0, len(backend.Sharding.Shards))
+		backends := make([]blobstore.BlobAccess, 0, len(backend.Sharding.ShardMap))
+		shards := make([]sharding.Shard, 0, len(backend.Sharding.ShardMap))
 		var combinedDigestKeyFormat *digest.KeyFormat
-		for _, shard := range backend.Sharding.Shards {
-			if shard.Backend == nil {
-				// Drained backend.
-				backends = append(backends, nil)
+		for key, shard := range backend.Sharding.ShardMap {
+			backend, err := nc.NewNestedBlobAccess(shard.Backend, creator)
+			if err != nil {
+				return BlobAccessInfo{}, "", err
+			}
+			backends = append(backends, backend.BlobAccess)
+			if combinedDigestKeyFormat == nil {
+				combinedDigestKeyFormat = &backend.DigestKeyFormat
 			} else {
-				// Undrained backend.
-				backend, err := nc.NewNestedBlobAccess(shard.Backend, creator)
-				if err != nil {
-					return BlobAccessInfo{}, "", err
-				}
-				backends = append(backends, backend.BlobAccess)
-				if combinedDigestKeyFormat == nil {
-					combinedDigestKeyFormat = &backend.DigestKeyFormat
-				} else {
-					newDigestKeyFormat := combinedDigestKeyFormat.Combine(backend.DigestKeyFormat)
-					combinedDigestKeyFormat = &newDigestKeyFormat
-				}
+				newDigestKeyFormat := combinedDigestKeyFormat.Combine(backend.DigestKeyFormat)
+				combinedDigestKeyFormat = &newDigestKeyFormat
 			}
 
 			if shard.Weight == 0 {
 				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Shards must have positive weights")
 			}
-			weights = append(weights, shard.Weight)
+			shards = append(shards, sharding.Shard{
+				Key: key,
+				Weight: shard.Weight,
+			})
 		}
 		if combinedDigestKeyFormat == nil {
-			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Cannot create sharding blob access without any undrained backends")
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Cannot create sharding blob access without any backends")
+		}
+		shardSelector, err := sharding.NewRendezvousShardSelector(shards)
+		if err != nil {
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Could not create rendezvous shard selector")
 		}
 		return BlobAccessInfo{
 			BlobAccess: sharding.NewShardingBlobAccess(
 				backends,
-				sharding.NewWeightedShardPermuter(weights),
+				shards,
+				shardSelector,
 				backend.Sharding.HashInitialization),
 			DigestKeyFormat: *combinedDigestKeyFormat,
 		}, "sharding", nil

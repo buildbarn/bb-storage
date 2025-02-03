@@ -16,18 +16,20 @@ import (
 
 type shardingBlobAccess struct {
 	backends             []blobstore.BlobAccess
-	shardPermuter        ShardPermuter
+	shards               []Shard
+	shardSelector        ShardSelector
 	hashInitialization   uint64
 	getCapabilitiesRound atomic.Uint64
 }
 
 // NewShardingBlobAccess is an adapter for BlobAccess that partitions
-// requests across backends by hashing the digest. A ShardPermuter is
+// requests across backends by hashing the digest. A ShardSelector is
 // used to map hashes to backends.
-func NewShardingBlobAccess(backends []blobstore.BlobAccess, shardPermuter ShardPermuter, hashInitialization uint64) blobstore.BlobAccess {
+func NewShardingBlobAccess(backends []blobstore.BlobAccess, shards []Shard, shardSelector ShardSelector, hashInitialization uint64) blobstore.BlobAccess {
 	return &shardingBlobAccess{
 		backends:           backends,
-		shardPermuter:      shardPermuter,
+		shards:             shards,
+		shardSelector:      shardSelector,
 		hashInitialization: hashInitialization,
 	}
 }
@@ -43,15 +45,7 @@ func (ba *shardingBlobAccess) getBackendIndexByDigest(blobDigest digest.Digest) 
 }
 
 func (ba *shardingBlobAccess) getBackendIndexByHash(h uint64) int {
-	// Keep requesting shards until matching one that is undrained.
-	var selectedIndex int
-	ba.shardPermuter.GetShard(h, func(index int) bool {
-		if ba.backends[index] == nil {
-			return true
-		}
-		selectedIndex = index
-		return false
-	})
+	var selectedIndex int = ba.shardSelector.GetShard(h)
 	return selectedIndex
 }
 
@@ -59,20 +53,20 @@ func (ba *shardingBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 	index := ba.getBackendIndexByDigest(digest)
 	return buffer.WithErrorHandler(
 		ba.backends[index].Get(ctx, digest),
-		shardIndexAddingErrorHandler{index: index})
+		shardKeyAddingErrorHandler{key: ba.shards[index].Key})
 }
 
 func (ba *shardingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
 	index := ba.getBackendIndexByDigest(parentDigest)
 	return buffer.WithErrorHandler(
 		ba.backends[index].GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		shardIndexAddingErrorHandler{index: index})
+		shardKeyAddingErrorHandler{key: ba.shards[index].Key})
 }
 
 func (ba *shardingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	index := ba.getBackendIndexByDigest(digest)
 	if err := ba.backends[index].Put(ctx, digest, b); err != nil {
-		return util.StatusWrapf(err, "Shard %d", index)
+		return util.StatusWrapf(err, "Shard %s", ba.shards[index].Key)
 	}
 	return nil
 }
@@ -98,7 +92,7 @@ func (ba *shardingBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 			group.Go(func() error {
 				missing, err := ba.backends[index].FindMissing(ctxWithCancel, digests.Build())
 				if err != nil {
-					return util.StatusWrapf(err, "Shard %d", index)
+					return util.StatusWrapf(err, "Shard %s", ba.shards[index].Key)
 				}
 				*missingOut = missing
 				return nil
@@ -118,17 +112,17 @@ func (ba *shardingBlobAccess) GetCapabilities(ctx context.Context, instanceName 
 	index := ba.getBackendIndexByHash(ba.getCapabilitiesRound.Add(1))
 	capabilities, err := ba.backends[index].GetCapabilities(ctx, instanceName)
 	if err != nil {
-		return nil, util.StatusWrapf(err, "Shard %d", index)
+		return nil, util.StatusWrapf(err, "Shard %s", ba.shards[index].Key)
 	}
 	return capabilities, nil
 }
 
-type shardIndexAddingErrorHandler struct {
-	index int
+type shardKeyAddingErrorHandler struct {
+	key string
 }
 
-func (eh shardIndexAddingErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	return nil, util.StatusWrapf(err, "Shard %d", eh.index)
+func (eh shardKeyAddingErrorHandler) OnError(err error) (buffer.Buffer, error) {
+	return nil, util.StatusWrapf(err, "Shard %s", eh.key)
 }
 
-func (eh shardIndexAddingErrorHandler) Done() {}
+func (eh shardKeyAddingErrorHandler) Done() {}

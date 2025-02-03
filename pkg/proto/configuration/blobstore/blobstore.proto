@@ -285,13 +285,21 @@ message ShardingBlobAccessConfiguration {
   // the data.
   uint64 hash_initialization = 1;
 
-  // Shards to which requests are routed. To reduce the need for full
-  // repartitioning of the data when growing a cluster, it's possible
-  // to terminate this list with a drained backend that increases the
-  // total weight up to a given number. Newly added backends may
-  // allocate their weight from this backend, thereby causing most of
-  // the keyspace to still be routed to its original backend.
-  repeated Shard shards = 2;
+  // Was 'shards' an array of shards to use, has been replaced with
+  // 'shard_map'
+  reserved 2;
+
+  // Shards identified by a key within the context of this sharding
+  // configuration. The key is a freeform string which describes the identity
+  // of the shard in the context of the current sharding configuration.
+  // Shards are chosen via Rendezvous hashing based on the digest, weight,
+  // key and hash_initialization of the configuration.
+  //
+  // When removing a shard from the map it is guaranteed that only blobs
+  // which resolved to the removed shard will get a different shard. When
+  // adding shards there is a weight/total_weight probability that any given
+  // blob will be resolved to the new shards.
+  map<string, Shard> shard_map = 3;
 }
 
 message MirroredBlobAccessConfiguration {
