@@ -29,6 +29,7 @@ go_library(
         "//pkg/blobstore/readfallback",
         "//pkg/blobstore/replication",
         "//pkg/blobstore/sharding",
+        "//pkg/blobstore/sharding/legacy",
         "//pkg/blockdevice",
         "//pkg/capabilities",
         "//pkg/clock",

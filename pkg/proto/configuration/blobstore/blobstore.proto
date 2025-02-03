@@ -281,22 +281,36 @@ message ShardingBlobAccessConfiguration {
     uint32 weight = 2;
   }
 
-  // Initialization for the hashing algorithm used to partition the
-  // key space. This should be a random 64-bit value that is unique to
-  // this deployment. Failure to do so may result in poor distribution
-  // in case sharding is nested.
-  //
-  // Changing this value will in effect cause a full repartitioning of
-  // the data.
-  uint64 hash_initialization = 1;
+  message Legacy {
+    // Order of the shards for the legacy schema. Each key here refers to
+    // a corresponding key in the 'shard_map' or null for drained backends.
+    repeated string shard_order = 1;
+    // Hash initialization seed used for legacy schema.
+    uint64 hash_initialization = 2;
+  }
 
-  // Shards to which requests are routed. To reduce the need for full
-  // repartitioning of the data when growing a cluster, it's possible
-  // to terminate this list with a drained backend that increases the
-  // total weight up to a given number. Newly added backends may
-  // allocate their weight from this backend, thereby causing most of
-  // the keyspace to still be routed to its original backend.
-  repeated Shard shards = 2;
+  // Was 'hash_initialization' a seed for the shards array, has been made
+  // redundant with the 'shard_map', for running in compatible legacy mode set
+  // the 'hash_initialization' in 'legacy'.
+  reserved 1;
+
+  // Shards identified by a key within the context of this sharding
+  // configuration. The key is a freeform string which describes the identity
+  // of the shard in the context of the current sharding configuration.
+  // Shards are chosen via Rendezvous hashing based on the digest, weight and
+  // key of the configuration.
+  //
+  // When removing a shard from the map it is guaranteed that only blobs
+  // which resolved to the removed shard will get a different shard. When
+  // adding shards there is a weight/total_weight probability that any given
+  // blob will be resolved to the new shards.
+  map<string, Shard> shards = 2;
+
+  // A temporary legacy mode which allows clients to use storage backends which
+  // are sharded with the old sharding topology implementation. Consumers are
+  // expected to migrate in a timely fashion and support for the legacy schema
+  // will be removed by 2025-12-31.
+  Legacy legacy = 3;
 }
 
 message MirroredBlobAccessConfiguration {
