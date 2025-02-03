@@ -86,8 +86,18 @@ gomock(
 gomock(
     name = "blobstore_sharding",
     out = "blobstore_sharding.go",
-    interfaces = ["ShardPermuter"],
+    interfaces = ["ShardSelector"],
     library = "//pkg/blobstore/sharding",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+)
+
+gomock(
+    name = "blobstore_legacy_sharding",
+    out = "blobstore_legacy_sharding.go",
+    interfaces = ["ShardPermuter"],
+    library = "//pkg/blobstore/sharding/legacy",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -357,6 +367,7 @@ go_library(
         "aliases.go",
         "auth.go",
         "blobstore.go",
+        "blobstore_legacy_sharding.go",
         "blobstore_local.go",
         "blobstore_replication.go",
         "blobstore_sharding.go",
@@ -391,6 +402,7 @@ go_library(
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
+        "//pkg/blobstore/sharding/legacy",
         "//pkg/blobstore/slicing",
         "//pkg/builder",
         "//pkg/clock",
