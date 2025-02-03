@@ -86,7 +86,7 @@ gomock(
 gomock(
     name = "blobstore_sharding",
     out = "blobstore_sharding.go",
-    interfaces = ["ShardPermuter"],
+    interfaces = ["ShardSelector"],
     library = "//pkg/blobstore/sharding",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
