@@ -65,11 +65,12 @@ func main() {
 				replicator_pb.RegisterReplicatorServer(s, replication.NewReplicatorServer(replicator))
 			},
 			siblingsGroup,
+			grpcClientFactory,
 		); err != nil {
 			return util.StatusWrap(err, "gRPC server failure")
 		}
 
-		lifecycleState.MarkReadyAndWait(siblingsGroup)
+		lifecycleState.MarkReadyAndWait(siblingsGroup, grpcClientFactory)
 		return nil
 	})
 }

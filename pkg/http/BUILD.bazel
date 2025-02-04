@@ -11,10 +11,10 @@ go_library(
         "configuration.go",
         "deny_authenticator.go",
         "header_adding_round_tripper.go",
-        "jwt_authenticator.go",
         "metrics_handler.go",
         "metrics_round_tripper.go",
         "oidc_authenticator.go",
+        "request_headers_authenticator.go",
         "server.go",
         "status_code.go",
     ],
@@ -23,6 +23,7 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/clock",
+        "//pkg/grpc",
         "//pkg/jwt",
         "//pkg/program",
         "//pkg/proto/configuration/http",
@@ -49,6 +50,7 @@ go_test(
         "allow_authenticator_test.go",
         "deny_authenticator_test.go",
         "oidc_authenticator_test.go",
+        "request_headers_authenticator_test.go",
     ],
     deps = [
         ":http",

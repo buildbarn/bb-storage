@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package buildbarn.auth;
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "opentelemetry/proto/common/v1/common.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/auth";
@@ -26,4 +28,75 @@ message AuthenticationMetadata {
   // authentication layer to the authorization layer, as this data can
   // be accessed by JMESPathExpressionAuthorizer.
   google.protobuf.Value private = 3;
+}
+
+service Authentication {
+  // Authenticates a request that the client has received.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
+}
+
+message AuthenticateRequest {
+  message ValueList {
+    repeated string value = 1;
+  }
+
+  // The HTTP or gRPC request headers that the client wants to authenticate.
+  // This metadata is forwarded as part of the request because the communication
+  // with the authentication service might have its own authentication and
+  // authorizing system.
+  map<string, ValueList> request_metadata = 1;
+
+  // A description of for example what subsystem is being accessed and what
+  // kind of request is being made.
+  google.protobuf.Value scope = 2;
+}
+
+message AuthenticateResponse {
+  oneof verdict {
+    // Allow the request.
+    //
+    // The value of this field is used as authentication metadata in
+    // literal form.
+    AuthenticationMetadata allow = 1;
+
+    // Deny the request by returning UNAUTHENTICATED with a fixed error message
+    // to the client.
+    string deny = 2;
+  }
+
+  // The last point in time this response can be reused for the same request.
+  // A null value means not to be cached for future requests.
+  google.protobuf.Timestamp cache_expiration_time = 3;
+}
+
+service Authorizer {
+  // Authorizes a request that the client has received.
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {}
+}
+
+message AuthorizeRequest {
+  // Metadata returned by the authenticator.
+  AuthenticationMetadata authentication_metadata = 1;
+
+  // A description of for example what subsystem is being accessed and what
+  // kind of request is being made.
+  google.protobuf.Value scope = 2;
+
+  // The instance name to evaluate.
+  string instance_name = 3;
+}
+
+message AuthorizeResponse {
+  oneof verdict {
+    // Allow the request.
+    google.protobuf.Empty allow = 1;
+
+    // Deny the request by returning PERMISSION_DENIED with a fixed error
+    // message to the client.
+    string deny = 2;
+  }
+
+  // The last point in time this response can be reused for the same request.
+  // A null value means not to be cached for future requests.
+  google.protobuf.Timestamp cache_expiration_time = 3;
 }

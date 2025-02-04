@@ -33,10 +33,10 @@ func init() {
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
 // of UNIX socket paths provided.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group) error {
+func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, registrationFunc func(grpc.ServiceRegistrar), group program.Group, grpcClientFactory ClientFactory) error {
 	for _, configuration := range configurations {
 		// Create an authenticator for requests.
-		authenticator, needsPeerTransportCredentials, requestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group)
+		authenticator, needsPeerTransportCredentials, requestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, group, grpcClientFactory)
 		if err != nil {
 			return err
 		}

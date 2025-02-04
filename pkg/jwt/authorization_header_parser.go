@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"log"
@@ -13,7 +14,13 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/jmespath/go-jmespath"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+// AuthorizationHeaderName is the name of the HTTP header that contains
+// the JSON Web Token.
+const AuthorizationHeaderName = "Authorization"
 
 // Pattern of authorization headers from which to extract a JSON Web Token.
 var jwtHeaderPattern = regexp.MustCompile("^Bearer\\s+(([-_a-zA-Z0-9]+)\\.([-_a-zA-Z0-9]+))\\.([-_a-zA-Z0-9]+)$")
@@ -81,6 +88,15 @@ func jsonNumberAsTimestamp(n *json.Number) (time.Time, error) {
 	}
 	i, frac := math.Modf(v)
 	return time.Unix(int64(i), int64(frac*1e9)), nil
+}
+
+// Authenticate is the implementation of RequestHeadersAuthenticator.Authenticate.
+func (a *AuthorizationHeaderParser) Authenticate(ctx context.Context, headers map[string][]string) (*auth.AuthenticationMetadata, error) {
+	metadata, ok := a.ParseAuthorizationHeaders(headers[AuthorizationHeaderName])
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "No valid authorization header containing a bearer token provided")
+	}
+	return metadata, nil
 }
 
 func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string, now time.Time) response {

@@ -6,7 +6,12 @@ proto_library(
     name = "auth_proto",
     srcs = ["auth.proto"],
     visibility = ["//visibility:public"],
-    deps = ["@protobuf//:empty_proto"],
+    deps = [
+        "//pkg/proto/configuration/eviction:eviction_proto",
+        "//pkg/proto/configuration/grpc:grpc_proto",
+        "@protobuf//:empty_proto",
+        "@protobuf//:struct_proto",
+    ],
 )
 
 go_proto_library(
@@ -14,6 +19,10 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth",
     proto = ":auth_proto",
     visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/eviction",
+        "//pkg/proto/configuration/grpc",
+    ],
 )
 
 go_library(
