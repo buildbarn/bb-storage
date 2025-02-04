@@ -14,7 +14,6 @@ go_library(
         "deduplicating_client_factory.go",
         "deny_authenticator.go",
         "jmespath_extractor.go",
-        "jwt_authenticator.go",
         "lazy_client_dialer.go",
         "metadata_adding_interceptor.go",
         "metadata_extracting_and_forwarding_interceptor.go",

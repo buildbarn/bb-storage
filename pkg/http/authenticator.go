@@ -60,7 +60,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
-		return NewJWTAuthenticator(authorizationHeaderParser), nil
+		authenticator, err := NewRequestHeadersAuthenticator(authorizationHeaderParser, []string{jwt.AuthorizationHeaderName})
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create request headers authenticator for JWT authentication policy")
+		}
+		return authenticator, nil
 	case *configuration.AuthenticationPolicy_Oidc:
 		// Select a name and encryption key for the session
 		// state cookie. Even though the configuration has a
@@ -139,7 +143,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		//
 		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
 		// `grpc_server.proto` and `grpc_tracing_method.proto`.
-		backend, err := grpc.NewRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		backend, err := grpc.NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}

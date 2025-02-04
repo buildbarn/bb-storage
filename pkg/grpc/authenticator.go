@@ -91,7 +91,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, false, false, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
-		return NewJWTAuthenticator(authorizationHeaderParser), false, false, nil
+		return NewRequestHeadersAuthenticator(authorizationHeaderParser, []string{jwt.AuthorizationHeaderName}), false, false, nil
 	case *configuration.AuthenticationPolicy_PeerCredentialsJmespathExpression:
 		metadataExtractor, err := jmespath.Compile(policyKind.PeerCredentialsJmespathExpression)
 		if err != nil {
@@ -112,7 +112,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		//
 		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
 		// `grpc_server.proto` and `grpc_tracing_method.proto`.
-		authenticator, err := NewRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		authenticator, err := NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
 		if err != nil {
 			return nil, false, false, err
 		}
@@ -122,10 +122,10 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	}
 }
 
-// NewRequestHeadersAuthenticatorFromConfiguration creates an Authenticator that
-// forwards authentication requests to a remote gRPC service. This is a
-// convenient way to integrate custom authentication processes.
-func NewRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
+// NewRemoteRequestHeadersAuthenticatorFromConfiguration creates an
+// Authenticator that forwards authentication requests to a remote gRPC service.
+// This is a convenient way to integrate custom authentication processes.
+func NewRemoteRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
 	grpcClient, err := grpcClientFactory.NewClientFromConfiguration(configuration.Endpoint)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
