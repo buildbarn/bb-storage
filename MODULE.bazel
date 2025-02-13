@@ -44,6 +44,7 @@ single_version_override(
         "//:patches/gazelle/dont-flatten-srcs.diff",
         "//:patches/gazelle/go-tool.diff",
         "//:patches/gazelle/repo-name.diff",
+        "//:patches/gazelle/unlink.diff",
     ],
 )
 
@@ -128,6 +129,7 @@ use_repo(
 )
 
 go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependency = True)
+go_deps_dev.config(debug_mode = True)
 go_deps_dev.gazelle_override(
     build_file_generation = "on",
     path = "github.com/cncf/xds/go",
