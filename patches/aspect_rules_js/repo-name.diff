@@ -1,0 +1,192 @@
+commit 2662ec469640ea6f1402efb16b2a94b32ceba4d4
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Fri Nov 15 13:38:32 2024 +0100
+
+    Use Label.repo_name instead of Label.workspace_name
+    
+    According to the documentation, Label.workspace_name is deprecated:
+    
+    https://bazel.build/rules/lib/builtins/Label.html#workspace_name
+    
+    Label.repo_name behaves identically and is available in Bazel 6 and later.
+
+diff --git js/private/js_binary.bzl js/private/js_binary.bzl
+index bf94c5c3..1d4044c3 100644
+--- js/private/js_binary.bzl
++++ js/private/js_binary.bzl
+@@ -376,7 +376,7 @@ def _bash_launcher(ctx, nodeinfo, entry_point_path, log_prefix_rule_set, log_pre
+         "JS_BINARY__PACKAGE": ctx.label.package,
+         "JS_BINARY__TARGET_NAME": ctx.label.name,
+         "JS_BINARY__TARGET": "{}//{}:{}".format(
+-            "@" + ctx.label.workspace_name if ctx.label.workspace_name else "",
++            "@" + ctx.label.repo_name if ctx.label.repo_name else "",
+             ctx.label.package,
+             ctx.label.name,
+         ),
+diff --git js/private/js_helpers.bzl js/private/js_helpers.bzl
+index 39d22e6d..5b4406ce 100644
+--- js/private/js_helpers.bzl
++++ js/private/js_helpers.bzl
+@@ -75,7 +75,7 @@ def gather_npm_package_store_infos(targets):
+     return depset(transitive = npm_package_store_infos)
+ 
+ def copy_js_file_to_bin_action(ctx, file):
+-    if ctx.label.workspace_name != file.owner.workspace_name or ctx.label.package != file.owner.package:
++    if ctx.label.repo_name != file.owner.repo_name or ctx.label.package != file.owner.package:
+         msg = """
+ 
+ Expected to find source file {file_basename} in '{this_package}', but instead it is in '{file_package}'.
+@@ -101,9 +101,9 @@ this option is not needed.
+ 
+ """.format(
+             file_basename = file.basename,
+-            file_package = "%s//%s" % (file.owner.workspace_name, file.owner.package),
++            file_package = "%s//%s" % (file.owner.repo_name, file.owner.package),
+             new_target_name = file.basename.replace(".", "_"),
+-            this_package = "%s//%s" % (ctx.label.workspace_name, ctx.label.package),
++            this_package = "%s//%s" % (ctx.label.repo_name, ctx.label.package),
+             this_target = ctx.label,
+         )
+         fail(msg)
+diff --git js/private/js_image_layer.bzl js/private/js_image_layer.bzl
+index 5ed6f84c..a0caa6b4 100644
+--- js/private/js_image_layer.bzl
++++ js/private/js_image_layer.bzl
+@@ -310,7 +310,7 @@ def _build_layer(ctx, type, all_entries_json, entries, inputs):
+     return output
+ 
+ def _select_layer(layers, destination, file):
+-    is_node = file.owner.workspace_name != "" and "/bin/nodejs/" in destination
++    is_node = file.owner.repo_name != "" and "/bin/nodejs/" in destination
+     is_js_patches = "/js/private/node-patches" in destination
+     if is_node or is_js_patches:
+         return layers.node
+@@ -382,7 +382,7 @@ def _js_image_layer_impl(ctx):
+         entry = {
+             "dest": file.path,
+             "root": file.root.path,
+-            "is_external": file.owner.workspace_name != "",
++            "is_external": file.owner.repo_name != "",
+             "is_source": file.is_source,
+             "is_directory": file.is_directory,
+         }
+diff --git npm/extensions.bzl npm/extensions.bzl
+index 5d07b3ef..62dea793 100644
+--- npm/extensions.bzl
++++ npm/extensions.bzl
+@@ -148,8 +148,8 @@ WARNING: Cannot determine home directory in order to load home `.npmrc` file in
+             lifecycle_hooks_execution_requirements = i.lifecycle_hooks_execution_requirements,
+             lifecycle_hooks_use_default_shell_env = i.lifecycle_hooks_use_default_shell_env,
+             link_packages = i.link_packages,
+-            # attr.pnpm_lock.workspace_name is a canonical repository name, so it needs to be qualified with an extra '@'.
+-            link_workspace = attr.link_workspace if attr.link_workspace else "@" + attr.pnpm_lock.workspace_name,
++            # attr.pnpm_lock.repo_name is a canonical repository name, so it needs to be qualified with an extra '@'.
++            link_workspace = attr.link_workspace if attr.link_workspace else "@" + attr.pnpm_lock.repo_name,
+             npm_auth = i.npm_auth,
+             npm_auth_basic = i.npm_auth_basic,
+             npm_auth_password = i.npm_auth_password,
+diff --git npm/private/npm_link_package_store.bzl npm/private/npm_link_package_store.bzl
+index f503c08a..a565aaa4 100644
+--- npm/private/npm_link_package_store.bzl
++++ npm/private/npm_link_package_store.bzl
+@@ -67,10 +67,10 @@ def _npm_link_package_store_impl(ctx):
+     if not package_store_directory:
+         fail("src must be a npm_link_package that provides a package_store_directory")
+ 
+-    if package_store_directory.owner.workspace_name != ctx.label.workspace_name:
++    if package_store_directory.owner.repo_name != ctx.label.repo_name:
+         msg = "expected package_store_directory to be in the same workspace as the link target '{}' but found '{}'".format(
+-            ctx.label.workspace_name,
+-            package_store_directory.owner.workspace_name,
++            ctx.label.repo_name,
++            package_store_directory.owner.repo_name,
+         )
+         fail(msg)
+ 
+diff --git npm/private/npm_package_store.bzl npm/private/npm_package_store.bzl
+index f0bb8a30..1bb1c000 100644
+--- npm/private/npm_package_store.bzl
++++ npm/private/npm_package_store.bzl
+@@ -202,10 +202,10 @@ def _npm_package_store_impl(ctx):
+         npm_pkg_info = ctx.attr.src[NpmPackageInfo]
+ 
+         # output the package as a TreeArtifact to its package store location
+-        if ctx.label.workspace_name and ctx.label.package:
+-            expected_short_path = "../{}/{}/{}".format(ctx.label.workspace_name, ctx.label.package, package_store_directory_path)
+-        elif ctx.label.workspace_name:
+-            expected_short_path = "../{}/{}".format(ctx.label.workspace_name, package_store_directory_path)
++        if ctx.label.repo_name and ctx.label.package:
++            expected_short_path = "../{}/{}/{}".format(ctx.label.repo_name, ctx.label.package, package_store_directory_path)
++        elif ctx.label.repo_name:
++            expected_short_path = "../{}/{}".format(ctx.label.repo_name, package_store_directory_path)
+         elif ctx.label.package:
+             expected_short_path = "{}/{}".format(ctx.label.package, package_store_directory_path)
+         else:
+@@ -308,18 +308,18 @@ deps of npm_package_store must be in the same package.""" % (ctx.label.package,
+         jsinfo = ctx.attr.src[JsInfo]
+ 
+         # Symlink to the directory of the target that created this JsInfo
+-        if ctx.label.workspace_name and ctx.label.package:
+-            symlink_path = "external/{}/{}/{}".format(ctx.label.workspace_name, ctx.label.package, package_store_directory_path)
+-        elif ctx.label.workspace_name:
+-            symlink_path = "external/{}/{}".format(ctx.label.workspace_name, package_store_directory_path)
++        if ctx.label.repo_name and ctx.label.package:
++            symlink_path = "external/{}/{}/{}".format(ctx.label.repo_name, ctx.label.package, package_store_directory_path)
++        elif ctx.label.repo_name:
++            symlink_path = "external/{}/{}".format(ctx.label.repo_name, package_store_directory_path)
+         else:
+             symlink_path = package_store_directory_path
+ 
+         # The package JsInfo including all direct and transitive sources, store info etc.
+         js_infos.append(jsinfo)
+ 
+-        if jsinfo.target.workspace_name:
+-            target_path = "{}/external/{}/{}".format(ctx.bin_dir.path, jsinfo.target.workspace_name, jsinfo.target.package)
++        if jsinfo.target.repo_name:
++            target_path = "{}/external/{}/{}".format(ctx.bin_dir.path, jsinfo.target.repo_name, jsinfo.target.package)
+         else:
+             target_path = "{}/{}".format(ctx.bin_dir.path, jsinfo.target.package)
+         package_store_directory = utils.make_symlink(ctx, symlink_path, target_path)
+diff --git npm/private/npm_translate_lock_state.bzl npm/private/npm_translate_lock_state.bzl
+index e629ccf9..755776cb 100644
+--- npm/private/npm_translate_lock_state.bzl
++++ npm/private/npm_translate_lock_state.bzl
+@@ -188,7 +188,7 @@ def _init_importer_labels(priv, label_store):
+ ################################################################################
+ def _init_link_workspace(priv, _, attr, label_store):
+     # initialize link_workspace either from pnpm_lock label or from override
+-    priv["link_workspace"] = attr.link_workspace if attr.link_workspace else label_store.label("pnpm_lock").workspace_name
++    priv["link_workspace"] = attr.link_workspace if attr.link_workspace else label_store.label("pnpm_lock").repo_name
+ 
+ ################################################################################
+ def _init_external_repository_action_cache(priv, attr):
+diff --git npm/private/repository_label_store.bzl npm/private/repository_label_store.bzl
+index ec4b2747..011d5b0c 100644
+--- npm/private/repository_label_store.bzl
++++ npm/private/repository_label_store.bzl
+@@ -15,13 +15,13 @@ def _make_sibling_label(sibling_label, path):
+     dirname = paths.dirname(sibling_label.name)
+     if path.startswith("../"):
+         # we have no idea what package this sibling is in so just assume the root package which works for repository rules
+-        return Label("@@{}//:{}".format(sibling_label.workspace_name, paths.normalize(paths.join(sibling_label.package, dirname, path))))
++        return Label("@@{}//:{}".format(sibling_label.repo_name, paths.normalize(paths.join(sibling_label.package, dirname, path))))
+     else:
+-        return Label("@@{}//{}:{}".format(sibling_label.workspace_name, sibling_label.package, paths.join(dirname, path)))
++        return Label("@@{}//{}:{}".format(sibling_label.repo_name, sibling_label.package, paths.join(dirname, path)))
+ 
+ ################################################################################
+ def _seed_root(priv, rctx_path, label):
+-    if priv["root"] and label.workspace_name != priv["root"]["workspace"]:
++    if priv["root"] and label.repo_name != priv["root"]["workspace"]:
+         fail("cannot seed_root twice with different workspaces")
+     if priv["root"]:
+         # already seed_rooted with the same workspace
+@@ -29,7 +29,7 @@ def _seed_root(priv, rctx_path, label):
+     seed_root_path = str(rctx_path(label))
+     seed_root_depth = len(paths.join(label.package, label.name).split("/"))
+     priv["root"] = {
+-        "workspace": label.workspace_name,
++        "workspace": label.repo_name,
+         "path": "/".join(seed_root_path.split("/")[:-seed_root_depth]),
+     }
+ 
