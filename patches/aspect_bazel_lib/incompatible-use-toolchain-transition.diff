@@ -1,0 +1,117 @@
+commit e7b9870886ee0838f7f0ef590660e59ef7dfacfa
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Thu Jan 16 09:32:13 2025 +0100
+
+    Don't use incompatible_use_toolchain_transition
+    
+    According to the Bazel documentation, this option has already been
+    deprecated for quite a long time. It already defaults to True.
+
+diff --git lib/private/copy_directory_toolchain.bzl lib/private/copy_directory_toolchain.bzl
+index cb92480..b425e61 100644
+--- lib/private/copy_directory_toolchain.bzl
++++ lib/private/copy_directory_toolchain.bzl
+@@ -104,7 +104,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:copy_directory_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/copy_to_directory_toolchain.bzl lib/private/copy_to_directory_toolchain.bzl
+index 8bbb438..025bd3e 100644
+--- lib/private/copy_to_directory_toolchain.bzl
++++ lib/private/copy_to_directory_toolchain.bzl
+@@ -104,7 +104,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:copy_to_directory_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/coreutils_toolchain.bzl lib/private/coreutils_toolchain.bzl
+index a288464..18c11fd 100644
+--- lib/private/coreutils_toolchain.bzl
++++ lib/private/coreutils_toolchain.bzl
+@@ -153,7 +153,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:coreutils_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/expand_template_toolchain.bzl lib/private/expand_template_toolchain.bzl
+index 9c0e6ab..5d360d4 100644
+--- lib/private/expand_template_toolchain.bzl
++++ lib/private/expand_template_toolchain.bzl
+@@ -104,7 +104,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:expand_template_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/jq_toolchain.bzl lib/private/jq_toolchain.bzl
+index f76eeef..f8cd0c7 100644
+--- lib/private/jq_toolchain.bzl
++++ lib/private/jq_toolchain.bzl
+@@ -121,7 +121,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:jq_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/source_toolchains_repo.bzl lib/private/source_toolchains_repo.bzl
+index 98d695b..5356ae4 100644
+--- lib/private/source_toolchains_repo.bzl
++++ lib/private/source_toolchains_repo.bzl
+@@ -34,7 +34,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["{toolchain_type}"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+ 
+diff --git lib/private/tar_toolchain.bzl lib/private/tar_toolchain.bzl
+index 900bb1a..fffd214 100644
+--- lib/private/tar_toolchain.bzl
++++ lib/private/tar_toolchain.bzl
+@@ -152,7 +152,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:tar_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/yq_toolchain.bzl lib/private/yq_toolchain.bzl
+index 4aee1e0..09f3111 100644
+--- lib/private/yq_toolchain.bzl
++++ lib/private/yq_toolchain.bzl
+@@ -370,7 +370,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:yq_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)
+diff --git lib/private/zstd_toolchain.bzl lib/private/zstd_toolchain.bzl
+index a3ea442..f3795b8 100644
+--- lib/private/zstd_toolchain.bzl
++++ lib/private/zstd_toolchain.bzl
+@@ -141,7 +141,6 @@ def _resolved_toolchain_impl(ctx):
+ resolved_toolchain = rule(
+     implementation = _resolved_toolchain_impl,
+     toolchains = ["@aspect_bazel_lib//lib:zstd_toolchain_type"],
+-    incompatible_use_toolchain_transition = True,
+ )
+ """
+     rctx.file("defs.bzl", starlark_content)

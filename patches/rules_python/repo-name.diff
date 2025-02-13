@@ -1,0 +1,93 @@
+commit b464ae488ca4b11c572ad4407fc4aaec9adf26a1
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Thu Jan 16 09:40:32 2025 +0100
+
+    Use Label.repo_name instead of Label.workspace_name
+    
+    According to the documentation, Label.workspace_name is deprecated:
+    
+    https://bazel.build/rules/lib/builtins/Label#workspace_name
+
+diff --git gazelle/manifest/defs.bzl gazelle/manifest/defs.bzl
+index 6c0072a4..45fdb32e 100644
+--- gazelle/manifest/defs.bzl
++++ gazelle/manifest/defs.bzl
+@@ -161,7 +161,7 @@ AllSourcesInfo = provider(fields = {"all_srcs": "All sources collected from the
+ _rules_python_workspace = Label("@rules_python//:WORKSPACE")
+ 
+ def _get_all_sources_impl(target, ctx):
+-    is_rules_python = target.label.workspace_name == _rules_python_workspace.workspace_name
++    is_rules_python = target.label.repo_name == _rules_python_workspace.repo_name
+     if not is_rules_python:
+         # Avoid adding third-party dependency files to the checksum of the srcs.
+         return AllSourcesInfo(all_srcs = depset())
+diff --git python/private/pypi/multi_pip_parse.bzl python/private/pypi/multi_pip_parse.bzl
+index 6e824f67..60496c2e 100644
+--- python/private/pypi/multi_pip_parse.bzl
++++ python/private/pypi/multi_pip_parse.bzl
+@@ -18,7 +18,7 @@ load("//python/private:text_util.bzl", "render")
+ load(":pip_repository.bzl", pip_parse = "pip_repository")
+ 
+ def _multi_pip_parse_impl(rctx):
+-    rules_python = rctx.attr._rules_python_workspace.workspace_name
++    rules_python = rctx.attr._rules_python_workspace.repo_name
+     load_statements = []
+     install_deps_calls = []
+     process_requirements_calls = []
+@@ -69,7 +69,7 @@ def _process_requirements(pkg_labels, python_version, repo_prefix):
+         wheel_name = Label(pkg_label).package
+         if not wheel_name:
+             # We are dealing with the cases where we don't have aliases.
+-            workspace_name = Label(pkg_label).workspace_name
++            workspace_name = Label(pkg_label).repo_name
+             wheel_name = workspace_name[len(repo_prefix):]
+ 
+         _wheel_names.append(wheel_name)
+diff --git python/private/pypi/whl_library_alias.bzl python/private/pypi/whl_library_alias.bzl
+index d34b34a5..66c3504d 100644
+--- python/private/pypi/whl_library_alias.bzl
++++ python/private/pypi/whl_library_alias.bzl
+@@ -18,7 +18,7 @@ load("//python/private:full_version.bzl", "full_version")
+ load(":render_pkg_aliases.bzl", "NO_MATCH_ERROR_MESSAGE_TEMPLATE")
+ 
+ def _whl_library_alias_impl(rctx):
+-    rules_python = rctx.attr._rules_python_workspace.workspace_name
++    rules_python = rctx.attr._rules_python_workspace.repo_name
+     if rctx.attr.default_version:
+         default_repo_prefix = rctx.attr.version_map[rctx.attr.default_version]
+     else:
+diff --git python/private/pythons_hub.bzl python/private/pythons_hub.bzl
+index ac928ffc..b448d530 100644
+--- python/private/pythons_hub.bzl
++++ python/private/pythons_hub.bzl
+@@ -79,7 +79,7 @@ def _hub_build_file_content(
+ 
+     return _HUB_BUILD_FILE_TEMPLATE.format(
+         toolchains = toolchains,
+-        rules_python = workspace_location.workspace_name,
++        rules_python = workspace_location.repo_name,
+     )
+ 
+ _interpreters_bzl_template = """
+diff --git python/private/toolchains_repo.bzl python/private/toolchains_repo.bzl
+index 7e9a0c7f..6d74db5f 100644
+--- python/private/toolchains_repo.bzl
++++ python/private/toolchains_repo.bzl
+@@ -93,7 +93,7 @@ def _toolchains_repo_impl(rctx):
+ load("@{rules_python}//python/private:py_toolchain_suite.bzl", "py_toolchain_suite")
+ 
+ """.format(
+-        rules_python = rctx.attr._rules_python_workspace.workspace_name,
++        rules_python = rctx.attr._rules_python_workspace.repo_name,
+     )
+ 
+     toolchains = python_toolchain_build_file_content(
+@@ -309,7 +309,7 @@ this repo causes an eager fetch of the toolchain for the host platform.
+ )
+ 
+ def _multi_toolchain_aliases_impl(rctx):
+-    rules_python = rctx.attr._rules_python_workspace.workspace_name
++    rules_python = rctx.attr._rules_python_workspace.repo_name
+ 
+     for python_version, repository_name in rctx.attr.python_versions.items():
+         file = "{}/defs.bzl".format(python_version)

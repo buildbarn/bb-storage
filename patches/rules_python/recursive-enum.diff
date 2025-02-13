@@ -1,0 +1,28 @@
+diff --git python/private/enum.bzl python/private/enum.bzl
+index d71442e3..f3f319c1 100644
+--- python/private/enum.bzl
++++ python/private/enum.bzl
+@@ -39,7 +39,7 @@ def enum(methods = {}, **kwargs):
+ 
+     for name, unbound_method in methods.items():
+         # buildifier: disable=uninitialized
+-        kwargs[name] = lambda *a, **k: unbound_method(self, *a, **k)
++        kwargs[name] = lambda *a, **k: unbound_method(members, *a, **k)
+ 
+     self = struct(__members__ = members, **kwargs)
+     return self
+diff --git python/private/flags.bzl python/private/flags.bzl
+index 9070f113..bbd7b20a 100644
+--- python/private/flags.bzl
++++ python/private/flags.bzl
+@@ -21,8 +21,8 @@ unnecessary files when all that are needed are flag definitions.
+ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+ load(":enum.bzl", "enum")
+ 
+-def _FlagEnum_flag_values(self):
+-    return sorted(self.__members__.values())
++def _FlagEnum_flag_values(members):
++    return sorted(members.values())
+ 
+ def FlagEnum(**kwargs):
+     """Define an enum specialized for flags.

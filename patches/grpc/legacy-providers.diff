@@ -1,0 +1,58 @@
+diff --git bazel/generate_cc.bzl bazel/generate_cc.bzl
+index a2c7f3a1bb..b09f029d40 100644
+--- bazel/generate_cc.bzl
++++ bazel/generate_cc.bzl
+@@ -174,7 +174,6 @@ _generate_cc = rule(
+         ),
+         "plugin": attr.label(
+             executable = True,
+-            providers = ["files_to_run"],
+             cfg = "exec",
+         ),
+         "flags": attr.string_list(
+diff --git bazel/generate_objc.bzl bazel/generate_objc.bzl
+index d6eeb4cab0..0789a959fe 100644
+--- bazel/generate_objc.bzl
++++ bazel/generate_objc.bzl
+@@ -165,7 +165,6 @@ generate_objc = rule(
+         "plugin": attr.label(
+             default = "@com_github_grpc_grpc//src/compiler:grpc_objective_c_plugin",
+             executable = True,
+-            providers = ["files_to_run"],
+             cfg = "exec",
+         ),
+         "srcs": attr.string_list(
+diff --git bazel/python_rules.bzl bazel/python_rules.bzl
+index e195d2790b..8729350dc9 100644
+--- bazel/python_rules.bzl
++++ bazel/python_rules.bzl
+@@ -111,7 +111,6 @@ _gen_py_aspect = aspect(
+     attrs = {
+         "_protoc": attr.label(
+             default = Label("@com_google_protobuf//:protoc"),
+-            providers = ["files_to_run"],
+             executable = True,
+             cfg = "exec",
+         ),
+@@ -167,7 +166,6 @@ py_proto_library = rule(
+         ),
+         "_protoc": attr.label(
+             default = Label("@com_google_protobuf//:protoc"),
+-            providers = ["files_to_run"],
+             executable = True,
+             cfg = "exec",
+         ),
+@@ -251,13 +249,11 @@ _generate_pb2_grpc_src = rule(
+         "strip_prefixes": attr.string_list(),
+         "_grpc_plugin": attr.label(
+             executable = True,
+-            providers = ["files_to_run"],
+             cfg = "exec",
+             default = Label("//src/compiler:grpc_python_plugin"),
+         ),
+         "_protoc": attr.label(
+             executable = True,
+-            providers = ["files_to_run"],
+             cfg = "exec",
+             default = Label("@com_google_protobuf//:protoc"),
+         ),
