@@ -1,0 +1,13 @@
+diff --git internal/go_repository.bzl internal/go_repository.bzl
+index 895ff05..d9b93b2 100644
+--- internal/go_repository.bzl
++++ internal/go_repository.bzl
+@@ -268,6 +268,8 @@ def _go_repository_impl(ctx):
+ 
+     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
+ 
++    watch(ctx, env["GOROOT"] + "/bin/go" + executable_extension(ctx))
++
+     # Clean existing build files if requested
+     if ctx.attr.build_file_generation == "clean":
+         fetch_repo_args.append("-clean")

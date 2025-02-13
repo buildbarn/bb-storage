@@ -1,5 +1,6 @@
 module(name = "com_github_buildbarn_bb_storage")
 
+bazel_dep(name = "apple_support", version = "2.12.0", repo_name = None)
 bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
 bazel_dep(name = "aspect_rules_js", version = "3.6.1")
 bazel_dep(name = "bazel_remote_apis", version = "0")
@@ -17,9 +18,23 @@ bazel_dep(name = "rules_img", version = "0.3.26")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.7.7")
 bazel_dep(name = "rules_shell", version = "0.10.0")
+bazel_dep(name = "rules_swift", version = "4.3.0", repo_name = None)
 bazel_dep(name = "toolchains_llvm", version = "1.13.0")
 
 register_toolchains("//tools/platforms:test_toolchain_running_linux_x86_32_on_x86_64")
+
+single_version_override(
+    module_name = "aspect_bazel_lib",
+    patches = ["//:patches/bazel_lib/root-is-external.diff"],
+)
+
+single_version_override(
+    module_name = "bazel_lib",
+    patches = [
+        "//:patches/bazel_lib/repo_name.diff",
+        "//:patches/bazel_lib/root-is-external.diff",
+    ],
+)
 
 git_override(
     module_name = "bazel_remote_apis",
@@ -29,7 +44,46 @@ git_override(
 
 single_version_override(
     module_name = "gazelle",
-    patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
+    patches = [
+        "//:patches/gazelle/dont-flatten-srcs.diff",
+        "//:patches/gazelle/go-tool.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "grpc",
+    patches = [
+        # https://github.com/grpc/grpc/pull/43969
+        "//:patches/grpc/legacy-providers.diff",
+        # https://github.com/grpc/grpc/pull/44002
+        "//:patches/grpc/output-to-genfiles.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "protobuf",
+    patches = ["//:patches/protobuf/repo_name.diff"],
+)
+
+single_version_override(
+    module_name = "rules_android",
+    patches = [
+        # https://github.com/bazelbuild/rules_android/pull/603
+        "//:patches/rules_android/config_feature_flag.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "rules_cc",
+    patches = ["//:patches/rules_cc/repo_name.diff"],
+)
+
+single_version_override(
+    module_name = "rules_python",
+    patches = [
+        # https://github.com/bazel-contrib/rules_python/pull/4580
+        "//:patches/rules_python/recursive-enum.diff",
+    ],
 )
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
@@ -163,3 +217,5 @@ pull(
     registry = "mcr.microsoft.com",
     repository = "windows/nanoserver",
 )
+
+register_execution_platforms("//platforms:exec")
