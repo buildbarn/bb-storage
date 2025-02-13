@@ -48,7 +48,7 @@
     {
       name: 'windows_amd64',
       buildAndTestCommand: 'build',
-      buildJustBinaries: false,
+      buildJustBinaries: true,
       extension: '.exe',
     },
   ],

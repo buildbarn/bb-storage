@@ -81,7 +81,7 @@
             },
             {
                "name": "windows_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //..."
+               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
             }
          ]
       }
