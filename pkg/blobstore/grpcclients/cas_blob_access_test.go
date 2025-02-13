@@ -176,6 +176,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 				InstanceName: "hello/world",
 			}),
 			gomock.Any(),
+			gomock.Any(),
 		).Return(status.Error(codes.Unavailable, "Server offline"))
 
 		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
@@ -189,6 +190,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
 				InstanceName: "hello/world",
 			}),
+			gomock.Any(),
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
@@ -214,6 +216,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
 				InstanceName: "hello/world",
 			}),
+			gomock.Any(),
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{

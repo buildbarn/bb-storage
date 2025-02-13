@@ -1,0 +1,177 @@
+diff --git mockgen/model/model.go mockgen/model/model.go
+index 94d7f4b..7620f20 100644
+--- mockgen/model/model.go
++++ mockgen/model/model.go
+@@ -17,8 +17,10 @@ package model
+ 
+ import (
+ 	"encoding/gob"
++	"errors"
+ 	"fmt"
+ 	"io"
++	"path"
+ 	"reflect"
+ 	"strings"
+ )
+@@ -405,6 +407,138 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
+ 
+ var byteType = reflect.TypeOf(byte(0))
+ 
++var predeclaredTypeNames = map[string]struct{}{
++	// Boolean types.
++	"bool": {},
++	// Numeric types.
++	"uint8": {}, "uint16": {}, "uint32": {}, "uint64": {},
++	"int8": {}, "int16": {}, "int32": {}, "int64": {},
++	"float32": {}, "float64": {}, "complex64": {}, "complex128": {},
++	"byte": {}, "rune": {},
++	"uint": {}, "int": {}, "uintptr": {},
++	// String types.
++	"string": {},
++	// Any types.
++	"interface {}": {},
++}
++
++func typeFromReflectName(currentPkg string, expr io.RuneScanner) (Type, error) {
++	cFirst, _, err := expr.ReadRune()
++	if err != nil {
++		return nil, err
++	}
++
++	switch cFirst {
++	case '*':
++		// Pointer type.
++		nestedType, err := typeFromReflectName(currentPkg, expr)
++		if err != nil {
++			return nil, err
++		}
++		return &PointerType{
++			Type: nestedType,
++		}, nil
++	case '[':
++		// Array or slice type.
++		arraySize := -1
++		for {
++			cSize, _, err := expr.ReadRune()
++			if err != nil {
++				return nil, err
++			}
++			switch cSize {
++			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
++				if arraySize < 0 {
++					arraySize = int(cSize - '0')
++				} else {
++					arraySize = arraySize*10 + int(cSize-'0')
++				}
++			case ']':
++				nestedType, err := typeFromReflectName(currentPkg, expr)
++				if err != nil {
++					return nil, err
++				}
++				return &ArrayType{
++					Len:  arraySize,
++					Type: nestedType,
++				}, nil
++			default:
++				return nil, fmt.Errorf("encountered invalid character %c in array size", cSize)
++			}
++		}
++	default:
++		// Type name.
++		var typeName strings.Builder
++		typeName.WriteRune(cFirst)
++		var typeParameters []Type
++		for {
++			c, _, err := expr.ReadRune()
++			if err != nil {
++				if err == io.EOF {
++					break
++				}
++				return nil, err
++			}
++			if c == ',' || c == ']' {
++				// End of nested type name.
++				expr.UnreadRune()
++				break
++			}
++			if c == '[' {
++				// Generic type.
++				for {
++					typeParameter, err := typeFromReflectName(currentPkg, expr)
++					if err != nil {
++						return nil, err
++					}
++					typeParameters = append(typeParameters, typeParameter)
++					cSeparator, _, err := expr.ReadRune()
++					if err != nil {
++						return nil, err
++					}
++					if cSeparator == ']' {
++						break
++					} else if cSeparator != ',' {
++						return nil, errors.New("expected comma separator between type parameters")
++					}
++				}
++				break
++			}
++			typeName.WriteRune(c)
++		}
++
++		typeNameStr := typeName.String()
++		if _, ok := predeclaredTypeNames[typeNameStr]; ok {
++			return PredeclaredType(typeNameStr), nil
++		}
++
++		dot := strings.LastIndexByte(typeNameStr, '.')
++		if dot >= 0 {
++			// Type name that is preceded by a package name.
++			pkgName := typeNameStr[:dot]
++			if pkgName == path.Base(currentPkg) {
++				pkgName = currentPkg
++			}
++			return &NamedType{
++				Package: impPath(pkgName),
++				Type:    typeNameStr[dot+1:],
++				TypeParams: &TypeParametersType{
++					TypeParameters: typeParameters,
++				},
++			}, nil
++		}
++
++		// Bare type name.
++		return &NamedType{
++			Package: impPath(currentPkg),
++			Type:    typeNameStr,
++			TypeParams: &TypeParametersType{
++				TypeParameters: typeParameters,
++			},
++		}, nil
++	}
++}
++
+ func typeFromType(t reflect.Type) (Type, error) {
+ 	// Hack workaround for https://golang.org/issue/3853.
+ 	// This explicit check should not be necessary.
+@@ -412,11 +544,17 @@ func typeFromType(t reflect.Type) (Type, error) {
+ 		return PredeclaredType("byte"), nil
+ 	}
+ 
+-	if imp := t.PkgPath(); imp != "" {
+-		return &NamedType{
+-			Package: impPath(imp),
+-			Type:    t.Name(),
+-		}, nil
++	if currentPkg := t.PkgPath(); currentPkg != "" {
++		name := t.Name()
++		r := strings.NewReader(name)
++		t, err := typeFromReflectName(currentPkg, r)
++		if err != nil {
++			return nil, fmt.Errorf("failed to parse reflection type name %#v: %v", name, err)
++		}
++		if l := r.Len(); l != 0 {
++			return nil, fmt.Errorf("reflection type name %#v has trailing garbage of length %d", name, l)
++		}
++		return t, nil
+ 	}
+ 
+ 	// only unnamed or predeclared types after here

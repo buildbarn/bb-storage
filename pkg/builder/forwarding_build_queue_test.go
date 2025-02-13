@@ -36,6 +36,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 				InstanceName: "hello/world",
 			}),
 			gomock.Any(),
+			gomock.Any(),
 		).Return(status.Error(codes.Unavailable, "Server offline"))
 
 		_, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
@@ -49,6 +50,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
 				InstanceName: "hello/world",
 			}),
+			gomock.Any(),
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
@@ -83,6 +85,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 			testutil.EqProto(t, &remoteexecution.GetCapabilitiesRequest{
 				InstanceName: "hello/world",
 			}),
+			gomock.Any(),
 			gomock.Any(),
 		).DoAndReturn(func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
 			proto.Merge(reply.(proto.Message), &remoteexecution.ServerCapabilities{
@@ -136,7 +139,7 @@ func TestForwardingBuildQueueExecute(t *testing.T) {
 		out.EXPECT().Context().Return(ctx)
 		clientStream := mock.NewMockClientStream(ctrl)
 		var ctxClient context.Context
-		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/build.bazel.remote.execution.v2.Execution/Execute").
+		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/build.bazel.remote.execution.v2.Execution/Execute", gomock.Any()).
 			DoAndReturn(func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 				ctxClient = ctx
 				return clientStream, nil
