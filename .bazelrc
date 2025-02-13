@@ -1,6 +1,4 @@
 run --workspace_status_command="bash tools/workspace-status.sh"
-common --enable_platform_specific_config
-common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc
 common --protocopt=--fatal_warnings
 
 # Required to make protobuf compile on Windows

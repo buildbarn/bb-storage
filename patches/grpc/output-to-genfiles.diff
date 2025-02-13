@@ -1,0 +1,25 @@
+diff --git bazel/generate_cc.bzl bazel/generate_cc.bzl
+index a2c7f3a1bb..971a7201f0 100644
+--- bazel/generate_cc.bzl
++++ bazel/generate_cc.bzl
+@@ -192,8 +192,6 @@ _generate_cc = rule(
+             cfg = "exec",
+         ),
+     },
+-    # We generate .h files, so we need to output to genfiles.
+-    output_to_genfiles = True,
+     implementation = generate_cc_impl,
+ )
+ 
+diff --git bazel/generate_objc.bzl bazel/generate_objc.bzl
+index d6eeb4cab0..8ae7a54858 100644
+--- bazel/generate_objc.bzl
++++ bazel/generate_objc.bzl
+@@ -185,7 +185,6 @@ generate_objc = rule(
+             cfg = "exec",
+         ),
+     },
+-    output_to_genfiles = True,
+     implementation = _generate_objc_impl,
+ )
+ 

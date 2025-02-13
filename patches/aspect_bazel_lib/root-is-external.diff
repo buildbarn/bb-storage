@@ -1,0 +1,15 @@
+diff --git lib/private/write_source_file.bzl lib/private/write_source_file.bzl
+index 3d2eff6..5c7c776 100644
+--- lib/private/write_source_file.bzl
++++ lib/private/write_source_file.bzl
+@@ -90,10 +90,6 @@ def write_source_file(
+     if out_file:
+         out_file = utils.to_label(out_file)
+ 
+-        if utils.is_external_label(out_file):
+-            msg = "out file {} must be in the user workspace".format(out_file)
+-            fail(msg)
+-
+         if check_that_out_file_exists and out_file.package != native.package_name():
+             msg = "out file {} (in package '{}') must be a source file within the target's package: '{}'; set check_that_out_file_exists to False to work-around this requirement".format(out_file, out_file.package, native.package_name())
+             fail(msg)

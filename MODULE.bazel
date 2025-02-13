@@ -16,8 +16,20 @@ bazel_dep(name = "rules_go", version = "0.60.0")
 bazel_dep(name = "rules_img", version = "0.3.11")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.7.4")
+bazel_dep(name = "rules_python", version = "2.0.3")
 bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "rules_swift", version = "3.6.1")
 bazel_dep(name = "toolchains_llvm", version = "1.7.0")
+
+single_version_override(
+    module_name = "aspect_bazel_lib",
+    patches = ["//:patches/aspect_bazel_lib/root-is-external.diff"],
+)
+
+single_version_override(
+    module_name = "aspect_rules_js",
+    patches = ["patches/aspect_rules_js/sh-toolchain.diff"],
+)
 
 git_override(
     module_name = "bazel_remote_apis",
@@ -28,7 +40,48 @@ git_override(
 
 single_version_override(
     module_name = "gazelle",
-    patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
+    patches = [
+        "//:patches/gazelle/dont-flatten-srcs.diff",
+        "//:patches/gazelle/go-tool.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "grpc",
+    patches = [
+        "//:patches/grpc/legacy-providers.diff",
+        "//:patches/grpc/output-to-genfiles.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "protobuf",
+    patches = ["//:patches/protobuf/repo_name.diff"],
+)
+
+single_version_override(
+    module_name = "rules_android",
+    patches = ["//:patches/rules_android/config_feature_flag.diff"],
+)
+
+single_version_override(
+    module_name = "rules_cc",
+    patches = [
+        "//:patches/rules_cc/freeze-tuple.diff",
+        "//:patches/rules_cc/repo_name.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "rules_python",
+    patches = ["//:patches/rules_python/recursive-enum.diff"],
+)
+
+archive_override(
+    module_name = "rules_rust",
+    patches = ["patches/rules_rust/extension-name.diff"],
+    sha256 = "c9d5a39cb3e1ceacace98f19f09d61c4b55034bc34a565bdcf7cd80eb4c412af",
+    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.62.0/rules_rust-0.62.0.tar.gz"],
 )
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
@@ -166,3 +219,5 @@ pull(
     registry = "mcr.microsoft.com",
     repository = "windows/nanoserver",
 )
+
+register_execution_platforms("//platforms:exec")

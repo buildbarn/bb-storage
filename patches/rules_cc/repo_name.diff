@@ -1,0 +1,82 @@
+diff --git cc/common/cc_helper.bzl cc/common/cc_helper.bzl
+index 328933e..3ddd482 100644
+--- cc/common/cc_helper.bzl
++++ cc/common/cc_helper.bzl
+@@ -283,9 +283,9 @@ def _dll_hash_suffix(ctx, feature_configuration, cpp_config):
+     if cpp_config.dynamic_mode() != "OFF":
+         if cc_common.is_enabled(feature_configuration = feature_configuration, feature_name = "targets_windows"):
+             if not hasattr(ctx.attr, "win_def_file") or ctx.file.win_def_file == None:
+-                # Note: ctx.label.workspace_name strips leading @,
++                # Note: ctx.label.repo_name strips leading @,
+                 # which is different from the native behavior.
+-                string_to_hash = ctx.label.workspace_name + ctx.label.package
++                string_to_hash = ctx.label.repo_name + ctx.label.package
+                 return "_%x" % hash(string_to_hash)
+     return ""
+ 
+@@ -810,14 +810,14 @@ def _get_cc_flags_make_variable(_ctx, feature_configuration, cc_toolchain):
+     return {"CC_FLAGS": " ".join(cc_flags)}
+ 
+ def _package_exec_path(ctx, package, sibling_repository_layout):
+-    return get_relative_path(_repository_exec_path(ctx.label.workspace_name, sibling_repository_layout), package)
++    return get_relative_path(_repository_exec_path(ctx.label.repo_name, sibling_repository_layout), package)
+ 
+ def _include_dirs(ctx, additional_make_variable_substitutions):
+     result = []
+     sibling_repository_layout = ctx.configuration.is_sibling_repository_layout()
+     package = ctx.label.package
+     package_exec_path = _package_exec_path(ctx, package, sibling_repository_layout)
+-    package_source_root = _package_source_root(ctx.label.workspace_name, package, sibling_repository_layout)
++    package_source_root = _package_source_root(ctx.label.repo_name, package, sibling_repository_layout)
+     for include in ctx.attr.includes:
+         includes_attr = _expand(ctx, include, additional_make_variable_substitutions)
+         if is_path_absolute(includes_attr):
+@@ -1064,7 +1064,7 @@ _LEGACY_RUNFILES_LIBRARY_TARGET = Label("@bazel_tools//tools/cpp/runfiles")
+ def _get_local_defines_for_runfiles_lookup(ctx, all_deps):
+     for dep in all_deps:
+         if dep.label == _RUNFILES_LIBRARY_TARGET or dep.label == _LEGACY_RUNFILES_LIBRARY_TARGET:
+-            return ["BAZEL_CURRENT_REPOSITORY=\"{}\"".format(ctx.label.workspace_name)]
++            return ["BAZEL_CURRENT_REPOSITORY=\"{}\"".format(ctx.label.repo_name)]
+     return []
+ 
+ def _linker_scripts(ctx):
+diff --git cc/private/compile/cc_compilation_helper.bzl cc/private/compile/cc_compilation_helper.bzl
+index 30faa67..e045387 100644
+--- cc/private/compile/cc_compilation_helper.bzl
++++ cc/private/compile/cc_compilation_helper.bzl
+@@ -123,7 +123,7 @@ def _compute_public_headers(
+ 
+     module_map_headers = []
+     virtual_to_original_headers_list = []
+-    source_package_path = package_source_root(label.workspace_name, label.package, is_sibling_repository_layout)
++    source_package_path = package_source_root(label.repo_name, label.package, is_sibling_repository_layout)
+     if shorten_virtual_includes:
+         virtual_include_dir = paths.join(_VIRTUAL_INCLUDES_DIR, "%x" % hash(paths.join(source_package_path, label.name)))
+     else:
+@@ -167,7 +167,7 @@ def _generates_header_module(feature_configuration, public_headers, private_head
+            generate_action
+ 
+ def _header_module_artifact(actions, label, is_sibling_repository_layout, suffix, extension):
+-    object_dir = paths.join(paths.join(package_source_root(label.workspace_name, label.package, is_sibling_repository_layout), "_objs"), label.name)
++    object_dir = paths.join(paths.join(package_source_root(label.repo_name, label.package, is_sibling_repository_layout), "_objs"), label.name)
+     base_name = label.name.split("/")[-1]
+     output_path = paths.join(object_dir, base_name + suffix + extension)
+     return actions.declare_shareable_artifact(output_path)
+@@ -402,7 +402,7 @@ def _init_cc_compilation_context(
+     # before the genfilesFragment to preferably pick up source files. Otherwise
+     # we might pick up stale generated files.
+     sibling_repo_layout = config.is_sibling_repository_layout()
+-    repo_name = label.workspace_name
++    repo_name = label.repo_name
+     repo_path = repository_exec_path(repo_name, sibling_repo_layout)
+     gen_include_dir = _include_dir(genfiles_dir, repo_path, sibling_repo_layout)
+     bin_include_dir = _include_dir(binfiles_dir, repo_path, sibling_repo_layout)
+@@ -508,7 +508,7 @@ def _init_cc_compilation_context(
+         if not module_map:
+             module_map = create_module_map(
+                 file = actions.declare_file(label.name + ".cppmap"),
+-                name = label.workspace_name + "//" + label.package + ":" + label.name,
++                name = label.repo_name + "//" + label.package + ":" + label.name,
+             )
+ 
+         # There are different modes for module compilation:

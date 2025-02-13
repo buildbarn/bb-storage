@@ -1,0 +1,12 @@
+diff --git bazel/generate_objc.bzl bazel/generate_objc.bzl
+index e2b697745f..24dd42375d 100644
+--- bazel/generate_objc.bzl
++++ bazel/generate_objc.bzl
+@@ -165,7 +165,6 @@ generate_objc = rule(
+         "plugin": attr.label(
+             default = Label("//src/compiler:grpc_objective_c_plugin"),
+             executable = True,
+-            providers = ["files_to_run"],
+             cfg = "exec",
+         ),
+         "srcs": attr.string_list(

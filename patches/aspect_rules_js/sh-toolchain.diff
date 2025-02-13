@@ -1,0 +1,12 @@
+diff --git js/private/js_binary.bzl js/private/js_binary.bzl
+index 3e864f8f..5ceeae27 100644
+--- js/private/js_binary.bzl
++++ js/private/js_binary.bzl
+@@ -579,7 +579,6 @@ js_binary_lib = struct(
+     implementation = _js_binary_impl,
+     toolchains = [
+         # TODO: on Windows this toolchain is never referenced
+-        "@bazel_tools//tools/sh:toolchain_type",
+         "@rules_nodejs//nodejs:runtime_toolchain_type",
+     ] + COPY_FILE_TO_BIN_TOOLCHAINS,
+ )
