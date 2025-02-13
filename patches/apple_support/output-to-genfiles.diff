@@ -1,0 +1,11 @@
+diff --git rules/private/apple_genrule.bzl rules/private/apple_genrule.bzl
+index cdfd501..6b9bc94 100644
+--- rules/private/apple_genrule.bzl
++++ rules/private/apple_genrule.bzl
+@@ -193,6 +193,5 @@ NOTE: `DEVELOPER_DIR` and `SDKROOT` are environment variables and *not* make
+       syntax (i.e. using `$$`). Example: ```cmd = "xcrun --sdkroot $$SDKROOT clang...```
+ """,
+     exec_compatible_with = ["@platforms//os:macos"],
+-    output_to_genfiles = True,
+     fragments = ["apple"],
+ )

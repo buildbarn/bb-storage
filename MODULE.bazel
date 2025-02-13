@@ -1,5 +1,6 @@
 module(name = "com_github_buildbarn_bb_storage")
 
+bazel_dep(name = "apple_support", version = "1.23.1")
 bazel_dep(name = "aspect_bazel_lib", version = "2.21.2")
 bazel_dep(name = "aspect_rules_js", version = "2.6.0")
 bazel_dep(name = "bazel_remote_apis", version = "0")
@@ -10,12 +11,38 @@ bazel_dep(name = "opentelemetry-proto", version = "1.7.0")
 bazel_dep(name = "toolchains_protoc", version = "0.5.0")  # must come BEFORE protobuf so the toolchain registration wins
 bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "protobuf", version = "31.1")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.0")
 bazel_dep(name = "rules_go", version = "0.57.0")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
+bazel_dep(name = "rules_nodejs", version = "6.5.0")
 bazel_dep(name = "rules_oci", version = "2.2.6")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "toolchains_llvm", version = "1.5.0")
+
+single_version_override(
+    module_name = "apple_support",
+    patches = [
+        "//:patches/apple_support/inputs-manifest.diff",
+        "//:patches/apple_support/output-to-genfiles.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "aspect_bazel_lib",
+    patches = [
+        "//:patches/aspect_bazel_lib/at-slash-slash.diff",
+        "//:patches/aspect_bazel_lib/repo-name.diff",
+        "//:patches/aspect_bazel_lib/root-is-external.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "aspect_rules_js",
+    patches = [
+        "patches/aspect_rules_js/sh-toolchain.diff",
+    ],
+)
 
 git_override(
     module_name = "bazel_remote_apis",
@@ -25,12 +52,59 @@ git_override(
 
 single_version_override(
     module_name = "gazelle",
-    patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
+    patches = [
+        "//:patches/gazelle/dont-flatten-srcs.diff",
+        "//:patches/gazelle/gazelle-binary-struct.diff",
+        "//:patches/gazelle/go-tool.diff",
+        "//:patches/gazelle/unlink.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "grpc",
+    patches = [
+        "//:patches/grpc/legacy-providers.diff",
+        "//:patches/grpc/output-to-genfiles.diff",
+    ],
 )
 
 # Match protobuf above, until it ships a pre-built binary toolchain itself
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 protoc.toolchain(version = "v31.1")
+
+single_version_override(
+    module_name = "protobuf",
+    patches = ["//:patches/protobuf/repo_name.diff"],
+)
+
+single_version_override(
+    module_name = "rules_java",
+    patches = [
+        "//:patches/rules_java/repo_name.diff",
+        "//:patches/rules_java/host-constraints.diff",
+    ],
+)
+
+single_version_override(
+    module_name = "rules_pkg",
+    patches = ["//:patches/rules_pkg/args-add-int.diff"],
+)
+
+single_version_override(
+    module_name = "rules_python",
+    patches = [
+        "//:patches/rules_python/args-add-str.diff",
+        "//:patches/rules_python/is_executable.diff",
+        "//:patches/rules_python/recursive-enum.diff",
+    ],
+)
+
+archive_override(
+    module_name = "rules_rust",
+    patches = ["patches/rules_rust/extension-name.diff"],
+    sha256 = "c9d5a39cb3e1ceacace98f19f09d61c4b55034bc34a565bdcf7cd80eb4c412af",
+    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.62.0/rules_rust-0.62.0.tar.gz"],
+)
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.24.7")
@@ -160,3 +234,5 @@ use_repo(
     "distroless_static_linux_amd64",
     "distroless_static_linux_arm64_v8",
 )
+
+register_execution_platforms("//platforms:exec")

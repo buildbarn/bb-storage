@@ -1,0 +1,27 @@
+commit d99c386da31611b753b60910d4b3e64605104d55
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Wed Feb 5 09:28:51 2025 +0100
+
+    Don't use label starting with @//
+    
+    Ever since bzlmod, @// has lost any official meaning:
+    
+    https://bazel.build/concepts/labels
+    
+    Bazel still seems to allow it, but given the fact that this format is no longer
+    documented we should stop using it. In this specific case it also doesn't
+    matter. As long as we provide a label that is valid.
+
+diff --git lib/private/utils.bzl lib/private/utils.bzl
+index b6edb46..4b16b14 100644
+--- lib/private/utils.bzl
++++ lib/private/utils.bzl
+@@ -239,7 +239,7 @@ def _is_bazel_7_or_greater():
+ 
+ def is_bzlmod_enabled():
+     """Detect the value of the --enable_bzlmod flag"""
+-    return str(Label("@//:BUILD.bazel")).startswith("@@")
++    return str(Label("//:BUILD.bazel")).startswith("@@")
+ 
+ def _maybe_http_archive(**kwargs):
+     """Adapts a maybe(http_archive, ...) to look like an http_archive.

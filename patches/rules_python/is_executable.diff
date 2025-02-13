@@ -1,0 +1,12 @@
+diff --git python/private/py_executable.bzl python/private/py_executable.bzl
+index a2ccdc65..e6bf21c6 100644
+--- python/private/py_executable.bzl
++++ python/private/py_executable.bzl
+@@ -708,6 +708,7 @@ def _create_stage1_bootstrap(
+         template = template,
+         output = output,
+         substitutions = subs,
++        is_executable = True,
+     )
+ 
+ def _create_windows_exe_launcher(

@@ -1,0 +1,35 @@
+diff --git java/common/rules/java_runtime.bzl java/common/rules/java_runtime.bzl
+index 85acb22..40a4dc4 100644
+--- java/common/rules/java_runtime.bzl
++++ java/common/rules/java_runtime.bzl
+@@ -54,7 +54,7 @@ JavaRuntimeInfo, _new_javaruntimeinfo = provider(
+ )
+ 
+ def _is_main_repo(label):
+-    return label.workspace_name == ""
++    return label.repo_name == ""
+ 
+ def _default_java_home(label):
+     if _is_main_repo(label):
+@@ -70,7 +70,7 @@ def _get_runfiles_java_executable(ctx, java_home, label):
+     if paths.is_absolute(java_home) or _is_main_repo(label):
+         return helper.get_relative(java_home, _get_bin_java(ctx))
+     else:
+-        repo_runfiles_path = "" if _is_main_repo(label) else helper.get_relative("..", label.workspace_name)
++        repo_runfiles_path = "" if _is_main_repo(label) else helper.get_relative("..", label.repo_name)
+         return helper.get_relative(repo_runfiles_path, _get_bin_java(ctx))
+ 
+ def _is_java_binary(path):
+diff --git java/private/java_common_internal.bzl java/private/java_common_internal.bzl
+index d740255..dde7d08 100644
+--- java/private/java_common_internal.bzl
++++ java/private/java_common_internal.bzl
+@@ -128,7 +128,7 @@ def compile(
+     if ("com.google.devtools.build.runfiles.AutoBazelRepositoryProcessor" in
+         plugin_info.plugins.processor_classes.to_list()):
+         all_javac_opts.append(depset(
+-            ["-Abazel.repository=" + ctx.label.workspace_name],
++            ["-Abazel.repository=" + ctx.label.repo_name],
+             order = "preorder",
+         ))
+     system_bootclasspath = None

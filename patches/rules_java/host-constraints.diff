@@ -1,0 +1,13 @@
+diff --git toolchains/local_java_repository.bzl toolchains/local_java_repository.bzl
+index 627f8ab..769c2d1 100644
+--- toolchains/local_java_repository.bzl
++++ toolchains/local_java_repository.bzl
+@@ -238,7 +238,7 @@ local_java_runtime(
+     repository_ctx.file(
+         "BUILD.bazel",
+         'load("@rules_java//toolchains:local_java_repository.bzl", "local_java_runtime")\n' +
+-        'load("@local_config_platform//:constraints.bzl", "HOST_CONSTRAINTS")\n' +
++        'load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")\n' +
+         build_file +
+         local_java_runtime_macro,
+     )

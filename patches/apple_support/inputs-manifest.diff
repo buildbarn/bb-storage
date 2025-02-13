@@ -1,0 +1,21 @@
+diff --git rules/private/apple_genrule.bzl rules/private/apple_genrule.bzl
+index cdfd501..09b53c7 100644
+--- rules/private/apple_genrule.bzl
++++ rules/private/apple_genrule.bzl
+@@ -54,7 +54,7 @@ def _apple_genrule_impl(ctx):
+ 
+     xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
+ 
+-    resolved_inputs, argv, runfiles_manifests = ctx.resolve_command(
++    resolved_inputs, argv, _ = ctx.resolve_command(
+         command = ctx.attr.cmd,
+         attribute = "cmd",
+         expand_locations = True,
+@@ -86,7 +86,6 @@ def _apple_genrule_impl(ctx):
+         env = ctx.configuration.default_shell_env,
+         progress_message = "%s %s" % (message, ctx.label),
+         mnemonic = "Genrule",
+-        input_manifests = runfiles_manifests,
+         **extra_args
+     )
+ 

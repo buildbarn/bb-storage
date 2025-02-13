@@ -1,0 +1,91 @@
+diff --git lib/private/copy_to_bin.bzl lib/private/copy_to_bin.bzl
+index 2262db4..bccf61b 100644
+--- lib/private/copy_to_bin.bzl
++++ lib/private/copy_to_bin.bzl
+@@ -59,7 +59,7 @@ def copy_file_to_bin_action(ctx, file):
+ 
+     if not file.is_source:
+         return file
+-    if ctx.label.workspace_name != file.owner.workspace_name:
++    if ctx.label.repo_name != file.owner.repo_name:
+         fail(_file_in_external_repo_error_msg(file))
+     if ctx.label.package != file.owner.package:
+         fail(_file_in_different_package_error_msg(file, ctx.label))
+@@ -90,7 +90,7 @@ Cannot use copy_to_bin to copy {file_basename} from the external repository @{re
+ Files can only be copied from the source tree to their short path equivalent in the output tree.
+ """.format(
+         file_basename = file.basename,
+-        repository = file.owner.workspace_name,
++        repository = file.owner.repo_name,
+     )
+ 
+ def _file_in_different_package_error_msg(file, curr_package_label):
+@@ -107,9 +107,9 @@ target to {file_package} using:
+ 
+     """.format(
+         file_basename = file.basename,
+-        file_package = "%s//%s" % (file.owner.workspace_name, file.owner.package),
++        file_package = "%s//%s" % (file.owner.repo_name, file.owner.package),
+         target_name = paths.replace_extension(file.basename, ""),
+-        package = "%s//%s" % (curr_package_label.workspace_name, curr_package_label.package),
++        package = "%s//%s" % (curr_package_label.repo_name, curr_package_label.package),
+     )
+ 
+ def copy_files_to_bin_actions(ctx, files):
+diff --git lib/private/copy_to_directory.bzl lib/private/copy_to_directory.bzl
+index f584f51..e23dbde 100644
+--- lib/private/copy_to_directory.bzl
++++ lib/private/copy_to_directory.bzl
+@@ -463,7 +463,7 @@ def copy_to_directory_bin_action(
+             msg = "Expected owner target label for file {} to have a package name but found None".format(f)
+             fail(msg)
+ 
+-        if f.file.owner.workspace_name == None:
++        if f.file.owner.repo_name == None:
+             msg = "Expected owner target label for file {} to have a workspace name but found None".format(f)
+             fail(msg)
+ 
+@@ -478,7 +478,7 @@ def copy_to_directory_bin_action(
+             "path": f.path,
+             "root_path": f.root_path,
+             "short_path": f.short_path,
+-            "workspace": f.file.owner.workspace_name,
++            "workspace": f.file.owner.repo_name,
+             "workspace_path": f.workspace_path,
+             "hardlink": hardlink_file,
+         })
+@@ -509,7 +509,7 @@ def copy_to_directory_bin_action(
+         inputs = file_inputs + [config_file],
+         outputs = [dst],
+         executable = copy_to_directory_bin,
+-        arguments = [config_file.path, ctx.label.workspace_name],
++        arguments = [config_file.path, ctx.label.repo_name],
+         # TODO: Drop this after https://github.com/bazel-contrib/bazel-lib/issues/1146
+         env = {"GODEBUG": "winsymlink=0"},
+         mnemonic = "CopyToDirectory",
+diff --git lib/private/expand_variables.bzl lib/private/expand_variables.bzl
+index 33a1f6a..fd4f7de 100644
+--- lib/private/expand_variables.bzl
++++ lib/private/expand_variables.bzl
+@@ -85,7 +85,7 @@ def expand_variables(ctx, s, outs = [], inputs = [], attribute_name = "args"):
+     additional_substitutions["VERSION_FILE"] = ctx.version_file.path
+     additional_substitutions["INFO_FILE"] = ctx.info_file.path
+     additional_substitutions["TARGET"] = "{}//{}:{}".format(
+-        "@" + ctx.label.workspace_name if ctx.label.workspace_name else "",
++        "@" + ctx.label.repo_name if ctx.label.repo_name else "",
+         ctx.label.package,
+         ctx.label.name,
+     )
+diff --git lib/private/utils.bzl lib/private/utils.bzl
+index b6edb46..ea201d1 100644
+--- lib/private/utils.bzl
++++ lib/private/utils.bzl
+@@ -86,7 +86,7 @@ def _consistent_label_str(ctx, label):
+         external repository. For labels in the user's repository the label will start with `@//`.
+     """
+     return "@{}//{}:{}".format(
+-        "" if label.workspace_name == ctx.workspace_name else label.workspace_name,
++        "" if label.repo_name == ctx.workspace_name else label.repo_name,
+         label.package,
+         label.name,
+     )

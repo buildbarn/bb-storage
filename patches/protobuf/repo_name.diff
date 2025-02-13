@@ -1,0 +1,32 @@
+diff --git bazel/private/proto_library_rule.bzl bazel/private/proto_library_rule.bzl
+index e40546b9a..3f4592017 100644
+--- bazel/private/proto_library_rule.bzl
++++ bazel/private/proto_library_rule.bzl
+@@ -129,10 +129,10 @@ def _symlink_to_virtual_imports(ctx, srcs, import_prefix, strip_import_prefix):
+     virtual_imports = _join("_virtual_imports", ctx.label.name)
+     proto_path = _join(ctx.label.package, virtual_imports)
+ 
+-    if ctx.label.workspace_name == "":
++    if ctx.label.repo_name == "":
+         full_strip_import_prefix = strip_import_prefix
+     else:
+-        full_strip_import_prefix = _join("..", ctx.label.workspace_name, strip_import_prefix)
++        full_strip_import_prefix = _join("..", ctx.label.repo_name, strip_import_prefix)
+     if full_strip_import_prefix:
+         full_strip_import_prefix += "/"
+ 
+diff --git pkg/cc_dist_library.bzl pkg/cc_dist_library.bzl
+index c12b37ee4..39350249b 100644
+--- pkg/cc_dist_library.bzl
++++ pkg/cc_dist_library.bzl
+@@ -139,8 +139,8 @@ def _flatten_target_files(targets):
+         for target in targets
+         # Filter out targets from external workspaces. We also filter out
+         # utf8_range since that has a separate CMake build for now.
+-        if (target.label.workspace_name == "" or
+-            target.label.workspace_name == "com_google_protobuf") and
++        if (target.label.repo_name == "" or
++            target.label.repo_name == "com_google_protobuf") and
+            not target.label.package.startswith("third_party/utf8_range")
+     ])
+ 
