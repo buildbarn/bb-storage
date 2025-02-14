@@ -51,7 +51,6 @@ single_version_override(
 single_version_override(
     module_name = "grpc",
     patches = [
-        "//:patches/grpc/labels.diff",
         "//:patches/grpc/legacy-providers.diff",
         "//:patches/grpc/output-to-genfiles.diff",
     ],
