@@ -202,6 +202,6 @@ use_repo(
     "distroless_static_linux_arm64_v8",
 )
 
-register_execution_platforms("//platforms:myplatform")
+register_execution_platforms("//platforms:exec")
 
 xcode_configure = use_extension("@bazel_tools//tools/osx:xcode_configure.bzl", "xcode_configure_extension")
