@@ -502,6 +502,21 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      blobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_writing", nil
+	case *pb.BlobAccessConfiguration_DeadlineEnforcing:
+		base, err := nc.NewNestedBlobAccess(backend.DeadlineEnforcing.Backend, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+
+		timeout := backend.DeadlineEnforcing.Timeout
+		if err := timeout.CheckValid(); err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Invalid timeout for deadline enforcement")
+		}
+
+		return BlobAccessInfo{
+			BlobAccess:      blobstore.NewDeadlineEnforcingBlobAccess(base.BlobAccess, timeout.AsDuration()),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "deadline_enforcing", nil
 	}
 	return creator.NewCustomBlobAccess(configuration, nc)
 }
