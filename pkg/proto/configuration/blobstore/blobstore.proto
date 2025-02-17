@@ -194,6 +194,11 @@ message BlobAccessConfiguration {
 
     // Refer to a BlobAccess object declared through 'with_labels'.
     string label = 27;
+
+    // Sets the timeout of contexts passed to other backends to a known
+    // value. When gRPC calls are timed out a `DEADLINE_EXCEEDED` error
+    // code will be returned.
+    DeadlineEnforcingBlobAccess deadline_enforcing = 28;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -905,4 +910,14 @@ message WithLabelsBlobAccessConfiguration {
 
   // A map of string labels to backends that can be referenced.
   map<string, BlobAccessConfiguration> labels = 2;
+}
+
+message DeadlineEnforcingBlobAccess {
+  // The duration to use for the timeout. After this duration, the
+  // context will be cancelled, so please ensure this is long enough
+  // for any operations you expect to execute to finish.
+  google.protobuf.Duration timeout = 1;
+
+  // The backend to which all operations are delegated.
+  BlobAccessConfiguration backend = 2;
 }

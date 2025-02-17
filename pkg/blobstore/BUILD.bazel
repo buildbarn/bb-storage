@@ -9,6 +9,7 @@ go_library(
         "authorizing_blob_access.go",
         "blob_access.go",
         "cas_read_buffer_factory.go",
+        "deadline_enforcing_blob_access.go",
         "demultiplexing_blob_access.go",
         "empty_blob_injecting_blob_access.go",
         "error_blob_access.go",
