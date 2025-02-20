@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
@@ -25,7 +26,7 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group) (Authenticator, bool, bool, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group, grpcClientFactory ClientFactory) (Authenticator, bool, bool, error) {
 	if policy == nil {
 		return nil, false, false, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
@@ -41,7 +42,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		needsPeerTransportCredentials := false
 		requestTLSClientCertificate := false
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, false, false, err
 			}
@@ -55,7 +56,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		needsPeerTransportCredentials := false
 		requestTLSClientCertificate := false
 		for _, childConfiguration := range policyKind.All.Policies {
-			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, childNeedsPeerTransportCredentials, childRequestTLSClientCertificate, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, false, false, err
 			}
@@ -90,14 +91,54 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, false, false, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
-		return NewJWTAuthenticator(authorizationHeaderParser), false, false, nil
+		return NewRequestHeadersAuthenticator(authorizationHeaderParser, []string{jwt.AuthorizationHeaderName}), false, false, nil
 	case *configuration.AuthenticationPolicy_PeerCredentialsJmespathExpression:
 		metadataExtractor, err := jmespath.Compile(policyKind.PeerCredentialsJmespathExpression)
 		if err != nil {
 			return nil, false, false, util.StatusWrap(err, "Failed to compile peer credentials metadata extraction JMESPath expression")
 		}
 		return NewPeerCredentialsAuthenticator(metadataExtractor), true, false, nil
+	case *configuration.AuthenticationPolicy_Remote:
+		// TODO: With auth.RequestHeadersPolicy = oneof {auth.Jwt, auth.Remote}
+		// in the .proto definitions, the HTTP and gRPC authentication policy
+		// code could be unified. Unfortunately, that creates the .proto
+		// dependency cycle below:
+		//
+		//     grpc.ServerConfiguration ->
+		//     grpc.AuthenticationPolicy ->
+		//     auth.RequestHeadersAuthenticator ->
+		//     auth.RemoteAuthenticator ->
+		//     grpc.ClientConfiguration
+		//
+		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
+		// `grpc_server.proto` and `grpc_tracing_method.proto`.
+		authenticator, err := NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		if err != nil {
+			return nil, false, false, err
+		}
+		return NewRequestHeadersAuthenticator(authenticator, policyKind.Remote.Headers), false, false, nil
 	default:
 		return nil, false, false, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}
+}
+
+// NewRemoteRequestHeadersAuthenticatorFromConfiguration creates an
+// Authenticator that forwards authentication requests to a remote gRPC service.
+// This is a convenient way to integrate custom authentication processes.
+func NewRemoteRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
+	grpcClient, err := grpcClientFactory.NewClientFromConfiguration(configuration.Endpoint)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
+	}
+	evictionSet, err := eviction.NewSetFromConfiguration[auth.RemoteRequestHeadersAuthenticatorCacheKey](configuration.CacheReplacementPolicy)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Cache replacement policy for remote authentication")
+	}
+	return auth.NewRemoteRequestHeadersAuthenticator(
+		grpcClient,
+		configuration.Scope,
+		clock.SystemClock,
+		eviction.NewMetricsSet(evictionSet, "remote_authenticator"),
+		int(configuration.MaximumCacheSize),
+	), nil
 }

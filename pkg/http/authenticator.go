@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
@@ -31,7 +32,7 @@ type Authenticator interface {
 
 // NewAuthenticatorFromConfiguration creates a tree of Authenticator
 // objects based on a configuration file.
-func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group) (Authenticator, error) {
+func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolicy, group program.Group, grpcClientFactory grpc.ClientFactory) (Authenticator, error) {
 	if policy == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authentication policy not specified")
 	}
@@ -45,7 +46,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Any:
 		children := make([]Authenticator, 0, len(policyKind.Any.Policies))
 		for _, childConfiguration := range policyKind.Any.Policies {
-			child, err := NewAuthenticatorFromConfiguration(childConfiguration, group)
+			child, err := NewAuthenticatorFromConfiguration(childConfiguration, group, grpcClientFactory)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +60,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create authorization header parser for JWT authentication policy")
 		}
-		return NewJWTAuthenticator(authorizationHeaderParser), nil
+		authenticator, err := NewRequestHeadersAuthenticator(authorizationHeaderParser, []string{jwt.AuthorizationHeaderName})
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create request headers authenticator for JWT authentication policy")
+		}
+		return authenticator, nil
 	case *configuration.AuthenticationPolicy_Oidc:
 		// Select a name and encryption key for the session
 		// state cookie. Even though the configuration has a
@@ -119,11 +124,30 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			cookieAEAD,
 			clock.SystemClock)
 	case *configuration.AuthenticationPolicy_AcceptHeader:
-		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group)
+		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}
 		return NewAcceptHeaderAuthenticator(base, policyKind.AcceptHeader.MediaTypes), nil
+	case *configuration.AuthenticationPolicy_Remote:
+		// TODO: With auth.RequestHeadersPolicy = oneof {auth.Jwt, auth.Remote}
+		// in the .proto definitions, the HTTP and gRPC authentication policy
+		// code could be unified. Unfortunately, that creates the .proto
+		// dependency cycle below:
+		//
+		//     grpc.ServerConfiguration ->
+		//     grpc.AuthenticationPolicy ->
+		//     auth.RequestHeadersAuthenticator ->
+		//     auth.RemoteAuthenticator ->
+		//     grpc.ClientConfiguration
+		//
+		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
+		// `grpc_server.proto` and `grpc_tracing_method.proto`.
+		backend, err := grpc.NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		if err != nil {
+			return nil, err
+		}
+		return NewRequestHeadersAuthenticator(backend, policyKind.Remote.Headers)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Configuration did not contain an authentication policy type")
 	}

@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.http;
 
 import "pkg/proto/auth/auth.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 
@@ -92,6 +93,13 @@ message AuthenticationPolicy {
     // limit OpenID Connect authentication to requests originating from
     // a web browser.
     AcceptHeaderAuthenticationPolicy accept_header = 6;
+
+    // Forwards the authentication task to a remote server. This can be a
+    // convenient way to integrate custom authentication processes, for example
+    // if a proxy has already performed authentication where the resulting HTTP
+    // request's headers need to be verified and processed in a custom way to
+    // produce buildbarn.auth.AuthenticationMetadata.
+    buildbarn.configuration.grpc.RemoteAuthenticationPolicy remote = 7;
   }
 }
 

@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/auth:auth_proto",
+        "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/jwt:jwt_proto",
         "//pkg/proto/configuration/tls:tls_proto",
     ],
@@ -20,6 +21,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/auth",
+        "//pkg/proto/configuration/grpc",
         "//pkg/proto/configuration/jwt",
         "//pkg/proto/configuration/tls",
     ],

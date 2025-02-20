@@ -23,6 +23,7 @@ gomock(
     out = "auth.go",
     interfaces = [
         "Authorizer",
+        "RequestHeadersAuthenticator",
     ],
     library = "//pkg/auth",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
