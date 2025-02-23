@@ -1,7 +1,7 @@
 module(name = "com_github_buildbarn_bb_storage")
 
 bazel_dep(name = "aspect_bazel_lib", version = "2.13.0")
-bazel_dep(name = "aspect_rules_js", version = "2.1.3")
+bazel_dep(name = "aspect_rules_js", version = "2.2.0")
 bazel_dep(name = "bazel_remote_apis", version = "0")
 bazel_dep(name = "gazelle", version = "0.42.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20240819-fe8ba054a")
@@ -25,11 +25,6 @@ single_version_override(
         "//:patches/aspect_bazel_lib/incompatible-use-toolchain-transition.diff",
         "//:patches/aspect_bazel_lib/local-config-platform.diff",
     ],
-)
-
-single_version_override(
-    module_name = "aspect_rules_js",
-    patches = ["//:patches/aspect_rules_js/repo-name.diff"],
 )
 
 git_override(
