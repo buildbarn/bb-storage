@@ -62,6 +62,11 @@ single_version_override(
 )
 
 single_version_override(
+    module_name = "protobuf",
+    patches = ["//:patches/protobuf/repo_name.diff"],
+)
+
+single_version_override(
     module_name = "rules_go",
     patches = ["//:patches/rules_go/repo_name.diff"],
 )
