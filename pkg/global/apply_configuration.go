@@ -53,12 +53,13 @@ import (
 type LifecycleState struct {
 	config                          *pb.DiagnosticsHTTPServerConfiguration
 	activeSpansReportingHTTPHandler *bb_otel.ActiveSpansReportingHTTPHandler
+	grpcClientFactory               bb_grpc.ClientFactory
 }
 
 // MarkReadyAndWait can be called to report that the program has started
 // successfully. The application should now be reported as being healthy
 // and ready, and receive incoming requests if applicable.
-func (ls *LifecycleState) MarkReadyAndWait(group program.Group, grpcClientFactory bb_grpc.ClientFactory) {
+func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 	// Start a diagnostics web server that exposes Prometheus
 	// metrics and provides a health check endpoint.
 	if ls.config != nil {
@@ -78,7 +79,8 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group, grpcClientFactor
 			ls.config.HttpServers,
 			bb_http.NewMetricsHandler(router, "Diagnostics"),
 			group,
-			grpcClientFactory)
+			ls.grpcClientFactory,
+		)
 	}
 }
 
@@ -356,15 +358,19 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		}()
 	}
 
+	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(
+		bb_grpc.NewBaseClientFactory(
+			grpcClientDialer,
+			grpcUnaryInterceptors,
+			grpcStreamInterceptors,
+		),
+	)
 	return &LifecycleState{
 			config:                          configuration.GetDiagnosticsHttpServer(),
 			activeSpansReportingHTTPHandler: activeSpansReportingHTTPHandler,
+			grpcClientFactory:               grpcClientFactory,
 		},
-		bb_grpc.NewDeduplicatingClientFactory(
-			bb_grpc.NewBaseClientFactory(
-				grpcClientDialer,
-				grpcUnaryInterceptors,
-				grpcStreamInterceptors)),
+		grpcClientFactory,
 		nil
 }
 

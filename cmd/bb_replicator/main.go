@@ -70,7 +70,7 @@ func main() {
 			return util.StatusWrap(err, "gRPC server failure")
 		}
 
-		lifecycleState.MarkReadyAndWait(siblingsGroup, grpcClientFactory)
+		lifecycleState.MarkReadyAndWait(siblingsGroup)
 		return nil
 	})
 }
