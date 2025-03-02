@@ -3,9 +3,9 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "sharding",
     srcs = [
-        "shard_permuter.go",
+        "shard_selector.go",
         "sharding_blob_access.go",
-        "weighted_shard_permuter.go",
+        "rendezvous_shard_selector.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/sharding",
     visibility = ["//visibility:public"],
@@ -16,7 +16,6 @@ go_library(
         "//pkg/digest",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
-        "@com_github_lazybeaver_xorshift//:xorshift",
         "@org_golang_x_sync//errgroup",
     ],
 )
@@ -25,7 +24,7 @@ go_test(
     name = "sharding_test",
     srcs = [
         "sharding_blob_access_test.go",
-        "weighted_shard_permuter_test.go",
+        "rendezvous_shard_selector_test.go",
     ],
     deps = [
         ":sharding",
