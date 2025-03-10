@@ -16,6 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.14
 	github.com/bazelbuild/buildtools v0.0.0-20250204160707-ad48c76ab9b5
 	github.com/bazelbuild/remote-apis v0.0.0-20250211041012-7f922028fcfa
+	github.com/buildbarn/go-sha256tree v0.0.0-20250310211320-0f70f20e855b
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/google/go-jsonnet v0.20.0
@@ -43,7 +44,7 @@ require (
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067
 	golang.org/x/oauth2 v0.26.0
 	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.31.0
 	google.golang.org/api v0.221.0
 	google.golang.org/genproto/googleapis/bytestream v0.0.0-20250212204824-5a70512c5d8b
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b
