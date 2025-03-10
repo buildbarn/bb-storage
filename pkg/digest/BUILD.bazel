@@ -18,11 +18,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/clock",
-        "//pkg/digest/sha256tree",
         "//pkg/eviction",
         "//pkg/proto/configuration/digest",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@com_github_buildbarn_go_sha256tree//:go-sha256tree",
         "@com_github_google_uuid//:uuid",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

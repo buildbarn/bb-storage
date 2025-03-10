@@ -8,7 +8,7 @@ import (
 	"hash"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/digest/sha256tree"
+	"github.com/buildbarn/go-sha256tree"
 )
 
 // SupportedDigestFunctions is the list of digest functions supported by
