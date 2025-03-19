@@ -140,7 +140,6 @@ use_repo(
 )
 
 go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependency = True)
-go_deps_dev.config(debug_mode = True)
 go_deps_dev.gazelle_override(
     build_file_generation = "on",
     path = "github.com/cncf/xds/go",
@@ -215,5 +214,3 @@ use_repo(
 )
 
 register_execution_platforms("//platforms:exec")
-
-xcode_configure = use_extension("@bazel_tools//tools/osx:xcode_configure.bzl", "xcode_configure_extension")
