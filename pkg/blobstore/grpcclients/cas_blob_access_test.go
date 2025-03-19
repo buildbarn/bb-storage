@@ -36,6 +36,7 @@ func TestCASBlobAccessPut(t *testing.T) {
 
 	t.Run("InitialFailure", func(t *testing.T) {
 		// Failure to create the outgoing connection.
+		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
 			Return(nil, status.Error(codes.Internal, "Failed to create outgoing connection"))
 		r := mock.NewMockFileReader(ctrl)
@@ -52,12 +53,12 @@ func TestCASBlobAccessPut(t *testing.T) {
 		// should be returned.
 		clientStream := mock.NewMockClientStream(ctrl)
 		var savedCtx context.Context
+		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
 			DoAndReturn(func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 				savedCtx = ctx
 				return clientStream, nil
 			})
-		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		r := mock.NewMockFileReader(ctrl)
 		r.EXPECT().ReadAt(gomock.Len(5), int64(0)).Return(0, status.Error(codes.Internal, "Disk on fire"))
 		clientStream.EXPECT().CloseSend().DoAndReturn(func() error {
@@ -79,9 +80,9 @@ func TestCASBlobAccessPut(t *testing.T) {
 		// error message that is returned by
 		// ClientStream.CloseSend().
 		clientStream := mock.NewMockClientStream(ctrl)
+		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
 			Return(clientStream, nil)
-		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		r := mock.NewMockFileReader(ctrl)
 		r.EXPECT().ReadAt(gomock.Len(5), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")
@@ -104,9 +105,9 @@ func TestCASBlobAccessPut(t *testing.T) {
 		// Similar to the previous test, ClientStream.SendMsg()
 		// may fail with io.EOF for the final call.
 		clientStream := mock.NewMockClientStream(ctrl)
+		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
 			Return(clientStream, nil)
-		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		r := mock.NewMockFileReader(ctrl)
 		r.EXPECT().ReadAt(gomock.Len(5), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")
@@ -135,9 +136,9 @@ func TestCASBlobAccessPut(t *testing.T) {
 		// ClientStream.CloseSend() still fails. The error must
 		// still be propagated.
 		clientStream := mock.NewMockClientStream(ctrl)
+		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
 			Return(clientStream, nil)
-		uuidGenerator.EXPECT().Call().Return(uuid, nil)
 		r := mock.NewMockFileReader(ctrl)
 		r.EXPECT().ReadAt(gomock.Len(5), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")

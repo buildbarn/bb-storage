@@ -14,6 +14,7 @@ import (
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type casBlobAccess struct {
@@ -61,11 +62,17 @@ func (r *byteStreamChunkReader) Close() {
 	}
 }
 
+const resourceNameHeader = "build.bazel.remote.execution.v2.resource-name"
+
 func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	client, err := ba.byteStreamClient.Read(ctxWithCancel, &bytestream.ReadRequest{
-		ResourceName: digest.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
-	})
+	resourceName := digest.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY)
+	client, err := ba.byteStreamClient.Read(
+		metadata.AppendToOutgoingContext(ctxWithCancel, resourceNameHeader, resourceName),
+		&bytestream.ReadRequest{
+			ResourceName: resourceName,
+		},
+	)
 	if err != nil {
 		cancel()
 		return buffer.NewBufferFromError(err)
@@ -86,13 +93,15 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 	defer r.Close()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	client, err := ba.byteStreamClient.Write(ctxWithCancel)
+	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()), remoteexecution.Compressor_IDENTITY)
+	client, err := ba.byteStreamClient.Write(
+		metadata.AppendToOutgoingContext(ctxWithCancel, resourceNameHeader, resourceName),
+	)
 	if err != nil {
 		cancel()
 		return err
 	}
 
-	resourceName := digest.GetByteStreamWritePath(uuid.Must(ba.uuidGenerator()), remoteexecution.Compressor_IDENTITY)
 	writeOffset := int64(0)
 	for {
 		if data, err := r.Read(); err == nil {
