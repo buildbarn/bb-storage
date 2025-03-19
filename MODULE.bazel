@@ -27,6 +27,7 @@ single_version_override(
         "//:patches/aspect_bazel_lib/local-config-platform.diff",
         "//:patches/aspect_bazel_lib/no-build-file-path.diff",
         "//:patches/aspect_bazel_lib/repo-name.diff",
+        "//:patches/aspect_bazel_lib/root-is-external.diff",
     ],
 )
 
