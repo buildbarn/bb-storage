@@ -1,4 +1,4 @@
-package sharding
+package legacy
 
 import (
 	"sort"
