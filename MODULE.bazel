@@ -31,6 +31,11 @@ single_version_override(
     ],
 )
 
+single_version_override(
+    module_name = "aspect_rules_js",
+    patches = ["patches/aspect_rules_js/sh-toolchain.diff"],
+)
+
 git_override(
     module_name = "bazel_remote_apis",
     commit = "7f922028fcfac63bdd8431e68de152d9e7a9e2a0",
