@@ -1,0 +1,12 @@
+diff --git internal/gazelle_binary.bzl internal/gazelle_binary.bzl
+index fa1187c..5ee7aeb 100644
+--- internal/gazelle_binary.bzl
++++ internal/gazelle_binary.bzl
+@@ -63,7 +63,6 @@ var languages = []language.Language{{
+     )
+ 
+     return [
+-        library,
+         source,
+         archive,
+         OutputGroupInfo(compilation_outputs = [archive.data.file]),
