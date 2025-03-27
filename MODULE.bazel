@@ -16,6 +16,13 @@ bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "toolchains_llvm", version = "1.3.0")
 
 git_override(
+    module_name = "rules_oci",
+    commit = "858fe462208908b9a6416eb5151e41f1655c5b89",
+    remote = "git@github.com:bazel-contrib/rules_oci.git",
+)
+
+
+git_override(
     module_name = "bazel_remote_apis",
     commit = "7f922028fcfac63bdd8431e68de152d9e7a9e2a0",
     remote = "https://github.com/bazelbuild/remote-apis.git",
