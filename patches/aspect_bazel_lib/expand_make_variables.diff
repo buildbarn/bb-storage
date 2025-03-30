@@ -1,16 +1,20 @@
 diff --git lib/private/expand_variables.bzl lib/private/expand_variables.bzl
-index a1f75bf..b352727 100644
+index a1f75bf..41c72ae 100644
 --- lib/private/expand_variables.bzl
 +++ lib/private/expand_variables.bzl
-@@ -83,4 +83,35 @@ def expand_variables(ctx, s, outs = [], attribute_name = "args"):
+@@ -83,4 +83,39 @@ def expand_variables(ctx, s, outs = [], attribute_name = "args"):
      )
      additional_substitutions["WORKSPACE"] = ctx.workspace_name
  
 -    return ctx.expand_make_variables(attribute_name, s, additional_substitutions)
++    location_targets = getattr(ctx.attr, "srcs", []) + getattr(ctx.attr, "deps", [])
++
 +    def get_value(variable_name):
 +        if variable_name in additional_substitutions:
 +            return additional_substitutions[variable_name]
-+        return ctx.var[variable_name]
++        if variable_name in ctx.var:
++            return ctx.var[variable_name]
++        return ctx.expand_location("$(%s)" % variable_name, location_targets)
 +
 +    result = ""
 +    state = 0

@@ -1,0 +1,13 @@
+diff --git python/private/python_repository.bzl python/private/python_repository.bzl
+index c7407c8f..d97eb7d7 100644
+--- python/private/python_repository.bzl
++++ python/private/python_repository.bzl
+@@ -127,7 +127,7 @@ def _python_repository_impl(rctx):
+     # pycs being generated at runtime:
+     # * The pycs are not deterministic (they contain timestamps)
+     # * Multiple processes trying to write the same pycs can result in errors.
+-    if not rctx.attr.ignore_root_user_error:
++    if False:
+         if "windows" not in platform:
+             lib_dir = "lib" if "windows" not in platform else "Lib"
+ 

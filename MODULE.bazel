@@ -11,6 +11,7 @@ bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "protobuf", version = "29.3")
 bazel_dep(name = "rules_foreign_cc", version = "0.14.0")
 bazel_dep(name = "rules_go", version = "0.53.0")
+bazel_dep(name = "rules_java", version = "8.11.0")
 bazel_dep(name = "rules_jsonnet", version = "0.6.0")
 bazel_dep(name = "rules_nodejs", version = "6.3.3")
 bazel_dep(name = "rules_oci", version = "2.2.2")
@@ -33,7 +34,11 @@ single_version_override(
 
 single_version_override(
     module_name = "aspect_rules_js",
-    patches = ["patches/aspect_rules_js/sh-toolchain.diff"],
+    patches = [
+        "patches/aspect_rules_js/build-file-path.diff",
+        "patches/aspect_rules_js/ctx-var.diff",
+        "patches/aspect_rules_js/sh-toolchain.diff",
+    ],
 )
 
 git_override(
@@ -87,6 +92,7 @@ single_version_override(
 single_version_override(
     module_name = "rules_python",
     patches = [
+        "//:patches/rules_python/ignore_root_user_error.diff",
         "//:patches/rules_python/label-relative.diff",
         "//:patches/rules_python/recursive-enum.diff",
         "//:patches/rules_python/repo-name.diff",

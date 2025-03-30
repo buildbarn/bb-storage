@@ -1,0 +1,13 @@
+diff --git js/private/js_binary.bzl js/private/js_binary.bzl
+index 1d4044c3..196a5fab 100644
+--- js/private/js_binary.bzl
++++ js/private/js_binary.bzl
+@@ -372,7 +372,7 @@ def _bash_launcher(ctx, nodeinfo, entry_point_path, log_prefix_rule_set, log_pre
+ 
+     # Add rule context variables to the environment
+     builtins = {
+-        "JS_BINARY__BUILD_FILE_PATH": ctx.build_file_path,
++        "JS_BINARY__BUILD_FILE_PATH": ctx.label.package + "/BUILD",
+         "JS_BINARY__PACKAGE": ctx.label.package,
+         "JS_BINARY__TARGET_NAME": ctx.label.name,
+         "JS_BINARY__TARGET": "{}//{}:{}".format(
