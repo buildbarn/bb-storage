@@ -33,8 +33,8 @@ def multiarch_go_image(name, binary):
         name = name,
         images = [image_target],
         platforms = [
-            "@rules_go//go/toolchain:linux_" + arch
-            for arch in ["amd64", "arm64"]
+            "@rules_go//go/toolchain:linux_amd64",
+            "@rules_go//go/toolchain:linux_arm64"
         ]
     )
 
