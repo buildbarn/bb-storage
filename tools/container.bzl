@@ -1,4 +1,3 @@
-load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
@@ -9,7 +8,7 @@ def multiarch_go_image(name, binary):
         name: resulting oci_image_index target
         binary: label of a go_binary target; it may be transitioned to another architecture
     """
-    images = []
+
     tar_target = "_{}.tar".format(name)
     image_target = "_{}.image".format(name)
 
@@ -30,19 +29,13 @@ def multiarch_go_image(name, binary):
         tags = ["manual"],
     )
 
-    for arch in ["amd64", "arm64"]:
-        arch_image_target = "{}_{}_image".format(name, arch)
-        target_platform = "@rules_go//go/toolchain:linux_" + arch
-        images.append(arch_image_target)
-        platform_transition_filegroup(
-            name = arch_image_target,
-            srcs = [image_target],
-            target_platform = target_platform,
-        )
-
     oci_image_index(
         name = name,
-        images = images,
+        images = [image_target],
+        platforms = [
+            "@rules_go//go/toolchain:linux_amd64",
+            "@rules_go//go/toolchain:linux_arm64",
+        ],
     )
 
 def container_push_official(name, image, component):
