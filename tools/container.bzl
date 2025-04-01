@@ -34,8 +34,8 @@ def multiarch_go_image(name, binary):
         images = [image_target],
         platforms = [
             "@rules_go//go/toolchain:linux_amd64",
-            "@rules_go//go/toolchain:linux_arm64"
-        ]
+            "@rules_go//go/toolchain:linux_arm64",
+        ],
     )
 
 def container_push_official(name, image, component):
