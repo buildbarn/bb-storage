@@ -114,7 +114,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 		require.Equal(t, http.Header{
 			"Content-Type": []string{"text/html; charset=utf-8"},
 			"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
-			"Set-Cookie":   []string{"CookieName=W9GbOSKiQqu9n_US; Path=/; HttpOnly; Secure; SameSite=Strict"},
+			"Set-Cookie":   []string{"CookieName=W9GbOSKiQqu9n_US; Path=/; HttpOnly; Secure; SameSite=Lax"},
 		}, w.HeaderMap)
 	})
 
@@ -174,7 +174,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 		require.Equal(t, http.Header{
 			"Content-Type": []string{"text/html; charset=utf-8"},
 			"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=JdjAtlfx8T6veAFAPKlL3w"},
-			"Set-Cookie":   []string{"CookieName=oW0f8kXFDrvmDiwv; Path=/; HttpOnly; Secure; SameSite=Strict"},
+			"Set-Cookie":   []string{"CookieName=oW0f8kXFDrvmDiwv; Path=/; HttpOnly; Secure; SameSite=Lax"},
 		}, w.HeaderMap)
 	})
 
@@ -277,7 +277,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 		testutil.RequireEqualProto(t, expectedAuthenticationMetadata, metadata.GetFullProto())
 
 		require.Equal(t, http.Header{
-			"Set-Cookie": []string{"CookieName=z8xDvfTz6dcZKSOD; Path=/; HttpOnly; Secure; SameSite=Strict"},
+			"Set-Cookie": []string{"CookieName=z8xDvfTz6dcZKSOD; Path=/; HttpOnly; Secure; SameSite=Lax"},
 		}, w.HeaderMap)
 	})
 
@@ -379,7 +379,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 		testutil.RequireEqualProto(t, expectedAuthenticationMetadata, metadata.GetFullProto())
 
 		require.Equal(t, http.Header{
-			"Set-Cookie": []string{"CookieName=qeOfxfw5kc1m0buV; Path=/; HttpOnly; Secure; SameSite=Strict"},
+			"Set-Cookie": []string{"CookieName=qeOfxfw5kc1m0buV; Path=/; HttpOnly; Secure; SameSite=Lax"},
 		}, w.HeaderMap)
 	})
 

@@ -117,7 +117,7 @@ func (a *oidcAuthenticator) setCookieValue(w http.ResponseWriter, cookieValue *o
 		Path:     "/",
 		Secure:   true,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
 }
