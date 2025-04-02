@@ -1,0 +1,12 @@
+diff --git python/private/common.bzl python/private/common.bzl
+index 137f0d23..af46e3a5 100644
+--- python/private/common.bzl
++++ python/private/common.bzl
+@@ -325,7 +325,6 @@ def get_imports(ctx):
+     )
+     result = []
+     for import_str in ctx.attr.imports:
+-        import_str = ctx.expand_make_variables("imports", import_str, {})
+         if import_str.startswith("/"):
+             continue
+ 
