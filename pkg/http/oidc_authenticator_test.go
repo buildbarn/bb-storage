@@ -118,6 +118,59 @@ func TestOIDCAuthenticator(t *testing.T) {
 		}, w.HeaderMap)
 	})
 
+	t.Run("RegularPageRequestWithoutCookie", func(t *testing.T) {
+		// If a page request is performed against an arbitrary URL
+		// without any cookie being set, we should receive a
+		// redirect. A page request is indicated by the
+		// Sec-Fetch-Dest=document header.
+		stateVerifier := []byte{0x75, 0xe6, 0x5d, 0xc1, 0x2c, 0x0e, 0x35, 0x16, 0x8a, 0xbd, 0xc7, 0xc7, 0x39, 0xa4, 0xd0, 0xe0}
+		expectRead(randomNumberGenerator, stateVerifier)
+		nonce := []byte{0x5b, 0xd1, 0x9b, 0x39}
+		expectRead(randomNumberGenerator, nonce)
+		cookieAEAD.EXPECT().Seal(
+			gomock.Any(),
+			nonce,
+			protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticating_{
+					Authenticating: &oidc.CookieValue_Authenticating{
+						StateVerifier:      stateVerifier,
+						OriginalRequestUri: "/index.html?foo=bar&baz=qux",
+					},
+				},
+			}),
+			nil,
+		).DoAndReturn(func(dst, nonce, plaintext, additionalData []byte) []byte {
+			return append(dst, 0x22, 0xa2, 0x42, 0xab, 0xbd, 0x9f, 0xf5, 0x12)
+		})
+
+		w := httptest.NewRecorder()
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://myserver.com/index.html?foo=bar&baz=qux", nil)
+		require.NoError(t, err)
+		r.Header.Set("Sec-Fetch-Dest", "document")
+		metadata, err := authenticator.Authenticate(w, r)
+		require.NoError(t, err)
+		require.Nil(t, metadata)
+
+		require.Equal(t, http.StatusSeeOther, w.Code)
+		require.Equal(t, http.Header{
+			"Content-Type": []string{"text/html; charset=utf-8"},
+			"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
+			"Set-Cookie":   []string{"CookieName=W9GbOSKiQqu9n_US; Path=/; HttpOnly; Secure; SameSite=Lax"},
+		}, w.HeaderMap)
+	})
+
+	t.Run("RegularXhrRequestWithoutCookie", func(t *testing.T) {
+		// If a XHR-request is performed against an arbitrary URL without
+		// any cookie being set, we should receive a 401 Unauthorized.
+		// A XHR request is indicated by the Sec-Fetch-Dest=empty header.
+		w := httptest.NewRecorder()
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://myserver.com/index.html?foo=bar&baz=qux", nil)
+		require.NoError(t, err)
+		r.Header.Set("Sec-Fetch-Dest", "empty")
+		_, err = authenticator.Authenticate(w, r)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unauthenticated, "No valid OIDC session state cookie found"), err)
+	})
+
 	t.Run("RegularRequestExpiredAccessTokenWithoutRefreshToken", func(t *testing.T) {
 		// If the access token has expired and no refresh token
 		// is present, attempting to open an arbitrary URL
