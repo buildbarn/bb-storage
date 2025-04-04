@@ -254,7 +254,14 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// No valid session present. Redirect to the authorization service.
+	// No valid session present. Redirect to the authorization service if this
+	// is a top level page navigation (or unknown). Otherwise, return a 401
+	// Unauthorized.
+
+	if fetchType := r.Header.Get("Sec-Fetch-Dest"); fetchType != "" && fetchType != "document" {
+		return nil, status.Error(codes.Unauthenticated, "No valid OIDC session state cookie found")
+	}
+
 	var stateVerifier [16]byte
 	if _, err := a.randomNumberGenerator.Read(stateVerifier[:]); err != nil {
 		return nil, err
