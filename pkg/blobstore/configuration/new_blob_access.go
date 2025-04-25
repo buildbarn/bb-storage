@@ -3,11 +3,13 @@ package configuration
 import (
 	"archive/zip"
 	"context"
+	"crypto/tls"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cassandra"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -569,6 +571,41 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      blobstore.NewDeadlineEnforcingBlobAccess(base.BlobAccess, timeout.AsDuration()),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "deadline_enforcing", nil
+
+	case *pb.BlobAccessConfiguration_Cassandra:
+		config := backend.Cassandra
+
+		var cassandraTLSConfig *tls.Config
+		if config.Tls != nil {
+			var err error
+			cassandraTLSConfig, err = util.NewTLSConfigFromClientConfiguration(config.Tls)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create tls config")
+			}
+		} else {
+			cassandraTLSConfig = nil
+		}
+
+		blobAccess := cassandra.NewCassandraBlobAccess(
+			creator.GetDefaultCapabilitiesProvider(),
+			readBufferFactory,
+			cassandraTLSConfig,
+			config.Port,
+			config.ProtocolVersion,
+			config.Username,
+			config.Password,
+			config.Hosts,
+			config.Keyspace,
+			config.TablePrefix,
+			config.SegmentSizeBytes,
+			config.PreferredDc,
+			config.LastAccessUpdateInterval.AsDuration(),
+			config.UniversalInstanceName,
+		)
+		return BlobAccessInfo{
+			BlobAccess:      blobAccess,
+			DigestKeyFormat: creator.GetBaseDigestKeyFormat(),
+		}, "cassandra", nil
 	}
 	return creator.NewCustomBlobAccess(configuration, nc)
 }
