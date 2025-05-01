@@ -1,0 +1,13 @@
+diff --git oci/private/image.bzl oci/private/image.bzl
+index 73a0d57..b12871a 100644
+--- oci/private/image.bzl
++++ oci/private/image.bzl
+@@ -110,7 +110,7 @@ def _calculate_descriptor(ctx, idx, layer, zstd, jq, coreutils, regctl):
+     args = ctx.actions.args()
+     args.add(layer)
+     args.add(descriptor)
+-    args.add(layer.owner)
++    args.add(str(layer.owner))
+     ctx.actions.run(
+         executable = util.maybe_wrap_launcher_for_windows(ctx, ctx.executable._descriptor_sh),
+         inputs = [layer],

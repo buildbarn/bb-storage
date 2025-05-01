@@ -83,7 +83,10 @@ single_version_override(
 
 single_version_override(
     module_name = "rules_java",
-    patches = ["//:patches/rules_java/repo_name.diff"],
+    patches = [
+        "//:patches/rules_java/repo_name.diff",
+        "//:patches/rules_java/host-constraints.diff",
+    ],
 )
 
 single_version_override(
@@ -95,8 +98,16 @@ single_version_override(
 )
 
 single_version_override(
+    module_name = "rules_oci",
+    patches = [
+        "//:patches/rules_oci/args-add.diff",
+    ],
+)
+
+single_version_override(
     module_name = "rules_python",
     patches = [
+        "//:patches/rules_python/args-add-str.diff",
         "//:patches/rules_python/expand_make_variables.diff",
         "//:patches/rules_python/ignore_root_user_error.diff",
         "//:patches/rules_python/label-relative.diff",
