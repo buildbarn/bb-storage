@@ -12,6 +12,7 @@ import "pkg/proto/configuration/cloud/gcp/gcp.proto";
 import "pkg/proto/configuration/digest/digest.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/http/http.proto";
+import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
@@ -199,6 +200,11 @@ message BlobAccessConfiguration {
     // value. When gRPC calls are timed out a `DEADLINE_EXCEEDED` error
     // code will be returned.
     DeadlineEnforcingBlobAccess deadline_enforcing = 28;
+
+    // Use Cassandra for storing blobs. It is recommended to use this
+    // backend in conjunction with a `local` store as part of a
+    // `read_caching` backend.
+    CassandraBlobAccessConfiguration cassandra = 29;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -934,4 +940,53 @@ message DeadlineEnforcingBlobAccess {
 
   // The backend to which all operations are delegated.
   BlobAccessConfiguration backend = 2;
+}
+
+message CassandraBlobAccessConfiguration {
+  // The hosts to use, assuming no discovery is being used.
+  repeated string hosts = 1;
+  // Override the port to connect on from the default.
+  int32 port = 2;
+
+  buildbarn.configuration.tls.ClientConfiguration tls = 3;
+
+  // The Cassandra protocol version. This can normally be omitted from
+  // your config.
+  int32 protocolVersion = 4;
+
+  // If using a `NetworkTopologyStrategy` and a Cassandra instance with hosts
+  // in multiple locations, setting this enables host selection policies
+  // which will prioritize and return hosts which are in the specified
+  // datacentre before returning hosts in all other datercentres.
+  string preferredDc = 5;
+
+  // User name and password for connecting to the database.
+  string username = 6;
+  string password = 7;
+
+  // Keyspace to use
+  string keyspace = 8;
+
+  // The maximum size of a segment before a new one is created. Cassandra
+  // has a maximum row size of 1MB, so blobs larger than the value of this
+  // option will be broken up into a series of "segments", each of which is
+  // `segment_size_bytes` except for the last, which may be smaller. It is
+  // desirable to minimise the number of segments, so this value may need
+  // some tuning based on your usage, however a sensible starting point is to
+  // use a value of 512KB (524288 bytes)
+  int32 segment_size_bytes = 9;
+
+  // Only update the last access timestamp for a node after this
+  // duration is exceeded.
+  google.protobuf.Duration last_access_update_interval = 10;
+
+  // The table prefix to use when accessing data. This is required, and
+  // using it allows you to host multiple different environments in the same
+  // keyspace. Suggested values are `prod` and `uat`.
+  string table_prefix = 11;
+
+  // Anything that comes with the `Digest.InstanceName` set to this value will
+  // be stored in cassandra with the `digest_instance_name` value set to the
+  // empty string.
+  string universal_instance_name = 12;
 }
