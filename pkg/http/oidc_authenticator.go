@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
@@ -29,7 +30,7 @@ import (
 type oidcAuthenticator struct {
 	oauth2Config          *oauth2.Config
 	redirectURLPath       string
-	userInfoURL           string
+	claimsFetcher         OIDCClaimsFetcher
 	metadataExtractor     *jmespath.JMESPath
 	httpClient            *http.Client
 	randomNumberGenerator random.ThreadSafeGenerator
@@ -45,7 +46,7 @@ type oidcAuthenticator struct {
 // info endpoint, and transforming it using a JMESPath expression.
 func NewOIDCAuthenticator(
 	oauth2Config *oauth2.Config,
-	userInfoURL string,
+	claimsFetcher OIDCClaimsFetcher,
 	metadataExtractor *jmespath.JMESPath,
 	httpClient *http.Client,
 	randomNumberGenerator random.ThreadSafeGenerator,
@@ -63,7 +64,7 @@ func NewOIDCAuthenticator(
 	return &oidcAuthenticator{
 		oauth2Config:          oauth2Config,
 		redirectURLPath:       redirectURL.Path,
-		userInfoURL:           userInfoURL,
+		claimsFetcher:         claimsFetcher,
 		metadataExtractor:     metadataExtractor,
 		httpClient:            httpClient,
 		randomNumberGenerator: randomNumberGenerator,
@@ -123,29 +124,9 @@ func (a *oidcAuthenticator) setCookieValue(w http.ResponseWriter, cookieValue *o
 }
 
 func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oauth2.Token, defaultExpiration time.Duration, w http.ResponseWriter) (*auth.AuthenticationMetadata, error) {
-	// Obtain claims from the user info endpoint.
-	claimsRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, a.userInfoURL, nil)
+	claims, err := a.claimsFetcher.FetchClaimsForToken(ctx, token)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to create user info request")
-	}
-	claimsResponse, err := a.oauth2Config.Client(ctx, token).Do(claimsRequest)
-	if err != nil {
-		// Strip the user info endpoint URL from the error
-		// message, as it's not for the user to see.
-		var urlErr *url.Error
-		if errors.As(err, &urlErr) {
-			err = urlErr.Unwrap()
-		}
-		return nil, util.StatusWrap(err, "Failed to request claims")
-	}
-	defer claimsResponse.Body.Close()
-	if claimsResponse.StatusCode != 200 {
-		return nil, status.Errorf(codes.Unavailable, "Requesting claims failed with HTTP status %#v", claimsResponse.Status)
-	}
-	var claims interface{}
-	err = json.NewDecoder(claimsResponse.Body).Decode(&claims)
-	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to unmarshal claims")
+		return nil, util.StatusWrap(err, "Failed to obtain claims")
 	}
 
 	// Convert claims to authentication metadata.
@@ -279,4 +260,85 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 	authCodeURL := a.oauth2Config.AuthCodeURL(base64.RawURLEncoding.EncodeToString(stateVerifier[:]))
 	http.Redirect(w, r, authCodeURL, http.StatusSeeOther)
 	return nil, nil
+}
+
+// OIDCClaimsFetcher is an interface that allows fetching user info claims
+// different sources, such as a user info endpoint or a ID token.
+type OIDCClaimsFetcher interface {
+	FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (any, error)
+}
+
+type userInfoOIDCClaimsFetcher struct {
+	oauth2Config *oauth2.Config
+	userInfoURL  string
+}
+
+// NewUserInfoOIDCClaimsFetcher creates an OIDCClaimsFetcher that fetches
+// user info claims from the OpenID Connect user info endpoint.
+func NewUserInfoOIDCClaimsFetcher(
+	oauth2Config *oauth2.Config,
+	userInfoURL string,
+) OIDCClaimsFetcher {
+	return &userInfoOIDCClaimsFetcher{
+		oauth2Config: oauth2Config,
+		userInfoURL:  userInfoURL,
+	}
+}
+
+func (cf *userInfoOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (interface{}, error) {
+	claimsRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, cf.userInfoURL, nil)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create user info request")
+	}
+	claimsResponse, err := cf.oauth2Config.Client(ctx, token).Do(claimsRequest)
+	if err != nil {
+		// Strip the user info endpoint URL from the error
+		// message, as it's not for the user to see.
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Unwrap()
+		}
+		return nil, util.StatusWrap(err, "Failed to request claims")
+	}
+	defer claimsResponse.Body.Close()
+	if claimsResponse.StatusCode != 200 {
+		return nil, status.Errorf(codes.Unavailable, "Requesting claims failed with HTTP status %#v", claimsResponse.Status)
+	}
+	var claims interface{}
+	err = json.NewDecoder(claimsResponse.Body).Decode(&claims)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to unmarshal claims")
+	}
+
+	return claims, nil
+}
+
+type idTokenOIDCClaimsFetcher struct{}
+
+// IDTokenOIDCClaimsFetcher is an OIDCClaimsFetcher that fetches user info
+// claims from the ID token present in the OAuth2 token response.
+var IDTokenOIDCClaimsFetcher OIDCClaimsFetcher = idTokenOIDCClaimsFetcher{}
+
+func (idTokenOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (interface{}, error) {
+	idToken, ok := token.Extra("id_token").(string)
+	if !ok || idToken == "" {
+		return nil, status.Error(codes.Internal, "No ID token present in OIDC server response")
+	}
+
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return nil, status.Error(codes.Internal, "Invalid ID token format")
+	}
+
+	claimsDecoded, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to decode ID token claims")
+	}
+
+	var claims interface{}
+	if err := json.Unmarshal(claimsDecoded, &claims); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to unmarshal ID token claims")
+	}
+
+	return claims, nil
 }

@@ -11,6 +11,8 @@ proto_library(
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/jwt:jwt_proto",
         "//pkg/proto/configuration/tls:tls_proto",
+        "@protobuf//:duration_proto",
+        "@protobuf//:empty_proto",
     ],
 )
 

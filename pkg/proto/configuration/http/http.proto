@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.http;
 
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
@@ -123,10 +125,19 @@ message OIDCAuthenticationPolicy {
   // it to obtain access tokens and refresh tokens.
   string token_endpoint_url = 4;
 
-  // The URL of the user info endpoint. The HTTP server will make calls
-  // to it to obtain information about the end-user (i.e., claims).
-  string user_info_endpoint_url = 5;
+  // The source of user information that can be used to populate the
+  // buildbarn.auth.AuthenticationMetadata object.
+  oneof user_info_source {
+    // Uses a user info endpoint as the source of information. The HTTP server
+    // will make calls to the configured URL to obtain information about the
+    // end-user (i.e., claims).
+    string user_info_endpoint_url = 5;
 
+    // Uses the ID token as the source of information. This is nessecary when
+    // using some OIDC providers as they only provide some claims in the ID
+    // token and not in the user info endpoint.
+    google.protobuf.Empty use_id_token_claims = 11;
+  }
   // JMESPath expression for converting claims to a Protobuf message of
   // type buildbarn.auth.AuthenticationMetadata. The resulting metadata
   // can be used for purposes such as authorization.
