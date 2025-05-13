@@ -103,18 +103,33 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, util.StatusWrap(err, "Failed to create OIDC HTTP client")
 		}
 
-		return NewOIDCAuthenticator(
-			&oauth2.Config{
-				ClientID:     policyKind.Oidc.ClientId,
-				ClientSecret: policyKind.Oidc.ClientSecret,
-				Endpoint: oauth2.Endpoint{
-					AuthURL:  policyKind.Oidc.AuthorizationEndpointUrl,
-					TokenURL: policyKind.Oidc.TokenEndpointUrl,
-				},
-				RedirectURL: policyKind.Oidc.RedirectUrl,
-				Scopes:      policyKind.Oidc.Scopes,
+		oauth2Config := &oauth2.Config{
+			ClientID:     policyKind.Oidc.ClientId,
+			ClientSecret: policyKind.Oidc.ClientSecret,
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  policyKind.Oidc.AuthorizationEndpointUrl,
+				TokenURL: policyKind.Oidc.TokenEndpointUrl,
 			},
-			policyKind.Oidc.UserInfoEndpointUrl,
+			RedirectURL: policyKind.Oidc.RedirectUrl,
+			Scopes:      policyKind.Oidc.Scopes,
+		}
+
+		var oidcClaimsFetcher OIDCClaimsFetcher
+		switch policyKind.Oidc.UserInfoSource.(type) {
+		case *configuration.OIDCAuthenticationPolicy_UserInfoEndpointUrl:
+			oidcClaimsFetcher = &userInfoOIDCClaimsFetcher{
+				oauth2Config: oauth2Config,
+				userInfoURL:  policyKind.Oidc.GetUserInfoEndpointUrl(),
+			}
+		case *configuration.OIDCAuthenticationPolicy_UseIdTokenClaims:
+			oidcClaimsFetcher = &idTokenOIDCClaimsFetcher{}
+		default:
+			return nil, status.Error(codes.InvalidArgument, "OIDC user info source not specified")
+		}
+
+		return NewOIDCAuthenticator(
+			oauth2Config,
+			oidcClaimsFetcher,
 			metadataExtractor,
 			&http.Client{
 				Transport: NewMetricsRoundTripper(roundTripper, "OIDCAuthenticator"),
