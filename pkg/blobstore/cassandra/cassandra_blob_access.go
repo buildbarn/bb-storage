@@ -160,7 +160,7 @@ func (a *cassandraBlobAccess) Get(ctx context.Context, digest bbdigest.Digest) b
 		return buffer.NewBufferFromError(err)
 	}
 
-	go a.tables.metadata.updateLastAccessTime(context.Background(), digest, metadata.instanceName, metadata.lastAccess, a.lastAccessUpdateInterval, a.lastAccessUpdate)
+	a.tables.metadata.updateLastAccessTime(context.Background(), digest, metadata.instanceName, metadata.lastAccess, a.lastAccessUpdateInterval, a.lastAccessUpdate)
 
 	reader := sequentialReader{
 		ctx:           ctx,
@@ -311,7 +311,7 @@ func (a *cassandraBlobAccess) isMissing(ctx context.Context, digest bbdigest.Dig
 		return err
 	}
 
-	go a.tables.metadata.updateLastAccessTime(context.Background(), digest, metadata.instanceName, metadata.lastAccess, a.lastAccessUpdateInterval, a.lastAccessUpdate)
+	a.tables.metadata.updateLastAccessTime(context.Background(), digest, metadata.instanceName, metadata.lastAccess, a.lastAccessUpdateInterval, a.lastAccessUpdate)
 
 	return nil
 }
@@ -453,12 +453,12 @@ func (t *metadataTable) update(ctx context.Context, digest bbdigest.Digest, blob
 func (t *metadataTable) updateLastAccessTime(ctx context.Context, digest bbdigest.Digest, instanceName string, lastAccessed time.Time, lastAccessUpdateInterval time.Duration, lastAccessUpdate chan<- func()) {
 	// Note, we are "adding" a negative duration. `Sub` takes a `time.Time` and returns a `time.Duration`, which
 	// is the opposite of what we want.
-	window := time.Now().Add(lastAccessUpdateInterval * -1)
+	window := time.Now().Add(-lastAccessUpdateInterval)
 	if lastAccessed.After(window) {
 		return
 	}
 
-	lastAccessUpdate <- func() {
+	updaterFunc := func() {
 		// This query might insert a row with (blob_id, segment_count, segment_size) == (null, null, null), which is fine.
 		// Such a row should be considered missing from the POV of the service. Eventually, it will either be updated again
 		// with a blobID or (more likely) be reaped.
@@ -479,6 +479,19 @@ func (t *metadataTable) updateLastAccessTime(ctx context.Context, digest bbdiges
 			logErrorIfNotCancelledContext(err, "Unable to update last access time for %s", digest.String())
 			lastAccessUpdatesFailures.Inc()
 		}
+	}
+
+	select {
+	case lastAccessUpdate <- updaterFunc:
+		// Fantastic. We're able to update the last access time.
+	default:
+		// This isn't ideal, but one of two things is going to happen:
+		//  1. The digest won't be accessed again, and will age out sooner
+		//  2. The digest will be accessed again, and maybe next time we'll
+		//     be able to update it.
+		// Either way, we're making the trade-off of a possible inability to
+		// update _everything_ properly for not blocking other operations in
+		// this blobstore.
 	}
 }
 
