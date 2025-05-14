@@ -279,12 +279,28 @@ func (a *cassandraBlobAccess) FindMissing(ctx context.Context, digests bbdigest.
 	builder := bbdigest.NewSetBuilder()
 	var mu sync.Mutex
 
-	g, errCtx := errgroup.WithContext(ctx)
+	cancellableCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	g, errCtx := errgroup.WithContext(cancellableCtx)
+
+	sem := make(chan struct{}, simultaneousWorkers)
+
 	// Try not to be a terrible, terrible citizen
-	g.SetLimit(simultaneousWorkers)
 	for _, digest := range digests.Items() {
+		sem <- struct{}{}
+
 		g.Go(func() error {
-			return a.isMissing(errCtx, digest, &builder, &mu)
+			defer func() {
+				<-sem
+			}()
+
+			err := a.isMissing(errCtx, digest, &builder, &mu)
+			if err != nil {
+				cancel()
+				return err
+			}
+			return nil
 		})
 	}
 	err := g.Wait()
