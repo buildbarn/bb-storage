@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_estimateSegmentCount(t *testing.T) {
+func Test_getSegmentCount(t *testing.T) {
 	tests := []struct {
 		segmentSize int32
 		sizeInBytes int64
@@ -20,7 +20,7 @@ func Test_estimateSegmentCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			require.Equal(t, tt.want, estimateSegmentCount(tt.segmentSize, tt.sizeInBytes))
+			require.Equal(t, tt.want, getSegmentCount(tt.segmentSize, tt.sizeInBytes))
 		})
 	}
 }
