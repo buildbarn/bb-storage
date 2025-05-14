@@ -23,13 +23,15 @@ CREATE TABLE IF NOT EXISTS prod_metadata (
     last_access TIMESTAMP,
     segment_count INT,
     segment_size INT,
-    PRIMARY KEY ((digest_function, digest_hash, digest_size_bytes, digest_instance_name)));
+    PRIMARY KEY ((digest_function, digest_hash, digest_size_bytes, digest_instance_name)))
+    WITH gc_grace_seconds = 86400;
 
 CREATE TABLE IF NOT EXISTS prod_content (
     blob_id ASCII,
     segment INT,
     content BLOB,
-    PRIMARY KEY ((blob_id, segment)));
+    PRIMARY KEY ((blob_id, segment)))
+    WITH gc_grace_seconds = 86400;
 
 CREATE TABLE IF NOT EXISTS prod_orphaned_content (
     blob_id ASCII,
@@ -63,6 +65,9 @@ In the long term, this might still create many tombstones, causing non-critical
 errors when reaping old orphan rows. Consider setting a scheduled compaction
 (e.g. every 2h) to help ensure that tombstones are regularly reviewed for
 garbage collection.
+
+The `prod_metadata` and `prod_content` tables also contain many tombstones
+so the `gc_grace_seconds` attribute is also set to 1 day (86400s).
 
 ### Configuring `bb-storage`
 
