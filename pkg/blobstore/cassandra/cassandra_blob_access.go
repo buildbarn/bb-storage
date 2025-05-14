@@ -21,11 +21,11 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	bbdigest "github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/gocql/gocql"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"golang.org/x/sync/errgroup"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -47,7 +47,7 @@ var (
 	segmentWriteHist = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "buildbarn",
 		Subsystem: "storage",
-		Name:      "cassandra_segment_write_duration_in_seconds",
+		Name:      "cassandra_segment_write_duration_seconds",
 		Help:      "Amount of time in seconds it takes to write each segment to Cassandra, measured in seconds",
 		Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 	})
@@ -55,16 +55,8 @@ var (
 	segmentReadHist = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "buildbarn",
 		Subsystem: "storage",
-		Name:      "cassandra_segment_read_duration_in_seconds",
+		Name:      "cassandra_segment_read_duration_seconds",
 		Help:      "Amount of time in seconds it takes to read each segment from Cassandra",
-		Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
-	})
-
-	totalWritesHist = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "buildbarn",
-		Subsystem: "storage",
-		Name:      "cassandra_total_write_duration_in_seconds",
-		Help:      "Total amount of time in seconds it takes to write an entire bytestream to Cassandra",
 		Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 	})
 
@@ -76,33 +68,21 @@ var (
 	})
 )
 
-type job struct {
-	task func()
-}
-
 type cassandraBlobAccess struct {
-	capabilitiesProvider     capabilities.Provider
+	capabilities.Provider
 	readBufferFactory        blobstore.ReadBufferFactory
 	segmentSize              int32
-	universalInstanceName    string
 	session                  *gocql.Session
 	lastAccessUpdateInterval time.Duration
-	lastAccessUpdate         chan<- job
+	lastAccessUpdate         chan<- func()
 	tables                   *tables
 }
 
-// NewCassandraBlobAccess provides an implementation of storage backed by Cassandra.
-func NewCassandraBlobAccess(capabilitiesProvider capabilities.Provider, readBufferFactory blobstore.ReadBufferFactory, tlsConfig *tls.Config, port, protoVersion int32, username, password string, clusterHosts []string, keyspace, tablePrefix string, segmentSizeInBytes int32, preferredDc string, lastAccessUpdateInterval time.Duration, universalInstanceName string) blobstore.BlobAccess {
-	cassandraBlobStorePrometheusMetrics.Do(func() {
-		prometheus.MustRegister(segmentWriteHist)
-		prometheus.MustRegister(segmentReadHist)
-		prometheus.MustRegister(totalWritesHist)
-		prometheus.MustRegister(lastAccessUpdatesFailures)
-	})
-
+func NewCassandraSession(clusterHosts []string, keyspace string, preferredDc string, port, protoVersion int32, username, password string, tlsConfig *tls.Config) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(clusterHosts...)
 	cluster.Keyspace = keyspace
 	cluster.Consistency = writeConsistency
+
 	if preferredDc != "" {
 		cluster.PoolConfig.HostSelectionPolicy = gocql.TokenAwareHostPolicy(gocql.DCAwareRoundRobinPolicy(preferredDc))
 	}
@@ -126,9 +106,18 @@ func NewCassandraBlobAccess(capabilitiesProvider capabilities.Provider, readBuff
 		cluster.SslOpts = &gocql.SslOptions{
 			Config: tlsConfig,
 		}
-	} else {
-		log.Printf("Not setting up TLS config")
 	}
+
+	return cluster.CreateSession()
+}
+
+// NewCassandraBlobAccess provides an implementation of storage backed by Cassandra.
+func NewCassandraBlobAccess(capabilitiesProvider capabilities.Provider, readBufferFactory blobstore.ReadBufferFactory, session *gocql.Session, segmentSizeInBytes int32, lastAccessUpdateInterval time.Duration, tablePrefix string) blobstore.BlobAccess {
+	cassandraBlobStorePrometheusMetrics.Do(func() {
+		prometheus.MustRegister(segmentWriteHist)
+		prometheus.MustRegister(segmentReadHist)
+		prometheus.MustRegister(lastAccessUpdatesFailures)
+	})
 
 	if tablePrefix == "" {
 		log.Printf("No table prefix set. Cowardly refusing to proceed.")
@@ -136,16 +125,8 @@ func NewCassandraBlobAccess(capabilitiesProvider capabilities.Provider, readBuff
 	}
 	log.Printf("Table prefix: %s", tablePrefix)
 
-	log.Printf("Creating session in keyspace '%s' for %v", keyspace, clusterHosts)
-
-	session, err := cluster.CreateSession()
-	if err != nil {
-		log.Printf("Unable to create session: %v", err)
-		return blobstore.NewErrorBlobAccess(err)
-	}
-
 	// Create the worker pool for updating the last access times
-	jobs := make(chan job, lastAccessUpdateWorkerCount)
+	jobs := make(chan func(), lastAccessUpdateWorkerCount)
 	for i := 0; i < lastAccessUpdateWorkerCount; i++ {
 		go lastUpdateWorker(jobs)
 	}
@@ -153,19 +134,14 @@ func NewCassandraBlobAccess(capabilitiesProvider capabilities.Provider, readBuff
 	log.Printf("Cassandra storage ready.")
 
 	return &cassandraBlobAccess{
-		capabilitiesProvider:     capabilitiesProvider,
+		Provider:                 capabilitiesProvider,
 		session:                  session,
 		readBufferFactory:        readBufferFactory,
 		segmentSize:              segmentSizeInBytes,
 		lastAccessUpdateInterval: lastAccessUpdateInterval,
 		lastAccessUpdate:         jobs,
-		universalInstanceName:    universalInstanceName,
 		tables:                   newTables(tablePrefix, session),
 	}
-}
-
-func (a *cassandraBlobAccess) GetCapabilities(ctx context.Context, instanceName bbdigest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
-	return a.capabilitiesProvider.GetCapabilities(ctx, instanceName)
 }
 
 func logErrorIfNotCancelledContext(err error, msg string, args ...interface{}) {
@@ -206,10 +182,6 @@ func (a *cassandraBlobAccess) GetFromComposite(ctx context.Context, parentDigest
 }
 
 func (a *cassandraBlobAccess) Put(ctx context.Context, digest bbdigest.Digest, b buffer.Buffer) error {
-	defer func(start time.Time) {
-		totalWritesHist.Observe(float64(time.Since(start).Seconds()))
-	}(time.Now())
-
 	// We derive the blob id from the digest. The metadata table will control access to
 	// this. It's okay for two streams to write the same data simultaneously because of
 	// the way that Cassandra acts: because the primary key will be the same, the inserts
@@ -218,7 +190,7 @@ func (a *cassandraBlobAccess) Put(ctx context.Context, digest bbdigest.Digest, b
 		digest.GetDigestFunction().GetEnumValue().String(),
 		digest.GetHashString(),
 		strconv.Itoa(int(digest.GetSizeBytes())),
-		a.getInstanceName(digest),
+		digest.GetInstanceName().String(),
 	}, "-")
 
 	estimatedSegmentCount := getSegmentCount(a.segmentSize, digest.GetSizeBytes())
@@ -229,7 +201,7 @@ func (a *cassandraBlobAccess) Put(ctx context.Context, digest bbdigest.Digest, b
 	if a.tables.content.isSegmentPresent(ctx, blobID, estimatedSegmentCount) {
 		segmentCount = estimatedSegmentCount
 	} else {
-		instanceName := a.getInstanceName(digest)
+		instanceName := digest.GetInstanceName().String()
 		if err := a.tables.orphanedContent.insert(ctx, digest, blobID, instanceName, estimatedSegmentCount, now); err != nil {
 			b.Discard()
 			return err
@@ -243,7 +215,7 @@ func (a *cassandraBlobAccess) Put(ctx context.Context, digest bbdigest.Digest, b
 		segmentCount = actualCount
 	}
 
-	return a.tables.metadata.update(ctx, digest, blobID, a.getInstanceName(digest), segmentCount, now, a.segmentSize)
+	return a.tables.metadata.update(ctx, digest, blobID, digest.GetInstanceName().String(), segmentCount, now, a.segmentSize)
 }
 
 func getSegmentCount(segmentSize int32, sizeInBytes int64) int {
@@ -344,18 +316,10 @@ func (a *cassandraBlobAccess) isMissing(ctx context.Context, digest bbdigest.Dig
 	return nil
 }
 
-func lastUpdateWorker(jobs chan job) {
+func lastUpdateWorker(jobs chan func()) {
 	for j := range jobs {
-		j.task()
+		j()
 	}
-}
-
-func (a *cassandraBlobAccess) getInstanceName(digest bbdigest.Digest) string {
-	instanceName := digest.GetInstanceName().String()
-	if instanceName == a.universalInstanceName {
-		instanceName = ""
-	}
-	return instanceName
 }
 
 type tables struct {
@@ -486,7 +450,7 @@ func (t *metadataTable) update(ctx context.Context, digest bbdigest.Digest, blob
 	return nil
 }
 
-func (t *metadataTable) updateLastAccessTime(ctx context.Context, digest bbdigest.Digest, instanceName string, lastAccessed time.Time, lastAccessUpdateInterval time.Duration, lastAccessUpdate chan<- job) {
+func (t *metadataTable) updateLastAccessTime(ctx context.Context, digest bbdigest.Digest, instanceName string, lastAccessed time.Time, lastAccessUpdateInterval time.Duration, lastAccessUpdate chan<- func()) {
 	// Note, we are "adding" a negative duration. `Sub` takes a `time.Time` and returns a `time.Duration`, which
 	// is the opposite of what we want.
 	window := time.Now().Add(lastAccessUpdateInterval * -1)
@@ -494,29 +458,27 @@ func (t *metadataTable) updateLastAccessTime(ctx context.Context, digest bbdiges
 		return
 	}
 
-	lastAccessUpdate <- job{
-		task: func() {
-			// This query might insert a row with (blob_id, segment_count, segment_size) == (null, null, null), which is fine.
-			// Such a row should be considered missing from the POV of the service. Eventually, it will either be updated again
-			// with a blobID or (more likely) be reaped.
-			// We do not use `IF EXISTS` because it would make the query `SERIAL`, meaning it needs to be coordinated between
-			// all the replicas, which is very expensive (think of it as having to take a distributed lock for that row).
-			if err := retryCassandraWrite(
-				ctx,
-				t.session,
-				lastAccessUpdateConsistency,
-				fmt.Sprintf("UPDATE %s SET last_access = ? WHERE digest_function = ? AND digest_hash = ? AND digest_size_bytes = ? AND digest_instance_name = ?", t.tableName),
-				time.Now(),
-				digest.GetDigestFunction().GetEnumValue().String(),
-				digest.GetHashString(),
-				digest.GetSizeBytes(),
-				instanceName,
-			); err != nil {
-				// There's nothing sensible we can do to recover here, but at least log the error
-				logErrorIfNotCancelledContext(err, "Unable to update last access time for %s", digest.String())
-				lastAccessUpdatesFailures.Inc()
-			}
-		},
+	lastAccessUpdate <- func() {
+		// This query might insert a row with (blob_id, segment_count, segment_size) == (null, null, null), which is fine.
+		// Such a row should be considered missing from the POV of the service. Eventually, it will either be updated again
+		// with a blobID or (more likely) be reaped.
+		// We do not use `IF EXISTS` because it would make the query `SERIAL`, meaning it needs to be coordinated between
+		// all the replicas, which is very expensive (think of it as having to take a distributed lock for that row).
+		if err := retryCassandraWrite(
+			ctx,
+			t.session,
+			lastAccessUpdateConsistency,
+			fmt.Sprintf("UPDATE %s SET last_access = ? WHERE digest_function = ? AND digest_hash = ? AND digest_size_bytes = ? AND digest_instance_name = ?", t.tableName),
+			time.Now(),
+			digest.GetDigestFunction().GetEnumValue().String(),
+			digest.GetHashString(),
+			digest.GetSizeBytes(),
+			instanceName,
+		); err != nil {
+			// There's nothing sensible we can do to recover here, but at least log the error
+			logErrorIfNotCancelledContext(err, "Unable to update last access time for %s", digest.String())
+			lastAccessUpdatesFailures.Inc()
+		}
 	}
 }
 

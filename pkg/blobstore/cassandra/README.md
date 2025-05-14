@@ -9,7 +9,7 @@ tables or keyspaces.
 The tables that are required can be set up using command similar to the
 below in a `cqlsh` session:
 
-```shell
+```sql
 CREATE KEYSPACE IF NOT EXISTS buildbarn_storage WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor': 3 };
 
 USE buildbarn_storage;

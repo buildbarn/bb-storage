@@ -586,21 +586,26 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			cassandraTLSConfig = nil
 		}
 
-		blobAccess := cassandra.NewCassandraBlobAccess(
-			creator.GetDefaultCapabilitiesProvider(),
-			readBufferFactory,
-			cassandraTLSConfig,
+		session, err := cassandra.NewCassandraSession(
+			config.Hosts,
+			config.Keyspace,
+			config.PreferredDc,
 			config.Port,
 			config.ProtocolVersion,
 			config.Username,
 			config.Password,
-			config.Hosts,
-			config.Keyspace,
-			config.TablePrefix,
+			cassandraTLSConfig)
+		if err != nil {
+			return BlobAccessInfo{}, "", util.StatusWrap(err, "Unable to create cassandra session")
+		}
+
+		blobAccess := cassandra.NewCassandraBlobAccess(
+			creator.GetDefaultCapabilitiesProvider(),
+			readBufferFactory,
+			session,
 			config.SegmentSizeBytes,
-			config.PreferredDc,
 			config.LastAccessUpdateInterval.AsDuration(),
-			config.UniversalInstanceName,
+			config.TablePrefix,
 		)
 		return BlobAccessInfo{
 			BlobAccess:      blobAccess,

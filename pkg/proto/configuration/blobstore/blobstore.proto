@@ -952,13 +952,13 @@ message CassandraBlobAccessConfiguration {
 
   // The Cassandra protocol version. This can normally be omitted from
   // your config.
-  int32 protocolVersion = 4;
+  int32 protocol_version = 4;
 
   // If using a `NetworkTopologyStrategy` and a Cassandra instance with hosts
   // in multiple locations, setting this enables host selection policies
   // which will prioritize and return hosts which are in the specified
   // datacentre before returning hosts in all other datercentres.
-  string preferredDc = 5;
+  string preferred_dc = 5;
 
   // User name and password for connecting to the database.
   string username = 6;
