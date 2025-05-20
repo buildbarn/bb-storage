@@ -69,12 +69,38 @@ func TestOIDCAuthenticator(t *testing.T) {
 			Scopes:      []string{"openid", "email"},
 		},
 		"https://login.com/userinfo",
+		false,
+		time.Minute,
 		jmespath.MustCompile("{\"public\": @}"),
 		&http.Client{Transport: roundTripper},
 		randomNumberGenerator,
 		"CookieName",
 		cookieAEAD,
 		clock)
+
+	cookieAEAD.EXPECT().NonceSize().Return(4)
+	oidcTokenAuthenticator, err := bb_http.NewOIDCAuthenticator(
+		&oauth2.Config{
+			ClientID:     "MyClientID",
+			ClientSecret: "MyClientSecret",
+			Endpoint: oauth2.Endpoint{
+				AuthURL:   "https://login.com/authorize",
+				TokenURL:  "https://login.com/token",
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			RedirectURL: "https://myserver.com/callback",
+			Scopes:      []string{"openid", "email"},
+		},
+		"https://login.com/userinfo",
+		true,
+		time.Minute,
+		jmespath.MustCompile("{\"public\": @}"),
+		&http.Client{Transport: roundTripper},
+		randomNumberGenerator,
+		"CookieName",
+		cookieAEAD,
+		clock)
+
 	require.NoError(t, err)
 
 	t.Run("RegularRequestWithoutCookie", func(t *testing.T) {
@@ -433,6 +459,191 @@ func TestOIDCAuthenticator(t *testing.T) {
 
 		require.Equal(t, http.Header{
 			"Set-Cookie": []string{"CookieName=qeOfxfw5kc1m0buV; Path=/; HttpOnly; Secure; SameSite=Lax"},
+		}, w.HeaderMap)
+	})
+
+	t.Run("RegularRequestExpiredIDTokenWithRefreshTokenWithExp", func(t *testing.T) {
+		// If the access token is expired and a refresh token is
+		// available, we may be able to continue the session
+		// without sending the user through the authorization
+		// endpoint. We use the occasion to update the claims.
+		// Upon success, the cookie should be updated.
+		cookieAEAD.EXPECT().Open(
+			gomock.Any(),
+			[]byte{0x29, 0xc3, 0x4d, 0xf7},
+			[]byte{0x8a, 0x16, 0x13, 0x13, 0x7c, 0xc5, 0x7b, 0x5a},
+			nil,
+		).DoAndReturn(func(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+			return append(dst, protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: &auth.AuthenticationMetadata{},
+						Expiration:             &timestamppb.Timestamp{Seconds: 1693147158},
+						RefreshToken:           "RefreshToken1",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
+					},
+				},
+			})...), nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693147212, 0))
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
+			require.Equal(t, "https://login.com/token", r.URL.String())
+			r.ParseForm()
+			require.Equal(t, url.Values{
+				"client_id":     []string{"MyClientID"},
+				"client_secret": []string{"MyClientSecret"},
+				"grant_type":    []string{"refresh_token"},
+				"refresh_token": []string{"RefreshToken1"},
+			}, r.Form)
+			return &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				// ID token contains an "exp" field. The response has a
+				// "expires_in" field, but it is ignored when using a ID token.
+				Body: io.NopCloser(bytes.NewBufferString(`{
+					"access_token": "AccessToken2",
+					"expires_in": 3600,
+					"refresh_token": "RefreshToken2",
+					"token_type": "Bearer",
+					"id_token": "something.eyJlbWFpbCI6ImpvaG5AbXlzZXJ2ZXIuY29tIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoiMTc0NzIyMzA0NSJ9.something"
+				}`)),
+			}, nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693147213, 0))
+		nonce := []byte{0xcf, 0xcc, 0x43, 0xbd}
+		expectRead(randomNumberGenerator, nonce)
+		expectedAuthenticationMetadata := &auth.AuthenticationMetadata{
+			Public: structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"email": structpb.NewStringValue("john@myserver.com"),
+					"name":  structpb.NewStringValue("John Doe"),
+					"exp":   structpb.NewStringValue("1747223045"),
+				},
+			}),
+		}
+		cookieAEAD.EXPECT().Seal(
+			gomock.Any(),
+			nonce,
+			protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: expectedAuthenticationMetadata,
+						Expiration:             &timestamppb.Timestamp{Seconds: 1747223045},
+						RefreshToken:           "RefreshToken2",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
+					},
+				},
+			}),
+			nil,
+		).DoAndReturn(func(dst, nonce, plaintext, additionalData []byte) []byte {
+			return append(dst, 0xf4, 0xf3, 0xe9, 0xd7, 0x19, 0x29, 0x23, 0x83)
+		})
+
+		w := httptest.NewRecorder()
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://myserver.com/hello.png", nil)
+		r.AddCookie(&http.Cookie{
+			Name:  "CookieName",
+			Value: "KcNN94oWExN8xXta",
+		})
+		require.NoError(t, err)
+		metadata, err := oidcTokenAuthenticator.Authenticate(w, r)
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, expectedAuthenticationMetadata, metadata.GetFullProto())
+
+		require.Equal(t, http.Header{
+			"Set-Cookie": []string{"CookieName=z8xDvfTz6dcZKSOD; Path=/; HttpOnly; Secure; SameSite=Lax"},
+		}, w.HeaderMap)
+	})
+
+	t.Run("RegularRequestExpiredIDTokenWithRefreshTokenWithoutExp", func(t *testing.T) {
+		// If the access token is expired and a refresh token is
+		// available, we may be able to continue the session
+		// without sending the user through the authorization
+		// endpoint. We use the occasion to update the claims.
+		// Upon success, the cookie should be updated.
+		cookieAEAD.EXPECT().Open(
+			gomock.Any(),
+			[]byte{0x29, 0xc3, 0x4d, 0xf7},
+			[]byte{0x8a, 0x16, 0x13, 0x13, 0x7c, 0xc5, 0x7b, 0x5a},
+			nil,
+		).DoAndReturn(func(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+			return append(dst, protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: &auth.AuthenticationMetadata{},
+						Expiration:             &timestamppb.Timestamp{Seconds: 1693147158},
+						RefreshToken:           "RefreshToken1",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
+					},
+				},
+			})...), nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693147212, 0))
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
+			require.Equal(t, "https://login.com/token", r.URL.String())
+			r.ParseForm()
+			require.Equal(t, url.Values{
+				"client_id":     []string{"MyClientID"},
+				"client_secret": []string{"MyClientSecret"},
+				"grant_type":    []string{"refresh_token"},
+				"refresh_token": []string{"RefreshToken1"},
+			}, r.Form)
+			return &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				// ID token does not contain an "exp" field. The response has a
+				// "expires_in" field, but it is ignored when using a ID token.
+				Body: io.NopCloser(bytes.NewBufferString(`{
+					"access_token": "AccessToken2",
+					"expires_in": 3600,
+					"refresh_token": "RefreshToken2",
+					"token_type": "Bearer",
+					"id_token": "something.eyJlbWFpbCI6ImpvaG5AbXlzZXJ2ZXIuY29tIiwibmFtZSI6IkpvaG4gRG9lIn0.something"
+				}`)),
+			}, nil
+		})
+		clock.EXPECT().Now().Return(time.Unix(1693147213, 0)).Times(2)
+		nonce := []byte{0xcf, 0xcc, 0x43, 0xbd}
+		expectRead(randomNumberGenerator, nonce)
+		expectedAuthenticationMetadata := &auth.AuthenticationMetadata{
+			Public: structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"email": structpb.NewStringValue("john@myserver.com"),
+					"name":  structpb.NewStringValue("John Doe"),
+				},
+			}),
+		}
+		cookieAEAD.EXPECT().Seal(
+			gomock.Any(),
+			nonce,
+			protoMustMarshal(&oidc.CookieValue{
+				SessionState: &oidc.CookieValue_Authenticated_{
+					Authenticated: &oidc.CookieValue_Authenticated{
+						AuthenticationMetadata: expectedAuthenticationMetadata,
+						Expiration:             &timestamppb.Timestamp{Seconds: 1693147273},
+						RefreshToken:           "RefreshToken2",
+						DefaultExpiration:      &durationpb.Duration{Seconds: 60},
+					},
+				},
+			}),
+			nil,
+		).DoAndReturn(func(dst, nonce, plaintext, additionalData []byte) []byte {
+			return append(dst, 0xf4, 0xf3, 0xe9, 0xd7, 0x19, 0x29, 0x23, 0x83)
+		})
+
+		w := httptest.NewRecorder()
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://myserver.com/hello.png", nil)
+		r.AddCookie(&http.Cookie{
+			Name:  "CookieName",
+			Value: "KcNN94oWExN8xXta",
+		})
+		require.NoError(t, err)
+		metadata, err := oidcTokenAuthenticator.Authenticate(w, r)
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, expectedAuthenticationMetadata, metadata.GetFullProto())
+
+		require.Equal(t, http.Header{
+			"Set-Cookie": []string{"CookieName=z8xDvfTz6dcZKSOD; Path=/; HttpOnly; Secure; SameSite=Lax"},
 		}, w.HeaderMap)
 	})
 

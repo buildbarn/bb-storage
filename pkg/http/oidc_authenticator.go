@@ -9,6 +9,8 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
@@ -27,16 +29,18 @@ import (
 )
 
 type oidcAuthenticator struct {
-	oauth2Config          *oauth2.Config
-	redirectURLPath       string
-	userInfoURL           string
-	metadataExtractor     *jmespath.JMESPath
-	httpClient            *http.Client
-	randomNumberGenerator random.ThreadSafeGenerator
-	cookieName            string
-	cookieAEAD            cipher.AEAD
-	cookieNonceSize       int
-	clock                 clock.Clock
+	oauth2Config                   *oauth2.Config
+	redirectURLPath                string
+	userInfoURL                    string
+	useIDTokenClaims               bool
+	defaultIDTokenValidityDuration time.Duration
+	metadataExtractor              *jmespath.JMESPath
+	httpClient                     *http.Client
+	randomNumberGenerator          random.ThreadSafeGenerator
+	cookieName                     string
+	cookieAEAD                     cipher.AEAD
+	cookieNonceSize                int
+	clock                          clock.Clock
 }
 
 // NewOIDCAuthenticator creates an Authenticator that enforces that all
@@ -46,6 +50,8 @@ type oidcAuthenticator struct {
 func NewOIDCAuthenticator(
 	oauth2Config *oauth2.Config,
 	userInfoURL string,
+	useIDTokenClaims bool,
+	defaultIDTokenValidityDuration time.Duration,
 	metadataExtractor *jmespath.JMESPath,
 	httpClient *http.Client,
 	randomNumberGenerator random.ThreadSafeGenerator,
@@ -61,16 +67,18 @@ func NewOIDCAuthenticator(
 		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid redirect URL")
 	}
 	return &oidcAuthenticator{
-		oauth2Config:          oauth2Config,
-		redirectURLPath:       redirectURL.Path,
-		userInfoURL:           userInfoURL,
-		metadataExtractor:     metadataExtractor,
-		httpClient:            httpClient,
-		randomNumberGenerator: randomNumberGenerator,
-		cookieName:            cookieName,
-		cookieAEAD:            cookieAEAD,
-		cookieNonceSize:       cookieAEAD.NonceSize(),
-		clock:                 clock,
+		oauth2Config:                   oauth2Config,
+		redirectURLPath:                redirectURL.Path,
+		useIDTokenClaims:               useIDTokenClaims,
+		defaultIDTokenValidityDuration: defaultIDTokenValidityDuration,
+		userInfoURL:                    userInfoURL,
+		metadataExtractor:              metadataExtractor,
+		httpClient:                     httpClient,
+		randomNumberGenerator:          randomNumberGenerator,
+		cookieName:                     cookieName,
+		cookieAEAD:                     cookieAEAD,
+		cookieNonceSize:                cookieAEAD.NonceSize(),
+		clock:                          clock,
 	}, nil
 }
 
@@ -122,11 +130,11 @@ func (a *oidcAuthenticator) setCookieValue(w http.ResponseWriter, cookieValue *o
 	return nil
 }
 
-func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oauth2.Token, defaultExpiration time.Duration, w http.ResponseWriter) (*auth.AuthenticationMetadata, error) {
+func (a *oidcAuthenticator) getClaimsAndExpiryFromEndpoint(ctx context.Context, token *oauth2.Token) (interface{}, time.Time, error) {
 	// Obtain claims from the user info endpoint.
 	claimsRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, a.userInfoURL, nil)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to create user info request")
+		return nil, time.Time{}, util.StatusWrap(err, "Failed to create user info request")
 	}
 	claimsResponse, err := a.oauth2Config.Client(ctx, token).Do(claimsRequest)
 	if err != nil {
@@ -136,18 +144,65 @@ func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oa
 		if errors.As(err, &urlErr) {
 			err = urlErr.Unwrap()
 		}
-		return nil, util.StatusWrap(err, "Failed to request claims")
+		return nil, time.Time{}, util.StatusWrap(err, "Failed to request claims")
 	}
 	defer claimsResponse.Body.Close()
 	if claimsResponse.StatusCode != 200 {
-		return nil, status.Errorf(codes.Unavailable, "Requesting claims failed with HTTP status %#v", claimsResponse.Status)
+		return nil, time.Time{}, status.Errorf(codes.Unavailable, "Requesting claims failed with HTTP status %#v", claimsResponse.Status)
 	}
 	var claims interface{}
 	err = json.NewDecoder(claimsResponse.Body).Decode(&claims)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to unmarshal claims")
+		return nil, time.Time{}, util.StatusWrap(err, "Failed to unmarshal claims")
 	}
 
+	return claims, token.Expiry, nil
+}
+
+func (a *oidcAuthenticator) getClaimsAndExpiryFromIDToken(token *oauth2.Token) (interface{}, time.Time, error) {
+	idToken, ok := token.Extra("id_token").(string)
+	if !ok || idToken == "" {
+		return nil, time.Time{}, errors.New("No ID token present in OIDC server response")
+	}
+
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return nil, time.Time{}, errors.New("Invalid ID token format")
+	}
+
+	claimsDecoded, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, time.Time{}, errors.New("Failed to decode ID token claims")
+	}
+
+	var claims interface{}
+	if err := json.Unmarshal(claimsDecoded, &claims); err != nil {
+		return nil, time.Time{}, errors.New("Failed to unmarshal ID token claims")
+	}
+
+	if claimsMap, ok := claims.(map[string]interface{}); ok {
+		if expStr, ok := claimsMap["exp"].(string); ok {
+			if exp, err := strconv.ParseInt(expStr, 10, 64); err == nil {
+				return claims, time.Unix(exp, 0), nil
+			}
+		}
+	}
+
+	return claims, a.clock.Now().Add(a.defaultIDTokenValidityDuration), nil
+}
+
+func (a *oidcAuthenticator) getClaimsAndTokenExpiry(ctx context.Context, token *oauth2.Token) (interface{}, time.Time, error) {
+	if a.useIDTokenClaims {
+		return a.getClaimsAndExpiryFromIDToken(token)
+	}
+	return a.getClaimsAndExpiryFromEndpoint(ctx, token)
+}
+
+func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oauth2.Token, defaultExpiration time.Duration, w http.ResponseWriter) (*auth.AuthenticationMetadata, error) {
+	claims, expiration, err := a.getClaimsAndTokenExpiry(ctx, token)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to obtain claims")
+	}
 	// Convert claims to authentication metadata.
 	metadataRaw, err := a.metadataExtractor.Search(claims)
 	if err != nil {
@@ -158,7 +213,6 @@ func (a *oidcAuthenticator) getClaimsAndSetCookie(ctx context.Context, token *oa
 		return nil, util.StatusWrap(err, "Failed to create authentication metadata")
 	}
 
-	expiration := token.Expiry
 	if expiration.IsZero() {
 		// The access token response did not contain an
 		// expiration duration. Simply assume an expiration

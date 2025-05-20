@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"net/http"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
@@ -21,6 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // Authenticator can be used to grant or deny access to a HTTP server.
@@ -103,6 +105,15 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, util.StatusWrap(err, "Failed to create OIDC HTTP client")
 		}
 
+		useIDTokenClaims := policyKind.Oidc.GetUseIdTokenClaims() != nil
+		var defaultTokenValidityDuration *durationpb.Duration
+		if useIDTokenClaims {
+			defaultTokenValidityDuration = policyKind.Oidc.GetUseIdTokenClaims().GetDefaultTokenValidityDuration()
+			if defaultTokenValidityDuration == nil {
+				return nil, errors.New("Failed to create OIDC ID token default validity duration")
+			}
+		}
+
 		return NewOIDCAuthenticator(
 			&oauth2.Config{
 				ClientID:     policyKind.Oidc.ClientId,
@@ -114,7 +125,9 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 				RedirectURL: policyKind.Oidc.RedirectUrl,
 				Scopes:      policyKind.Oidc.Scopes,
 			},
-			policyKind.Oidc.UserInfoEndpointUrl,
+			policyKind.Oidc.GetUserInfoEndpointUrl(),
+			useIDTokenClaims,
+			defaultTokenValidityDuration.AsDuration(),
 			metadataExtractor,
 			&http.Client{
 				Transport: NewMetricsRoundTripper(roundTripper, "OIDCAuthenticator"),
