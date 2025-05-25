@@ -23,10 +23,8 @@ single_version_override(
     module_name = "aspect_bazel_lib",
     patches = [
         "//:patches/aspect_bazel_lib/at-slash-slash.diff",
-        "//:patches/aspect_bazel_lib/expand_make_variables.diff",
         "//:patches/aspect_bazel_lib/incompatible-use-toolchain-transition.diff",
         "//:patches/aspect_bazel_lib/local-config-platform.diff",
-        "//:patches/aspect_bazel_lib/no-build-file-path.diff",
         "//:patches/aspect_bazel_lib/repo-name.diff",
         "//:patches/aspect_bazel_lib/root-is-external.diff",
     ],
@@ -35,8 +33,6 @@ single_version_override(
 single_version_override(
     module_name = "aspect_rules_js",
     patches = [
-        "patches/aspect_rules_js/build-file-path.diff",
-        "patches/aspect_rules_js/ctx-var.diff",
         "patches/aspect_rules_js/sh-toolchain.diff",
     ],
 )
@@ -108,7 +104,6 @@ single_version_override(
     module_name = "rules_python",
     patches = [
         "//:patches/rules_python/args-add-str.diff",
-        "//:patches/rules_python/expand_make_variables.diff",
         "//:patches/rules_python/ignore_root_user_error.diff",
         "//:patches/rules_python/label-relative.diff",
         "//:patches/rules_python/recursive-enum.diff",
