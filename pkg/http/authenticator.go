@@ -115,14 +115,14 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		}
 
 		var oidcClaimsFetcher OIDCClaimsFetcher
-		switch policyKind.Oidc.UserInfoSource.(type) {
+		switch userInfoSource := policyKind.Oidc.UserInfoSource.(type) {
 		case *configuration.OIDCAuthenticationPolicy_UserInfoEndpointUrl:
-			oidcClaimsFetcher = &userInfoOIDCClaimsFetcher{
-				oauth2Config: oauth2Config,
-				userInfoURL:  policyKind.Oidc.GetUserInfoEndpointUrl(),
-			}
+			oidcClaimsFetcher = NewUserInfoOIDCClaimsFetcher(
+				oauth2Config,
+				userInfoSource.UserInfoEndpointUrl,
+			)
 		case *configuration.OIDCAuthenticationPolicy_UseIdTokenClaims:
-			oidcClaimsFetcher = &idTokenOIDCClaimsFetcher{}
+			oidcClaimsFetcher = IDTokenOIDCClaimsFetcher
 		default:
 			return nil, status.Error(codes.InvalidArgument, "OIDC user info source not specified")
 		}
