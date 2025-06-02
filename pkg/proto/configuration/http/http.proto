@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package buildbarn.configuration.http;
 
-import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
