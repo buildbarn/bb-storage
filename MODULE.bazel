@@ -105,6 +105,7 @@ single_version_override(
     patches = [
         "//:patches/rules_python/args-add-str.diff",
         "//:patches/rules_python/ignore_root_user_error.diff",
+        "//:patches/rules_python/is_executable.diff",
         "//:patches/rules_python/label-relative.diff",
         "//:patches/rules_python/recursive-enum.diff",
         "//:patches/rules_python/repo-name.diff",
