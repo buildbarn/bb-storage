@@ -9,7 +9,7 @@
             },
             {
                "name": "Installing Bazel",
-               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
+               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH} && ( [ -e .github/workflows/ci.bazelrc ] && cp .github/workflows/ci.bazelrc ~/.bazelrc )"
             },
             {
                "name": "Bazel mod tidy",
