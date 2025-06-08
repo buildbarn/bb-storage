@@ -36,7 +36,9 @@ protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 
 # Match protobuf above, until it ships a pre-built binary toolchain itself
 protoc.toolchain(version = "v29.3")
+use_repo(protoc, "toolchains_protoc_hub")
 
+register_toolchains("@toolchains_protoc_hub//:all")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.24.0")
