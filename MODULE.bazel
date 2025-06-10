@@ -7,6 +7,7 @@ bazel_dep(name = "gazelle", version = "0.42.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20240819-fe8ba054a")
 bazel_dep(name = "jsonnet_go", version = "0.20.0")
 bazel_dep(name = "opentelemetry-proto", version = "1.5.0")
+bazel_dep(name = "toolchains_protoc", version = "0.4.2")  # must come BEFORE protobuf so the toolchain registration wins
 bazel_dep(name = "protobuf", version = "29.3")
 bazel_dep(name = "rules_go", version = "0.53.0")
 bazel_dep(name = "rules_jsonnet", version = "0.6.0")
@@ -30,6 +31,10 @@ single_version_override(
     module_name = "jsonnet",
     patches = ["//:patches/jsonnet/bazel-8.diff"],
 )
+
+# Match protobuf above, until it ships a pre-built binary toolchain itself
+protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
+protoc.toolchain(version = "v29.3")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.24.0")
