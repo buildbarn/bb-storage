@@ -1,0 +1,38 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cassandra",
+    srcs = [
+        "cassandra_blob_access.go",
+        "format.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/cassandra",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/blobstore",
+        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/slicing",
+        "//pkg/capabilities",
+        "//pkg/digest",
+        "//pkg/util",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@com_github_gocql_gocql//:gocql",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "cassandra_test",
+    srcs = [
+        "cassandra_blob_access_test.go",
+        "format_test.go",
+    ],
+    embed = [":cassandra"],
+    deps = [
+        "@com_github_gocql_gocql//:gocql",
+        "@com_github_stretchr_testify//require",
+    ],
+)
