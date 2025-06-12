@@ -12,6 +12,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
@@ -25,13 +26,13 @@ import (
 func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Private: structpb.NewStructValue(&structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"header": structpb.NewStringValue("value"),
 			},
 		}),
-	}))
+	})))
 	invoker := mock.NewMockUnaryInvoker(ctrl)
 	req := &emptypb.Empty{}
 	resp := &emptypb.Empty{}
@@ -75,13 +76,13 @@ func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 func TestMetadataExtractingAndForwardingStreamClientInterceptor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	modifiedCtx := auth.NewContextWithAuthenticationMetadata(ctx, util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Private: structpb.NewStructValue(&structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"header": structpb.NewStringValue("value"),
 			},
 		}),
-	}))
+	})))
 	streamDesc := grpc.StreamDesc{StreamName: "SomeMethod"}
 	streamer := mock.NewMockStreamer(ctrl)
 	clientStream := mock.NewMockClientStream(ctrl)

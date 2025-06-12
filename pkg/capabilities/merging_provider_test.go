@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ import (
 
 func TestMergingProviderZero(t *testing.T) {
 	provider := capabilities.NewMergingProvider(nil)
-	instanceName := digest.MustNewInstanceName("example")
+	instanceName := util.Must(digest.NewInstanceName("example"))
 
 	t.Run("Failure", func(t *testing.T) {
 		_, err := provider.GetCapabilities(context.Background(), instanceName)
@@ -32,7 +33,7 @@ func TestMergingProviderOne(t *testing.T) {
 
 	baseProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	provider := capabilities.NewMergingProvider([]capabilities.Provider{baseProvider})
-	instanceName := digest.MustNewInstanceName("example")
+	instanceName := util.Must(digest.NewInstanceName("example"))
 
 	t.Run("Success", func(t *testing.T) {
 		baseProvider.EXPECT().GetCapabilities(gomock.Any(), instanceName).
@@ -67,7 +68,7 @@ func TestMergingProviderMultiple(t *testing.T) {
 		contentAddressableStorage,
 		scheduler,
 	})
-	instanceName := digest.MustNewInstanceName("example")
+	instanceName := util.Must(digest.NewInstanceName("example"))
 
 	t.Run("AllNotFound", func(t *testing.T) {
 		actionCache.EXPECT().GetCapabilities(gomock.Any(), instanceName).

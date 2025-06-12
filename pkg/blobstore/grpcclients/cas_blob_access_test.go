@@ -12,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
@@ -180,7 +181,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 			gomock.Any(),
 		).Return(status.Error(codes.Unavailable, "Server offline"))
 
-		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		_, err := blobAccess.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server offline"), err)
 	})
 
@@ -206,7 +207,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 			return nil
 		})
 
-		_, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		_, err := blobAccess.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Instance name \"hello/world\" does not support remote caching"), err)
 	})
 
@@ -246,7 +247,7 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 			return nil
 		})
 
-		serverCapabilities, err := blobAccess.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		serverCapabilities, err := blobAccess.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{

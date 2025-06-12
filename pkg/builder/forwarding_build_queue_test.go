@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
@@ -39,7 +40,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 			gomock.Any(),
 		).Return(status.Error(codes.Unavailable, "Server offline"))
 
-		_, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		_, err := buildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server offline"), err)
 	})
 
@@ -74,7 +75,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 			return nil
 		})
 
-		_, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		_, err := buildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Instance name \"hello/world\" does not support remote execution"), err)
 	})
 
@@ -100,7 +101,7 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 			return nil
 		})
 
-		serverCapabilities, err := buildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("hello/world"))
+		serverCapabilities, err := buildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{

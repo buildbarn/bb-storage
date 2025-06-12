@@ -59,6 +59,7 @@ go_test(
         "//pkg/proto/auth",
         "//pkg/proto/http/oidc",
         "//pkg/testutil",
+        "//pkg/util",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",

@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -21,8 +22,8 @@ func TestAnyAuthorizerZero(t *testing.T) {
 	authorizer := auth.NewAnyAuthorizer(nil)
 
 	errs := authorizer.Authorize(context.Background(), []digest.InstanceName{
-		digest.MustNewInstanceName("hello"),
-		digest.MustNewInstanceName("world"),
+		util.Must(digest.NewInstanceName("hello")),
+		util.Must(digest.NewInstanceName("world")),
 	})
 	require.Len(t, errs, 2)
 	testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[0])
@@ -37,9 +38,9 @@ func TestAnyAuthorizerOne(t *testing.T) {
 	authorizer := auth.NewAnyAuthorizer([]auth.Authorizer{baseAuthorizer})
 
 	baseAuthorizer.EXPECT().Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable"),
+		util.Must(digest.NewInstanceName("ok")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable")),
 	}).Return([]error{
 		nil,
 		status.Error(codes.PermissionDenied, "Permission denied"),
@@ -47,9 +48,9 @@ func TestAnyAuthorizerOne(t *testing.T) {
 	})
 
 	errs := authorizer.Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable"),
+		util.Must(digest.NewInstanceName("ok")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable")),
 	})
 	require.Len(t, errs, 3)
 	require.NoError(t, errs[0])
@@ -71,13 +72,13 @@ func TestAnyAuthorizerMultiple(t *testing.T) {
 	})
 
 	baseAuthorizer1.EXPECT().Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok1"),
-		digest.MustNewInstanceName("ok2"),
-		digest.MustNewInstanceName("ok3"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable1"),
-		digest.MustNewInstanceName("unavailable2"),
-		digest.MustNewInstanceName("unavailable3"),
+		util.Must(digest.NewInstanceName("ok1")),
+		util.Must(digest.NewInstanceName("ok2")),
+		util.Must(digest.NewInstanceName("ok3")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable1")),
+		util.Must(digest.NewInstanceName("unavailable2")),
+		util.Must(digest.NewInstanceName("unavailable3")),
 	}).Return([]error{
 		nil,
 		status.Error(codes.PermissionDenied, "1: Permission denied for ok2"),
@@ -88,11 +89,11 @@ func TestAnyAuthorizerMultiple(t *testing.T) {
 		status.Error(codes.PermissionDenied, "1: Permission denied for unavailable3"),
 	})
 	baseAuthorizer2.EXPECT().Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok2"),
-		digest.MustNewInstanceName("ok3"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable2"),
-		digest.MustNewInstanceName("unavailable3"),
+		util.Must(digest.NewInstanceName("ok2")),
+		util.Must(digest.NewInstanceName("ok3")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable2")),
+		util.Must(digest.NewInstanceName("unavailable3")),
 	}).Return([]error{
 		nil,
 		status.Error(codes.PermissionDenied, "2: Permission denied for ok3"),
@@ -101,9 +102,9 @@ func TestAnyAuthorizerMultiple(t *testing.T) {
 		status.Error(codes.PermissionDenied, "2: Permission denied for unavailable3"),
 	})
 	baseAuthorizer3.EXPECT().Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok3"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable3"),
+		util.Must(digest.NewInstanceName("ok3")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable3")),
 	}).Return([]error{
 		nil,
 		status.Error(codes.PermissionDenied, "3: Permission denied for denied"),
@@ -111,13 +112,13 @@ func TestAnyAuthorizerMultiple(t *testing.T) {
 	})
 
 	errs := authorizer.Authorize(ctx, []digest.InstanceName{
-		digest.MustNewInstanceName("ok1"),
-		digest.MustNewInstanceName("ok2"),
-		digest.MustNewInstanceName("ok3"),
-		digest.MustNewInstanceName("denied"),
-		digest.MustNewInstanceName("unavailable1"),
-		digest.MustNewInstanceName("unavailable2"),
-		digest.MustNewInstanceName("unavailable3"),
+		util.Must(digest.NewInstanceName("ok1")),
+		util.Must(digest.NewInstanceName("ok2")),
+		util.Must(digest.NewInstanceName("ok3")),
+		util.Must(digest.NewInstanceName("denied")),
+		util.Must(digest.NewInstanceName("unavailable1")),
+		util.Must(digest.NewInstanceName("unavailable2")),
+		util.Must(digest.NewInstanceName("unavailable3")),
 	})
 	require.Len(t, errs, 7)
 	require.NoError(t, errs[0])

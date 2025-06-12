@@ -13,6 +13,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"go.uber.org/mock/gomock"
@@ -32,9 +33,9 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 	wantBytes := []byte("European Burmese")
 	wantBuf := buffer.NewValidatedBufferFromByteSlice(wantBytes)
 
-	beep := digest.MustNewInstanceName("beep")
+	beep := util.Must(digest.NewInstanceName("beep"))
 	beepSlice := []digest.InstanceName{beep}
-	bopBip := digest.MustNewInstanceName("bop/bip")
+	bopBip := util.Must(digest.NewInstanceName("bop/bip"))
 	beepBopBipSlice := []digest.InstanceName{beep, bopBip}
 
 	t.Run("Get-Allowed", func(t *testing.T) {

@@ -10,11 +10,14 @@ import (
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestRequestHeadersAuthenticator(t *testing.T) {
@@ -36,9 +39,9 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 				// MissingHeader is not part of the request.
 				// UnusedHeader should not be passed.
 			},
-		).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public: structpb.NewStringValue("You're totally who you say you are"),
-		}), nil)
+		})), nil)
 
 		authenticator, err := bb_http.NewRequestHeadersAuthenticator(
 			backend,

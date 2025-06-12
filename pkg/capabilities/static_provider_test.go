@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestStaticProvider(t *testing.T) {
 		},
 	})
 
-	serverCapabilities, err := provider.GetCapabilities(context.Background(), digest.MustNewInstanceName("example"))
+	serverCapabilities, err := provider.GetCapabilities(context.Background(), util.Must(digest.NewInstanceName("example")))
 	require.NoError(t, err)
 	testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
 		ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{

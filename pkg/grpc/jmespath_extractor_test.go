@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
@@ -37,9 +38,9 @@ func TestJMESPathMetadataExtractorSimple(t *testing.T) {
 		"hdr-from-both", "boop",
 	})...)
 
-	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Public: structpb.NewStringValue("boop"),
-	}))
+	})))
 
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("whiz", "bang"))
 
@@ -56,9 +57,9 @@ func TestJMESPathMetadataExtractorAuthMatchToString(t *testing.T) {
 
 	// The resulting header value must be a list. Yielding a string
 	// value directly should cause an error.
-	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Public: structpb.NewStringValue("boop"),
-	}))
+	})))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-slice metadata value"), err)
@@ -70,14 +71,14 @@ func TestJMESPathMetadataExtractorAuthMatchToHeterogenousSlice(t *testing.T) {
 
 	// Each of the header values should be a valid string. Integer
 	// values are not permitted.
-	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Public: structpb.NewListValue(&structpb.ListValue{
 			Values: []*structpb.Value{
 				structpb.NewStringValue("boop"),
 				structpb.NewNumberValue(1),
 			},
 		}),
-	}))
+	})))
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-string metadata value"), err)

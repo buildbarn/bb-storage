@@ -12,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
@@ -42,7 +43,7 @@ func TestRemoteAuthorizerFailure(t *testing.T) {
 			eviction.NewLRUSet[auth.RemoteAuthorizerCacheKey](),
 			100,
 		)
-		errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("allowed")})
+		errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("allowed"))})
 		require.Len(t, errs, 1)
 		testutil.RequireEqualStatus(
 			t,
@@ -66,7 +67,7 @@ func TestRemoteAuthorizerFailure(t *testing.T) {
 			eviction.NewLRUSet[auth.RemoteAuthorizerCacheKey](),
 			100,
 		)
-		errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("allowed")})
+		errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("allowed"))})
 		require.Len(t, errs, 1)
 		testutil.RequireEqualStatus(
 			t,
@@ -79,9 +80,9 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	authCtx := auth.NewContextWithAuthenticationMetadata(
 		ctx,
-		auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public: structpb.NewStringValue("I'm here"),
-		}),
+		})),
 	)
 
 	remoteService := func(ctx context.Context, method string, args, reply interface{}, opts ...grpc.CallOption) error {
@@ -105,12 +106,12 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 	}
 
 	testAuthorizeAllow := func(authorizer auth.Authorizer, instanceName string) {
-		errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName(instanceName)})
+		errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName(instanceName))})
 		require.Len(t, errs, 1)
 		require.NoError(t, errs[0])
 	}
 	testAuthorizeDeny := func(authorizer auth.Authorizer, instanceName string) {
-		errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName(instanceName)})
+		errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName(instanceName))})
 		require.Len(t, errs, 1)
 		testutil.RequireEqualStatus(
 			t,
@@ -158,8 +159,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			100,
 		)
 		errs := authorizer.Authorize(authCtx, []digest.InstanceName{
-			digest.MustNewInstanceName("deny-success"),
-			digest.MustNewInstanceName("allow-success"),
+			util.Must(digest.NewInstanceName("deny-success")),
+			util.Must(digest.NewInstanceName("allow-success")),
 		})
 		// The returned errors should be in the same order as the request instance names.
 		require.Len(t, errs, 2)
@@ -214,22 +215,22 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 
 		// First call uncached.
 		client.EXPECT().Invoke(gomock.Any(), "/buildbarn.auth.Authorizer/Authorize", gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(remoteService)
-		errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("allow")})
+		errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("allow"))})
 		require.Len(t, errs, 1)
 		require.NoError(t, errs[0])
 		// Different instanceName, not cached.
 		client.EXPECT().Invoke(gomock.Any(), "/buildbarn.auth.Authorizer/Authorize", gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(remoteService)
-		errs = authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("allow2")})
+		errs = authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("allow2"))})
 		require.Len(t, errs, 1)
 		require.NoError(t, errs[0])
 		// Different authMetadata, not cached.
 		client.EXPECT().Invoke(gomock.Any(), "/buildbarn.auth.Authorizer/Authorize", gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(remoteService)
-		errs = authorizer.Authorize(authCtx, []digest.InstanceName{digest.MustNewInstanceName("allow")})
+		errs = authorizer.Authorize(authCtx, []digest.InstanceName{util.Must(digest.NewInstanceName("allow"))})
 		require.Len(t, errs, 1)
 		require.NoError(t, errs[0])
 		// Different context instance, should be cached.
 		ctxOther := context.WithValue(ctx, "unused-key", "value")
-		errs = authorizer.Authorize(ctxOther, []digest.InstanceName{digest.MustNewInstanceName("allow")})
+		errs = authorizer.Authorize(ctxOther, []digest.InstanceName{util.Must(digest.NewInstanceName("allow"))})
 		require.Len(t, errs, 1)
 		require.NoError(t, errs[0])
 	})
@@ -293,7 +294,7 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			100,
 		)
 		doAuth := func(name string, done chan<- struct{}) {
-			errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName(name)})
+			errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName(name))})
 			require.Len(t, errs, 1)
 			defer close(done)
 			testutil.RequireEqualStatus(
@@ -314,7 +315,7 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 		go doAuth("name1", done1b)
 		ctx1c, cancel1c := context.WithCancel(ctx)
 		go func() {
-			errs := authorizer.Authorize(ctx1c, []digest.InstanceName{digest.MustNewInstanceName("name1")})
+			errs := authorizer.Authorize(ctx1c, []digest.InstanceName{util.Must(digest.NewInstanceName("name1"))})
 			require.Len(t, errs, 1)
 			testutil.RequireEqualStatus(
 				t,
@@ -391,7 +392,7 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			100,
 		)
 		doAuth := func(name string, done chan<- struct{}, verdict string) {
-			errs := authorizer.Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName(name)})
+			errs := authorizer.Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName(name))})
 			require.Len(t, errs, 1)
 			defer close(done)
 			testutil.RequireEqualStatus(

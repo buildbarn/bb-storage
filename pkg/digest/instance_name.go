@@ -77,17 +77,6 @@ func NewInstanceNameFromComponents(components []string) (InstanceName, error) {
 	}, nil
 }
 
-// MustNewInstanceName is identical to NewInstanceName, except that it
-// panics in case the instance name is invalid. This function can be
-// used as part of unit tests.
-func MustNewInstanceName(value string) InstanceName {
-	instanceName, err := NewInstanceName(value)
-	if err != nil {
-		panic(err)
-	}
-	return instanceName
-}
-
 // NewDigestFromCompactBinary constructs a Digest object by reading data
 // from a ByteReader that contains data that was generated using
 // Digest.GetCompactBinary().

@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -32,7 +33,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
-		provider.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("hello/world")).
+		provider.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world"))).
 			Return(nil, status.Error(codes.Internal, "Server offline"))
 
 		_, err := server.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
@@ -42,7 +43,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		provider.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("hello/world")).
+		provider.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world"))).
 			Return(&remoteexecution.ServerCapabilities{
 				ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{
 					DigestFunction:  remoteexecution.DigestFunction_SHA256,

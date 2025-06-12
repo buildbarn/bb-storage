@@ -68,17 +68,6 @@ func NewAuthenticationMetadataFromRaw(metadataRaw any) (*AuthenticationMetadata,
 	return NewAuthenticationMetadataFromProto(&metadataMessage)
 }
 
-// MustNewAuthenticationMetadataFromProto is identical to
-// NewAuthenticationMetadataFromProto(), except that it panics upon failure. This
-// method is provided for testing.
-func MustNewAuthenticationMetadataFromProto(message *auth_pb.AuthenticationMetadata) *AuthenticationMetadata {
-	authenticationMetadata, err := NewAuthenticationMetadataFromProto(message)
-	if err != nil {
-		panic(err)
-	}
-	return authenticationMetadata
-}
-
 // GetRaw returns the original JSON-like value that was used to
 // construct the AuthenticationMetadata.
 func (am *AuthenticationMetadata) GetRaw() map[string]any {

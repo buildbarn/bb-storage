@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/protobuf/types/known/structpb"
@@ -18,13 +19,13 @@ import (
 func TestAllowAuthenticator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	expectedMetadata := auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	expectedMetadata := util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Public: structpb.NewStructValue(&structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"username": structpb.NewStringValue("John Doe"),
 			},
 		}),
-	})
+	}))
 	authenticator := bb_http.NewAllowAuthenticator(expectedMetadata)
 
 	w := mock.NewMockResponseWriter(ctrl)

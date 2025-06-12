@@ -9,6 +9,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -50,9 +51,9 @@ func TestAllAuthenticatorMultiple(t *testing.T) {
 	t.Run("SecondFailure", func(t *testing.T) {
 		// There is no need to check the other authentication
 		// backends if the first already returns failure.
-		m0.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		m0.EXPECT().Authenticate(ctx).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public: structpb.NewStringValue("You're totally who you say you are"),
-		}), nil)
+		})), nil)
 		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No token present"))
 
 		_, err := a.Authenticate(ctx)
@@ -101,7 +102,7 @@ func TestAllAuthenticatorMultiple(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		m0.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		m0.EXPECT().Authenticate(ctx).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public:  structpb.NewStructValue(publicStruct0),
 			Private: structpb.NewStructValue(privateStruct0),
 			TracingAttributes: []*v1.KeyValue{
@@ -114,8 +115,8 @@ func TestAllAuthenticatorMultiple(t *testing.T) {
 					},
 				},
 			},
-		}), nil)
-		m1.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		})), nil)
+		m1.EXPECT().Authenticate(ctx).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public:  structpb.NewStructValue(publicStruct1),
 			Private: structpb.NewStructValue(privateStruct1),
 			TracingAttributes: []*v1.KeyValue{
@@ -128,7 +129,7 @@ func TestAllAuthenticatorMultiple(t *testing.T) {
 					},
 				},
 			},
-		}), nil)
+		})), nil)
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
 		require.Equal(t, map[string]any{
