@@ -5,14 +5,15 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 )
 
 func testPatcher(t *testing.T, ip digest.InstanceNamePatcher, oldInstanceName, newInstanceName string) {
 	require.Equal(
 		t,
-		digest.MustNewInstanceName(newInstanceName),
-		ip.PatchInstanceName(digest.MustNewInstanceName(oldInstanceName)))
+		util.Must(digest.NewInstanceName(newInstanceName)),
+		ip.PatchInstanceName(util.Must(digest.NewInstanceName(oldInstanceName))))
 	require.Equal(
 		t,
 		digest.MustNewDigest(newInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
@@ -36,8 +37,8 @@ func TestInstanceNamePatcher(t *testing.T) {
 
 	t.Run("IdentityNonEmpty", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
-			digest.MustNewInstanceName("a/b/c"),
-			digest.MustNewInstanceName("a/b/c"),
+			util.Must(digest.NewInstanceName("a/b/c")),
+			util.Must(digest.NewInstanceName("a/b/c")),
 		)
 
 		testPatcher(t, ip, "a/b/c", "a/b/c")
@@ -47,7 +48,7 @@ func TestInstanceNamePatcher(t *testing.T) {
 	t.Run("GrowEmpty", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
 			digest.EmptyInstanceName,
-			digest.MustNewInstanceName("a"),
+			util.Must(digest.NewInstanceName("a")),
 		)
 
 		testPatcher(t, ip, "", "a")
@@ -56,8 +57,8 @@ func TestInstanceNamePatcher(t *testing.T) {
 
 	t.Run("GrowNonEmpty", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
-			digest.MustNewInstanceName("a"),
-			digest.MustNewInstanceName("a/b"),
+			util.Must(digest.NewInstanceName("a")),
+			util.Must(digest.NewInstanceName("a/b")),
 		)
 
 		testPatcher(t, ip, "a", "a/b")
@@ -66,7 +67,7 @@ func TestInstanceNamePatcher(t *testing.T) {
 
 	t.Run("ShrinkEmpty", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
-			digest.MustNewInstanceName("a"),
+			util.Must(digest.NewInstanceName("a")),
 			digest.EmptyInstanceName,
 		)
 
@@ -76,8 +77,8 @@ func TestInstanceNamePatcher(t *testing.T) {
 
 	t.Run("ShrinkNonEmpty", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
-			digest.MustNewInstanceName("a/b"),
-			digest.MustNewInstanceName("a"),
+			util.Must(digest.NewInstanceName("a/b")),
+			util.Must(digest.NewInstanceName("a")),
 		)
 
 		testPatcher(t, ip, "a/b", "a")
@@ -86,8 +87,8 @@ func TestInstanceNamePatcher(t *testing.T) {
 
 	t.Run("ChangePrefix", func(t *testing.T) {
 		ip := digest.NewInstanceNamePatcher(
-			digest.MustNewInstanceName("a"),
-			digest.MustNewInstanceName("b"),
+			util.Must(digest.NewInstanceName("a")),
+			util.Must(digest.NewInstanceName("b")),
 		)
 
 		testPatcher(t, ip, "a", "b")

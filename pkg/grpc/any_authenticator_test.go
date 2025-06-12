@@ -9,6 +9,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -40,9 +41,9 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// There is no need to check the third authentication
 		// backend if the second already returns success.
 		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No token present"))
-		m1.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		m1.EXPECT().Authenticate(ctx).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public: structpb.NewStringValue("You're totally who you say you are"),
-		}), nil)
+		})), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)
@@ -98,9 +99,9 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		// going down entirely.
 		m0.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Unauthenticated, "No TLS used"))
 		m1.EXPECT().Authenticate(ctx).Return(nil, status.Error(codes.Internal, "Failed to contact OAuth2 server"))
-		m2.EXPECT().Authenticate(ctx).Return(auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		m2.EXPECT().Authenticate(ctx).Return(util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Public: structpb.NewStringValue("You're totally who you say you are"),
-		}), nil)
+		})), nil)
 
 		metadata, err := a.Authenticate(ctx)
 		require.NoError(t, err)

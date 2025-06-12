@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -25,45 +26,45 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 	demultiplexingBuildQueue := builder.NewDemultiplexingBuildQueue(buildQueueGetter.Call)
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("Nonexistent backend"))).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
 			status.Error(codes.NotFound, "Backend not found"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("Nonexistent backend"))
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("Nonexistent backend")))
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("ubuntu1804"))).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+		buildQueue.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("rhel7"))).
 			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
-		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
+		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("ubuntu1804")))
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("ubuntu1804"))).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
-		buildQueue.EXPECT().GetCapabilities(ctx, digest.MustNewInstanceName("rhel7")).
+		buildQueue.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("rhel7"))).
 			Return(&remoteexecution.ServerCapabilities{
 				CacheCapabilities: &remoteexecution.CacheCapabilities{
 					DigestFunctions: digest.SupportedDigestFunctions,
 				},
 			}, nil)
 
-		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, digest.MustNewInstanceName("ubuntu1804"))
+		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("ubuntu1804")))
 		require.NoError(t, err)
 		require.Equal(t, &remoteexecution.ServerCapabilities{
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
@@ -93,7 +94,7 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("Nonexistent backend"))).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
@@ -113,10 +114,10 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("ubuntu1804"))).Return(
 			buildQueue,
 			digest.EmptyInstanceName,
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
 		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
@@ -140,10 +141,10 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("foo/ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("foo/ubuntu1804"))).Return(
 			buildQueue,
-			digest.MustNewInstanceName("foo"),
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("foo")),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
 		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
@@ -198,7 +199,7 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 	})
 
 	t.Run("NonexistentInstanceName", func(t *testing.T) {
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("Nonexistent backend")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("Nonexistent backend"))).Return(
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
@@ -214,10 +215,10 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("ubuntu1804"))).Return(
 			buildQueue,
-			digest.MustNewInstanceName("ubuntu1804"),
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("ubuntu1804")),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
 		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
@@ -233,10 +234,10 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		buildQueue := mock.NewMockBuildQueue(ctrl)
-		buildQueueGetter.EXPECT().Call(ctx, digest.MustNewInstanceName("ubuntu1804")).Return(
+		buildQueueGetter.EXPECT().Call(ctx, util.Must(digest.NewInstanceName("ubuntu1804"))).Return(
 			buildQueue,
-			digest.MustNewInstanceName("ubuntu1804"),
-			digest.MustNewInstanceName("rhel7"),
+			util.Must(digest.NewInstanceName("ubuntu1804")),
+			util.Must(digest.NewInstanceName("rhel7")),
 			nil)
 		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",

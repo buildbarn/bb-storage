@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -23,7 +24,7 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 	baseProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	authorizer := mock.NewMockAuthorizer(ctrl)
 	provider := capabilities.NewActionCacheUpdateEnabledClearingProvider(baseProvider, authorizer)
-	instanceName := digest.MustNewInstanceName("hello")
+	instanceName := util.Must(digest.NewInstanceName("hello"))
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		baseProvider.EXPECT().GetCapabilities(ctx, instanceName).
@@ -57,7 +58,7 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 					},
 				},
 			}, nil)
-		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{digest.MustNewInstanceName("hello")}).Return([]error{nil})
+		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{util.Must(digest.NewInstanceName("hello"))}).Return([]error{nil})
 
 		response, err := provider.GetCapabilities(ctx, instanceName)
 		require.NoError(t, err)
@@ -83,7 +84,7 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 					},
 				},
 			}, nil)
-		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{digest.MustNewInstanceName("hello")}).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
+		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{util.Must(digest.NewInstanceName("hello"))}).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
 
 		response, err := provider.GetCapabilities(ctx, instanceName)
 		require.NoError(t, err)

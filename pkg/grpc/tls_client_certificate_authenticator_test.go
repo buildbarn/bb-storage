@@ -13,6 +13,7 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
@@ -103,7 +104,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 	clientCAs := x509.NewCertPool()
 	clientCAs.AddCert(certificateValid)
 	clock := mock.NewMockClock(ctrl)
-	expectedMetadata := auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+	expectedMetadata := util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 		Public: structpb.NewStructValue(&structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"dnsNames": structpb.NewListValue(&structpb.ListValue{
@@ -123,7 +124,7 @@ func TestTLSClientCertificateAuthenticator(t *testing.T) {
 				}),
 			},
 		}),
-	})
+	}))
 
 	aValidator := jmespath.MustCompile(`contains(dnsNames, 'a.example.com')`)
 	bValidator := jmespath.MustCompile(`contains(dnsNames, 'b.example.com')`)

@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -25,7 +26,7 @@ func TestAuthorizingBuildQueueGetExecutionCapabilities(t *testing.T) {
 	authorizer := mock.NewMockAuthorizer(ctrl)
 	authorizingBuildQueue := builder.NewAuthorizingBuildQueue(buildQueue, authorizer)
 
-	instanceName := digest.MustNewInstanceName("hello/world")
+	instanceName := util.Must(digest.NewInstanceName("hello/world"))
 
 	t.Run("NoExecutionCapabilities", func(t *testing.T) {
 		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{instanceName}).Return([]error{nil})
@@ -93,7 +94,7 @@ func TestAuthorizingBuildQueueExecute(t *testing.T) {
 	})
 
 	t.Run("Denied", func(t *testing.T) {
-		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("hello/world"))}).Return([]error{status.Error(codes.PermissionDenied, "Permission denied")})
 		err := authorizingBuildQueue.Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "hello/world",
 			ActionDigest: &remoteexecution.Digest{
@@ -105,7 +106,7 @@ func TestAuthorizingBuildQueueExecute(t *testing.T) {
 	})
 
 	t.Run("Allowed", func(t *testing.T) {
-		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{digest.MustNewInstanceName("hello/world")}).Return([]error{nil})
+		authorizer.EXPECT().Authorize(ctx, []digest.InstanceName{util.Must(digest.NewInstanceName("hello/world"))}).Return([]error{nil})
 		buildQueue.EXPECT().Execute(&remoteexecution.ExecuteRequest{
 			InstanceName: "hello/world",
 			ActionDigest: &remoteexecution.Digest{

@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
@@ -330,7 +331,7 @@ func TestDigestGetProto(t *testing.T) {
 func TestDigestGetInstanceName(t *testing.T) {
 	require.Equal(
 		t,
-		digest.MustNewInstanceName("hello"),
+		util.Must(digest.NewInstanceName("hello")),
 		digest.MustNewDigest(
 			"hello",
 			remoteexecution.DigestFunction_SHA256,

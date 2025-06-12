@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
@@ -20,8 +21,8 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 	a := auth.NewJMESPathExpressionAuthorizer(jmespath.MustCompile("contains(authenticationMetadata.private.permittedInstanceNames, instanceName)"))
 
 	instanceNames := []digest.InstanceName{
-		digest.MustNewInstanceName("allowed"),
-		digest.MustNewInstanceName("forbidden"),
+		util.Must(digest.NewInstanceName("allowed")),
+		util.Must(digest.NewInstanceName("forbidden")),
 	}
 
 	t.Run("NoAuthenticationMetadata", func(t *testing.T) {
@@ -35,7 +36,7 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 	t.Run("EmptyAuthenticationMetadata", func(t *testing.T) {
 		// The authentication metadata does not include the
 		// "permittedInstanceNames" field.
-		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{}))
+		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{})))
 		errs := a.Authorize(ctx, instanceNames)
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[0])
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[1])
@@ -45,7 +46,7 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 		// The authentication metadata includes a
 		// "permittedInstanceNames" field that gives access to the
 		// "allowed" instance name.
-		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+		ctx := auth.NewContextWithAuthenticationMetadata(context.Background(), util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 			Private: structpb.NewStructValue(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"permittedInstanceNames": structpb.NewListValue(&structpb.ListValue{
@@ -55,7 +56,7 @@ func TestJMESPathExpressionAuthorizer(t *testing.T) {
 					}),
 				},
 			}),
-		}))
+		})))
 		errs := a.Authorize(ctx, instanceNames)
 		require.NoError(t, errs[0])
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Permission denied"), errs[1])

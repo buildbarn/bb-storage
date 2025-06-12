@@ -49,6 +49,7 @@ go_test(
         "//pkg/eviction",
         "//pkg/proto/auth",
         "//pkg/testutil",
+        "//pkg/util",
         "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@com_github_stretchr_testify//require",
         "@io_opentelemetry_go_otel//attribute",

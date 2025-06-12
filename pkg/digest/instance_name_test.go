@@ -7,6 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -41,7 +42,7 @@ func TestNewInstanceName(t *testing.T) {
 }
 
 func TestInstanceNameGetDigestFunction(t *testing.T) {
-	instanceName := digest.MustNewInstanceName("hello")
+	instanceName := util.Must(digest.NewInstanceName("hello"))
 
 	t.Run("UnknownDigestFunction", func(t *testing.T) {
 		_, err := instanceName.GetDigestFunction(remoteexecution.DigestFunction_UNKNOWN, 0)
@@ -94,16 +95,16 @@ func TestInstanceNameGetComponents(t *testing.T) {
 	require.Equal(
 		t,
 		[]string{"hello"},
-		digest.MustNewInstanceName("hello").GetComponents())
+		util.Must(digest.NewInstanceName("hello")).GetComponents())
 
 	require.Equal(
 		t,
 		[]string{"hello", "world"},
-		digest.MustNewInstanceName("hello/world").GetComponents())
+		util.Must(digest.NewInstanceName("hello/world")).GetComponents())
 }
 
 func TestInstanceNameNewDigestFromCompactBinary(t *testing.T) {
-	instanceName := digest.MustNewInstanceName("hello")
+	instanceName := util.Must(digest.NewInstanceName("hello"))
 
 	t.Run("SHA256", func(t *testing.T) {
 		blobDigest, err := instanceName.NewDigestFromCompactBinary(bytes.NewBuffer([]byte{

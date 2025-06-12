@@ -9,6 +9,7 @@ import (
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -54,13 +55,13 @@ func TestAcceptHeaderAuthenticator(t *testing.T) {
 			require.NoError(t, err)
 			r.Header.Set("Accept", header)
 
-			expectedMetadata := auth.MustNewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
+			expectedMetadata := util.Must(auth.NewAuthenticationMetadataFromProto(&auth_pb.AuthenticationMetadata{
 				Public: structpb.NewStructValue(&structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"username": structpb.NewStringValue("John Doe"),
 					},
 				}),
-			})
+			}))
 			baseAuthenticator.EXPECT().Authenticate(w, r).Return(expectedMetadata, nil)
 
 			actualMetadata, err := authenticator.Authenticate(w, r)
