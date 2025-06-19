@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/quorum"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
@@ -195,6 +196,35 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      mirrored.NewMirroredBlobAccess(backendA.BlobAccess, backendB.BlobAccess, replicatorAToB, replicatorBToA),
 			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
 		}, "mirrored", nil
+    case *pb.BlobAccessConfiguration_Quorum:
+        backends := make([]blobstore.BlobAccess, 0, len(backend.Quorum.Backends))
+		var combinedDigestKeyFormat *digest.KeyFormat
+
+        for _, b := range backend.Quorum.Backends {
+            backend, err := nc.NewNestedBlobAccess(b, creator)
+            if err != nil {
+                return BlobAccessInfo{}, "", err
+            }
+            backends = append(backends, backend.BlobAccess)
+            if combinedDigestKeyFormat == nil {
+                combinedDigestKeyFormat = &backend.DigestKeyFormat
+            } else {
+                newDigestKeyFormat := combinedDigestKeyFormat.Combine(backend.DigestKeyFormat)
+                combinedDigestKeyFormat = &newDigestKeyFormat
+            }
+        }
+		if len(backends) == 0 {
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Cannot create quorum blob access without any backends")
+		}
+        readQuorum := int(backend.Quorum.ReadQuorum)
+        writeQuorum := int(backend.Quorum.WriteQuorum)
+        if readQuorum + writeQuorum <= len(backends) {
+			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Quorum blob access requires read_quorum + write_quorum > number of backends")
+        }
+        return BlobAccessInfo{
+            BlobAccess: quorum.NewQuorumBlobAccess(backends, readQuorum, writeQuorum),
+            DigestKeyFormat: *combinedDigestKeyFormat,
+        }, "quorum", nil
 	case *pb.BlobAccessConfiguration_Local:
 		digestKeyFormat := digest.KeyWithInstance
 		if !backend.Local.HierarchicalInstanceNames {
