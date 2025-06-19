@@ -27,7 +27,7 @@ func TestNewDigestFromByteStreamReadPath(t *testing.T) {
 
 	t.Run("NonIntegerSize", func(t *testing.T) {
 		_, _, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/five")
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid blob size \"forty-two\""), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid blob size \"forty-one\""), err)
 	})
 
 	t.Run("InvalidInstanceName", func(t *testing.T) {
