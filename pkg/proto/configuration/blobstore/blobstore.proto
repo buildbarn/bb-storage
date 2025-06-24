@@ -50,6 +50,13 @@ message BlobAccessConfiguration {
     // be refilled automatically.
     MirroredBlobAccessConfiguration mirrored = 14;
 
+    // Store blobs in two backends with resilient mirroring. Similar to the
+    // regular mirrored backend, but provides better fault tolerance by
+    // continuing to operate when one backend is unavailable. Operations
+    // succeed as long as at least one backend is working. Replication
+    // between backends happens opportunistically when both are available.
+    ResilientMirroredBlobAccessConfiguration resilient_mirrored = 30;
+
     // Store blobs on the local system.
     LocalBlobAccessConfiguration local = 15;
 
@@ -328,6 +335,26 @@ message MirroredBlobAccessConfiguration {
   // The replication strategy that should be used to copy objects from
   // the secondary backend to the primary backend in case of
   // inconsistencies.
+  BlobReplicatorConfiguration replicator_b_to_a = 4;
+}
+
+message ResilientMirroredBlobAccessConfiguration {
+  // Primary backend.
+  BlobAccessConfiguration backend_a = 1;
+
+  // Secondary backend.
+  BlobAccessConfiguration backend_b = 2;
+
+  // The replication strategy that should be used to copy objects from
+  // the primary backend to the secondary backend in case of
+  // inconsistencies. Replication will be attempted when both backends
+  // are available, but failures won't cause the operation to fail.
+  BlobReplicatorConfiguration replicator_a_to_b = 3;
+
+  // The replication strategy that should be used to copy objects from
+  // the secondary backend to the primary backend in case of
+  // inconsistencies. Replication will be attempted when both backends
+  // are available, but failures won't cause the operation to fail.
   BlobReplicatorConfiguration replicator_b_to_a = 4;
 }
 

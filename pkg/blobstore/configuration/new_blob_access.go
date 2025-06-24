@@ -195,6 +195,27 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      mirrored.NewMirroredBlobAccess(backendA.BlobAccess, backendB.BlobAccess, replicatorAToB, replicatorBToA),
 			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
 		}, "mirrored", nil
+	case *pb.BlobAccessConfiguration_ResilientMirrored:
+		backendA, err := nc.NewNestedBlobAccess(backend.ResilientMirrored.BackendA, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		backendB, err := nc.NewNestedBlobAccess(backend.ResilientMirrored.BackendB, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		replicatorAToB, err := NewBlobReplicatorFromConfiguration(backend.ResilientMirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		replicatorBToA, err := NewBlobReplicatorFromConfiguration(backend.ResilientMirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		return BlobAccessInfo{
+			BlobAccess:      mirrored.NewResilientMirroredBlobAccess(backendA.BlobAccess, backendB.BlobAccess, replicatorAToB, replicatorBToA),
+			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
+		}, "resilient_mirrored", nil
 	case *pb.BlobAccessConfiguration_Local:
 		digestKeyFormat := digest.KeyWithInstance
 		if !backend.Local.HierarchicalInstanceNames {
