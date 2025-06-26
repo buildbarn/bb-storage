@@ -32,7 +32,7 @@ source, create container image and push it into the Docker daemon
 running on the current system:
 
 ```
-$ bazel run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_storage:bb_storage_container
+$ bazel run --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_storage:bb_storage_container
 ...
 Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 ```
