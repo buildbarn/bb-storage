@@ -12,7 +12,7 @@ Storage Daemon可以通过配置来使用一系列的后端, 例如Redis和S3。
 运行以下命令来构建Buildbarn Storage Daemon，创建容器镜像：
 
 ```
-$ bazel run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/bb_storage:bb_storage_container
+$ bazel run --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_storage:bb_storage_container
 ...
 Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 ```
