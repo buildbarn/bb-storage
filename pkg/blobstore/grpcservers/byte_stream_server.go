@@ -104,6 +104,9 @@ func (r *byteStreamWriteServerChunkReader) Close() {}
 func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error {
 	request, err := stream.Recv()
 	if err != nil {
+		if err == io.EOF {
+			return status.Error(codes.InvalidArgument, "Client closed stream without sending an initial request")
+		}
 		return err
 	}
 	digest, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)

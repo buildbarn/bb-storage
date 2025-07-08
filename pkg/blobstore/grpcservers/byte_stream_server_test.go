@@ -195,6 +195,14 @@ func TestByteStreamServer(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
 	})
 
+	t.Run("WriteMissingInitialRequest", func(t *testing.T) {
+		// The client must send at least one ReadRequest.
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		_, err = stream.CloseAndRecv()
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without sending an initial request"), err)
+	})
+
 	t.Run("WriteBadResourceName", func(t *testing.T) {
 		// Attempt to write to a bad resource name.
 		stream, err := client.Write(ctx)
