@@ -25,7 +25,7 @@ func hashServer(key string) uint64 {
 
 // NewRendezvousShardSelector performs shard selection using the Rendezvous
 // Hashing algorithm. The algorithm distributes blobs over the shard
-// proportional to the shards weight, it fullfils all required properties of the
+// proportional to the shards weight, it fulfills all required properties of the
 // ShardSelector interface:
 //   - Reordering the shards will not affect the chosen shard.
 //   - Removing a shard is guaranteed to only affect blobs that would have
@@ -111,7 +111,7 @@ var lut = [(1 << lutEntryBits) + 1]uint16{
 // value.
 //
 // Since log2(x) = N+log2(x/2^N) we can easily remove the integer part of the
-// logaritm. We calculate that exactly by counting the number of bits in the
+// logarithm. We calculate that exactly by counting the number of bits in the
 // number. log(x/2^N) will then be a number between 0 and 1 for which we can use
 // a lookup table to get precomputed values.
 //
