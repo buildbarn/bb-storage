@@ -179,3 +179,49 @@ func TestMergingProviderMultiple(t *testing.T) {
 		}, serverCapabilities)
 	})
 }
+
+func TestMergingProviderWithCompression(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	blobAccessProvider := mock.NewMockCapabilitiesProvider(ctrl)
+
+	compressionProvider := capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+		CacheCapabilities: &remoteexecution.CacheCapabilities{
+			SupportedCompressors: []remoteexecution.Compressor_Value{
+				remoteexecution.Compressor_IDENTITY,
+				remoteexecution.Compressor_ZSTD,
+			},
+		},
+	})
+
+	provider := capabilities.NewMergingProvider([]capabilities.Provider{
+		blobAccessProvider,
+		compressionProvider,
+	})
+	instanceName := util.Must(digest.NewInstanceName("example"))
+
+	blobAccessProvider.EXPECT().GetCapabilities(gomock.Any(), instanceName).
+		Return(&remoteexecution.ServerCapabilities{
+			CacheCapabilities: &remoteexecution.CacheCapabilities{
+				DigestFunctions: []remoteexecution.DigestFunction_Value{
+					remoteexecution.DigestFunction_SHA256,
+					remoteexecution.DigestFunction_SHA1,
+				},
+			},
+		}, nil)
+
+	serverCapabilities, err := provider.GetCapabilities(ctx, instanceName)
+	require.NoError(t, err)
+	testutil.RequireEqualProto(t, &remoteexecution.ServerCapabilities{
+		CacheCapabilities: &remoteexecution.CacheCapabilities{
+			DigestFunctions: []remoteexecution.DigestFunction_Value{
+				remoteexecution.DigestFunction_SHA256,
+				remoteexecution.DigestFunction_SHA1,
+			},
+			SupportedCompressors: []remoteexecution.Compressor_Value{
+				remoteexecution.Compressor_IDENTITY,
+				remoteexecution.Compressor_ZSTD,
+			},
+		},
+	}, serverCapabilities)
+}

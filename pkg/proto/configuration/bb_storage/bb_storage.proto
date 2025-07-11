@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.bb_storage;
 
+import "build/bazel/remote/execution/v2/remote_execution.proto";
 import "pkg/proto/configuration/auth/auth.proto";
 import "pkg/proto/configuration/blobstore/blobstore.proto";
 import "pkg/proto/configuration/builder/builder.proto";
@@ -89,6 +90,18 @@ message ApplicationConfiguration {
   // operation. This is hopefully safe, as operation names are hard to guess,
   // and the forwarded-to scheduler should perform its own authorization.
   buildbarn.configuration.auth.AuthorizerConfiguration execute_authorizer = 16;
+
+  // List of compression algorithms supported by the Content Addressable
+  // Storage to announce as part of the server's cache capabilities. This
+  // does not affect the compression algorithm used by the server when
+  // reading or writing data, as only uncompressed data and ZSTD are
+  // supported. Valid values include:
+  //
+  // ZSTD: Zstandard compression
+  //
+  // Support for IDENTITY (i.e., no compression) is implied.
+  repeated build.bazel.remote.execution.v2.Compressor.Value
+      supported_compressors = 20;
 }
 
 // Storage configuration for backends which don't allow batch digest
