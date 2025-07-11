@@ -91,3 +91,20 @@ func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 func (bd *memoryMappedBlockDevice) Sync() error {
 	return unix.Fsync(bd.fd)
 }
+
+func (bd *memoryMappedBlockDevice) Close() error {
+	var errors []error
+
+	if err := unix.Munmap(bd.data); err != nil {
+		errors = append(errors, util.StatusWrap(err, "Failed to unmap memory region"))
+	}
+
+	if err := unix.Close(bd.fd); err != nil {
+		errors = append(errors, util.StatusWrap(err, "Failed to close file descriptor"))
+	}
+
+	if len(errors) == 0 {
+		return nil
+	}
+	return util.StatusFromMultiple(errors)
+}
