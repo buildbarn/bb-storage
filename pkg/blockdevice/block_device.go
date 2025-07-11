@@ -28,6 +28,7 @@ type BlockDevice interface {
 	io.WriterAt
 
 	Sync() error
+	Close() error
 }
 
 var _ BlockDevice = (*os.File)(nil)

@@ -6,11 +6,12 @@ go_library(
         "block_device.go",
         "configuration.go",
         "memory_mapped_block_device_unix.go",
+        "memory_mapped_block_device_windows.go",
         "new_block_device_from_device_disabled.go",
         "new_block_device_from_device_freebsd.go",
         "new_block_device_from_device_linux.go",
-        "new_block_device_from_file_disabled.go",
         "new_block_device_from_file_unix.go",
+        "new_block_device_from_file_windows.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blockdevice",
     visibility = ["//visibility:public"],
@@ -39,13 +40,24 @@ go_library(
             "//pkg/util",
             "@org_golang_x_sys//unix",
         ],
+        "@rules_go//go/platform:windows": [
+            "//pkg/util",
+            "@org_golang_x_sys//windows",
+        ],
         "//conditions:default": [],
     }),
 )
 
 go_test(
     name = "blockdevice_test",
-    srcs = ["new_block_device_from_file_test.go"],
+    srcs = [
+        "new_block_device_from_file_test.go",
+    ] + select({
+        "@rules_go//go/platform:windows": [
+            "new_block_device_from_file_windows_test.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         ":blockdevice",
         "//pkg/testutil",

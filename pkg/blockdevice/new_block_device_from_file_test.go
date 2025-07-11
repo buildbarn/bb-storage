@@ -3,6 +3,7 @@ package blockdevice_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"testing"
 
@@ -52,19 +53,27 @@ func TestNewBlockDeviceFromFile(t *testing.T) {
 	// To be able to implement this, ReadAt() temporary enables the
 	// debug.SetPanicOnFault() option. Test that the original value
 	// of this option is restored upon completion.
-	require.NoError(t, os.Truncate(blockDevicePath, 0))
 
-	debug.SetPanicOnFault(false)
-	n, err = blockDevice.ReadAt(b[:], 12340)
-	require.False(t, debug.SetPanicOnFault(false))
-	require.Equal(t, 0, n)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+	if runtime.GOOS == "windows" {
+		// On Windows, we can't truncate files that are memory-mapped, so skip this
+		require.Error(t, os.Truncate(blockDevicePath, 0))
+	} else {
+		require.NoError(t, os.Truncate(blockDevicePath, 0))
 
-	debug.SetPanicOnFault(true)
-	n, err = blockDevice.ReadAt(b[:], 12340)
-	require.True(t, debug.SetPanicOnFault(false))
-	require.Equal(t, 0, n)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+		debug.SetPanicOnFault(false)
+		n, err = blockDevice.ReadAt(b[:], 12340)
+		require.False(t, debug.SetPanicOnFault(false))
+		require.Equal(t, 0, n)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+
+		debug.SetPanicOnFault(true)
+		n, err = blockDevice.ReadAt(b[:], 12340)
+		require.True(t, debug.SetPanicOnFault(false))
+		require.Equal(t, 0, n)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Page fault occurred while reading from memory map"), err)
+	}
+
+	require.NoError(t, blockDevice.Close())
 }
 
 func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {
@@ -86,6 +95,8 @@ func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {
 	require.Equal(t, 5, n)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), b[:])
+
+	require.NoError(t, blockDevice.Close())
 }
 
 func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
@@ -108,4 +119,6 @@ func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
 	require.Equal(t, 5, n)
 	require.NoError(t, err)
 	require.Equal(t, []byte("\x00\x00\x00\x00\x00"), b[:])
+
+	require.NoError(t, blockDevice.Close())
 }
