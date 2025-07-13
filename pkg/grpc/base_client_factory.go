@@ -22,17 +22,24 @@ import (
 
 type baseClientFactory struct {
 	dialer             ClientDialer
+	dialOptions        []grpc.DialOption
 	unaryInterceptors  []grpc.UnaryClientInterceptor
 	streamInterceptors []grpc.StreamClientInterceptor
 }
 
 // NewBaseClientFactory creates factory for gRPC clients that calls into
 // ClientDialer to construct the actual client.
-func NewBaseClientFactory(dialer ClientDialer, unaryInterceptors []grpc.UnaryClientInterceptor, streamInterceptors []grpc.StreamClientInterceptor) ClientFactory {
+func NewBaseClientFactory(
+	dialer ClientDialer,
+	dialOptions []grpc.DialOption,
+	unaryInterceptors []grpc.UnaryClientInterceptor,
+	streamInterceptors []grpc.StreamClientInterceptor,
+) ClientFactory {
 	// Limit slice capacity to length, so that any appending
 	// additional interceptors always triggers a copy.
 	return baseClientFactory{
 		dialer:             dialer,
+		dialOptions:        dialOptions[:len(dialOptions):len(dialOptions)],
 		unaryInterceptors:  unaryInterceptors[:len(unaryInterceptors):len(unaryInterceptors)],
 		streamInterceptors: streamInterceptors[:len(streamInterceptors):len(streamInterceptors)],
 	}
@@ -80,7 +87,7 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
 
-	var dialOptions []grpc.DialOption
+	dialOptions := cf.dialOptions
 	unaryInterceptors := cf.unaryInterceptors
 	streamInterceptors := cf.streamInterceptors
 

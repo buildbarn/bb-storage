@@ -135,6 +135,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	}
 
 	grpcClientDialer := bb_grpc.NewLazyClientDialer(bb_grpc.BaseClientDialer)
+	var grpcDialOptions []grpc.DialOption
 	var grpcUnaryInterceptors []grpc.UnaryClientInterceptor
 	var grpcStreamInterceptors []grpc.StreamClientInterceptor
 
@@ -166,8 +167,11 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 			nonTracingGRPCClientFactory := bb_grpc.NewDeduplicatingClientFactory(
 				bb_grpc.NewBaseClientFactory(
 					grpcClientDialer,
+					grpcDialOptions,
 					grpcUnaryInterceptors,
-					grpcStreamInterceptors))
+					grpcStreamInterceptors,
+				),
+			)
 
 			var tracerProviderOptions []sdktrace.TracerProviderOption
 			for _, backend := range tracingConfiguration.Backends {
@@ -283,8 +287,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 		)
 		otel.SetTextMapPropagator(propagator)
 
-		grpcUnaryInterceptors = append(grpcUnaryInterceptors, otelgrpc.UnaryClientInterceptor())
-		grpcStreamInterceptors = append(grpcStreamInterceptors, otelgrpc.StreamClientInterceptor())
+		grpcDialOptions = append(grpcDialOptions, grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
 	}
 
 	// Enable mutex profiling.
@@ -361,6 +364,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(
 		bb_grpc.NewBaseClientFactory(
 			grpcClientDialer,
+			grpcDialOptions,
 			grpcUnaryInterceptors,
 			grpcStreamInterceptors,
 		),
