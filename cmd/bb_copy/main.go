@@ -39,7 +39,7 @@ func main() {
 			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
 
-		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil)
+		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil, nil)
 
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 			grpcClientFactory,

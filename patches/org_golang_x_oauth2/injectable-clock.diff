@@ -1,5 +1,5 @@
 diff --git clientcredentials/clientcredentials.go clientcredentials/clientcredentials.go
-index 2459d06..ab084d7 100644
+index e86346e..7b7fe40 100644
 --- clientcredentials/clientcredentials.go
 +++ clientcredentials/clientcredentials.go
 @@ -19,6 +19,7 @@ import (
@@ -20,10 +20,10 @@ index 2459d06..ab084d7 100644
  		if rErr, ok := err.(*internal.RetrieveError); ok {
  			return nil, (*oauth2.RetrieveError)(rErr)
 diff --git internal/token.go internal/token.go
-index e83ddee..5f5f591 100644
+index 8389f24..834bcee 100644
 --- internal/token.go
 +++ internal/token.go
-@@ -70,9 +70,9 @@ type tokenJSON struct {
+@@ -76,9 +76,9 @@ type tokenJSON struct {
  	ErrorURI         string `json:"error_uri"`
  }
  
@@ -35,16 +35,16 @@ index e83ddee..5f5f591 100644
  	}
  	return
  }
-@@ -209,7 +209,7 @@ func cloneURLValues(v url.Values) url.Values {
+@@ -212,7 +212,7 @@ func cloneURLValues(v url.Values) url.Values {
  	return v2
  }
  
 -func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, v url.Values, authStyle AuthStyle, styleCache *AuthStyleCache) (*Token, error) {
 +func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, v url.Values, authStyle AuthStyle, styleCache *AuthStyleCache, timeNow func() time.Time) (*Token, error) {
- 	needsAuthStyleProbe := authStyle == 0
+ 	needsAuthStyleProbe := authStyle == AuthStyleUnknown
  	if needsAuthStyleProbe {
- 		if style, ok := styleCache.lookupAuthStyle(tokenURL); ok {
-@@ -223,7 +223,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+ 		if style, ok := styleCache.lookupAuthStyle(tokenURL, clientID); ok {
+@@ -226,7 +226,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
  	if err != nil {
  		return nil, err
  	}
@@ -53,7 +53,7 @@ index e83ddee..5f5f591 100644
  	if err != nil && needsAuthStyleProbe {
  		// If we get an error, assume the server wants the
  		// clientID & clientSecret in a different form.
-@@ -239,7 +239,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+@@ -242,7 +242,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
  		// So just try both ways.
  		authStyle = AuthStyleInParams // the second way we'll try
  		req, _ = newTokenRequest(tokenURL, clientID, clientSecret, v, authStyle)
@@ -61,8 +61,8 @@ index e83ddee..5f5f591 100644
 +		token, err = doTokenRoundTrip(ctx, req, timeNow)
  	}
  	if needsAuthStyleProbe && err == nil {
- 		styleCache.setAuthStyle(tokenURL, authStyle)
-@@ -252,7 +252,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
+ 		styleCache.setAuthStyle(tokenURL, clientID, authStyle)
+@@ -255,7 +255,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
  	return token, err
  }
  
@@ -71,7 +71,7 @@ index e83ddee..5f5f591 100644
  	r, err := ContextClient(ctx).Do(req.WithContext(ctx))
  	if err != nil {
  		return nil, err
-@@ -294,7 +294,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
+@@ -297,7 +297,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
  		e := vals.Get("expires_in")
  		expires, _ := strconv.Atoi(e)
  		if expires != 0 {
@@ -80,17 +80,17 @@ index e83ddee..5f5f591 100644
  		}
  	default:
  		var tj tokenJSON
-@@ -311,7 +311,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
+@@ -314,7 +314,7 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
  			AccessToken:  tj.AccessToken,
  			TokenType:    tj.TokenType,
  			RefreshToken: tj.RefreshToken,
 -			Expiry:       tj.expiry(),
 +			Expiry:       tj.expiry(timeNow),
- 			Raw:          make(map[string]interface{}),
+ 			ExpiresIn:    int64(tj.ExpiresIn),
+ 			Raw:          make(map[string]any),
  		}
- 		json.Unmarshal(body, &token.Raw) // no error checks for optional fields
 diff --git internal/token_test.go internal/token_test.go
-index c08862a..dc823e8 100644
+index ef28c11..e1c1b22 100644
 --- internal/token_test.go
 +++ internal/token_test.go
 @@ -13,6 +13,7 @@ import (
@@ -129,10 +129,10 @@ index c08862a..dc823e8 100644
  	if err == nil {
  		t.Errorf("RetrieveToken (with cancelled context) = nil; want error")
 diff --git token.go token.go
-index 5bbb332..1882081 100644
+index 239ec32..93546c7 100644
 --- token.go
 +++ token.go
-@@ -124,7 +124,7 @@ func (t *Token) Extra(key string) interface{} {
+@@ -131,7 +131,7 @@ func (t *Token) Extra(key string) any {
  }
  
  // timeNow is time.Now but pulled out as a variable for tests.
@@ -141,7 +141,7 @@ index 5bbb332..1882081 100644
  
  // expired reports whether the token is expired.
  // t must be non-nil.
-@@ -137,7 +137,7 @@ func (t *Token) expired() bool {
+@@ -144,7 +144,7 @@ func (t *Token) expired() bool {
  	if t.expiryDelta != 0 {
  		expiryDelta = t.expiryDelta
  	}
@@ -150,9 +150,9 @@ index 5bbb332..1882081 100644
  }
  
  // Valid reports whether t is non-nil, has an AccessToken, and is not expired.
-@@ -164,7 +164,7 @@ func tokenFromInternal(t *internal.Token) *Token {
+@@ -172,7 +172,7 @@ func tokenFromInternal(t *internal.Token) *Token {
  // This token is then mapped from *internal.Token into an *oauth2.Token which is returned along
- // with an error..
+ // with an error.
  func retrieveToken(ctx context.Context, c *Config, v url.Values) (*Token, error) {
 -	tk, err := internal.RetrieveToken(ctx, c.ClientID, c.ClientSecret, c.Endpoint.TokenURL, v, internal.AuthStyle(c.Endpoint.AuthStyle), c.authStyleCache.Get())
 +	tk, err := internal.RetrieveToken(ctx, c.ClientID, c.ClientSecret, c.Endpoint.TokenURL, v, internal.AuthStyle(c.Endpoint.AuthStyle), c.authStyleCache.Get(), TimeNow)
@@ -160,7 +160,7 @@ index 5bbb332..1882081 100644
  		if rErr, ok := err.(*internal.RetrieveError); ok {
  			return nil, (*RetrieveError)(rErr)
 diff --git token_test.go token_test.go
-index 0d8c7df..bf76470 100644
+index 5fa14fa..d7eff05 100644
 --- token_test.go
 +++ token_test.go
 @@ -34,8 +34,8 @@ func TestTokenExtra(t *testing.T) {

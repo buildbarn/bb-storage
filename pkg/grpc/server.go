@@ -44,12 +44,10 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		// Default server options.
 		unaryInterceptors := []grpc.UnaryServerInterceptor{
 			grpc_prometheus.UnaryServerInterceptor,
-			otelgrpc.UnaryServerInterceptor(),
 			RequestMetadataTracingUnaryInterceptor,
 		}
 		streamInterceptors := []grpc.StreamServerInterceptor{
 			grpc_prometheus.StreamServerInterceptor,
-			otelgrpc.StreamServerInterceptor(),
 			RequestMetadataTracingStreamInterceptor,
 		}
 
@@ -66,6 +64,7 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		serverOptions := []grpc.ServerOption{
 			grpc.ChainUnaryInterceptor(unaryInterceptors...),
 			grpc.ChainStreamInterceptor(streamInterceptors...),
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		}
 
 		// Enable TLS transport credentials if provided.
