@@ -2,6 +2,7 @@ package grpcservers_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -123,6 +125,87 @@ func TestByteStreamServer(t *testing.T) {
 		require.Equal(t, []byte("ge"), readResponse.Data)
 		_, err = req.Recv()
 		require.Equal(t, io.EOF, err)
+	})
+
+	t.Run("ReadZSTDCompression", func(t *testing.T) {
+		// Test reading with ZSTD compression.
+		originalData := []byte("This is a test message that should be compressed with ZSTD")
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
+		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58",
+		})
+		require.NoError(t, err)
+
+		var compressedData []byte
+		for {
+			response, err := req.Recv()
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			compressedData = append(compressedData, response.Data...)
+		}
+
+		decoder, err := zstd.NewReader(nil)
+		require.NoError(t, err)
+		defer decoder.Close()
+
+		decompressedData, err := decoder.DecodeAll(compressedData, nil)
+		require.NoError(t, err)
+		require.Equal(t, originalData, decompressedData)
+	})
+
+	t.Run("ReadZSTDCompressionLargeData", func(t *testing.T) {
+		// Test reading large data with ZSTD compression.
+		originalData := make([]byte, 100000)
+		for i := range originalData {
+			originalData[i] = byte(i % 256)
+		}
+
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", 100000),
+		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "compressed-blobs/zstd/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2/100000",
+		})
+		require.NoError(t, err)
+
+		var compressedData []byte
+		for {
+			response, err := req.Recv()
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			compressedData = append(compressedData, response.Data...)
+		}
+
+		decoder, err := zstd.NewReader(nil)
+		require.NoError(t, err)
+		defer decoder.Close()
+
+		decompressedData, err := decoder.DecodeAll(compressedData, nil)
+		require.NoError(t, err)
+		require.Equal(t, originalData, decompressedData)
+
+		// Compressed data should be smaller than original data.
+		require.Less(t, len(compressedData), len(originalData))
+	})
+
+	t.Run("ReadUnsupportedCompression", func(t *testing.T) {
+		// Test reading with unsupported compression type.
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "compressed-blobs/gzip/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58",
+		})
+		require.NoError(t, err)
+		_, err = req.Recv()
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "Unsupported compression scheme \"gzip\""), err)
 	})
 
 	t.Run("ReadNegativeReadOffset", func(t *testing.T) {
@@ -242,6 +325,226 @@ func TestByteStreamServer(t *testing.T) {
 		response, err := stream.CloseAndRecv()
 		require.NoError(t, err)
 		require.Equal(t, int64(14), response.CommittedSize)
+	})
+
+	t.Run("WriteZSTDDecompression", func(t *testing.T) {
+		// Test writing with ZSTD decompression.
+		originalData := []byte("This is a test message that should be compressed with ZSTD for upload")
+
+		encoder, err := zstd.NewWriter(nil)
+		require.NoError(t, err)
+		compressedData := encoder.EncodeAll(originalData, nil)
+		encoder.Close()
+
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		generator.Write(originalData)
+		actualDigest := generator.Sum()
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			actualDigest,
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			data, err := b.ToByteSlice(1000)
+			require.NoError(t, err)
+			require.Equal(t, originalData, data)
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/" + actualDigest.GetHashString() + "/" + fmt.Sprintf("%d", len(originalData)),
+			Data:         compressedData,
+			FinishWrite:  true,
+		}))
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(len(compressedData)), response.CommittedSize)
+	})
+
+	t.Run("WriteZSTDDecompressionChunked", func(t *testing.T) {
+		// Test writing with ZSTD decompression in multiple chunks.
+		originalData := []byte("This is a longer test message that should be compressed with ZSTD and sent in multiple chunks to test streaming decompression")
+
+		encoder, err := zstd.NewWriter(nil)
+		require.NoError(t, err)
+		compressedData := encoder.EncodeAll(originalData, nil)
+		encoder.Close()
+
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		generator.Write(originalData)
+		actualDigest := generator.Sum()
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			actualDigest,
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			data, err := b.ToByteSlice(1000)
+			require.NoError(t, err)
+			require.Equal(t, originalData, data)
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+
+		chunk1 := compressedData[:len(compressedData)/2]
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/" + actualDigest.GetHashString() + "/" + fmt.Sprintf("%d", len(originalData)),
+			Data:         chunk1,
+		}))
+
+		chunk2 := compressedData[len(compressedData)/2:]
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			Data:        chunk2,
+			WriteOffset: int64(len(chunk1)),
+			FinishWrite: true,
+		}))
+
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(len(compressedData)), response.CommittedSize)
+	})
+
+	t.Run("WriteZstdDecompressionLargeData", func(t *testing.T) {
+		// Test writing large data with ZSTD decompression.
+		originalData := make([]byte, 50000)
+		for i := range originalData {
+			originalData[i] = byte(i % 256)
+		}
+
+		encoder, err := zstd.NewWriter(nil)
+		require.NoError(t, err)
+		compressedData := encoder.EncodeAll(originalData, nil)
+		encoder.Close()
+
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		generator.Write(originalData)
+		actualDigest := generator.Sum()
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			actualDigest,
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			data, err := b.ToByteSlice(100000)
+			require.NoError(t, err)
+			require.Equal(t, originalData, data)
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+
+		chunkSize := 1000
+		currentOffset := 0
+		for currentOffset < len(compressedData) {
+			endOffset := currentOffset + chunkSize
+			if endOffset > len(compressedData) {
+				endOffset = len(compressedData)
+			}
+
+			chunk := compressedData[currentOffset:endOffset]
+			isLast := endOffset == len(compressedData)
+
+			var req *bytestream.WriteRequest
+			if currentOffset == 0 {
+				req = &bytestream.WriteRequest{
+					ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/" + actualDigest.GetHashString() + "/" + fmt.Sprintf("%d", len(originalData)),
+					Data:         chunk,
+					WriteOffset:  int64(currentOffset),
+					FinishWrite:  isLast,
+				}
+			} else {
+				req = &bytestream.WriteRequest{
+					Data:        chunk,
+					WriteOffset: int64(currentOffset),
+					FinishWrite: isLast,
+				}
+			}
+
+			require.NoError(t, stream.Send(req))
+			currentOffset = endOffset
+		}
+
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(len(compressedData)), response.CommittedSize)
+	})
+
+	t.Run("WriteZSTDInvalidData", func(t *testing.T) {
+		// Test writing with invalid ZSTD data.
+		invalidData := []byte("This is not valid ZSTD compressed data")
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5", 10),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			_, err := b.ToByteSlice(1000)
+			require.Error(t, err)
+			return err
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5/10",
+			Data:         invalidData,
+			FinishWrite:  true,
+		}))
+		_, err = stream.CloseAndRecv()
+		require.Error(t, err)
+	})
+
+	t.Run("WriteZSTDEmptyData", func(t *testing.T) {
+		// Test writing empty data with ZSTD decompression.
+		originalData := []byte{}
+
+		encoder, err := zstd.NewWriter(nil)
+		require.NoError(t, err)
+		compressedData := encoder.EncodeAll(originalData, nil)
+		encoder.Close()
+
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		generator.Write(originalData)
+		actualDigest := generator.Sum()
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			actualDigest,
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			data, err := b.ToByteSlice(1000)
+			require.NoError(t, err)
+			require.Equal(t, originalData, data)
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/" + actualDigest.GetHashString() + "/0",
+			Data:         compressedData,
+			FinishWrite:  true,
+		}))
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(len(compressedData)), response.CommittedSize)
+	})
+
+	t.Run("WriteEmptyStreamError", func(t *testing.T) {
+		// Test writing to an empty stream.
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		_, err = stream.CloseAndRecv()
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without sending an initial request"), err)
 	})
 
 	t.Run("WriteSuccessWithoutFinish", func(t *testing.T) {

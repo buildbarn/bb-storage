@@ -62,7 +62,15 @@ func main() {
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
-			cacheCapabilitiesProviders = append(cacheCapabilitiesProviders, info.BlobAccess)
+			cacheCapabilitiesProviders = append(
+				cacheCapabilitiesProviders,
+				info.BlobAccess,
+				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+					CacheCapabilities: &remoteexecution.CacheCapabilities{
+						SupportedCompressors: configuration.SupportedCompressors,
+					},
+				}),
+			)
 			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
 			contentAddressableStorageInfo = &info
 			contentAddressableStorage = authorizedBackend

@@ -158,15 +158,12 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		// GOMAXPROCS. We should just use a single thread,
 		// because many BlobAccess operations may run in
 		// parallel.
-		decoder, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
+		decoder, err := util.NewZstdReadCloser(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
 		if err != nil {
 			r.Close()
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))
 		}
-		r = &zstdReader{
-			Decoder:          decoder,
-			underlyingReader: r,
-		}
+		r = decoder
 	case remoteexecution.Compressor_DEFLATE:
 		r = struct {
 			io.Reader
@@ -235,16 +232,4 @@ func (r statusReturningReadCloser) Read(p []byte) (int, error) {
 
 func (r statusReturningReadCloser) Close() error {
 	return errToStatus(r.r.Close())
-}
-
-// zstdReader is a decorator for zstd.Decoder that ensures both the
-// decoder and the underlying stream are closed upon completion.
-type zstdReader struct {
-	*zstd.Decoder
-	underlyingReader io.Closer
-}
-
-func (r *zstdReader) Close() error {
-	r.Decoder.Close()
-	return r.underlyingReader.Close()
 }
