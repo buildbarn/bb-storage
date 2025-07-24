@@ -36,6 +36,7 @@ def multiarch_go_image(name, binary):
             "@rules_go//go/toolchain:linux_amd64",
             "@rules_go//go/toolchain:linux_arm64",
         ],
+        visibility = ["//visibility:public"],
     )
 
 def container_push_official(name, image, component):
