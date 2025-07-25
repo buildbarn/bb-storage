@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package buildbarn.configuration.jmespath;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath";
+
+message Expression {
+  // The JMESPath expression itself.
+  string expression = 1;
+
+  // Any files that should be made available to the JMESPath expression.
+  // These will be accessible under the key `files` within expression.
+  //
+  // The file will be automatically reloaded every 60 seconds.
+  repeated File files = 2;
+
+  // A list of test vectors that will be evaluated on startup. If one of
+  // the test vectors fails, then buildbarn will fail to start.
+  repeated TestVector test_vectors = 3;
+}
+
+message File {
+  // The key under which the file contents will be made available to
+  // the JMESPath expression. For example, if this is token, then the
+  // JMESPath expression can refer to the file contents as files.token.
+  string key = 1;
+
+  // The path to the file to read.
+  string path = 2;
+}
+
+message TestVector {
+  // The input to the JMESPath expression. If the expression has files,
+  // these must be included in the input under the key `files`.
+  google.protobuf.Struct input = 1;
+
+  // The expected output of evaluating the JMESPath expression with
+  // input.
+  google.protobuf.Value expected_output = 2;
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
 
@@ -21,7 +22,7 @@ type icasBlobAccessCreator struct {
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Indirect Content
 // Addressable Storage.
-func NewICASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewICASBlobAccessCreator(terminationGroup program.Group, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &icasBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
@@ -36,10 +37,10 @@ func (bac *icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.
 	return nil
 }
 
-func (bac *icasBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

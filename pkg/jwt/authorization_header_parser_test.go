@@ -6,8 +6,8 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
-	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
 	"go.uber.org/mock/gomock"
@@ -21,8 +21,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 	authenticator := jwt.NewAuthorizationHeaderParser(
 		clock,
 		signatureValidator,
-		jmespath.MustCompile("forbiddenField == null"),
-		jmespath.MustCompile("{\"private\": @}"),
+		jmespath.MustCompile("payload.forbiddenField == null"),
+		jmespath.MustCompile("{\"private\": @.payload}"),
 		1000,
 		eviction.NewLRUSet[string]())
 

@@ -8,6 +8,7 @@ package jwt
 
 import (
 	eviction "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction"
+	jmespath "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -32,8 +33,8 @@ type AuthorizationHeaderParserConfiguration struct {
 	Jwks                                 isAuthorizationHeaderParserConfiguration_Jwks `protobuf_oneof:"jwks"`
 	MaximumCacheSize                     int32                                         `protobuf:"varint,3,opt,name=maximum_cache_size,json=maximumCacheSize,proto3" json:"maximum_cache_size,omitempty"`
 	CacheReplacementPolicy               eviction.CacheReplacementPolicy               `protobuf:"varint,4,opt,name=cache_replacement_policy,json=cacheReplacementPolicy,proto3,enum=buildbarn.configuration.eviction.CacheReplacementPolicy" json:"cache_replacement_policy,omitempty"`
-	ClaimsValidationJmespathExpression   string                                        `protobuf:"bytes,5,opt,name=claims_validation_jmespath_expression,json=claimsValidationJmespathExpression,proto3" json:"claims_validation_jmespath_expression,omitempty"`
-	MetadataExtractionJmespathExpression string                                        `protobuf:"bytes,6,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
+	ClaimsValidationJmespathExpression   *jmespath.Expression                          `protobuf:"bytes,5,opt,name=claims_validation_jmespath_expression,json=claimsValidationJmespathExpression,proto3" json:"claims_validation_jmespath_expression,omitempty"`
+	MetadataExtractionJmespathExpression *jmespath.Expression                          `protobuf:"bytes,6,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
 	unknownFields                        protoimpl.UnknownFields
 	sizeCache                            protoimpl.SizeCache
 }
@@ -107,18 +108,18 @@ func (x *AuthorizationHeaderParserConfiguration) GetCacheReplacementPolicy() evi
 	return eviction.CacheReplacementPolicy(0)
 }
 
-func (x *AuthorizationHeaderParserConfiguration) GetClaimsValidationJmespathExpression() string {
+func (x *AuthorizationHeaderParserConfiguration) GetClaimsValidationJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		return x.ClaimsValidationJmespathExpression
 	}
-	return ""
+	return nil
 }
 
-func (x *AuthorizationHeaderParserConfiguration) GetMetadataExtractionJmespathExpression() string {
+func (x *AuthorizationHeaderParserConfiguration) GetMetadataExtractionJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		return x.MetadataExtractionJmespathExpression
 	}
-	return ""
+	return nil
 }
 
 type isAuthorizationHeaderParserConfiguration_Jwks interface {
@@ -143,15 +144,15 @@ var File_pkg_proto_configuration_jwt_jwt_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_jwt_jwt_proto_rawDesc = "" +
 	"\n" +
-	"%pkg/proto/configuration/jwt/jwt.proto\x12\x1bbuildbarn.configuration.jwt\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\"\xe3\x03\n" +
+	"%pkg/proto/configuration/jwt/jwt.proto\x12\x1bbuildbarn.configuration.jwt\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xc0\x04\n" +
 	"&AuthorizationHeaderParserConfiguration\x12:\n" +
 	"\vjwks_inline\x18\a \x01(\v2\x17.google.protobuf.StructH\x00R\n" +
 	"jwksInline\x12\x1d\n" +
 	"\tjwks_file\x18\b \x01(\tH\x00R\bjwksFile\x12,\n" +
 	"\x12maximum_cache_size\x18\x03 \x01(\x05R\x10maximumCacheSize\x12r\n" +
-	"\x18cache_replacement_policy\x18\x04 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicy\x12Q\n" +
-	"%claims_validation_jmespath_expression\x18\x05 \x01(\tR\"claimsValidationJmespathExpression\x12U\n" +
-	"'metadata_extraction_jmespath_expression\x18\x06 \x01(\tR$metadataExtractionJmespathExpressionB\x06\n" +
+	"\x18cache_replacement_policy\x18\x04 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicy\x12\x7f\n" +
+	"%claims_validation_jmespath_expression\x18\x05 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR\"claimsValidationJmespathExpression\x12\x83\x01\n" +
+	"'metadata_extraction_jmespath_expression\x18\x06 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR$metadataExtractionJmespathExpressionB\x06\n" +
 	"\x04jwksJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03B=Z;github.com/buildbarn/bb-storage/pkg/proto/configuration/jwtb\x06proto3"
 
 var (
@@ -171,15 +172,18 @@ var file_pkg_proto_configuration_jwt_jwt_proto_goTypes = []any{
 	(*AuthorizationHeaderParserConfiguration)(nil), // 0: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
 	(*structpb.Struct)(nil),                        // 1: google.protobuf.Struct
 	(eviction.CacheReplacementPolicy)(0),           // 2: buildbarn.configuration.eviction.CacheReplacementPolicy
+	(*jmespath.Expression)(nil),                    // 3: buildbarn.configuration.jmespath.Expression
 }
 var file_pkg_proto_configuration_jwt_jwt_proto_depIdxs = []int32{
 	1, // 0: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.jwks_inline:type_name -> google.protobuf.Struct
 	2, // 1: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.claims_validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	3, // 3: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_jwt_jwt_proto_init() }

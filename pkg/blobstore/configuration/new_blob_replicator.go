@@ -5,6 +5,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
 	"golang.org/x/sync/semaphore"
@@ -14,7 +15,7 @@ import (
 
 // NewBlobReplicatorFromConfiguration creates a BlobReplicator object
 // based on a configuration file.
-func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
+func NewBlobReplicatorFromConfiguration(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
@@ -22,7 +23,7 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 	var configuredBlobReplicator replication.BlobReplicator
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_ConcurrencyLimiting:
-		base, err := NewBlobReplicatorFromConfiguration(mode.ConcurrencyLimiting.Base, source, sink, creator)
+		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.ConcurrencyLimiting.Base, source, sink, creator)
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +36,7 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 	case *pb.BlobReplicatorConfiguration_Noop:
 		configuredBlobReplicator = replication.NewNoopBlobReplicator(source)
 	case *pb.BlobReplicatorConfiguration_Queued:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Queued.Base, source, sink, creator)
+		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.Queued.Base, source, sink, creator)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +47,7 @@ func NewBlobReplicatorFromConfiguration(configuration *pb.BlobReplicatorConfigur
 		configuredBlobReplicator = replication.NewQueuedBlobReplicator(source, base, existenceCache)
 	default:
 		var err error
-		configuredBlobReplicator, err = creator.NewCustomBlobReplicator(configuration, source, sink)
+		configuredBlobReplicator, err = creator.NewCustomBlobReplicator(terminationGroup, configuration, source, sink)
 		if err != nil {
 			return nil, err
 		}

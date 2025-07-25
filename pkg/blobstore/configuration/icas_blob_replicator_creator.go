@@ -3,6 +3,7 @@ package configuration
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
 	"google.golang.org/grpc/codes"
@@ -11,10 +12,10 @@ import (
 
 type icasBlobReplicatorCreator struct{}
 
-func (brc icasBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
+func (brc icasBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
-		base, err := NewBlobReplicatorFromConfiguration(mode.Deduplicating, source, sink, brc)
+		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.Deduplicating, source, sink, brc)
 		if err != nil {
 			return nil, err
 		}

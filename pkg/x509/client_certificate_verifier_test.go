@@ -8,11 +8,11 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_x509 "github.com/buildbarn/bb-storage/pkg/x509"
-	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"

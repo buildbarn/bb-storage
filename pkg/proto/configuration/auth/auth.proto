@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
+import "pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth";
 
@@ -29,6 +30,7 @@ message AuthorizerConfiguration {
     //
     //     {
     //       "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
+    //       "files": map<string, any>,
     //       "instanceName": string
     //     }
     //
@@ -36,9 +38,12 @@ message AuthorizerConfiguration {
     // obtained by the authentication process (See grpc.proto's
     // ServerConfiguration.authentication_policy).
     //
+    // "files" corresponds to any files that are specified within the
+    // buildbarn.configuration.jmespath.Expression configuration.
+    //
     // "instanceName" corresponds to the REv2 instance name that was
     // part of the client request.
-    string jmespath_expression = 4;
+    buildbarn.configuration.jmespath.Expression jmespath_expression = 4;
 
     // Forwards the authorizing task to a remote server.
     RemoteAuthorizer remote = 7;

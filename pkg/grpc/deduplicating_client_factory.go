@@ -3,6 +3,7 @@ package grpc
 import (
 	"sync"
 
+	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 
 	"google.golang.org/grpc"
@@ -27,7 +28,7 @@ func NewDeduplicatingClientFactory(base ClientFactory) ClientFactory {
 	}
 }
 
-func (cf *deduplicatingClientFactory) NewClientFromConfiguration(configuration *configuration.ClientConfiguration) (grpc.ClientConnInterface, error) {
+func (cf *deduplicatingClientFactory) NewClientFromConfiguration(configuration *configuration.ClientConfiguration, group program.Group) (grpc.ClientConnInterface, error) {
 	key := prototext.Format(configuration)
 	cf.lock.Lock()
 	defer cf.lock.Unlock()
@@ -38,7 +39,7 @@ func (cf *deduplicatingClientFactory) NewClientFromConfiguration(configuration *
 	}
 
 	// Create a new client, as it has a different configuration.
-	client, err := cf.base.NewClientFromConfiguration(configuration)
+	client, err := cf.base.NewClientFromConfiguration(configuration, group)
 	if err != nil {
 		return nil, err
 	}

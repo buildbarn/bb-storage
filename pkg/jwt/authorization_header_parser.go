@@ -13,7 +13,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
-	"github.com/jmespath/go-jmespath"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -54,8 +54,8 @@ var (
 type AuthorizationHeaderParser struct {
 	clock              clock.Clock
 	signatureValidator SignatureValidator
-	claimsValidator    *jmespath.JMESPath
-	metadataExtractor  *jmespath.JMESPath
+	claimsValidator    *jmespath.Expression
+	metadataExtractor  *jmespath.Expression
 	maximumCacheSize   int
 
 	lock                       sync.Mutex
@@ -65,7 +65,7 @@ type AuthorizationHeaderParser struct {
 
 // NewAuthorizationHeaderParser creates a new AuthorizationHeaderParser
 // that does not have any cached tokens.
-func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator, metadataExtractor *jmespath.JMESPath, maximumCacheSize int, evictionSet eviction.Set[string]) *AuthorizationHeaderParser {
+func NewAuthorizationHeaderParser(clock clock.Clock, signatureValidator SignatureValidator, claimsValidator, metadataExtractor *jmespath.Expression, maximumCacheSize int, evictionSet eviction.Set[string]) *AuthorizationHeaderParser {
 	return &AuthorizationHeaderParser{
 		clock:              clock,
 		signatureValidator: signatureValidator,
@@ -128,11 +128,13 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	}
 
 	// Perform validation of additional claims using JMESPath.
-	var fullPayloadMessage interface{}
+	var fullPayloadMessage any
 	if json.Unmarshal(decodedFields[1], &fullPayloadMessage) != nil {
 		return unauthenticated
 	}
-	if result, err := a.claimsValidator.Search(fullPayloadMessage); err != nil || result != true {
+	if result, err := a.claimsValidator.Search(map[string]any{
+		"payload": fullPayloadMessage,
+	}); err != nil || result != true {
 		return unauthenticated
 	}
 
@@ -146,7 +148,9 @@ func (a *AuthorizationHeaderParser) parseSingleAuthorizationHeader(header string
 	}
 
 	// Convert payload to authentication metadata.
-	metadataRaw, err := a.metadataExtractor.Search(fullPayloadMessage)
+	metadataRaw, err := a.metadataExtractor.Search(map[string]any{
+		"payload": fullPayloadMessage,
+	})
 	if err != nil {
 		return unauthenticated
 	}
