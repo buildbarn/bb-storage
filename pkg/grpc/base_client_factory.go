@@ -179,11 +179,15 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 
 	// Optional: metadata extraction.
 	if jmesExpression := config.AddMetadataJmespathExpression; jmesExpression != "" {
+		filesProvider, err := NewJMESPathMetadataFileProvider(context.Background(), config.AddMetadataJmespathFiles)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create JMESPath metadata file provider")
+		}
 		expr, err := jmespath.Compile(jmesExpression)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to compile JMESPath expression")
 		}
-		extractor, err := NewJMESPathMetadataExtractor(expr)
+		extractor, err := NewJMESPathMetadataExtractor(expr, filesProvider)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create JMESPath extractor")
 		}
