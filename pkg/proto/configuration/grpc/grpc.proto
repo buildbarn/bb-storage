@@ -10,6 +10,7 @@ import "pkg/proto/configuration/eviction/eviction.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 import "pkg/proto/configuration/x509/x509.proto";
+import "pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
 
@@ -67,7 +68,8 @@ message ClientConfiguration {
   //
   //  {
   //    "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
-  //    "incomingGRPCMetadata": map<string, repeated string>
+  //    "incomingGRPCMetadata": map<string, repeated string>,
+  //    "files": map<string, string>
   //  }
   //
   // Some known headers that may be expected in incomingGRPCMetadata:
@@ -88,7 +90,8 @@ message ClientConfiguration {
   // bb-scheduler forward client provided credentials to workers. That
   // would only be possible if bb-scheduler made outgoing connections to
   // workers, which is not the case.
-  string add_metadata_jmespath_expression = 12;
+  buildbarn.configuration.jmespath.Expression add_metadata_jmespath_expression =
+      12;
 
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
@@ -367,7 +370,8 @@ message AuthenticationPolicy {
     // ID of the client process. On BSD derived systems, socket option
     // LOCAL_PEERCRED is used, which is typically capable of returning
     // up to 16 group memberships.
-    string peer_credentials_jmespath_expression = 6;
+    buildbarn.configuration.jmespath.Expression
+        peer_credentials_jmespath_expression = 6;
 
     // Forwards the authentication task to a remote server. This can be a
     // convenient way to integrate custom authentication processes, for example
@@ -434,7 +438,8 @@ message TLSClientCertificateAuthenticationPolicy {
   // authentication decisions; not authorization decisions. The reason
   // being that validation failures will cause gRPC requests to fail
   // with code UNAUTHENTICATED, not PERMISSION_DENIED.
-  string validation_jmespath_expression = 3;
+  buildbarn.configuration.jmespath.Expression validation_jmespath_expression =
+      3;
 
   // JMESPath expression for converting certificates information to a
   // Protobuf message of type buildbarn.auth.AuthenticationMetadata.
@@ -447,7 +452,8 @@ message TLSClientCertificateAuthenticationPolicy {
   // extracted from the token (including the backticks):
   //
   //     `{}`
-  string metadata_extraction_jmespath_expression = 4;
+  buildbarn.configuration.jmespath.Expression
+      metadata_extraction_jmespath_expression = 4;
 }
 
 message RemoteAuthenticationPolicy {

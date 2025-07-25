@@ -59,6 +59,7 @@ func main() {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
 		replicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
+			dependenciesGroup,
 			configuration.Replicator,
 			source.BlobAccess,
 			sink,

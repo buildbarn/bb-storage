@@ -410,6 +410,7 @@ go_library(
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/filesystem/path",
+        "//pkg/program",
         "//pkg/proto/blobstore/local",
         "//pkg/proto/configuration/grpc",
         "//pkg/util",

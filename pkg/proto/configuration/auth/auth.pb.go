@@ -9,6 +9,7 @@ package auth
 import (
 	eviction "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction"
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	jmespath "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -103,13 +104,13 @@ func (x *AuthorizerConfiguration) GetDeny() *emptypb.Empty {
 	return nil
 }
 
-func (x *AuthorizerConfiguration) GetJmespathExpression() string {
+func (x *AuthorizerConfiguration) GetJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		if x, ok := x.Policy.(*AuthorizerConfiguration_JmespathExpression); ok {
 			return x.JmespathExpression
 		}
 	}
-	return ""
+	return nil
 }
 
 func (x *AuthorizerConfiguration) GetRemote() *RemoteAuthorizer {
@@ -138,7 +139,7 @@ type AuthorizerConfiguration_Deny struct {
 }
 
 type AuthorizerConfiguration_JmespathExpression struct {
-	JmespathExpression string `protobuf:"bytes,4,opt,name=jmespath_expression,json=jmespathExpression,proto3,oneof"`
+	JmespathExpression *jmespath.Expression `protobuf:"bytes,4,opt,name=jmespath_expression,json=jmespathExpression,proto3,oneof"`
 }
 
 type AuthorizerConfiguration_Remote struct {
@@ -271,12 +272,12 @@ var File_pkg_proto_configuration_auth_auth_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/auth/auth.proto\x12\x1cbuildbarn.configuration.auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\"\xe8\x02\n" +
+	"'pkg/proto/configuration/auth/auth.proto\x12\x1cbuildbarn.configuration.auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\x96\x03\n" +
 	"\x17AuthorizerConfiguration\x12.\n" +
 	"\x05allow\x18\x01 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x05allow\x12h\n" +
 	"\x14instance_name_prefix\x18\x02 \x01(\v24.buildbarn.configuration.auth.InstanceNameAuthorizerH\x00R\x12instanceNamePrefix\x12,\n" +
-	"\x04deny\x18\x03 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x04deny\x121\n" +
-	"\x13jmespath_expression\x18\x04 \x01(\tH\x00R\x12jmespathExpression\x12H\n" +
+	"\x04deny\x18\x03 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x04deny\x12_\n" +
+	"\x13jmespath_expression\x18\x04 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionH\x00R\x12jmespathExpression\x12H\n" +
 	"\x06remote\x18\a \x01(\v2..buildbarn.configuration.auth.RemoteAuthorizerH\x00R\x06remoteB\b\n" +
 	"\x06policy\"]\n" +
 	"\x16InstanceNameAuthorizer\x12C\n" +
@@ -305,23 +306,25 @@ var file_pkg_proto_configuration_auth_auth_proto_goTypes = []any{
 	(*InstanceNameAuthorizer)(nil),       // 1: buildbarn.configuration.auth.InstanceNameAuthorizer
 	(*RemoteAuthorizer)(nil),             // 2: buildbarn.configuration.auth.RemoteAuthorizer
 	(*emptypb.Empty)(nil),                // 3: google.protobuf.Empty
-	(*grpc.ClientConfiguration)(nil),     // 4: buildbarn.configuration.grpc.ClientConfiguration
-	(*structpb.Value)(nil),               // 5: google.protobuf.Value
-	(eviction.CacheReplacementPolicy)(0), // 6: buildbarn.configuration.eviction.CacheReplacementPolicy
+	(*jmespath.Expression)(nil),          // 4: buildbarn.configuration.jmespath.Expression
+	(*grpc.ClientConfiguration)(nil),     // 5: buildbarn.configuration.grpc.ClientConfiguration
+	(*structpb.Value)(nil),               // 6: google.protobuf.Value
+	(eviction.CacheReplacementPolicy)(0), // 7: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
 var file_pkg_proto_configuration_auth_auth_proto_depIdxs = []int32{
 	3, // 0: buildbarn.configuration.auth.AuthorizerConfiguration.allow:type_name -> google.protobuf.Empty
 	1, // 1: buildbarn.configuration.auth.AuthorizerConfiguration.instance_name_prefix:type_name -> buildbarn.configuration.auth.InstanceNameAuthorizer
 	3, // 2: buildbarn.configuration.auth.AuthorizerConfiguration.deny:type_name -> google.protobuf.Empty
-	2, // 3: buildbarn.configuration.auth.AuthorizerConfiguration.remote:type_name -> buildbarn.configuration.auth.RemoteAuthorizer
-	4, // 4: buildbarn.configuration.auth.RemoteAuthorizer.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	5, // 5: buildbarn.configuration.auth.RemoteAuthorizer.scope:type_name -> google.protobuf.Value
-	6, // 6: buildbarn.configuration.auth.RemoteAuthorizer.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 3: buildbarn.configuration.auth.AuthorizerConfiguration.jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	2, // 4: buildbarn.configuration.auth.AuthorizerConfiguration.remote:type_name -> buildbarn.configuration.auth.RemoteAuthorizer
+	5, // 5: buildbarn.configuration.auth.RemoteAuthorizer.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	6, // 6: buildbarn.configuration.auth.RemoteAuthorizer.scope:type_name -> google.protobuf.Value
+	7, // 7: buildbarn.configuration.auth.RemoteAuthorizer.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_auth_auth_proto_init() }

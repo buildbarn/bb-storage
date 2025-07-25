@@ -10,12 +10,12 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
@@ -94,7 +94,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			return nil, util.StatusWrap(err, "Failed to create OIDC cookie encryption block cipher mode of operation")
 		}
 
-		metadataExtractor, err := jmespath.Compile(policyKind.Oidc.MetadataExtractionJmespathExpression)
+		metadataExtractor, err := jmespath.NewExpressionFromConfiguration(policyKind.Oidc.MetadataExtractionJmespathExpression, group, clock.SystemClock)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to compile OIDC metadata extraction JMESPath expression")
 		}
@@ -158,7 +158,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		//
 		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
 		// `grpc_server.proto` and `grpc_tracing_method.proto`.
-		backend, err := grpc.NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		backend, err := grpc.NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, group, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}

@@ -2,14 +2,19 @@ package grpc_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
+	jmespath_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -82,4 +87,56 @@ func TestJMESPathMetadataExtractorAuthMatchToHeterogenousSlice(t *testing.T) {
 
 	_, err = extractor(ctx)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Failed to extract JMESPath result: Non-string metadata value"), err)
+}
+
+func TestNewJMESPathMetadataFileProvider(t *testing.T) {
+	// Build the extractor.
+	ctx, cancel := context.WithCancel(context.Background())
+	program.RunLocal(ctx, func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+		// Create a temporary file with test content.
+		tempDir := t.TempDir()
+		filePath := filepath.Join(tempDir, "test-token")
+		err := os.WriteFile(filePath, []byte("token-value1"), 0o644)
+		require.NoError(t, err)
+
+		expr, err := jmespath.NewExpressionFromConfiguration(
+			&jmespath_pb.Expression{
+				Expression: `{"authorization": [files.token]}`,
+				Files: []*jmespath_pb.File{
+					{
+						Key:  "token",
+						Path: filePath,
+					},
+				},
+				TestVectors: []*jmespath_pb.TestVector{
+					{
+						Input: util.Must(structpb.NewStruct(map[string]any{
+							"files": map[string]any{
+								"token": "tv-token-value",
+							},
+						})),
+						ExpectedOutput: util.Must(structpb.NewValue(map[string]any{
+							"authorization": []any{"tv-token-value"},
+						})),
+					},
+				},
+			},
+			siblingsGroup,
+			clock.SystemClock,
+		)
+		require.NoError(t, err)
+		extractor, err := grpc.NewJMESPathMetadataExtractor(expr)
+		require.NoError(t, err)
+
+		headers, err := extractor(ctx)
+		require.NoError(t, err)
+		want := grpc.MetadataHeaderValues([]string{
+			"authorization", "token-value1",
+		})
+		require.Equal(t, want, headers)
+
+		// Cancel the context to stop the file reloading.
+		cancel()
+		return nil
+	})
 }

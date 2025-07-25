@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -15,7 +16,7 @@ import (
 // NewDemultiplexingBuildQueueFromConfiguration creates a
 // DemultiplexingBuildQueue that forwards traffic to schedulers
 // specified in the configuration file.
-func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, grpcClientFactory grpc.ClientFactory) (BuildQueue, error) {
+func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.SchedulerConfiguration, terminationGroup program.Group, grpcClientFactory grpc.ClientFactory) (BuildQueue, error) {
 	buildQueuesTrie := digest.NewInstanceNameTrie()
 	type buildQueueInfo struct {
 		backend             BuildQueue
@@ -32,7 +33,7 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 		if err != nil {
 			return nil, util.StatusWrapf(err, "Invalid instance name %#v", scheduler.AddInstanceNamePrefix)
 		}
-		endpoint, err := grpcClientFactory.NewClientFromConfiguration(scheduler.Endpoint)
+		endpoint, err := grpcClientFactory.NewClientFromConfiguration(scheduler.Endpoint, terminationGroup)
 		if err != nil {
 			return nil, util.StatusWrapf(err, "Failed to create scheduler RPC client for instance name %#v", k)
 		}

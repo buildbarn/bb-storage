@@ -9,6 +9,7 @@ proto_library(
     deps = [
         "//pkg/proto/configuration/eviction:eviction_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
+        "//pkg/proto/configuration/jmespath:jmespath_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:struct_proto",
     ],
@@ -22,6 +23,7 @@ go_proto_library(
     deps = [
         "//pkg/proto/configuration/eviction",
         "//pkg/proto/configuration/grpc",
+        "//pkg/proto/configuration/jmespath",
     ],
 )
 

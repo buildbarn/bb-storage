@@ -7,6 +7,7 @@ import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/grpc/grpc.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
+import "pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http";
 
@@ -146,7 +147,8 @@ message OIDCAuthenticationPolicy {
   // metadata.
   //
   //     {"public": {"email": email}}
-  string metadata_extraction_jmespath_expression = 6;
+  buildbarn.configuration.jmespath.Expression
+      metadata_extraction_jmespath_expression = 6;
 
   // The URL of a location on this HTTP server to which the
   // authorization endpoint should redirect upon success. Care must be

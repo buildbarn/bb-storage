@@ -5,8 +5,8 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,15 +19,15 @@ import (
 type ClientCertificateVerifier struct {
 	clientCAs         *x509.CertPool
 	clock             clock.Clock
-	validator         *jmespath.JMESPath
-	metadataExtractor *jmespath.JMESPath
+	validator         *jmespath.Expression
+	metadataExtractor *jmespath.Expression
 }
 
 // NewClientCertificateVerifier creates a ClientCertificateVerifier that
 // verifies X.509 client certificates using the provided certificate
 // authorities. Authentication metadata is constructed using the
 // provided JMESPath expression.
-func NewClientCertificateVerifier(clientCAs *x509.CertPool, clock clock.Clock, validator, metadataExtractor *jmespath.JMESPath) *ClientCertificateVerifier {
+func NewClientCertificateVerifier(clientCAs *x509.CertPool, clock clock.Clock, validator, metadataExtractor *jmespath.Expression) *ClientCertificateVerifier {
 	return &ClientCertificateVerifier{
 		clientCAs:         clientCAs,
 		clock:             clock,

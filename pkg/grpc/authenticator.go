@@ -6,12 +6,12 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/x509"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -68,7 +68,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Deny:
 		return NewDenyAuthenticator(policyKind.Deny), false, false, nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:
-		clientCertificateVerifier, err := x509.NewClientCertificateVerifierFromConfiguration(policyKind.TlsClientCertificate)
+		clientCertificateVerifier, err := x509.NewClientCertificateVerifierFromConfiguration(policyKind.TlsClientCertificate, group)
 		if err != nil {
 			return nil, false, false, err
 		}
@@ -80,7 +80,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		}
 		return NewRequestHeadersAuthenticator(authorizationHeaderParser, []string{jwt.AuthorizationHeaderName}), false, false, nil
 	case *configuration.AuthenticationPolicy_PeerCredentialsJmespathExpression:
-		metadataExtractor, err := jmespath.Compile(policyKind.PeerCredentialsJmespathExpression)
+		metadataExtractor, err := jmespath.NewExpressionFromConfiguration(policyKind.PeerCredentialsJmespathExpression, group, clock.SystemClock)
 		if err != nil {
 			return nil, false, false, util.StatusWrap(err, "Failed to compile peer credentials metadata extraction JMESPath expression")
 		}
@@ -99,7 +99,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		//
 		// Resolving this requires splitting `grpc.proto` into `grpc_client.proto`,
 		// `grpc_server.proto` and `grpc_tracing_method.proto`.
-		authenticator, err := NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, grpcClientFactory)
+		authenticator, err := NewRemoteRequestHeadersAuthenticatorFromConfiguration(policyKind.Remote, group, grpcClientFactory)
 		if err != nil {
 			return nil, false, false, err
 		}
@@ -112,8 +112,8 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 // NewRemoteRequestHeadersAuthenticatorFromConfiguration creates an
 // Authenticator that forwards authentication requests to a remote gRPC service.
 // This is a convenient way to integrate custom authentication processes.
-func NewRemoteRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
-	grpcClient, err := grpcClientFactory.NewClientFromConfiguration(configuration.Endpoint)
+func NewRemoteRequestHeadersAuthenticatorFromConfiguration(configuration *configuration.RemoteAuthenticationPolicy, group program.Group, grpcClientFactory ClientFactory) (auth.RequestHeadersAuthenticator, error) {
+	grpcClient, err := grpcClientFactory.NewClientFromConfiguration(configuration.Endpoint, group)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
 	}

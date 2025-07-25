@@ -9,6 +9,7 @@ package http
 import (
 	auth "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	jmespath "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	jwt "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	tls "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -371,7 +372,7 @@ type OIDCAuthenticationPolicy struct {
 	//	*OIDCAuthenticationPolicy_UserInfoEndpointUrl
 	//	*OIDCAuthenticationPolicy_UseIdTokenClaims
 	UserInfoSource                       isOIDCAuthenticationPolicy_UserInfoSource `protobuf_oneof:"user_info_source"`
-	MetadataExtractionJmespathExpression string                                    `protobuf:"bytes,6,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
+	MetadataExtractionJmespathExpression *jmespath.Expression                      `protobuf:"bytes,6,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
 	RedirectUrl                          string                                    `protobuf:"bytes,7,opt,name=redirect_url,json=redirectUrl,proto3" json:"redirect_url,omitempty"`
 	Scopes                               []string                                  `protobuf:"bytes,8,rep,name=scopes,proto3" json:"scopes,omitempty"`
 	CookieSeed                           []byte                                    `protobuf:"bytes,9,opt,name=cookie_seed,json=cookieSeed,proto3" json:"cookie_seed,omitempty"`
@@ -463,11 +464,11 @@ func (x *OIDCAuthenticationPolicy) GetUseIdTokenClaims() *emptypb.Empty {
 	return nil
 }
 
-func (x *OIDCAuthenticationPolicy) GetMetadataExtractionJmespathExpression() string {
+func (x *OIDCAuthenticationPolicy) GetMetadataExtractionJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		return x.MetadataExtractionJmespathExpression
 	}
-	return ""
+	return nil
 }
 
 func (x *OIDCAuthenticationPolicy) GetRedirectUrl() string {
@@ -622,7 +623,7 @@ var File_pkg_proto_configuration_http_http_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_http_http_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/http/http.proto\x12\x1cbuildbarn.configuration.http\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19pkg/proto/auth/auth.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\"\xbc\x02\n" +
+	"'pkg/proto/configuration/http/http.proto\x12\x1cbuildbarn.configuration.http\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19pkg/proto/auth/auth.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xbc\x02\n" +
 	"\x13ClientConfiguration\x12B\n" +
 	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1b\n" +
 	"\tproxy_url\x18\x02 \x01(\tR\bproxyUrl\x12_\n" +
@@ -646,15 +647,15 @@ const file_pkg_proto_configuration_http_http_proto_rawDesc = "" +
 	"\x06remote\x18\a \x01(\v28.buildbarn.configuration.grpc.RemoteAuthenticationPolicyH\x00R\x06remoteB\b\n" +
 	"\x06policy\"i\n" +
 	"\x17AnyAuthenticationPolicy\x12N\n" +
-	"\bpolicies\x18\x01 \x03(\v22.buildbarn.configuration.http.AuthenticationPolicyR\bpolicies\"\xe3\x04\n" +
+	"\bpolicies\x18\x01 \x03(\v22.buildbarn.configuration.http.AuthenticationPolicyR\bpolicies\"\x92\x05\n" +
 	"\x18OIDCAuthenticationPolicy\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12#\n" +
 	"\rclient_secret\x18\x02 \x01(\tR\fclientSecret\x12<\n" +
 	"\x1aauthorization_endpoint_url\x18\x03 \x01(\tR\x18authorizationEndpointUrl\x12,\n" +
 	"\x12token_endpoint_url\x18\x04 \x01(\tR\x10tokenEndpointUrl\x125\n" +
 	"\x16user_info_endpoint_url\x18\x05 \x01(\tH\x00R\x13userInfoEndpointUrl\x12G\n" +
-	"\x13use_id_token_claims\x18\v \x01(\v2\x16.google.protobuf.EmptyH\x00R\x10useIdTokenClaims\x12U\n" +
-	"'metadata_extraction_jmespath_expression\x18\x06 \x01(\tR$metadataExtractionJmespathExpression\x12!\n" +
+	"\x13use_id_token_claims\x18\v \x01(\v2\x16.google.protobuf.EmptyH\x00R\x10useIdTokenClaims\x12\x83\x01\n" +
+	"'metadata_extraction_jmespath_expression\x18\x06 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR$metadataExtractionJmespathExpression\x12!\n" +
 	"\fredirect_url\x18\a \x01(\tR\vredirectUrl\x12\x16\n" +
 	"\x06scopes\x18\b \x03(\tR\x06scopes\x12\x1f\n" +
 	"\vcookie_seed\x18\t \x01(\fR\n" +
@@ -695,6 +696,7 @@ var file_pkg_proto_configuration_http_http_proto_goTypes = []any{
 	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 10: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
 	(*grpc.RemoteAuthenticationPolicy)(nil),            // 11: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
 	(*emptypb.Empty)(nil),                              // 12: google.protobuf.Empty
+	(*jmespath.Expression)(nil),                        // 13: buildbarn.configuration.jmespath.Expression
 }
 var file_pkg_proto_configuration_http_http_proto_depIdxs = []int32{
 	7,  // 0: buildbarn.configuration.http.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
@@ -709,13 +711,14 @@ var file_pkg_proto_configuration_http_http_proto_depIdxs = []int32{
 	11, // 9: buildbarn.configuration.http.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
 	2,  // 10: buildbarn.configuration.http.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.http.AuthenticationPolicy
 	12, // 11: buildbarn.configuration.http.OIDCAuthenticationPolicy.use_id_token_claims:type_name -> google.protobuf.Empty
-	0,  // 12: buildbarn.configuration.http.OIDCAuthenticationPolicy.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
-	2,  // 13: buildbarn.configuration.http.AcceptHeaderAuthenticationPolicy.policy:type_name -> buildbarn.configuration.http.AuthenticationPolicy
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	13, // 12: buildbarn.configuration.http.OIDCAuthenticationPolicy.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	0,  // 13: buildbarn.configuration.http.OIDCAuthenticationPolicy.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	2,  // 14: buildbarn.configuration.http.AcceptHeaderAuthenticationPolicy.policy:type_name -> buildbarn.configuration.http.AuthenticationPolicy
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_http_http_proto_init() }
