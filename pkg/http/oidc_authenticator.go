@@ -14,10 +14,10 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/proto/http/oidc"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
@@ -31,7 +31,7 @@ type oidcAuthenticator struct {
 	oauth2Config          *oauth2.Config
 	redirectURLPath       string
 	claimsFetcher         OIDCClaimsFetcher
-	metadataExtractor     *jmespath.JMESPath
+	metadataExtractor     *jmespath.Expression
 	httpClient            *http.Client
 	randomNumberGenerator random.ThreadSafeGenerator
 	cookieName            string
@@ -47,7 +47,7 @@ type oidcAuthenticator struct {
 func NewOIDCAuthenticator(
 	oauth2Config *oauth2.Config,
 	claimsFetcher OIDCClaimsFetcher,
-	metadataExtractor *jmespath.JMESPath,
+	metadataExtractor *jmespath.Expression,
 	httpClient *http.Client,
 	randomNumberGenerator random.ThreadSafeGenerator,
 	cookieName string,
@@ -265,7 +265,7 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 // OIDCClaimsFetcher is an interface that allows fetching user info claims
 // different sources, such as a user info endpoint or a ID token.
 type OIDCClaimsFetcher interface {
-	FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (any, error)
+	FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (map[string]any, error)
 }
 
 type userInfoOIDCClaimsFetcher struct {
@@ -285,7 +285,7 @@ func NewUserInfoOIDCClaimsFetcher(
 	}
 }
 
-func (cf *userInfoOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (interface{}, error) {
+func (cf *userInfoOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (map[string]any, error) {
 	claimsRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, cf.userInfoURL, nil)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create user info request")
@@ -304,7 +304,7 @@ func (cf *userInfoOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, to
 	if claimsResponse.StatusCode != 200 {
 		return nil, status.Errorf(codes.Unavailable, "Requesting claims failed with HTTP status %#v", claimsResponse.Status)
 	}
-	var claims interface{}
+	var claims map[string]any
 	err = json.NewDecoder(claimsResponse.Body).Decode(&claims)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to unmarshal claims")
@@ -319,7 +319,7 @@ type idTokenOIDCClaimsFetcher struct{}
 // claims from the ID token present in the OAuth2 token response.
 var IDTokenOIDCClaimsFetcher OIDCClaimsFetcher = idTokenOIDCClaimsFetcher{}
 
-func (idTokenOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (interface{}, error) {
+func (idTokenOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *oauth2.Token) (map[string]any, error) {
 	idToken, ok := token.Extra("id_token").(string)
 	if !ok || idToken == "" {
 		return nil, status.Error(codes.Internal, "No ID token present in OIDC server response")
@@ -335,7 +335,7 @@ func (idTokenOIDCClaimsFetcher) FetchClaimsForToken(ctx context.Context, token *
 		return nil, status.Error(codes.Internal, "Failed to decode ID token claims")
 	}
 
-	var claims interface{}
+	var claims map[string]any
 	if err := json.Unmarshal(claimsDecoded, &claims); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to unmarshal ID token claims")
 	}

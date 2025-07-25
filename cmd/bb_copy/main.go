@@ -42,6 +42,7 @@ func main() {
 		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil, nil)
 
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
+			dependenciesGroup,
 			grpcClientFactory,
 			int(configuration.MaximumMessageSizeBytes))
 		source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
@@ -62,7 +63,7 @@ func main() {
 			configuration.Replicator,
 			source.BlobAccess,
 			sink,
-			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
+			blobstore_configuration.NewCASBlobReplicatorCreator(dependenciesGroup, grpcClientFactory),
 		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create replicator")

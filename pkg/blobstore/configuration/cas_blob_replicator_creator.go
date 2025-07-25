@@ -4,6 +4,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
 	"google.golang.org/grpc/codes"
@@ -12,15 +13,17 @@ import (
 
 type casBlobReplicatorCreator struct {
 	grpcClientFactory grpc.ClientFactory
+	terminationGroup  program.Group
 }
 
 // NewCASBlobReplicatorCreator creates a BlobReplicatorCreator that can
 // be provided to NewBlobReplicatorFromConfiguration() to construct a
 // BlobReplicator that is suitable for replicating Content Addressable
 // Storage objects.
-func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator {
+func NewCASBlobReplicatorCreator(terminationGroup program.Group, grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator {
 	return &casBlobReplicatorCreator{
 		grpcClientFactory: grpcClientFactory,
+		terminationGroup:  terminationGroup,
 	}
 }
 
@@ -37,7 +40,7 @@ func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(configuration *pb.B
 		}
 		return replication.NewDeduplicatingBlobReplicator(base, sink.BlobAccess, sink.DigestKeyFormat), nil
 	case *pb.BlobReplicatorConfiguration_Remote:
-		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Remote)
+		client, err := brc.grpcClientFactory.NewClientFromConfiguration(mode.Remote, brc.terminationGroup)
 		if err != nil {
 			return nil, err
 		}

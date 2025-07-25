@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"

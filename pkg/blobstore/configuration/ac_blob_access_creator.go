@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -33,16 +34,18 @@ type acBlobAccessCreator struct {
 	contentAddressableStorage *BlobAccessInfo
 	grpcClientFactory         grpc.ClientFactory
 	maximumMessageSizeBytes   int
+	terminationGroup          program.Group
 }
 
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(terminationGroup program.Group, contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &acBlobAccessCreator{
 		contentAddressableStorage: contentAddressableStorage,
 		grpcClientFactory:         grpcClientFactory,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		terminationGroup:          terminationGroup,
 	}
 }
 
@@ -105,7 +108,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, bac.terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

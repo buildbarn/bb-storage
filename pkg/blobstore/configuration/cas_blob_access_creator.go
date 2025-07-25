@@ -16,6 +16,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
@@ -37,18 +38,20 @@ type casBlobAccessCreator struct {
 	casBlobReplicatorCreator
 
 	maximumMessageSizeBytes int
+	terminationGroup        program.Group
 }
 
 // NewCASBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Content Addressable
 // Storage.
-func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewCASBlobAccessCreator(terminationGroup program.Group, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &casBlobAccessCreator{
 		casBlobReplicatorCreator: casBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,
 		},
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		terminationGroup:        terminationGroup,
 	}
 }
 
@@ -88,7 +91,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, bac.terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -108,6 +111,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 		indirectContentAddressableStorage, err := nestedCreator.NewNestedBlobAccess(
 			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
+				bac.terminationGroup,
 				bac.grpcClientFactory,
 				bac.maximumMessageSizeBytes))
 		if err != nil {
