@@ -80,23 +80,11 @@ func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (n int, err error
 }
 
 func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
-	// Like the unix implementation, we let write actions go through
-	// the file handle.
-	nTotal := 0
-	for len(p) > 0 {
-		var overlapped windows.Overlapped
-		overlapped.Offset = uint32(off)
-		overlapped.OffsetHigh = uint32(off >> 32)
-		var bytesWritten uint32
-		err := windows.WriteFile(bd.fileHandle, p, &bytesWritten, &overlapped)
-		nTotal += int(bytesWritten)
-		if err != nil {
-			return nTotal, err
-		}
-		p = p[bytesWritten:]
-		off += int64(bytesWritten)
-	}
-	return nTotal, nil
+	// Unlike the unix implementation, we directly copy the data into the
+	// memory-mapped region. Performance testing on Windows shows that this
+	// is significantly faster than writing via the file handle,
+	// particularly when there are multiple parallel writes.
+	return copy(bd.data[off:], p), nil
 }
 
 func (bd *memoryMappedBlockDevice) Sync() error {
