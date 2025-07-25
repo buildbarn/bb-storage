@@ -4,6 +4,7 @@ package buildbarn.configuration.jwt;
 
 import "google/protobuf/struct.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
+import "pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt";
 
@@ -68,7 +69,7 @@ message AuthorizationHeaderParserConfiguration {
   // that the "aud" (Audience) claim is equal to "MyBuildCluster" by
   // using the following JMESPath expression:
   //
-  //     aud == 'MyBuildCluster'
+  //     payload.aud == 'MyBuildCluster'
   //
   // In case no additional requirements against claims need to be made,
   // it is possible to use the following JMESPath expression (including
@@ -78,11 +79,26 @@ message AuthorizationHeaderParserConfiguration {
   //
   // More details about JMESPath can be found at https://jmespath.org/.
   //
+  // This JMESPath expression will be evaluated against a JSON object
+  // with the following structure:
+  //
+  //     {
+  //       "files": map<string, any>,
+  //       "payload": any
+  //     }
+  //
+  // "files" corresponds to any files that are specified within the
+  // buildbarn.configuration.jmespath.Expression configuration.
+  //
+  // "payload" corresponds to the JSON Web Token's payload, which is
+  // represented as a map of string keys to values.
+  //
   // It is recommended that this feature is only used for making
   // authentication decisions; not authorization decisions. The reason
   // being that validation failures will cause gRPC requests to fail
   // with code UNAUTHENTICATED; not PERMISSION_DENIED.
-  string claims_validation_jmespath_expression = 5;
+  buildbarn.configuration.jmespath.Expression
+      claims_validation_jmespath_expression = 5;
 
   // JMESPath expression for converting claims to a Protobuf message of
   // type buildbarn.auth.AuthenticationMetadata. The resulting metadata
@@ -97,11 +113,16 @@ message AuthorizationHeaderParserConfiguration {
   // consisting of "given_name" and "family_name" fields can be
   // transformed to authentication metadata with a public "name" field.
   //
-  //     {"public": {"name": join(' ', [given_name, family_name])}}
+  //     {
+  //       "public": {
+  //         "name": join(' ', [payload.given_name, payload.family_name])
+  //       }
+  //     }
   //
   // The following expression can be used if no metadata needs to be
   // extracted from the token:
   //
   //     `{}`
-  string metadata_extraction_jmespath_expression = 6;
+  buildbarn.configuration.jmespath.Expression
+      metadata_extraction_jmespath_expression = 6;
 }

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.x509;
 
+import "pkg/proto/configuration/jmespath/jmespath.proto";
+
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509";
 
 message ClientCertificateVerifierConfiguration {
@@ -46,7 +48,8 @@ message ClientCertificateVerifierConfiguration {
   // authentication decisions; not authorization decisions. The reason
   // being that validation failures will cause gRPC requests to fail
   // with code UNAUTHENTICATED, not PERMISSION_DENIED.
-  string validation_jmespath_expression = 2;
+  buildbarn.configuration.jmespath.Expression validation_jmespath_expression =
+      2;
 
   // JMESPath expression for converting certificates information to a
   // Protobuf message of type buildbarn.auth.AuthenticationMetadata.
@@ -59,5 +62,6 @@ message ClientCertificateVerifierConfiguration {
   // extracted from the token (including the backticks):
   //
   //     `{}`
-  string metadata_extraction_jmespath_expression = 3;
+  buildbarn.configuration.jmespath.Expression
+      metadata_extraction_jmespath_expression = 3;
 }

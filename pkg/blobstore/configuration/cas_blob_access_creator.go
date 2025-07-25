@@ -16,6 +16,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
@@ -72,7 +73,7 @@ func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(key
 	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
 }
 
-func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
@@ -88,7 +89,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAcces
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

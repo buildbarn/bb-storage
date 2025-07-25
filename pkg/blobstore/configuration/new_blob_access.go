@@ -77,7 +77,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadCaching.Replicator, slow.BlobAccess, fast, creator)
+		replicator, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.ReadCaching.Replicator, slow.BlobAccess, fast, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -183,11 +183,11 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicatorAToB, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator)
+		replicatorAToB, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.Mirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicatorBToA, err := NewBlobReplicatorFromConfiguration(backend.Mirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator)
+		replicatorBToA, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.Mirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -419,7 +419,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		replicator, err := NewBlobReplicatorFromConfiguration(backend.ReadFallback.Replicator, secondary.BlobAccess, primary, creator)
+		replicator, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.ReadFallback.Replicator, secondary.BlobAccess, primary, creator)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -573,7 +573,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "deadline_enforcing", nil
 	}
-	return creator.NewCustomBlobAccess(configuration, nc)
+	return creator.NewCustomBlobAccess(nc.terminationGroup, configuration, nc)
 }
 
 // NewNestedBlobAccess may be called by

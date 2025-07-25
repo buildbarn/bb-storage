@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+
 	// The pprof package does not provide a function for registering
 	// its endpoints against an arbitrary mux. Load it to force
 	// registration against the default mux, so we can forward
@@ -24,7 +25,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/gorilla/mux"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -87,7 +88,7 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 // ApplyConfiguration applies configuration options to the running
 // process. These configuration options are global, in that they apply
 // to all Buildbarn binaries, regardless of their purpose.
-func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_grpc.ClientFactory, error) {
+func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*LifecycleState, bb_grpc.ClientFactory, error) {
 	// Set the umask, if requested.
 	if setUmaskConfiguration := configuration.GetSetUmask(); setUmaskConfiguration != nil {
 		if err := setUmask(setUmaskConfiguration.Umask); err != nil {
@@ -207,7 +208,7 @@ func ApplyConfiguration(configuration *pb.Configuration) (*LifecycleState, bb_gr
 					}
 					spanExporter = exporter
 				case *pb.TracingConfiguration_Backend_OtlpSpanExporter:
-					client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter)
+					client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter, group)
 					if err != nil {
 						return nil, nil, util.StatusWrap(err, "Failed to create OTLP gRPC client")
 					}

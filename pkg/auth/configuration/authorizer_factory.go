@@ -6,9 +6,10 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,7 +21,7 @@ import (
 type AuthorizerFactory interface {
 	// NewAuthorizerFromConfiguration constructs an authorizer based on
 	// options specified in a configuration message.
-	NewAuthorizerFromConfiguration(configuration *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error)
+	NewAuthorizerFromConfiguration(configuration *pb.AuthorizerConfiguration, group program.Group, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error)
 }
 
 // DefaultAuthorizerFactory constructs deduplicated authorizers based on
@@ -33,7 +34,7 @@ type BaseAuthorizerFactory struct{}
 
 // NewAuthorizerFromConfiguration constructs an authorizer based on
 // options specified in a configuration message.
-func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
+func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, group program.Group, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
 	if config == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authorizer configuration not specified")
 	}
@@ -53,13 +54,13 @@ func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.Authori
 		}
 		return auth.NewStaticAuthorizer(trie.ContainsPrefix), nil
 	case *pb.AuthorizerConfiguration_JmespathExpression:
-		expression, err := jmespath.Compile(policy.JmespathExpression)
+		expression, err := jmespath.NewExpressionFromConfiguration(policy.JmespathExpression, group, clock.SystemClock)
 		if err != nil {
 			return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to compile JMESPath expression")
 		}
 		return auth.NewJMESPathExpressionAuthorizer(expression), nil
 	case *pb.AuthorizerConfiguration_Remote:
-		grpcClient, err := grpcClientFactory.NewClientFromConfiguration(policy.Remote.Endpoint)
+		grpcClient, err := grpcClientFactory.NewClientFromConfiguration(policy.Remote.Endpoint, group)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create authorizer RPC client")
 		}
@@ -96,14 +97,14 @@ func NewDeduplicatingAuthorizerFactory(base AuthorizerFactory) AuthorizerFactory
 }
 
 // NewAuthorizerFromConfiguration creates an Authorizer based on the passed configuration.
-func (af *deduplicatingAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
+func (af *deduplicatingAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, group program.Group, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
 	keyBytes, err := protojson.Marshal(config)
 	key := string(keyBytes)
 	if err != nil {
 		return nil, err
 	}
 	if _, ok := af.known[key]; !ok {
-		a, err := af.base.NewAuthorizerFromConfiguration(config, grpcClientFactory)
+		a, err := af.base.NewAuthorizerFromConfiguration(config, group, grpcClientFactory)
 		if err != nil {
 			return nil, err
 		}

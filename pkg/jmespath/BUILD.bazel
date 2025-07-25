@@ -1,34 +1,31 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "x509",
-    srcs = [
-        "client_certificate_verifier.go",
-        "configuration.go",
-    ],
-    importpath = "github.com/buildbarn/bb-storage/pkg/x509",
+    name = "jmespath",
+    srcs = ["expression.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/jmespath",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/auth",
         "//pkg/clock",
-        "//pkg/jmespath",
         "//pkg/program",
-        "//pkg/proto/configuration/x509",
+        "//pkg/proto/configuration/jmespath",
         "//pkg/util",
+        "@com_github_jmespath_go_jmespath//:go-jmespath",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/structpb",
     ],
 )
 
 go_test(
-    name = "x509_test",
-    srcs = ["client_certificate_verifier_test.go"],
+    name = "jmespath_test",
+    srcs = ["expression_test.go"],
     deps = [
-        ":x509",
+        ":jmespath",
         "//internal/mock",
-        "//pkg/auth",
-        "//pkg/jmespath",
-        "//pkg/proto/auth",
+        "//pkg/clock",
+        "//pkg/program",
+        "//pkg/proto/configuration/jmespath",
         "//pkg/testutil",
         "//pkg/util",
         "@com_github_stretchr_testify//require",

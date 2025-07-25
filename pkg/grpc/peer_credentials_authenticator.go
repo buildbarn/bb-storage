@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
@@ -13,14 +13,14 @@ import (
 )
 
 type peerCredentialsAuthenticator struct {
-	metadataExtractor *jmespath.JMESPath
+	metadataExtractor *jmespath.Expression
 }
 
 // NewPeerCredentialsAuthenticator creates an Authenticator that only
 // grants access in case the client connected to the gRPC server over a
 // UNIX socket. The credentials (user ID, group memberships) of the
 // client may be added to the authentication metadata.
-func NewPeerCredentialsAuthenticator(metadataExtractor *jmespath.JMESPath) Authenticator {
+func NewPeerCredentialsAuthenticator(metadataExtractor *jmespath.Expression) Authenticator {
 	return &peerCredentialsAuthenticator{
 		metadataExtractor: metadataExtractor,
 	}

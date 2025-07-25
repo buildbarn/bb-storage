@@ -7,6 +7,7 @@
 package x509
 
 import (
+	jmespath "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,8 +25,8 @@ const (
 type ClientCertificateVerifierConfiguration struct {
 	state                                protoimpl.MessageState `protogen:"open.v1"`
 	ClientCertificateAuthorities         string                 `protobuf:"bytes,1,opt,name=client_certificate_authorities,json=clientCertificateAuthorities,proto3" json:"client_certificate_authorities,omitempty"`
-	ValidationJmespathExpression         string                 `protobuf:"bytes,2,opt,name=validation_jmespath_expression,json=validationJmespathExpression,proto3" json:"validation_jmespath_expression,omitempty"`
-	MetadataExtractionJmespathExpression string                 `protobuf:"bytes,3,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
+	ValidationJmespathExpression         *jmespath.Expression   `protobuf:"bytes,2,opt,name=validation_jmespath_expression,json=validationJmespathExpression,proto3" json:"validation_jmespath_expression,omitempty"`
+	MetadataExtractionJmespathExpression *jmespath.Expression   `protobuf:"bytes,3,opt,name=metadata_extraction_jmespath_expression,json=metadataExtractionJmespathExpression,proto3" json:"metadata_extraction_jmespath_expression,omitempty"`
 	unknownFields                        protoimpl.UnknownFields
 	sizeCache                            protoimpl.SizeCache
 }
@@ -67,29 +68,29 @@ func (x *ClientCertificateVerifierConfiguration) GetClientCertificateAuthorities
 	return ""
 }
 
-func (x *ClientCertificateVerifierConfiguration) GetValidationJmespathExpression() string {
+func (x *ClientCertificateVerifierConfiguration) GetValidationJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		return x.ValidationJmespathExpression
 	}
-	return ""
+	return nil
 }
 
-func (x *ClientCertificateVerifierConfiguration) GetMetadataExtractionJmespathExpression() string {
+func (x *ClientCertificateVerifierConfiguration) GetMetadataExtractionJmespathExpression() *jmespath.Expression {
 	if x != nil {
 		return x.MetadataExtractionJmespathExpression
 	}
-	return ""
+	return nil
 }
 
 var File_pkg_proto_configuration_x509_x509_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_x509_x509_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/x509/x509.proto\x12\x1cbuildbarn.configuration.x509\"\x8b\x02\n" +
+	"'pkg/proto/configuration/x509/x509.proto\x12\x1cbuildbarn.configuration.x509\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xe8\x02\n" +
 	"&ClientCertificateVerifierConfiguration\x12D\n" +
-	"\x1eclient_certificate_authorities\x18\x01 \x01(\tR\x1cclientCertificateAuthorities\x12D\n" +
-	"\x1evalidation_jmespath_expression\x18\x02 \x01(\tR\x1cvalidationJmespathExpression\x12U\n" +
-	"'metadata_extraction_jmespath_expression\x18\x03 \x01(\tR$metadataExtractionJmespathExpressionB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/x509b\x06proto3"
+	"\x1eclient_certificate_authorities\x18\x01 \x01(\tR\x1cclientCertificateAuthorities\x12r\n" +
+	"\x1evalidation_jmespath_expression\x18\x02 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR\x1cvalidationJmespathExpression\x12\x83\x01\n" +
+	"'metadata_extraction_jmespath_expression\x18\x03 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR$metadataExtractionJmespathExpressionB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/x509b\x06proto3"
 
 var (
 	file_pkg_proto_configuration_x509_x509_proto_rawDescOnce sync.Once
@@ -106,13 +107,16 @@ func file_pkg_proto_configuration_x509_x509_proto_rawDescGZIP() []byte {
 var file_pkg_proto_configuration_x509_x509_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_pkg_proto_configuration_x509_x509_proto_goTypes = []any{
 	(*ClientCertificateVerifierConfiguration)(nil), // 0: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+	(*jmespath.Expression)(nil),                    // 1: buildbarn.configuration.jmespath.Expression
 }
 var file_pkg_proto_configuration_x509_x509_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration.validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	1, // 1: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_configuration_x509_x509_proto_init() }
