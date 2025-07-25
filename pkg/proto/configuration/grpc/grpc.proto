@@ -66,7 +66,8 @@ message ClientConfiguration {
   //
   //  {
   //    "authenticationMetadata": buildbarn.auth.AuthenticationMetadata,
-  //    "incomingGRPCMetadata": map<string, repeated string>
+  //    "incomingGRPCMetadata": map<string, repeated string>,
+  //    "files": map<string, string>
   //  }
   //
   // Some known headers that may be expected in incomingGRPCMetadata:
@@ -88,6 +89,21 @@ message ClientConfiguration {
   // would only be possible if bb-scheduler made outgoing connections to
   // workers, which is not the case.
   string add_metadata_jmespath_expression = 12;
+
+  message RefreshedFile {
+    // The key under which the file contents will be made available to
+    // the JMESPath expression. For example, if this is token, then the
+    // JMESPath expression can refer to the file contents as files.token.
+    string key = 1;
+    // The path to the file to read.
+    string path = 2;
+    // How often the file should be reloaded.
+    google.protobuf.Duration refresh_interval = 3;
+  }
+
+  // A list of files to read and make available when evaluating
+  // add_metadata_jmespath_expression. See RefreshedFile.
+  repeated RefreshedFile add_metadata_jmespath_files = 14;
 
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
