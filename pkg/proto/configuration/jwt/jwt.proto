@@ -31,6 +31,22 @@ message AuthorizationHeaderParserConfiguration {
     // JWKS stored in a separate file.
     // The file will be automatically reloaded every 300 seconds.
     string jwks_file = 8;
+
+    // Note that no option is provided to download a JWKS from a remote
+    // server via HTTP. This is intentional, for a couple of reasons:
+    //
+    // - If the HTTP server is unavailable, this process wouldn't be
+    //   able to launch properly.
+    //
+    // - For large build clusters having many storage nodes, such an
+    //   approach would lead to an unnecessary number of requests
+    //   against the HTTP server.
+    //
+    // If downloading a JWKS from a remote server is desired, please
+    // use the jwks_file option in combination with a cron job that
+    // fetches the JWKS. When running on Kubernetes, one may create a
+    // CronJob that writes the JWKS into a ConfigMap. The JWKS can then
+    // be accessed by creating a volume mount for the ConfigMap.
   }
 
   // Maximum number of validated tokens to cache in memory. This speeds
