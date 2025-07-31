@@ -50,6 +50,14 @@ message BlobAccessConfiguration {
     // be refilled automatically.
     MirroredBlobAccessConfiguration mirrored = 14;
 
+    // Read and write blobs to a subset of multiple backends.
+    //
+    // This backend provides high availability, but not high durability.
+    // Operations on unavailable backends are retried on other backends.  Data
+    // is not replicated again after the initial writes, on the assumption that
+    // underlying storage is durable, and unavailability is temporary.
+    QuorumBlobAccessConfiguration quorum = 28;
+
     // Store blobs on the local system.
     LocalBlobAccessConfiguration local = 15;
 
@@ -329,6 +337,34 @@ message MirroredBlobAccessConfiguration {
   // the secondary backend to the primary backend in case of
   // inconsistencies.
   BlobReplicatorConfiguration replicator_b_to_a = 4;
+}
+
+// QuorumBlobAccess reads and writes data to a subset of backends.
+// The read and write quorum sizes must be chosen such that reads and writes are
+// guaranteed to overlap by at least one backend.
+// ie: read_quorum + write_quorum > len(backends)
+//
+// A typical highly available setup is 3 backends, with read_quorum ==
+// write_quorum == 2.  This requires write operations succeed on 2/3 backends,
+// which means a single backend can be unavailable for writes.  Reads must
+// successfully check at most 2/3 backends before concluding a blob does not
+// exist, which also means a single backend can be unavailable for reads.
+//
+// Other less common configurations are 3-read + 3-write from 5 backends (2
+// backends can be unavailable), and 1-read + 2-write from 2 backends, which
+// effectively recreates mirrored MirroredBlobaccess (ignoring replication).
+message QuorumBlobAccessConfiguration {
+  // The set of backends.  Backends are selected randomly for each operation and
+  // order is not significant.
+  repeated BlobAccessConfiguration backends = 1;
+
+  // Reads must successfully check this many backends, before concluding a blob
+  // does not exist.
+  uint32 read_quorum = 2;
+
+  // Writes must succeed on this many backends, before the overall write
+  // operation succeeds.
+  uint32 write_quorum = 3;
 }
 
 // LocalBlobAccess stores all data onto disk in block sizes. A block
