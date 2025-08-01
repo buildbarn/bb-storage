@@ -9,6 +9,7 @@ import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
+import "pkg/proto/configuration/x509/x509.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
 
@@ -344,7 +345,8 @@ message AuthenticationPolicy {
 
     // Allow incoming requests in case they present a valid TLS
     // certificate.
-    TLSClientCertificateAuthenticationPolicy tls_client_certificate = 4;
+    buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+        tls_client_certificate = 4;
 
     // Allow incoming requests in case they present an "Authorization"
     // header containing a JWT bearer token.

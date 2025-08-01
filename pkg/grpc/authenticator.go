@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"crypto/x509"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
@@ -11,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/x509"
 	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
@@ -68,24 +68,11 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 	case *configuration.AuthenticationPolicy_Deny:
 		return NewDenyAuthenticator(policyKind.Deny), false, false, nil
 	case *configuration.AuthenticationPolicy_TlsClientCertificate:
-		clientCAs := x509.NewCertPool()
-		if !clientCAs.AppendCertsFromPEM([]byte(policyKind.TlsClientCertificate.ClientCertificateAuthorities)) {
-			return nil, false, false, status.Error(codes.InvalidArgument, "Failed to parse client certificate authorities")
-		}
-		validator, err := jmespath.Compile(policyKind.TlsClientCertificate.ValidationJmespathExpression)
+		clientCertificateVerifier, err := x509.NewClientCertificateVerifierFromConfiguration(policyKind.TlsClientCertificate)
 		if err != nil {
-			return nil, false, false, util.StatusWrap(err, "Failed to compile validation JMESPath expression")
+			return nil, false, false, err
 		}
-		metadataExtractor, err := jmespath.Compile(policyKind.TlsClientCertificate.MetadataExtractionJmespathExpression)
-		if err != nil {
-			return nil, false, false, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
-		}
-		return NewTLSClientCertificateAuthenticator(
-			clientCAs,
-			clock.SystemClock,
-			validator,
-			metadataExtractor,
-		), false, true, nil
+		return NewTLSClientCertificateAuthenticator(clientCertificateVerifier), false, true, nil
 	case *configuration.AuthenticationPolicy_Jwt:
 		authorizationHeaderParser, err := jwt.NewAuthorizationHeaderParserFromConfiguration(policyKind.Jwt, group)
 		if err != nil {
