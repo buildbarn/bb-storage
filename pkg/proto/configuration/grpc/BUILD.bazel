@@ -11,6 +11,7 @@ proto_library(
         "//pkg/proto/configuration/eviction:eviction_proto",
         "//pkg/proto/configuration/jwt:jwt_proto",
         "//pkg/proto/configuration/tls:tls_proto",
+        "//pkg/proto/configuration/x509:x509_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:struct_proto",
@@ -27,6 +28,7 @@ go_proto_library(
         "//pkg/proto/configuration/eviction",
         "//pkg/proto/configuration/jwt",
         "//pkg/proto/configuration/tls",
+        "//pkg/proto/configuration/x509",
     ],
 )
 

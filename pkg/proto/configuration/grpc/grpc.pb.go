@@ -11,6 +11,7 @@ import (
 	eviction "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction"
 	jwt "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	tls "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
+	x509 "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -652,7 +653,7 @@ func (x *AuthenticationPolicy) GetDeny() string {
 	return ""
 }
 
-func (x *AuthenticationPolicy) GetTlsClientCertificate() *TLSClientCertificateAuthenticationPolicy {
+func (x *AuthenticationPolicy) GetTlsClientCertificate() *x509.ClientCertificateVerifierConfiguration {
 	if x != nil {
 		if x, ok := x.Policy.(*AuthenticationPolicy_TlsClientCertificate); ok {
 			return x.TlsClientCertificate
@@ -709,7 +710,7 @@ type AuthenticationPolicy_Deny struct {
 }
 
 type AuthenticationPolicy_TlsClientCertificate struct {
-	TlsClientCertificate *TLSClientCertificateAuthenticationPolicy `protobuf:"bytes,4,opt,name=tls_client_certificate,json=tlsClientCertificate,proto3,oneof"`
+	TlsClientCertificate *x509.ClientCertificateVerifierConfiguration `protobuf:"bytes,4,opt,name=tls_client_certificate,json=tlsClientCertificate,proto3,oneof"`
 }
 
 type AuthenticationPolicy_Jwt struct {
@@ -1072,7 +1073,7 @@ var File_pkg_proto_configuration_grpc_grpc_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x19pkg/proto/auth/auth.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\"\xce\a\n" +
+	"'pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x19pkg/proto/auth/auth.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a'pkg/proto/configuration/x509/x509.proto\"\xce\a\n" +
 	"\x13ClientConfiguration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12B\n" +
 	"\x03tls\x18\x02 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12X\n" +
@@ -1126,13 +1127,13 @@ const file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\x12max_connection_age\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x10maxConnectionAge\x12R\n" +
 	"\x18max_connection_age_grace\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x15maxConnectionAgeGrace\x12-\n" +
 	"\x04time\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x04time\x123\n" +
-	"\atimeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\atimeout\"\x8c\x05\n" +
+	"\atimeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\atimeout\"\x8a\x05\n" +
 	"\x14AuthenticationPolicy\x12>\n" +
 	"\x05allow\x18\x01 \x01(\v2&.buildbarn.auth.AuthenticationMetadataH\x00R\x05allow\x12I\n" +
 	"\x03any\x18\x02 \x01(\v25.buildbarn.configuration.grpc.AnyAuthenticationPolicyH\x00R\x03any\x12I\n" +
 	"\x03all\x18\a \x01(\v25.buildbarn.configuration.grpc.AllAuthenticationPolicyH\x00R\x03all\x12\x14\n" +
-	"\x04deny\x18\x03 \x01(\tH\x00R\x04deny\x12~\n" +
-	"\x16tls_client_certificate\x18\x04 \x01(\v2F.buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicyH\x00R\x14tlsClientCertificate\x12W\n" +
+	"\x04deny\x18\x03 \x01(\tH\x00R\x04deny\x12|\n" +
+	"\x16tls_client_certificate\x18\x04 \x01(\v2D.buildbarn.configuration.x509.ClientCertificateVerifierConfigurationH\x00R\x14tlsClientCertificate\x12W\n" +
 	"\x03jwt\x18\x05 \x01(\v2C.buildbarn.configuration.jwt.AuthorizationHeaderParserConfigurationH\x00R\x03jwt\x12Q\n" +
 	"$peer_credentials_jmespath_expression\x18\x06 \x01(\tH\x00R!peerCredentialsJmespathExpression\x12R\n" +
 	"\x06remote\x18\b \x01(\v28.buildbarn.configuration.grpc.RemoteAuthenticationPolicyH\x00R\x06remoteB\b\n" +
@@ -1169,30 +1170,31 @@ func file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP() []byte {
 
 var file_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
-	(*ClientConfiguration)(nil),                        // 0: buildbarn.configuration.grpc.ClientConfiguration
-	(*ClientKeepaliveConfiguration)(nil),               // 1: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
-	(*ClientOAuthConfiguration)(nil),                   // 2: buildbarn.configuration.grpc.ClientOAuthConfiguration
-	(*ServerConfiguration)(nil),                        // 3: buildbarn.configuration.grpc.ServerConfiguration
-	(*ServerKeepaliveEnforcementPolicy)(nil),           // 4: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
-	(*ServerKeepaliveParameters)(nil),                  // 5: buildbarn.configuration.grpc.ServerKeepaliveParameters
-	(*AuthenticationPolicy)(nil),                       // 6: buildbarn.configuration.grpc.AuthenticationPolicy
-	(*AnyAuthenticationPolicy)(nil),                    // 7: buildbarn.configuration.grpc.AnyAuthenticationPolicy
-	(*AllAuthenticationPolicy)(nil),                    // 8: buildbarn.configuration.grpc.AllAuthenticationPolicy
-	(*TLSClientCertificateAuthenticationPolicy)(nil),   // 9: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
-	(*RemoteAuthenticationPolicy)(nil),                 // 10: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
-	(*TracingMethodConfiguration)(nil),                 // 11: buildbarn.configuration.grpc.TracingMethodConfiguration
-	(*ClientConfiguration_HeaderValues)(nil),           // 12: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
-	nil,                                                // 13: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
-	nil,                                                // 14: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
-	(*tls.ClientConfiguration)(nil),                    // 15: buildbarn.configuration.tls.ClientConfiguration
-	(*structpb.Struct)(nil),                            // 16: google.protobuf.Struct
-	(*durationpb.Duration)(nil),                        // 17: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                              // 18: google.protobuf.Empty
-	(*tls.ServerConfiguration)(nil),                    // 19: buildbarn.configuration.tls.ServerConfiguration
-	(*auth.AuthenticationMetadata)(nil),                // 20: buildbarn.auth.AuthenticationMetadata
-	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 21: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	(*structpb.Value)(nil),                             // 22: google.protobuf.Value
-	(eviction.CacheReplacementPolicy)(0),               // 23: buildbarn.configuration.eviction.CacheReplacementPolicy
+	(*ClientConfiguration)(nil),                         // 0: buildbarn.configuration.grpc.ClientConfiguration
+	(*ClientKeepaliveConfiguration)(nil),                // 1: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
+	(*ClientOAuthConfiguration)(nil),                    // 2: buildbarn.configuration.grpc.ClientOAuthConfiguration
+	(*ServerConfiguration)(nil),                         // 3: buildbarn.configuration.grpc.ServerConfiguration
+	(*ServerKeepaliveEnforcementPolicy)(nil),            // 4: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
+	(*ServerKeepaliveParameters)(nil),                   // 5: buildbarn.configuration.grpc.ServerKeepaliveParameters
+	(*AuthenticationPolicy)(nil),                        // 6: buildbarn.configuration.grpc.AuthenticationPolicy
+	(*AnyAuthenticationPolicy)(nil),                     // 7: buildbarn.configuration.grpc.AnyAuthenticationPolicy
+	(*AllAuthenticationPolicy)(nil),                     // 8: buildbarn.configuration.grpc.AllAuthenticationPolicy
+	(*TLSClientCertificateAuthenticationPolicy)(nil),    // 9: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
+	(*RemoteAuthenticationPolicy)(nil),                  // 10: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
+	(*TracingMethodConfiguration)(nil),                  // 11: buildbarn.configuration.grpc.TracingMethodConfiguration
+	(*ClientConfiguration_HeaderValues)(nil),            // 12: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
+	nil,                                                 // 13: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
+	nil,                                                 // 14: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
+	(*tls.ClientConfiguration)(nil),                     // 15: buildbarn.configuration.tls.ClientConfiguration
+	(*structpb.Struct)(nil),                             // 16: google.protobuf.Struct
+	(*durationpb.Duration)(nil),                         // 17: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                               // 18: google.protobuf.Empty
+	(*tls.ServerConfiguration)(nil),                     // 19: buildbarn.configuration.tls.ServerConfiguration
+	(*auth.AuthenticationMetadata)(nil),                 // 20: buildbarn.auth.AuthenticationMetadata
+	(*x509.ClientCertificateVerifierConfiguration)(nil), // 21: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+	(*jwt.AuthorizationHeaderParserConfiguration)(nil),  // 22: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	(*structpb.Value)(nil),                              // 23: google.protobuf.Value
+	(eviction.CacheReplacementPolicy)(0),                // 24: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
 var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
 	15, // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
@@ -1218,14 +1220,14 @@ var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
 	20, // 20: buildbarn.configuration.grpc.AuthenticationPolicy.allow:type_name -> buildbarn.auth.AuthenticationMetadata
 	7,  // 21: buildbarn.configuration.grpc.AuthenticationPolicy.any:type_name -> buildbarn.configuration.grpc.AnyAuthenticationPolicy
 	8,  // 22: buildbarn.configuration.grpc.AuthenticationPolicy.all:type_name -> buildbarn.configuration.grpc.AllAuthenticationPolicy
-	9,  // 23: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
-	21, // 24: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	21, // 23: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+	22, // 24: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
 	10, // 25: buildbarn.configuration.grpc.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
 	6,  // 26: buildbarn.configuration.grpc.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
 	6,  // 27: buildbarn.configuration.grpc.AllAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
 	0,  // 28: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	22, // 29: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.scope:type_name -> google.protobuf.Value
-	23, // 30: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
+	23, // 29: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.scope:type_name -> google.protobuf.Value
+	24, // 30: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
 	11, // 31: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
 	11, // 32: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
 	33, // [33:33] is the sub-list for method output_type
