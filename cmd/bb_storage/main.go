@@ -36,7 +36,7 @@ func main() {
 		if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
-		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
+		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global, dependenciesGroup)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
@@ -56,6 +56,7 @@ func main() {
 				dependenciesGroup,
 				configuration.ContentAddressableStorage,
 				blobstore_configuration.NewCASBlobAccessCreator(
+					dependenciesGroup,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes)),
 				grpcClientFactory)
@@ -83,9 +84,11 @@ func main() {
 				dependenciesGroup,
 				configuration.ActionCache,
 				blobstore_configuration.NewACBlobAccessCreator(
+					dependenciesGroup,
 					contentAddressableStorageInfo,
 					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes)),
+					int(configuration.MaximumMessageSizeBytes),
+				),
 				grpcClientFactory)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Action Cache")
@@ -104,6 +107,7 @@ func main() {
 				dependenciesGroup,
 				configuration.IndirectContentAddressableStorage,
 				blobstore_configuration.NewICASBlobAccessCreator(
+					dependenciesGroup,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes)),
 				grpcClientFactory)
@@ -120,6 +124,7 @@ func main() {
 				dependenciesGroup,
 				configuration.InitialSizeClassCache,
 				blobstore_configuration.NewISCCBlobAccessCreator(
+					dependenciesGroup,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes)),
 				grpcClientFactory)
@@ -136,6 +141,7 @@ func main() {
 				dependenciesGroup,
 				configuration.FileSystemAccessCache,
 				blobstore_configuration.NewFSACBlobAccessCreator(
+					dependenciesGroup,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes)),
 				grpcClientFactory)
@@ -158,11 +164,11 @@ func main() {
 		// one or more schedulers specified in the configuration file.
 		var buildQueue builder.BuildQueue
 		if len(configuration.Schedulers) > 0 {
-			baseBuildQueue, err := builder.NewDemultiplexingBuildQueueFromConfiguration(configuration.Schedulers, grpcClientFactory)
+			baseBuildQueue, err := builder.NewDemultiplexingBuildQueueFromConfiguration(configuration.Schedulers, dependenciesGroup, grpcClientFactory)
 			if err != nil {
 				return err
 			}
-			executeAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetExecuteAuthorizer(), grpcClientFactory)
+			executeAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetExecuteAuthorizer(), dependenciesGroup, grpcClientFactory)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create execute authorizer")
 			}
@@ -240,11 +246,11 @@ func newNonScannableBlobAccess(dependenciesGroup program.Group, configuration *b
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
 	}
 
-	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, grpcClientFactory)
+	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
-	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, grpcClientFactory)
+	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
@@ -262,15 +268,15 @@ func newScannableBlobAccess(dependenciesGroup program.Group, configuration *bb_s
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
 	}
 
-	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, grpcClientFactory)
+	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
-	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, grpcClientFactory)
+	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
-	findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer, grpcClientFactory)
+	findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
 		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
 	}

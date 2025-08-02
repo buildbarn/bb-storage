@@ -27,12 +27,13 @@ func main() {
 		if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
-		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
+		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global, dependenciesGroup)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
+			dependenciesGroup,
 			grpcClientFactory,
 			int(configuration.MaximumMessageSizeBytes))
 		source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
@@ -53,7 +54,7 @@ func main() {
 			configuration.Replicator,
 			source.BlobAccess,
 			sink,
-			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
+			blobstore_configuration.NewCASBlobReplicatorCreator(dependenciesGroup, grpcClientFactory),
 		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create replicator")

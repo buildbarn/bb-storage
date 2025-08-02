@@ -6,6 +6,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
 
@@ -15,16 +16,18 @@ type fsacBlobAccessCreator struct {
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
+	terminationGroup        program.Group
 }
 
 // NewFSACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the File System Access
 // Cache.
-func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewFSACBlobAccessCreator(terminationGroup program.Group, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &fsacBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		terminationGroup:        terminationGroup,
 	}
 }
 
@@ -43,7 +46,7 @@ func (bac *fsacBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.
 func (bac *fsacBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, bac.terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

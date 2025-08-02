@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -82,7 +84,7 @@ func newClientDialOptionsFromTLSConfig(tlsConfig *tls.Config) ([]grpc.DialOption
 	return dialOptions, nil
 }
 
-func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.ClientConfiguration) (grpc.ClientConnInterface, error) {
+func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.ClientConfiguration, group program.Group) (grpc.ClientConnInterface, error) {
 	if config == nil {
 		return nil, status.Error(codes.InvalidArgument, "No gRPC client configuration provided")
 	}
@@ -178,8 +180,8 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	// Optional: metadata extraction.
-	if jmesExpression := config.AddMetadataJmespathExpression; jmesExpression != "" {
-		expr, err := jmespath.Compile(jmesExpression)
+	if jmesExpression := config.AddMetadataJmespathExpression; jmesExpression != nil {
+		expr, err := jmespath.NewExpressionFromConfiguration(jmesExpression, group, clock.SystemClock)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to compile JMESPath expression")
 		}
