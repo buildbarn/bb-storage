@@ -1,5 +1,6 @@
 module(name = "com_github_buildbarn_bb_storage")
 
+bazel_dep(name = "apple_support", version = "1.22.1")  # For https://github.com/bazelbuild/apple_support/pull/373.
 bazel_dep(name = "aspect_bazel_lib", version = "2.19.4")
 bazel_dep(name = "aspect_rules_js", version = "2.3.8")
 bazel_dep(name = "bazel_remote_apis", version = "0")
