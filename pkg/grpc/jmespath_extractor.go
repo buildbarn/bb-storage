@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -21,12 +21,13 @@ import (
 // structure:
 //
 //	{
-//	    "authenticationMetadata": value,
-//	    "incomingGRPCMetadata": map<string, repeated string>
+//	  "authenticationMetadata": value,
+//	  "files": map<string, any>,
+//	  "incomingGRPCMetadata": map<string, repeated string>
 //	}
-func NewJMESPathMetadataExtractor(expression *jmespath.JMESPath) (MetadataExtractor, error) {
+func NewJMESPathMetadataExtractor(expression *jmespath.Expression) (MetadataExtractor, error) {
 	return func(ctx context.Context) (MetadataHeaderValues, error) {
-		searchContext := make(map[string]interface{}, 2)
+		searchContext := make(map[string]interface{}, 3)
 		if authenticationMetadata := auth.AuthenticationMetadataFromContext(ctx); authenticationMetadata != nil {
 			searchContext["authenticationMetadata"] = authenticationMetadata.GetRaw()
 		}
@@ -34,9 +35,9 @@ func NewJMESPathMetadataExtractor(expression *jmespath.JMESPath) (MetadataExtrac
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			// JMESPath only treats map[string]interface{}, struct, or *struct as map types,
 			// so we need to copy from the map[string][]string.
-			incomingGRPCMetadata := make(map[string]interface{}, len(md))
+			incomingGRPCMetadata := make(map[string]any, len(md))
 			for k, rawVs := range md {
-				vs := make([]interface{}, 0, len(rawVs))
+				vs := make([]any, 0, len(rawVs))
 				for _, rawV := range rawVs {
 					vs = append(vs, rawV)
 				}

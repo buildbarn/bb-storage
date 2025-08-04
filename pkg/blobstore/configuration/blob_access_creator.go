@@ -7,6 +7,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 )
 
@@ -52,7 +53,7 @@ type BlobAccessCreator interface {
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
 	// applicable to the Action Cache.
-	NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error)
+	NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error)
 	// WrapTopLevelBlobAccess() is called at the very end of
 	// NewBlobAccessFromConfiguration() to apply any top-level
 	// decorators.

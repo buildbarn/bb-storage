@@ -6,6 +6,7 @@ proto_library(
     name = "x509_proto",
     srcs = ["x509.proto"],
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/jmespath:jmespath_proto"],
 )
 
 go_proto_library(
@@ -13,6 +14,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509",
     proto = ":x509_proto",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/jmespath"],
 )
 
 go_library(

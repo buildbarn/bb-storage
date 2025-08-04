@@ -12,10 +12,10 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/proto/http/oidc"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/jmespath/go-jmespath"
 	"github.com/stretchr/testify/require"
 
 	"golang.org/x/oauth2"

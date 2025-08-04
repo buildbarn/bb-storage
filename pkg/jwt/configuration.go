@@ -13,11 +13,11 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
+	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	jose "github.com/go-jose/go-jose/v3"
-	"github.com/jmespath/go-jmespath"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,11 +59,11 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		return nil, util.StatusWrap(err, "Failed to create eviction set")
 	}
 
-	claimsValidator, err := jmespath.Compile(config.ClaimsValidationJmespathExpression)
+	claimsValidator, err := jmespath.NewExpressionFromConfiguration(config.ClaimsValidationJmespathExpression, group, clock.SystemClock)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to compile claims validation JMESPath expression")
 	}
-	metadataExtractor, err := jmespath.Compile(config.MetadataExtractionJmespathExpression)
+	metadataExtractor, err := jmespath.NewExpressionFromConfiguration(config.MetadataExtractionJmespathExpression, group, clock.SystemClock)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to compile metadata extraction JMESPath expression")
 	}

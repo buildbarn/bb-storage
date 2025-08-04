@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -58,7 +59,7 @@ func (bac *acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Pr
 	return acCapabilitiesProvider
 }
 
-func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ActionResultExpiring:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ActionResultExpiring.Backend, bac)
@@ -105,7 +106,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(configuration *pb.BlobAccess
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}

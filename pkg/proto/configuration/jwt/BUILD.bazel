@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/eviction:eviction_proto",
+        "//pkg/proto/configuration/jmespath:jmespath_proto",
         "@protobuf//:struct_proto",
     ],
 )
@@ -17,7 +18,10 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt",
     proto = ":jwt_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/eviction"],
+    deps = [
+        "//pkg/proto/configuration/eviction",
+        "//pkg/proto/configuration/jmespath",
+    ],
 )
 
 go_library(
