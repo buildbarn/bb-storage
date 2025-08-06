@@ -237,6 +237,9 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			}
 			dataSyncer = blockDevice.Sync
 			blockCount := blocksOnBlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
+			if blockCount > 100 {
+				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Total number of blocks is %d, which is more than this implementation is willing to support", blockCount)
+			}
 			blockSectorCount = sectorCount / int64(blockCount)
 			if blockSectorCount <= 0 {
 				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Block device only has %d sectors (%d bytes each), which is less than the total number of blocks (%d), meaning this backend would be incapable of storing any data", sectorCount, sectorSizeBytes, blockCount)
