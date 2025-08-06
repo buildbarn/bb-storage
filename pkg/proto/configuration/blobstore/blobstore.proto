@@ -331,11 +331,22 @@ message MirroredBlobAccessConfiguration {
   BlobReplicatorConfiguration replicator_b_to_a = 4;
 }
 
-// LocalBlobAccess stores all data onto disk in block sizes. A block
-// cannot span multiple blocks, meaning that blocks generally need to
-// be large in size (gigabytes). The number of blocks may be relatively
-// low. For example, for a 512 GiB cache, it is acceptable to create 32
-// blocks of 16 GiB in size.
+// LocalBlobAccess stores all data onto disk inside blocks. A block can
+// contain multiple blobs, but blob cannot span multiple blocks. This
+// means that a block needs to be at least as large as the maximum blob
+// size you're willing to accept. For example, if you have a 512 GiB
+// cache, having a total of 32 blocks means you can store objects up to
+// 16 GiB in size. This means that for small instances of
+// LocalBlobAccess, the number of blocks may need to be reduced.
+//
+// Blocks are the unit at which LocalBlobAccess performs garbage
+// collection. If storage space in all used blocks is exhausted,
+// LocalBlobAccess discards the contents of a block so that space may be
+// reused. Therefore, the total number of blocks does not need to be
+// very high. If the total number of blocks is 32, LocalBlobAccess will
+// only discard 100% / 32 = 3.125% of its data at a time. This means
+// that 96.875% of storage space remains in continuous use, which is
+// more than adequate.
 //
 // Blocks are partitioned into three groups based on their creation
 // time, named "old", "current" and "new". Blobs provided to Put() will
