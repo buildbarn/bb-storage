@@ -91,6 +91,10 @@ func TestBuilder(t *testing.T) {
 			"C:\\hello\\..\\world\\",
 			"C:\\hello\\..\\world\\foo",
 			"C:\\hello\\..\\world\\foo",
+			"\\\\server\\share\\hello\\",
+			"\\\\server\\share\\hello\\..\\world",
+			"\\\\server\\share\\hello\\..\\world\\",
+			"\\\\server\\share\\hello\\..\\world\\foo",
 		} {
 			t.Run(p, func(t *testing.T) {
 				builder1, scopewalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -149,6 +153,7 @@ func TestBuilder(t *testing.T) {
 			{"c:\\Hello\\..\\world\\", "C:\\Hello\\..\\world\\"},
 			{"c:\\Hello\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
 			{"c:\\\\Hello\\\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
+			{"\\\\Server\\Share\\Hello\\\\..\\world\\foo", "\\\\Server\\Share\\Hello\\..\\world\\foo"},
 		} {
 			p := data[0]
 			expected := data[1]
@@ -195,18 +200,25 @@ func TestBuilder(t *testing.T) {
 
 	t.Run("WindowsNormalized", func(t *testing.T) {
 		for from, to := range map[string]string{
-			"":            ".",
-			"./":          ".",
-			"./.":         ".",
-			"../":         "..",
-			"../.":        "..",
-			"//":          "\\",
-			"/.":          "\\",
-			"/./":         "\\",
-			"/..":         "\\",
-			"/../":        "\\",
-			"/hello/.":    "\\hello\\",
-			"/hello/../.": "\\hello\\..",
+			"":                            ".",
+			"./":                          ".",
+			"./.":                         ".",
+			"../":                         "..",
+			"../.":                        "..",
+			"/.":                          "\\",
+			"/./":                         "\\",
+			"/..":                         "\\",
+			"/../":                        "\\",
+			"/hello/.":                    "\\hello\\",
+			"/hello/../.":                 "\\hello\\..",
+			"//Server/Share/hello":        "\\\\Server\\Share\\hello",
+			"//Server/Share/.":            "\\\\Server\\Share\\",
+			"//Server/Share/./":           "\\\\Server\\Share\\",
+			"//Server/Share/..":           "\\\\Server\\Share\\",
+			"//Server/Share/../":          "\\\\Server\\Share\\",
+			"//Server/Share/hello/.":      "\\\\Server\\Share\\hello\\",
+			"//Server/Share/hello/../.":   "\\\\Server\\Share\\hello\\..",
+			"/\\Server\\Share/hello/../.": "\\\\Server\\Share\\hello\\..",
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -216,6 +228,20 @@ func TestBuilder(t *testing.T) {
 				builder2, scopeWalker2 := path.EmptyBuilder.Join(path.VoidScopeWalker)
 				require.NoError(t, path.Resolve(builder1, scopeWalker2))
 				require.Equal(t, to, mustGetWindowsString(builder2))
+			})
+		}
+	})
+
+	// Invalid UNC paths should return an error.
+	t.Run("WindowsInvalidUNC", func(t *testing.T) {
+		for _, p := range []string{
+			"//",
+			"///",
+			"//s//",
+		} {
+			t.Run(p, func(t *testing.T) {
+				_, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+				require.Error(t, path.Resolve(path.WindowsFormat.NewParser(p), scopeWalker))
 			})
 		}
 	})
@@ -349,5 +375,16 @@ func TestBuilder(t *testing.T) {
 		builder1, s1 := path.EmptyBuilder.Join(scopeWalker1)
 		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("C:\\hello"), s1))
 		require.Equal(t, "C:\\world", mustGetWindowsString(builder1))
+	})
+
+	t.Run("UNCShareInvoke", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnShare("server", "share").Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\\\server\\share\\file.txt"), s))
+		require.Equal(t, "\\\\server\\share\\file.txt", mustGetWindowsString(builder))
 	})
 }

@@ -25,6 +25,8 @@ type Builder struct {
 	driveLetter          rune
 	components           []string
 	firstReversibleIndex int
+	server               string
+	share                string
 	suffix               string
 }
 
@@ -78,6 +80,12 @@ func (b *Builder) GetWindowsString() (string, error) {
 	if b.driveLetter != 0 {
 		out.WriteString(string(b.driveLetter))
 		out.WriteString(":")
+		prefix = "\\"
+	} else if b.server != "" {
+		out.WriteString(`\\`)
+		out.WriteString(b.server)
+		out.WriteString(`\`)
+		out.WriteString(b.share)
 		prefix = "\\"
 	} else if b.absolute {
 		prefix = "\\"
@@ -146,6 +154,8 @@ func (b *Builder) getComponentWalker(base ComponentWalker) ComponentWalker {
 func (b *Builder) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
 	if b.driveLetter != 0 {
 		next, err = scopeWalker.OnDriveLetter(b.driveLetter)
+	} else if b.server != "" {
+		next, err = scopeWalker.OnShare(b.server, b.share)
 	} else if b.absolute {
 		next, err = scopeWalker.OnAbsolute()
 	} else {
@@ -215,6 +225,21 @@ func (w *buildingScopeWalker) OnRelative() (ComponentWalker, error) {
 	componentWalker, err := w.base.OnRelative()
 	if err != nil {
 		return nil, err
+	}
+	return w.b.getComponentWalker(componentWalker), nil
+}
+
+func (w *buildingScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+	componentWalker, err := w.base.OnShare(server, share)
+	if err != nil {
+		return nil, err
+	}
+	*w.b = Builder{
+		absolute:   true,
+		components: w.b.components[:0],
+		server:     server,
+		share:      share,
+		suffix:     "/",
 	}
 	return w.b.getComponentWalker(componentWalker), nil
 }

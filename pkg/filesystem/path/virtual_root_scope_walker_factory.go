@@ -217,6 +217,10 @@ func (w *virtualRootScopeWalker) OnRelative() (ComponentWalker, error) {
 	}, nil
 }
 
+func (w *virtualRootScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+	return w.getComponentWalker(w.rootNode)
+}
+
 // pendingVirtualRootComponentWalker is VirtualRootScopeWalkerFactory's
 // decorator for ComponentWalker when resolution takes place inside the
 // virtual root directory (i.e., outside the underlying root directory).

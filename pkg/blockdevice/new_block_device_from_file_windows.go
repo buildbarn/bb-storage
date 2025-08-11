@@ -4,11 +4,14 @@
 package blockdevice
 
 import (
-	"strings"
+	"fmt"
 	"syscall"
 	"unsafe"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"golang.org/x/sys/windows"
 )
@@ -45,7 +48,10 @@ func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bo
 	// Get the sector size from the disk where the file is located.
 
 	// Extract the root path (drive letter) from the full path.
-	rootPath := RootPathForPath(path)
+	rootPath, err := RootPathForPath(path)
+	if err != nil {
+		return nil, 0, 0, util.StatusWrapf(err, "Failed to get root path for %#v", path)
+	}
 	rootPathPtr, err := syscall.UTF16PtrFromString(rootPath)
 	if err != nil {
 		windows.CloseHandle(handle)
@@ -90,25 +96,44 @@ func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bo
 	return bd, sectorSizeBytes, sectorCount, nil
 }
 
+// A ScopeWalker that extracts the root path for GetDiskFreeSpaceW.
+type rootPathScopeWalker struct {
+	rootPath string
+	err      error
+}
+
+func (w *rootPathScopeWalker) OnAbsolute() (path.ComponentWalker, error) {
+	w.err = status.Error(codes.InvalidArgument, "Path is absolute, while a path begining with a drive letter or a UNC path was expected")
+	return path.VoidComponentWalker, nil
+}
+
+func (w *rootPathScopeWalker) OnDriveLetter(drive rune) (path.ComponentWalker, error) {
+	// We want to return C:\, including the trailing backslash
+	// (see GetDiskFreeSpaceW).
+	w.rootPath = fmt.Sprintf(`%c:\`, drive)
+	return path.VoidComponentWalker, nil
+}
+
+func (w *rootPathScopeWalker) OnRelative() (path.ComponentWalker, error) {
+	w.err = status.Error(codes.InvalidArgument, "Path is relative, while a path begining with a drive letter or a UNC path was expected")
+	return path.VoidComponentWalker, nil
+}
+
+func (w *rootPathScopeWalker) OnShare(server, share string) (path.ComponentWalker, error) {
+	// We want to return \\server\share\, including the trailing backslash
+	// (see GetDiskFreeSpaceW).
+	w.rootPath = fmt.Sprintf(`\\%s\%s\`, server, share)
+	return path.VoidComponentWalker, nil
+}
+
 // Computes the root path for a given windows file path as required for GetDiskFreeSpaceW.
-func RootPathForPath(path string) string {
-	if len(path) >= 3 && path[1] == ':' && path[2] == '\\' {
-		// Conventional disk-path; e.g. C:\somefolder.
-		return path[:3]
+func RootPathForPath(in string) (string, error) {
+	w := rootPathScopeWalker{}
+	if err := path.Resolve(path.LocalFormat.NewParser(in), &w); err != nil {
+		return "", err
 	}
-	if strings.HasPrefix(path, `\\`) {
-		// UNC path; e.g. \\server\share\some_folder.
-		// We want to return \\server\share\, including the trailing slash as per GetDiskFreeSpaceW's documentation.
-		serverEnd := strings.IndexByte(path[2:], '\\')
-		if serverEnd == -1 {
-			return path
-		}
-		shareStart := 2 + serverEnd + 1
-		shareEnd := strings.IndexByte(path[shareStart:], '\\')
-		if shareEnd == -1 {
-			return path
-		}
-		return path[:shareStart+shareEnd+1]
+	if w.err != nil {
+		return "", w.err
 	}
-	return path
+	return w.rootPath, nil
 }
