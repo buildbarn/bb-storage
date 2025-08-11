@@ -56,6 +56,17 @@ func (w *loopDetectingScopeWalker) OnRelative() (ComponentWalker, error) {
 	}, nil
 }
 
+func (w *loopDetectingScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+	componentWalker, err := w.base.OnShare(server, share)
+	if err != nil {
+		return nil, err
+	}
+	return &loopDetectingComponentWalker{
+		base:         componentWalker,
+		symlinksLeft: w.symlinksLeft,
+	}, nil
+}
+
 type loopDetectingComponentWalker struct {
 	base         ComponentWalker
 	symlinksLeft int

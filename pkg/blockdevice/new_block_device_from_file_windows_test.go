@@ -12,20 +12,45 @@ import (
 
 func TestRootPathForPath(t *testing.T) {
 	t.Run("ConventionalDiskPath", func(t *testing.T) {
-		require.Equal(t, `C:\`, blockdevice.RootPathForPath(`C:\`))
-		require.Equal(t, `C:\`, blockdevice.RootPathForPath(`C:\somefolder`))
-		require.Equal(t, `C:\`, blockdevice.RootPathForPath(`C:\somefolder\somefile.txt`))
+		path, err := blockdevice.RootPathForPath(`C:\`)
+		require.NoError(t, err)
+		require.Equal(t, `C:\`, path)
+
+		path, err = blockdevice.RootPathForPath(`C:\somefolder`)
+		require.NoError(t, err)
+		require.Equal(t, `C:\`, path)
+
+		path, err = blockdevice.RootPathForPath(`C:\somefolder\somefile.txt`)
+		require.NoError(t, err)
+		require.Equal(t, `C:\`, path)
+
+		path, err = blockdevice.RootPathForPath(`C:/somefolder/somefile.txt`)
+		require.NoError(t, err)
+		require.Equal(t, `C:\`, path)
 	})
 
 	t.Run("UNCPath", func(t *testing.T) {
 		// Test UNC paths (\\server\share)
-		require.Equal(t, `\\server\share\`, blockdevice.RootPathForPath(`\\server\share\`))
-		require.Equal(t, `\\server\share\`, blockdevice.RootPathForPath(`\\server\share\folder`))
-		require.Equal(t, `\\server\share\`, blockdevice.RootPathForPath(`\\server\share\folder\file.txt`))
+		path, err := blockdevice.RootPathForPath(`\\server\share\`)
+		require.NoError(t, err)
+		require.Equal(t, `\\server\share\`, path)
+
+		path, err = blockdevice.RootPathForPath(`\\server\share\folder\file.txt`)
+		require.NoError(t, err)
+		require.Equal(t, `\\server\share\`, path)
+
+		path, err = blockdevice.RootPathForPath(`\\server\share/file.txt`)
+		require.NoError(t, err)
+		require.Equal(t, `\\server\share\`, path)
+
+		path, err = blockdevice.RootPathForPath(`//server/share/file.txt`)
+		require.NoError(t, err)
+		require.Equal(t, `\\server\share\`, path)
 	})
 
 	t.Run("UnknownPath", func(t *testing.T) {
 		// Test unhandled paths
-		require.Equal(t, "/uhoh/share", blockdevice.RootPathForPath("/uhoh/share"))
+		_, err := blockdevice.RootPathForPath("/uhoh/share")
+		require.Error(t, err)
 	})
 }

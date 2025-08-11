@@ -4,6 +4,9 @@ import (
 	"strings"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type windowsFormat struct{}
@@ -40,6 +43,34 @@ func (p windowsParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker
 				return nil, nil, err
 			}
 			return next, windowsRelativeParser{stripWindowsSeparators(p.path[2:])}, nil
+		}
+
+		if (p.path[0] == '\\' || p.path[0] == '/') && (p.path[1] == '\\' || p.path[1] == '/') {
+			serverStart := 2
+			serverLen := strings.IndexAny(p.path[serverStart:], "\\/")
+			if serverLen == -1 {
+				return nil, nil, status.Error(codes.InvalidArgument, "Invalid UNC path: expected a non-empty server and share name")
+			}
+			if serverLen < 1 {
+				return nil, nil, status.Error(codes.InvalidArgument, "Invalid UNC path: expected a non-empty server name")
+			}
+			// This is a UNC-style path. UNC paths are formatted as:
+			//   \\server\share\path
+			// The format is not very well-specified, so we are tolerant
+			// to slashes in either direction.
+			server := p.path[serverStart : serverStart+serverLen]
+			shareStart := serverStart + serverLen + 1
+			shareLen := strings.IndexAny(p.path[shareStart:], "\\/")
+			if shareLen < 1 {
+				return nil, nil, status.Error(codes.InvalidArgument, "Invalid UNC path: expected a non-empty share name")
+			}
+			share := p.path[shareStart : shareStart+shareLen]
+			remainder := p.path[shareStart+shareLen+1:]
+			next, err = scopeWalker.OnShare(server, share)
+			if err != nil {
+				return nil, nil, err
+			}
+			return next, windowsRelativeParser{remainder}, nil
 		}
 	}
 

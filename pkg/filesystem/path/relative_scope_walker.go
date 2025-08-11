@@ -28,3 +28,7 @@ func (pw *relativeScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error
 func (pw *relativeScopeWalker) OnRelative() (ComponentWalker, error) {
 	return pw.componentWalker, nil
 }
+
+func (pw *relativeScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+	return nil, status.Error(codes.InvalidArgument, "Path has a UNC prefix, while a relative path was expected")
+}
