@@ -329,7 +329,49 @@ func TestLocalDirectoryChtimes(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
-// TODO(edsch): Add testing coverage for RemoveAll().
+func TestLocalDirectoryRemoveAllChildren(t *testing.T) {
+	d := openTmpDir(t)
+
+	// Create children.
+	f, err := d.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Mkdir(path.MustNewComponent("directory"), 0o777))
+	require.NoError(t, d.Symlink(path.UNIXFormat.NewParser("/"), path.MustNewComponent("symlink")))
+
+	// Remove all children.
+	require.NoError(t, d.RemoveAllChildren())
+
+	// Validate children don't exist.
+	files, err := d.ReadDir()
+	require.NoError(t, err)
+	require.Equal(t, 0, len(files))
+
+	require.NoError(t, d.Close())
+}
+
+func TestLocalDirectoryRemoveAll(t *testing.T) {
+	d := openTmpDir(t)
+
+	// Create a subdirectory with contents.
+	require.NoError(t, d.Mkdir(path.MustNewComponent("subdir"), 0o777))
+	subdir, err := d.EnterDirectory(path.MustNewComponent("subdir"))
+	require.NoError(t, err)
+
+	f, err := subdir.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.NoError(t, subdir.Close())
+
+	// Remove the entire subdirectory.
+	require.NoError(t, d.RemoveAll(path.MustNewComponent("subdir")))
+
+	// Verify subdirectory no longer exists.
+	_, err = d.EnterDirectory(path.MustNewComponent("subdir"))
+	require.True(t, os.IsNotExist(err))
+
+	require.NoError(t, d.Close())
+}
 
 func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
 	// Test the behavior on empty files.

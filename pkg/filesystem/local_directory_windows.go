@@ -23,6 +23,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func convertNtStatus(ntstatus error) error {
+	switch ntstatus {
+	case windows.STATUS_NOT_A_DIRECTORY:
+		return syscall.ENOTDIR
+	case windows.STATUS_FILE_IS_A_DIRECTORY:
+		return syscall.EISDIR
+	case windows.STATUS_OBJECT_NAME_EXISTS:
+		return os.ErrExist
+	default:
+		return ntstatus.(windows.NTStatus).Errno()
+	}
+}
+
 func ntCreateFile(handle *windows.Handle, access uint32, root windows.Handle, path string, disposition, options uint32) error {
 	objectName, err := windows.NewNTUnicodeString(path)
 	if err != nil {
@@ -39,16 +52,7 @@ func ntCreateFile(handle *windows.Handle, access uint32, root windows.Handle, pa
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
 		disposition, options, 0, 0)
 	if ntstatus != nil {
-		switch ntstatus.(windows.NTStatus) {
-		case windows.STATUS_NOT_A_DIRECTORY:
-			return syscall.ENOTDIR
-		case windows.STATUS_FILE_IS_A_DIRECTORY:
-			return syscall.EISDIR
-		case windows.STATUS_OBJECT_NAME_EXISTS:
-			return os.ErrExist
-		default:
-			return ntstatus.(windows.NTStatus).Errno()
-		}
+		return convertNtStatus(ntstatus)
 	}
 	return nil
 }
@@ -69,6 +73,38 @@ type localDirectory struct {
 	handle windows.Handle
 }
 
+const volumeNameNt = 0x2
+
+// Returns a new Handle that points to the same directory as d.handle
+// but whose access mode is as specified.
+func (d *localDirectory) createUpgradedHandle(access uint32) (windows.Handle, error) {
+	pathLen, _ := windows.GetFinalPathNameByHandle(d.handle, nil, 0, volumeNameNt)
+	path := make([]uint16, pathLen)
+	_, err := windows.GetFinalPathNameByHandle(d.handle, &path[0], pathLen, volumeNameNt)
+	if err != nil {
+		return windows.InvalidHandle, err
+	}
+	oa := &windows.OBJECT_ATTRIBUTES{
+		RootDirectory: windows.InvalidHandle,
+		ObjectName: &windows.NTUnicodeString{
+			Buffer:        &path[0],
+			Length:        uint16(pathLen*2 - 2), // subtract the null terminator
+			MaximumLength: uint16(pathLen * 2),
+		},
+	}
+	oa.Length = uint32(unsafe.Sizeof(*oa))
+	var newHandle windows.Handle
+	var iosb windows.IO_STATUS_BLOCK
+	var allocSize int64 = 0
+	ntstatus := windows.NtCreateFile(&newHandle, access, oa, &iosb, &allocSize, 0,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE, 0, 0)
+	if ntstatus != nil {
+		return windows.InvalidHandle, convertNtStatus(ntstatus)
+	}
+	return newHandle, nil
+}
+
 func newLocalDirectoryFromHandle(handle windows.Handle) (*localDirectory, error) {
 	d := &localDirectory{
 		handle: handle,
@@ -83,7 +119,7 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 	if openReparsePoint {
 		options |= windows.FILE_OPEN_REPARSE_POINT
 	}
-	err := ntCreateFile(&handle, windows.FILE_LIST_DIRECTORY|windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE|windows.GENERIC_WRITE,
+	err := ntCreateFile(&handle, windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE,
 		0, absPath, windows.FILE_OPEN, options)
 	if err != nil {
 		return nil, err
@@ -129,7 +165,7 @@ func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*loc
 	if openReparsePoint {
 		options |= windows.FILE_OPEN_REPARSE_POINT
 	}
-	err := ntCreateFile(&handle, windows.FILE_LIST_DIRECTORY|windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE|windows.GENERIC_WRITE,
+	err := ntCreateFile(&handle, windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE,
 		d.handle, name.String(), windows.FILE_OPEN, options)
 	if err != nil {
 		return nil, err
@@ -490,7 +526,13 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 }
 
 func (d *localDirectory) ReadDir() ([]FileInfo, error) {
-	names, err := readdirnames(d.handle)
+	handle, err := d.createUpgradedHandle(windows.FILE_LIST_DIRECTORY | windows.FILE_READ_ATTRIBUTES | windows.SYNCHRONIZE)
+	if err != nil {
+		return nil, err
+	}
+	defer windows.CloseHandle(handle)
+
+	names, err := readdirnames(handle)
 	if err != nil {
 		return nil, err
 	}
@@ -600,8 +642,12 @@ func (d *localDirectory) RemoveAllChildren() error {
 
 func (d *localDirectory) removeAllChildren(dPath *path.Trace) error {
 	defer runtime.KeepAlive(d)
-
-	names, err := readdirnames(d.handle)
+	handle, err := d.createUpgradedHandle(windows.FILE_LIST_DIRECTORY | windows.FILE_READ_ATTRIBUTES | windows.SYNCHRONIZE)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(handle)
+	names, err := readdirnames(handle)
 	if err != nil {
 		return util.StatusWrapf(err, "Failed to read contents of directory %#v", dPath.GetUNIXString())
 	}
@@ -796,8 +842,12 @@ func (d *localDirectory) Symlink(oldNameParser path.Parser, newName path.Compone
 
 func (d *localDirectory) Sync() error {
 	defer runtime.KeepAlive(d)
-
-	return windows.FlushFileBuffers(d.handle)
+	handle, err := d.createUpgradedHandle(windows.FILE_GENERIC_WRITE)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(handle)
+	return windows.FlushFileBuffers(handle)
 }
 
 func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) error {
