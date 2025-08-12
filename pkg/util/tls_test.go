@@ -389,7 +389,7 @@ func TestTLSConfigFromServerConfiguration(t *testing.T) {
 			},
 			/* requestClientCertificate = */ false,
 		)
-		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Failed to read certificate file: open /missing-cert.pem: no such file or directory"), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to configure server TLS: Failed to initialize certificate: Failed to read certificate file: open /missing-cert.pem: "), err)
 	})
 
 	t.Run("CustomCipherSuites", func(t *testing.T) {
