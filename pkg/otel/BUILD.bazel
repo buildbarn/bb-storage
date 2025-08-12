@@ -1,3 +1,4 @@
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@aspect_rules_js//js:defs.bzl", "js_run_binary")
 load("@com_github_buildbarn_bb_storage_npm//:purgecss/package_json.bzl", purgecss_bin = "bin")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
@@ -11,9 +12,10 @@ go_library(
         "maximum_rate_sampler.go",
         "w3c_trace_context.go",
     ],
+    # keep
     embedsrcs = [
         "active_spans.html",
-        "stylesheet.css",
+        ":stylesheet",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/otel",
     visibility = ["//visibility:public"],
@@ -43,7 +45,8 @@ go_test(
         "maximum_rate_sampler_test.go",
         "w3c_trace_context_test.go",
     ],
-    embedsrcs = ["stylesheet.css"],
+    # keep
+    embedsrcs = [":stylesheet"],
     deps = [
         ":otel",
         "//internal/mock",
@@ -68,7 +71,7 @@ purgecss_bin.purgecss_binary(
 # Create a copy of Bootstrap that only contains the style attributes
 # used by the HTML template.
 js_run_binary(
-    name = "stylesheet",
+    name = "stylesheet_platform",
     srcs = [
         "active_spans.html",
         "@com_github_twbs_bootstrap//:css/bootstrap.min.css",
@@ -85,7 +88,15 @@ js_run_binary(
         "../../../$(location stylesheet.css)",
     ],
     copy_srcs_to_bin = False,
+    tags = ["manual"],
     tool = ":purgecss",
-    # https://github.com/aspect-build/rules_js/issues/2121
-    use_execroot_entry_point = False,
+)
+
+# Work around https://github.com/aspect-build/rules_js/issues/2121 by always
+# building the stylesheet for the host platform, even if we are cross
+# compiling.
+platform_transition_filegroup(
+    name = "stylesheet",
+    srcs = [":stylesheet_platform"],
+    target_platform = "@platforms//host",
 )
