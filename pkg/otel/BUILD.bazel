@@ -86,4 +86,6 @@ js_run_binary(
     ],
     copy_srcs_to_bin = False,
     tool = ":purgecss",
+    # https://github.com/aspect-build/rules_js/issues/2121
+    use_execroot_entry_point = False,
 )
