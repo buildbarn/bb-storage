@@ -40,7 +40,7 @@ func (icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provi
 func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
