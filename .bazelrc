@@ -1,3 +1,7 @@
 run --workspace_status_command="bash tools/workspace-status.sh"
+common --enable_platform_specific_config
 common --incompatible_enable_proto_toolchain_resolution
 common --protocopt=--fatal_warnings
+
+# Required to make protobuf compile on Windows
+common:windows --host_cxxopt=/std:c++17 --define=protobuf_allow_msvc=true
