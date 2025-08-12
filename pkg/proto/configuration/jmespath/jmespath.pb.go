@@ -9,7 +9,6 @@ package jmespath
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	_ "google.golang.org/protobuf/types/known/durationpb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
@@ -191,7 +190,7 @@ var File_pkg_proto_configuration_jmespath_jmespath_proto protoreflect.FileDescri
 
 const file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc = "" +
 	"\n" +
-	"/pkg/proto/configuration/jmespath/jmespath.proto\x12 buildbarn.configuration.jmespath\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xbb\x01\n" +
+	"/pkg/proto/configuration/jmespath/jmespath.proto\x12 buildbarn.configuration.jmespath\x1a\x1cgoogle/protobuf/struct.proto\"\xbb\x01\n" +
 	"\n" +
 	"Expression\x12\x1e\n" +
 	"\n" +
