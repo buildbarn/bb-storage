@@ -2,60 +2,65 @@
   local platforms = [
     {
       name: 'linux_amd64',
-      buildAndTestCommand: 'test --test_output=errors',
-      buildJustBinaries: false,
       extension: '',
     },
     {
       name: 'linux_386',
-      buildAndTestCommand: 'test --test_output=errors',
-      buildJustBinaries: false,
       extension: '',
+      testPlatform: 'linux_amd64',
     },
     {
       name: 'linux_arm',
-      buildAndTestCommand: 'build',
-      buildJustBinaries: false,
       extension: '',
     },
     {
       name: 'linux_arm64',
-      buildAndTestCommand: 'build',
-      buildJustBinaries: false,
       extension: '',
     },
     {
       name: 'darwin_amd64',
-      buildAndTestCommand: 'build',
-      buildJustBinaries: false,
       extension: '',
     },
     {
       name: 'darwin_arm64',
-      buildAndTestCommand: 'build',
-      buildJustBinaries: false,
       extension: '',
     },
     {
       name: 'freebsd_amd64',
-      buildAndTestCommand: 'build',
-      // Building '//...' is broken for FreeBSD, because rules_docker
-      // doesn't want to initialize properly.
-      // TODO(who?): now that rules_docker is removed, this could be revisited
-      buildJustBinaries: true,
       extension: '',
     },
     {
       name: 'windows_amd64',
-      buildAndTestCommand: 'build',
-      buildJustBinaries: true,
       extension: '.exe',
     },
   ],
 
-  local getJobs(binaries, containers, doUpload, enableCgo) = {
+  local getJobs(binaries, containers, setupSteps, doUpload, enableCgo) = {
     build_and_test: {
-      'runs-on': 'ubuntu-latest',
+      strategy: {
+        matrix: {
+          host: [
+            {
+              bazel_os: 'linux',
+              cross_compile: true,
+              lint: true,
+              os: 'ubuntu-latest',
+              platform_name: 'linux_amd64',
+              upload: true,
+            },
+            {
+              bazel_os: 'windows',
+              cross_compile: false,
+              lint: false,
+              os: 'windows-latest',
+              platform_name: 'windows_amd64',
+              upload: false,
+            },
+          ],
+        },
+      },
+      'runs-on': '${{ matrix.host.os }}',
+      name: 'build_and_test ${{ matrix.host.os }}',
       steps: [
         // TODO: Switch back to l.gcr.io/google/bazel once updated
         // container images get published once again.
@@ -64,33 +69,47 @@
           name: 'Check out source code',
           uses: 'actions/checkout@v1',
         },
+      ] + setupSteps + [
         {
           name: 'Installing Bazel',
-          run: 'v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
+          run: 'v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-${{matrix.host.bazel_os}}-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}',
+          shell: 'bash',
+        },
+        {
+          name: 'Override .bazelrc',
+          // Use the D drive to improve performance.
+          run: 'echo "startup --output_base=D:/bazel_output" >> .bazelrc',
+          'if': "matrix.host.platform_name == 'windows_amd64'",
         },
         {
           name: 'Bazel mod tidy',
           run: 'bazel mod tidy',
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Gazelle',
           run: "rm -f $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle",
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Buildifier',
           run: 'bazel run @com_github_bazelbuild_buildtools//:buildifier',
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Gofmt',
           run: 'bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)',
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Clang format',
           run: "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +",
+          'if': 'matrix.host.lint',
         },
         {
           name: 'GitHub workflows',
           run: 'bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows',
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Protobuf generation',
@@ -103,6 +122,7 @@
               done
             fi
           |||,
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Embedded asset generation',
@@ -116,26 +136,27 @@
               fi
             done
           |||,
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Test style conformance',
           run: 'git add . && git diff --exit-code HEAD --',
+          'if': 'matrix.host.lint',
         },
         {
           name: 'Golint',
           run: 'bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/...',
+          'if': 'matrix.host.lint',
         },
       ] + std.flattenArrays([
         [{
-          name: platform.name + ': build and test',
+          name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
           run: ('bazel %s --platforms=@rules_go//go/toolchain:%s ' % [
-                  platform.buildAndTestCommand,
+                  // Run tests only if we're not cross-compiling.
+                  "${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build' }}" % std.get(platform, 'testPlatform', platform.name),
                   platform.name + if enableCgo then '_cgo' else '',
-                ]) + (
-            if platform.buildJustBinaries
-            then std.join(' ', ['//cmd/' + binary for binary in binaries])
-            else '//...'
-          ),
+                ]) + '//...',
+          'if': "matrix.host.cross_compile || matrix.host.platform_name == '%s'" % platform.name,
         }] + (
           if doUpload
           then std.flattenArrays([
@@ -149,6 +170,7 @@
                   binary,
                   executable,
                 ],
+                'if': 'matrix.host.upload',
               },
               {
                 name: '%s: upload %s' % [platform.name, binary],
@@ -157,6 +179,7 @@
                   name: '%s.%s' % [binary, platform.name],
                   path: binary + platform.extension,
                 },
+                'if': 'matrix.host.upload',
               },
             ]
             for binary in binaries
@@ -174,11 +197,13 @@
               env: {
                 GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
               },
+              'if': 'matrix.host.upload',
             },
           ] + [
             {
               name: 'Push container %s' % container,
               run: 'bazel run --stamp //cmd/%s_container_push' % container,
+              'if': 'matrix.host.upload',
             }
             for container in containers
           ]
@@ -188,16 +213,16 @@
     },
   },
 
-  getWorkflows(binaries, containers): {
+  getWorkflows(binaries, containers, setupSteps = []): {
     'master.yaml': {
       name: 'master',
       on: { push: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, true, false),
+      jobs: getJobs(binaries, containers, setupSteps, true, false),
     },
     'pull-requests.yaml': {
       name: 'pull-requests',
       on: { pull_request: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, false, false),
+      jobs: getJobs(binaries, containers, setupSteps, false, false),
     },
   },
 }

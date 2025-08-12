@@ -1,7 +1,8 @@
 {
    "jobs": {
       "build_and_test": {
-         "runs-on": "ubuntu-latest",
+         "name": "build_and_test ${{ matrix.host.os }}",
+         "runs-on": "${{ matrix.host.os }}",
          "steps": [
             {
                "name": "Check out source code",
@@ -9,81 +10,127 @@
             },
             {
                "name": "Installing Bazel",
-               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}"
+               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-${{matrix.host.bazel_os}}-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}",
+               "shell": "bash"
             },
             {
+               "if": "matrix.host.platform_name == 'windows_amd64'",
+               "name": "Override .bazelrc",
+               "run": "echo \"startup --output_base=D:/bazel_output\" >> .bazelrc"
+            },
+            {
+               "if": "matrix.host.lint",
                "name": "Bazel mod tidy",
                "run": "bazel mod tidy"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Gazelle",
                "run": "rm -f $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Buildifier",
                "run": "bazel run @com_github_bazelbuild_buildtools//:buildifier"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Gofmt",
                "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Clang format",
                "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +"
             },
             {
+               "if": "matrix.host.lint",
                "name": "GitHub workflows",
                "run": "bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Protobuf generation",
                "run": "if [ -d pkg/proto ]; then\n  find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true\n  bazel build $(bazel query --output=label 'kind(\"go_proto_library\", //...)')\n  find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n    cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\n  done\nfi\n"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Embedded asset generation",
                "run": "bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |//\\1:|; s|\"||g; s| .*||' | sort -u)\ngit grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |\\1/|' | while read o; do\n  if [ -e \"bazel-bin/$o\" ]; then\n    rm -rf \"$o\"\n    cp -r \"bazel-bin/$o\" \"$o\"\n    find \"$o\" -type f -exec chmod -x {} +\n  fi\ndone\n"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Test style conformance",
                "run": "git add . && git diff --exit-code HEAD --"
             },
             {
+               "if": "matrix.host.lint",
                "name": "Golint",
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
             },
             {
-               "name": "linux_amd64: build and test",
-               "run": "bazel test --test_output=errors --platforms=@rules_go//go/toolchain:linux_amd64 //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64'",
+               "name": "linux_amd64: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_amd64 //..."
             },
             {
-               "name": "linux_386: build and test",
-               "run": "bazel test --test_output=errors --platforms=@rules_go//go/toolchain:linux_386 //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
+               "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_386 //..."
             },
             {
-               "name": "linux_arm: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:linux_arm //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm'",
+               "name": "linux_arm: build${{ matrix.host.platform_name == 'linux_arm' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_arm //..."
             },
             {
-               "name": "linux_arm64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:linux_arm64 //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
+               "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_arm64 //..."
             },
             {
-               "name": "darwin_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:darwin_amd64 //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_amd64'",
+               "name": "darwin_amd64: build${{ matrix.host.platform_name == 'darwin_amd64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:darwin_amd64 //..."
             },
             {
-               "name": "darwin_arm64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:darwin_arm64 //..."
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
+               "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:darwin_arm64 //..."
             },
             {
-               "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'freebsd_amd64'",
+               "name": "freebsd_amd64: build${{ matrix.host.platform_name == 'freebsd_amd64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:freebsd_amd64 //..."
             },
             {
-               "name": "windows_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_copy //cmd/bb_replicator //cmd/bb_storage"
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
+               "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:windows_amd64 //..."
             }
-         ]
+         ],
+         "strategy": {
+            "matrix": {
+               "host": [
+                  {
+                     "bazel_os": "linux",
+                     "cross_compile": true,
+                     "lint": true,
+                     "os": "ubuntu-latest",
+                     "platform_name": "linux_amd64",
+                     "upload": true
+                  },
+                  {
+                     "bazel_os": "windows",
+                     "cross_compile": false,
+                     "lint": false,
+                     "os": "windows-latest",
+                     "platform_name": "windows_amd64",
+                     "upload": false
+                  }
+               ]
+            }
+         }
       }
    },
    "name": "pull-requests",
