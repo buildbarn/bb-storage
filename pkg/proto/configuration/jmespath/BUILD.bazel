@@ -6,10 +6,7 @@ proto_library(
     name = "jmespath_proto",
     srcs = ["jmespath.proto"],
     visibility = ["//visibility:public"],
-    deps = [
-        "@protobuf//:duration_proto",
-        "@protobuf//:struct_proto",
-    ],
+    deps = ["@protobuf//:struct_proto"],
 )
 
 go_proto_library(

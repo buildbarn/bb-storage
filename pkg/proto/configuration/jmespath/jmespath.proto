@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package buildbarn.configuration.jmespath;
 
-import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath";
