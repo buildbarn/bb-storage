@@ -85,7 +85,7 @@ func (d *localDirectory) createUpgradedHandle(access uint32) (windows.Handle, er
 		return windows.InvalidHandle, err
 	}
 	oa := &windows.OBJECT_ATTRIBUTES{
-		RootDirectory: windows.InvalidHandle,
+		RootDirectory: 0,
 		ObjectName: &windows.NTUnicodeString{
 			Buffer:        &path[0],
 			Length:        uint16(pathLen*2 - 2), // subtract the null terminator
