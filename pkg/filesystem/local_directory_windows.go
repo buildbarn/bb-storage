@@ -582,15 +582,8 @@ func (d *localDirectory) Readlink(name path.Component) (path.Parser, error) {
 	if reparseDataBufferPtr.ReparseTag != windows.IO_REPARSE_TAG_SYMLINK {
 		return nil, syscall.EINVAL
 	}
-	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME[0]))
-	contentPtr := unsafe.Pointer(uintptr(unsafe.Pointer(&symlinkReparseBufferPtr.PathBuffer[0])) + uintptr(symlinkReparseBufferPtr.SubstituteNameOffset))
-	contentLen := int(symlinkReparseBufferPtr.SubstituteNameLength)
-	contentUTF16 := make([]uint16, contentLen)
-	for i := 0; i < contentLen; i++ {
-		contentUTF16[i] = *(*uint16)(contentPtr)
-		contentPtr = unsafe.Pointer(uintptr(contentPtr) + uintptr(2))
-	}
-	return path.LocalFormat.NewParser(windows.UTF16ToString(contentUTF16)), nil
+	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME))
+	return path.LocalFormat.NewParser(symlinkReparseBufferPtr.Path()), nil
 }
 
 func (d *localDirectory) Remove(name path.Component) error {
@@ -715,7 +708,7 @@ func buildSymlinkBuffer(target, name []uint16, isRelative bool) ([]byte, uint32)
 	reparseDataBufferPtr.ReparseTag = windows.IO_REPARSE_TAG_SYMLINK
 	reparseDataBufferPtr.ReparseDataLength = uint16(pathBufferSize)
 
-	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME[0]))
+	symlinkReparseBufferPtr := (*windowsext.SymbolicLinkReparseBuffer)(unsafe.Pointer(&reparseDataBufferPtr.DUMMYUNIONNAME))
 	symlinkReparseBufferPtr.SubstituteNameLength = uint16(targetByteSize)
 	symlinkReparseBufferPtr.PrintNameOffset = uint16(targetByteSize + 2)
 	symlinkReparseBufferPtr.PrintNameLength = uint16(nameByteSize)
