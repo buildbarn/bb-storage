@@ -3,7 +3,13 @@
 
 package windowsext
 
+// Several of the definitions in this file come from
+// https://go.dev/src/internal/syscall/windows/reparse_windows.go.
+
 import (
+	"syscall"
+	"unsafe"
+
 	"golang.org/x/sys/windows"
 )
 
@@ -41,6 +47,12 @@ type SymbolicLinkReparseBuffer struct {
 	PathBuffer           [1]uint16
 }
 
+func (rb *SymbolicLinkReparseBuffer) Path() string {
+	n1 := rb.SubstituteNameOffset / 2
+	n2 := (rb.SubstituteNameOffset + rb.SubstituteNameLength) / 2
+	return syscall.UTF16ToString((*[0xffff]uint16)(unsafe.Pointer(&rb.PathBuffer[0]))[n1:n2:n2])
+}
+
 const (
 	SYMLINK_FLAG_RELATIVE = 1
 )
@@ -49,7 +61,13 @@ type REPARSE_DATA_BUFFER struct {
 	ReparseTag        uint32
 	ReparseDataLength uint16
 	Reserved          uint16
-	DUMMYUNIONNAME    [14]byte
+	DUMMYUNIONNAME    byte
+}
+
+type REPARSE_DATA_BUFFER_HEADER struct {
+	ReparseTag        uint32
+	ReparseDataLength uint16
+	Reserved          uint16
 }
 
 type FILE_DISPOSITION_INFORMATION_EX struct {
