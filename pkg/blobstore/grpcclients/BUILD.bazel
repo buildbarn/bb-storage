@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "ac_blob_access.go",
         "cas_blob_access.go",
+        "cas_zstd_blob_access.go",
         "fsac_blob_access.go",
         "icas_blob_access.go",
         "iscc_blob_access.go",
@@ -22,6 +23,7 @@ go_library(
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_google_uuid//:uuid",
+        "@com_github_klauspost_compress//zstd",
         "@org_golang_google_genproto_googleapis_bytestream//:bytestream",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
@@ -32,7 +34,10 @@ go_library(
 
 go_test(
     name = "grpcclients_test",
-    srcs = ["cas_blob_access_test.go"],
+    srcs = [
+        "cas_blob_access_test.go",
+        "cas_zstd_blob_access_test.go",
+    ],
     deps = [
         ":grpcclients",
         "//internal/mock",
@@ -43,6 +48,7 @@ go_test(
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@bazel_remote_apis//build/bazel/semver:semver_go_proto",
         "@com_github_google_uuid//:uuid",
+        "@com_github_klauspost_compress//zstd",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_genproto_googleapis_bytestream//:bytestream",
         "@org_golang_google_grpc//:grpc",

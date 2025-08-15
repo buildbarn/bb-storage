@@ -140,6 +140,10 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 }
 
 func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+	return findMissingBlobsInternal(ctx, digests, ba.contentAddressableStorageClient)
+}
+
+func findMissingBlobsInternal(ctx context.Context, digests digest.Set, cas remoteexecution.ContentAddressableStorageClient) (digest.Set, error) {
 	// Partition all digests by digest function, as the
 	// FindMissingBlobs() RPC can only process digests for a single
 	// instance name and digest function.
@@ -157,7 +161,7 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 			BlobDigests:    blobDigests,
 			DigestFunction: digestFunction.GetEnumValue(),
 		}
-		response, err := ba.contentAddressableStorageClient.FindMissingBlobs(ctx, &request)
+		response, err := cas.FindMissingBlobs(ctx, &request)
 		if err != nil {
 			return digest.EmptySet, err
 		}
