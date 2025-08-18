@@ -116,6 +116,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.linux_amd64",
+                  "path": "sync_jwks_to_configmap"
+               }
+            },
+            {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
                "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
                "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_386 //..."
@@ -160,6 +174,20 @@
                "with": {
                   "name": "bb_storage.linux_386",
                   "path": "bb_storage"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_386: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_386: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.linux_386",
+                  "path": "sync_jwks_to_configmap"
                }
             },
             {
@@ -210,6 +238,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "linux_arm: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.linux_arm",
+                  "path": "sync_jwks_to_configmap"
+               }
+            },
+            {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
                "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
                "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:linux_arm64 //..."
@@ -254,6 +296,20 @@
                "with": {
                   "name": "bb_storage.linux_arm64",
                   "path": "bb_storage"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.linux_arm64",
+                  "path": "sync_jwks_to_configmap"
                }
             },
             {
@@ -304,6 +360,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "darwin_amd64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_amd64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.darwin_amd64",
+                  "path": "sync_jwks_to_configmap"
+               }
+            },
+            {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
                "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
                "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:darwin_arm64 //..."
@@ -348,6 +418,20 @@
                "with": {
                   "name": "bb_storage.darwin_arm64",
                   "path": "bb_storage"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_arm64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_arm64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.darwin_arm64",
+                  "path": "sync_jwks_to_configmap"
                }
             },
             {
@@ -398,6 +482,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "freebsd_amd64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "freebsd_amd64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.freebsd_amd64",
+                  "path": "sync_jwks_to_configmap"
+               }
+            },
+            {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
                "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
                "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build' }} --platforms=@rules_go//go/toolchain:windows_amd64 //..."
@@ -445,6 +543,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "windows_amd64: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.exe"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "windows_amd64: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.windows_amd64",
+                  "path": "sync_jwks_to_configmap.exe"
+               }
+            },
+            {
                "env": {
                   "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
                },
@@ -466,6 +578,11 @@
                "if": "matrix.host.upload",
                "name": "Push container bb_storage:bb_storage",
                "run": "bazel run --stamp //cmd/bb_storage:bb_storage_container_push"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "Push container sync_jwks_to_configmap:sync_jwks_to_configmap",
+               "run": "bazel run --stamp //cmd/sync_jwks_to_configmap:sync_jwks_to_configmap_container_push"
             }
          ],
          "strategy": {

@@ -1,0 +1,39 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("//tools:container.bzl", "container_push_official", "multiarch_go_image")
+
+go_library(
+    name = "sync_jwks_to_configmap_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/buildbarn/bb-storage/cmd/sync_jwks_to_configmap",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/http",
+        "//pkg/program",
+        "//pkg/proto/configuration/sync_jwks_to_configmap",
+        "//pkg/util",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_client_go//applyconfigurations/core/v1:core",
+        "@io_k8s_client_go//applyconfigurations/meta/v1:meta",
+        "@io_k8s_client_go//kubernetes",
+        "@io_k8s_client_go//rest",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_binary(
+    name = "sync_jwks_to_configmap",
+    embed = [":sync_jwks_to_configmap_lib"],
+    visibility = ["//visibility:public"],
+)
+
+multiarch_go_image(
+    name = "sync_jwks_to_configmap_container",
+    binary = ":sync_jwks_to_configmap",
+)
+
+container_push_official(
+    name = "sync_jwks_to_configmap_container_push",
+    component = "bb-storage",
+    image = ":sync_jwks_to_configmap_container",
+)

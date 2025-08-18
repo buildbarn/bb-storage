@@ -47,7 +47,9 @@ message AuthorizationHeaderParserConfiguration {
     // use the jwks_file option in combination with a cron job that
     // fetches the JWKS. When running on Kubernetes, one may create a
     // CronJob that writes the JWKS into a ConfigMap. The JWKS can then
-    // be accessed by creating a volume mount for the ConfigMap.
+    // be accessed by creating a volume mount for the ConfigMap. An
+    // example implementation of such a cron job is provided under
+    // cmd/sync_jwks_to_configmap.
   }
 
   // Maximum number of validated tokens to cache in memory. This speeds
