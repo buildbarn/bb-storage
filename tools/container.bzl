@@ -38,7 +38,7 @@ def multiarch_go_image(name, binary):
         ],
         visibility = ["//visibility:public"],
         target_compatible_with = select({
-            "@platforms//os:windows": ["@platforms//:incompatible"],
+            Label("@platforms//os:windows"): [Label("@platforms//:incompatible")],
             "//conditions:default": [],
         }),
     )
@@ -50,7 +50,7 @@ def container_push_official(name, image, component):
         repository = "ghcr.io/buildbarn/" + component,
         remote_tags = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
         target_compatible_with = select({
-            "@platforms//os:windows": ["@platforms//:incompatible"],
+            Label("@platforms//os:windows"): [Label("@platforms//:incompatible")],
             "//conditions:default": [],
         }),
     )
