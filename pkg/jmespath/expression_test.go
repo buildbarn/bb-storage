@@ -2,6 +2,7 @@ package jmespath_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -90,9 +91,9 @@ func TestExpressionWithFiles(t *testing.T) {
 
 	t.Run("AccessFileContents", func(t *testing.T) {
 		program.RunLocal(context.Background(), func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-			timer := mock.NewMockTimer(ctrl)
-			clock.EXPECT().NewTimer(60*time.Second).Return(timer, nil)
-			timer.EXPECT().Stop()
+			ticker := mock.NewMockTicker(ctrl)
+			clock.EXPECT().NewTicker(60*time.Second).Return(ticker, nil)
+			ticker.EXPECT().Stop()
 
 			expr, err := jmespath.NewExpressionFromConfiguration(
 				&pb.Expression{
@@ -117,10 +118,10 @@ func TestExpressionWithFiles(t *testing.T) {
 
 	t.Run("FileReload", func(t *testing.T) {
 		program.RunLocal(context.Background(), func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-			timer := mock.NewMockTimer(ctrl)
+			ticker := mock.NewMockTicker(ctrl)
 			timerChan := make(chan time.Time, 1)
-			clock.EXPECT().NewTimer(60*time.Second).Return(timer, timerChan)
-			timer.EXPECT().Stop()
+			clock.EXPECT().NewTicker(60*time.Second).Return(ticker, timerChan)
+			ticker.EXPECT().Stop()
 
 			expr, err := jmespath.NewExpressionFromConfiguration(
 				&pb.Expression{
@@ -141,20 +142,24 @@ func TestExpressionWithFiles(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "secret123", result)
 
-			// Update the secret.
-			require.NoError(t, os.WriteFile(tokenFile, []byte("new-secret"), 0o644))
-			timerChan <- time.Unix(1030, 0)
+			for i := 0; i < 3; i++ {
+				secret := fmt.Sprintf("secret%d", i)
 
-			// Check the new token is eventually returned, failing if
-			// the token is not updated within 5 seconds.
-			startTime := time.Now()
-			for time.Since(startTime) < 5*time.Second {
-				result, err := expr.Search(map[string]any{})
-				require.NoError(t, err)
-				if result == "new-secret" {
-					break
+				// Update the secret.
+				require.NoError(t, os.WriteFile(tokenFile, []byte(secret), 0o644))
+				timerChan <- time.Unix(1030, 0)
+
+				// Check the new token is eventually returned, failing if
+				// the token is not updated within 5 seconds.
+				startTime := time.Now()
+				for time.Since(startTime) < 5*time.Second {
+					result, err := expr.Search(map[string]any{})
+					require.NoError(t, err)
+					if result == secret {
+						break
+					}
+					time.Sleep(100 * time.Millisecond)
 				}
-				time.Sleep(100 * time.Millisecond)
 			}
 
 			return nil

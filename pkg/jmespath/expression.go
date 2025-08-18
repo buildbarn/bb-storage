@@ -142,8 +142,8 @@ func (e *Expression) initialiseFiles(files []*pb.File, group program.Group, cloc
 	}
 	e.currentFiles.Store(&initial)
 	group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
-		timer, t := clock.NewTimer(60 * time.Second)
-		defer timer.Stop()
+		ticker, t := clock.NewTicker(60 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-t:
