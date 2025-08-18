@@ -65,6 +65,8 @@ use_repo(
     "com_github_stretchr_testify",
     "com_google_cloud_go_longrunning",
     "com_google_cloud_go_storage",
+    "io_k8s_apimachinery",
+    "io_k8s_client_go",
     "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
     "io_opentelemetry_go_contrib_propagators_b3",
     "io_opentelemetry_go_otel",

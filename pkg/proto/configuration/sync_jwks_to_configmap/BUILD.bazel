@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "sync_jwks_to_configmap_proto",
+    srcs = ["sync_jwks_to_configmap.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/http:http_proto"],
+)
+
+go_proto_library(
+    name = "sync_jwks_to_configmap_go_proto",
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap",
+    proto = ":sync_jwks_to_configmap_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/proto/configuration/http"],
+)
+
+go_library(
+    name = "sync_jwks_to_configmap",
+    embed = [":sync_jwks_to_configmap_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap",
+    visibility = ["//visibility:public"],
+)
