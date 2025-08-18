@@ -167,6 +167,7 @@ gomock(
     out = "clock.go",
     interfaces = [
         "Clock",
+        "Ticker",
         "Timer",
     ],
     library = "//pkg/clock",

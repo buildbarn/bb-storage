@@ -21,10 +21,20 @@ type Clock interface {
 	// returns the channel directly to allow Timer to be an
 	// interface.
 	NewTimer(d time.Duration) (Timer, <-chan time.Time)
+
+	// Create a channel that will publish the time of day at a regular
+	// interval.
+	NewTicker(d time.Duration) (Ticker, <-chan time.Time)
 }
 
 // Timer is an interface around time.Timer. It has been added to aid
 // unit testing.
 type Timer interface {
 	Stop() bool
+}
+
+// Ticker is an interface around time.Ticker. It has been added to aid
+// unit testing.
+type Ticker interface {
+	Stop()
 }
