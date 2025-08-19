@@ -34,6 +34,6 @@ multiarch_go_image(
 
 container_push_official(
     name = "sync_jwks_to_configmap_container_push",
-    component = "bb-storage",
+    component = "sync-jwks-to-configmap",
     image = ":sync_jwks_to_configmap_container",
 )
