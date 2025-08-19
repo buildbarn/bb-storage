@@ -200,25 +200,30 @@ func TestBuilder(t *testing.T) {
 
 	t.Run("WindowsNormalized", func(t *testing.T) {
 		for from, to := range map[string]string{
-			"":                            ".",
-			"./":                          ".",
-			"./.":                         ".",
-			"../":                         "..",
-			"../.":                        "..",
-			"/.":                          "\\",
-			"/./":                         "\\",
-			"/..":                         "\\",
-			"/../":                        "\\",
-			"/hello/.":                    "\\hello\\",
-			"/hello/../.":                 "\\hello\\..",
-			"//Server/Share/hello":        "\\\\Server\\Share\\hello",
-			"//Server/Share/.":            "\\\\Server\\Share\\",
-			"//Server/Share/./":           "\\\\Server\\Share\\",
-			"//Server/Share/..":           "\\\\Server\\Share\\",
-			"//Server/Share/../":          "\\\\Server\\Share\\",
-			"//Server/Share/hello/.":      "\\\\Server\\Share\\hello\\",
-			"//Server/Share/hello/../.":   "\\\\Server\\Share\\hello\\..",
-			"/\\Server\\Share/hello/../.": "\\\\Server\\Share\\hello\\..",
+			"":                                    ".",
+			"./":                                  ".",
+			"./.":                                 ".",
+			"../":                                 "..",
+			"../.":                                "..",
+			"/.":                                  "\\",
+			"/./":                                 "\\",
+			"/..":                                 "\\",
+			"/../":                                "\\",
+			"/hello/.":                            "\\hello\\",
+			"/hello/../.":                         "\\hello\\..",
+			"//Server/Share/hello":                "\\\\Server\\Share\\hello",
+			"//Server/Share/.":                    "\\\\Server\\Share\\",
+			"//Server/Share/./":                   "\\\\Server\\Share\\",
+			"//Server/Share/..":                   "\\\\Server\\Share\\",
+			"//Server/Share/../":                  "\\\\Server\\Share\\",
+			"//Server/Share/hello/.":              "\\\\Server\\Share\\hello\\",
+			"//Server/Share/hello/../.":           "\\\\Server\\Share\\hello\\..",
+			"/\\Server\\Share/hello/../.":         "\\\\Server\\Share\\hello\\..",
+			"\\\\?\\C:\\hello\\.":                 "C:\\hello\\",
+			"\\\\?\\UNC\\Server\\Share\\hello\\.": "\\\\Server\\Share\\hello\\",
+			"\\??\\C:\\hello\\.":                  "C:\\hello\\",
+			"\\??\\Z:\\file0":                     "Z:\\file0",
+			"\\??\\UNC\\Server\\Share\\hello\\.":  "\\\\Server\\Share\\hello\\",
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -386,5 +391,49 @@ func TestBuilder(t *testing.T) {
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
 		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\\\server\\share\\file.txt"), s))
 		require.Equal(t, "\\\\server\\share\\file.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("ExtendedDrivePath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnDriveLetter('C').Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\\\?\\C:\\file.txt"), s))
+		require.Equal(t, "C:\\file.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("ExtendedUNCPath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnShare("server", "share").Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\\\?\\UNC\\server\\share\\file.txt"), s))
+		require.Equal(t, "\\\\server\\share\\file.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("NTObjectNamespaceDrivePath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnDriveLetter('Z').Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file0"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\??\\Z:\\file0"), s))
+		require.Equal(t, "Z:\\file0", mustGetWindowsString(builder))
+	})
+
+	t.Run("NTObjectNamespaceUNCPath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnShare("myserver", "myshare").Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("data.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\??\\UNC\\myserver\\myshare\\data.txt"), s))
+		require.Equal(t, "\\\\myserver\\myshare\\data.txt", mustGetWindowsString(builder))
 	})
 }
