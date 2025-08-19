@@ -35,7 +35,7 @@
     },
   ],
 
-  local getJobs(binaries, containers, setupSteps, doUpload, enableCgo) = {
+  local getJobs(binaries, containers, setupSteps, extraSteps, doUpload, enableCgo) = {
     build_and_test: {
       strategy: {
         matrix: {
@@ -187,7 +187,7 @@
           else []
         )
         for platform in platforms
-      ]) + (
+      ]) + extraSteps + (
         if doUpload
         then (
           [
@@ -213,16 +213,16 @@
     },
   },
 
-  getWorkflows(binaries, containers, setupSteps = []): {
+  getWorkflows(binaries, containers, setupSteps=[], extraSteps=[]): {
     'master.yaml': {
       name: 'master',
       on: { push: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, setupSteps, true, false),
+      jobs: getJobs(binaries, containers, setupSteps, extraSteps, true, false),
     },
     'pull-requests.yaml': {
       name: 'pull-requests',
       on: { pull_request: { branches: ['main', 'master'] } },
-      jobs: getJobs(binaries, containers, setupSteps, false, false),
+      jobs: getJobs(binaries, containers, setupSteps, extraSteps, false, false),
     },
   },
 }
