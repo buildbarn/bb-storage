@@ -6,10 +6,8 @@ package filesystem
 import (
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -149,12 +147,11 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 	if err := path.Resolve(directoryParser, scopeWalker); err != nil {
 		return nil, util.StatusWrap(err, "Failed to resolve directory")
 	}
-	pathString, err := path.LocalFormat.GetString(directoryPath)
+	pathString, err := directoryPath.GetWindowsString(path.WindowsPathFormatDevicePath)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
 	}
-	absPath := "\\??\\" + pathString
-	return newLocalDirectory(absPath, true)
+	return newLocalDirectory(pathString, true)
 }
 
 func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*localDirectory, error) {
@@ -772,65 +769,51 @@ func (d *localDirectory) Symlink(oldNameParser path.Parser, newName path.Compone
 	// Creating symlinks on windows requires one of the following:
 	//   1. Run as an administrator.
 	//   2. Developer mode is on.
-	defer runtime.KeepAlive(d)
 
-	oldNamePath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
-	if err := path.Resolve(oldNameParser, scopeWalker); err != nil {
-		return err
-	}
-	oldName, err := path.LocalFormat.GetString(oldNamePath)
+	// Determine whether the target is a directory by computing the absolute
+	// path to the symlink target and using os.Stat.
+	handlePath, err := getAbsPathByHandle(d.handle)
 	if err != nil {
 		return err
 	}
-	// Path with one leading slash (but not UNC) should also be considered absolute.
-	isRelative := !(oldName[0] == '\\' || filepath.IsAbs(oldName))
-	// On windows, you have to know if the target is a directory when creating a symlink.
-	// If target does not exist, create file symlink like os.Symlink.
-	var isDir bool
-	var targetPath string
-	if isRelative {
-		cleanRelPath, err := filepath.Rel(".", oldName)
+	absoluteTargetPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(path.WindowsFormat.NewParser(handlePath), scopeWalker); err != nil {
+		return err
+	}
+	absoluteTargetPath, scopeWalker = absoluteTargetPath.Join(path.VoidScopeWalker)
+	if err := path.Resolve(oldNameParser, scopeWalker); err != nil {
+		return err
+	}
+	absoluteTargetPathStr, err := absoluteTargetPath.GetWindowsString(path.WindowsPathFormatDevicePath)
+	if err != nil {
+		return err
+	}
+	fi, err := os.Stat(absoluteTargetPathStr)
+	isDir := err == nil && fi.IsDir()
+
+	// Print the path to the target in a suitable way for storing the
+	// symlink. Unlike above, this means we preserve the symlink target as
+	// a relative path.
+	targetPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(oldNameParser, scopeWalker); err != nil {
+		return err
+	}
+	targetPathkind := targetPath.WindowsPathKind()
+	var targetPathStr string
+	switch targetPathkind {
+	case path.WindowsPathKindAbsolute, path.WindowsPathKindDriveRelative:
+		targetPathStr, err = targetPath.GetWindowsString(path.WindowsPathFormatDevicePath)
 		if err != nil {
 			return err
 		}
-		quickReturn := false
-		// If target is a child, we can check attribute using handle.
-		if cleanRelPath == "." || cleanRelPath == ".." {
-			quickReturn = true
-			isDir = true
-		} else if !strings.HasPrefix(cleanRelPath, "..\\") {
-			quickReturn = true
-			var handle windows.Handle
-			err := ntCreateFile(&handle, windows.FILE_READ_ATTRIBUTES, d.handle, cleanRelPath, windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE)
-			if err != nil {
-				if err == syscall.ENOTDIR || os.IsNotExist(err) {
-					isDir = false
-				} else {
-					return err
-				}
-			} else {
-				isDir = true
-				windows.CloseHandle(handle)
-			}
-		}
-		if quickReturn {
-			return d.createNTFSSymlink(cleanRelPath, newName.String(), isRelative, isDir)
-		}
-		handlePath, err := getAbsPathByHandle(d.handle)
+	case path.WindowsPathKindRelative:
+		targetPathStr, err = targetPath.GetWindowsString(path.WindowsPathFormatStandard)
 		if err != nil {
-			return err
-		}
-		targetPath = filepath.Join(handlePath, cleanRelPath)
-	} else {
-		targetPath = oldName
-		// Fix paths like C:\ for NT namespace.
-		if oldName[0] != '\\' {
-			oldName = "\\??\\" + oldName
+			return nil
 		}
 	}
-	fi, err := os.Stat(targetPath)
-	isDir = err == nil && fi.IsDir()
-	return d.createNTFSSymlink(oldName, newName.String(), isRelative, isDir)
+
+	return d.createNTFSSymlink(targetPathStr, newName.String(), targetPathkind != path.WindowsPathKindAbsolute, isDir)
 }
 
 func (d *localDirectory) Sync() error {

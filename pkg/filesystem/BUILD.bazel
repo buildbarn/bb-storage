@@ -71,6 +71,9 @@ go_test(
         "@rules_go//go/platform:ios": [
             "local_directory_darwin_test.go",
         ],
+        "@rules_go//go/platform:windows": [
+            "local_directory_windows_test.go",
+        ],
         "//conditions:default": [],
     }),
     deps = [

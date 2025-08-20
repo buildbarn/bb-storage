@@ -11,7 +11,15 @@ import (
 )
 
 func mustGetWindowsString(p path.Stringer) string {
-	s, err := p.GetWindowsString()
+	s, err := p.GetWindowsString(path.WindowsPathFormatStandard)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func mustGetWindowsDevicePathString(p path.Stringer) string {
+	s, err := p.GetWindowsString(path.WindowsPathFormatDevicePath)
 	if err != nil {
 		panic(err)
 	}
@@ -435,5 +443,93 @@ func TestBuilder(t *testing.T) {
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
 		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\??\\UNC\\myserver\\myshare\\data.txt"), s))
 		require.Equal(t, "\\\\myserver\\myshare\\data.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("RelativeDrivePaths", func(t *testing.T) {
+		builder1, s := path.EmptyBuilder.Join(path.VoidScopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("C:\\a\\b"), s))
+		require.Equal(t, "C:\\a\\b", mustGetWindowsString(builder1))
+
+		builder2, s := builder1.Join(path.VoidScopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\c\\d"), s))
+		require.Equal(t, "C:\\c\\d", mustGetWindowsString(builder2))
+	})
+
+	t.Run("RelativeUNCPaths", func(t *testing.T) {
+		// Unlike drive, an absolute path, such as \Windows, does not appear
+		// to be interpretted relative to the current server/share.
+		builder1, s := path.EmptyBuilder.Join(path.VoidScopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(`\\server\share\folder`), s))
+		require.Equal(t, `\\server\share\folder`, mustGetWindowsString(builder1))
+
+		builder2, s := builder1.Join(path.VoidScopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\newfolder"), s))
+		require.Equal(t, `\newfolder`, mustGetWindowsString(builder2))
+	})
+
+	// Tests specifically for WindowsPathFormatDevicePath format.
+	t.Run("DevicePathFormat", func(t *testing.T) {
+		t.Run("DriveLetterPaths", func(t *testing.T) {
+			for from, expectedDevice := range map[string]string{
+				"C:\\":               "\\??\\C:\\",
+				"C:\\hello":          "\\??\\C:\\hello",
+				"C:\\hello\\":        "\\??\\C:\\hello\\",
+				"C:\\hello\\world":   "\\??\\C:\\hello\\world",
+				"C:\\hello\\world\\": "\\??\\C:\\hello\\world\\",
+			} {
+				t.Run(from, func(t *testing.T) {
+					builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+					require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(from), scopeWalker))
+					require.Equal(t, expectedDevice, mustGetWindowsDevicePathString(builder))
+				})
+			}
+		})
+
+		t.Run("UNCPaths", func(t *testing.T) {
+			for from, expectedDevice := range map[string]string{
+				"\\\\server\\share\\":             "\\??\\UNC\\server\\share\\",
+				"\\\\server\\share\\hello":        "\\??\\UNC\\server\\share\\hello",
+				"\\\\server\\share\\hello\\":      "\\??\\UNC\\server\\share\\hello\\",
+				"\\\\server\\share\\hello\\world": "\\??\\UNC\\server\\share\\hello\\world",
+			} {
+				t.Run(from, func(t *testing.T) {
+					builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+					require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(from), scopeWalker))
+					require.Equal(t, expectedDevice, mustGetWindowsDevicePathString(builder))
+				})
+			}
+		})
+
+		t.Run("RelativePaths", func(t *testing.T) {
+			for from, expectedDevice := range map[string]string{
+				".":            ".",
+				"..":           "..",
+				"hello":        "hello",
+				"hello\\":      "hello\\",
+				"hello\\world": "hello\\world",
+			} {
+				t.Run(from, func(t *testing.T) {
+					builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+					require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(from), scopeWalker))
+
+					require.Equal(t, expectedDevice, mustGetWindowsDevicePathString(builder))
+				})
+			}
+		})
+
+		t.Run("AbsolutePaths", func(t *testing.T) {
+			// Absolute paths cannot be represented as NT device
+			// paths.
+			for from, to := range map[string]string{
+				"\\":             "\\",
+				"\\hello\\world": "\\hello\\world",
+			} {
+				t.Run(from, func(t *testing.T) {
+					builder, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+					require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(from), scopeWalker))
+					require.Equal(t, to, mustGetWindowsDevicePathString(builder))
+				})
+			}
+		})
 	})
 }

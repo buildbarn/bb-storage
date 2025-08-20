@@ -29,15 +29,19 @@ func TestTrace(t *testing.T) {
 	t.Run("WindowsUNIXLikeIdentity", func(t *testing.T) {
 		var p1 *path.Trace
 		require.Equal(t, ".", mustGetWindowsString(p1))
+		require.Equal(t, ".", mustGetWindowsDevicePathString(p1))
 
 		p2 := p1.Append(path.MustNewComponent("a"))
 		require.Equal(t, "a", mustGetWindowsString(p2))
+		require.Equal(t, "a", mustGetWindowsDevicePathString(p2))
 
 		p3 := p2.Append(path.MustNewComponent("b"))
 		require.Equal(t, "a\\b", mustGetWindowsString(p3))
+		require.Equal(t, "a\\b", mustGetWindowsDevicePathString(p3))
 
 		p4 := p3.Append(path.MustNewComponent("c"))
 		require.Equal(t, "a\\b\\c", mustGetWindowsString(p4))
+		require.Equal(t, "a\\b\\c", mustGetWindowsDevicePathString(p4))
 	})
 
 	t.Run("WindowsPathValidation", func(t *testing.T) {
@@ -48,14 +52,14 @@ func TestTrace(t *testing.T) {
 			p2 := p1.Append(path.MustNewComponent("a:"))
 			p3 := p2.Append(path.MustNewComponent("b"))
 
-			_, err := p3.GetWindowsString()
+			_, err := p3.GetWindowsString(path.WindowsPathFormatStandard)
 			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid pathname component \"a:\": Pathname component contains reserved characters"), err)
 		}
 		{
 			var p1 *path.Trace
 			require.Equal(t, ".", mustGetWindowsString(p1))
 			p2 := p1.Append(path.MustNewComponent("b?"))
-			_, err := p2.GetWindowsString()
+			_, err := p2.GetWindowsString(path.WindowsPathFormatStandard)
 			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid pathname component \"b?\": Pathname component contains reserved characters"), err)
 		}
 	})

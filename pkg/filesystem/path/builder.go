@@ -73,16 +73,24 @@ func (b *Builder) GetUNIXString() string {
 
 // GetWindowsString returns a string representation of the path for use on
 // Windows.
-func (b *Builder) GetWindowsString() (string, error) {
+func (b *Builder) GetWindowsString(format WindowsPathFormat) (string, error) {
 	// Emit pathname components.
 	var out strings.Builder
 	prefix := ""
 	if b.driveLetter != 0 {
+		if format == WindowsPathFormatDevicePath {
+			out.WriteString(`\??\`)
+		}
 		out.WriteString(string(b.driveLetter))
 		out.WriteString(":")
 		prefix = "\\"
 	} else if b.server != "" {
-		out.WriteString(`\\`)
+		switch format {
+		case WindowsPathFormatDevicePath:
+			out.WriteString(`\??\UNC\`)
+		case WindowsPathFormatStandard:
+			out.WriteString(`\\`)
+		}
 		out.WriteString(b.server)
 		out.WriteString(`\`)
 		out.WriteString(b.share)
@@ -112,6 +120,30 @@ func (b *Builder) GetWindowsString() (string, error) {
 	}
 	out.WriteString(suffix)
 	return out.String(), nil
+}
+
+// WindowsPathKind represents the different kinds of paths that can occur on
+// Windows.
+type WindowsPathKind int
+
+const (
+	// WindowsPathKindRelative indicates a path relative to the current directory.
+	WindowsPathKindRelative WindowsPathKind = iota
+	// WindowsPathKindDriveRelative indicates a path relative to the current drive.
+	WindowsPathKindDriveRelative
+	// WindowsPathKindAbsolute indicates an absolute path; a UNC path or a drive-rooted path.
+	WindowsPathKindAbsolute
+)
+
+// WindowsPathKind returns the WindowsPathKind of the path.
+func (b *Builder) WindowsPathKind() WindowsPathKind {
+	if b.driveLetter != 0 || b.server != "" {
+		return WindowsPathKindAbsolute
+	}
+	if b.absolute {
+		return WindowsPathKindDriveRelative
+	}
+	return WindowsPathKindRelative
 }
 
 func (b *Builder) addTrailingSlash() {

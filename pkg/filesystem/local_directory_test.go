@@ -247,6 +247,33 @@ func TestLocalDirectoryReadlinkSuccess(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
+func TestLocalDirectorySymlinkWithRelativeTarget(t *testing.T) {
+	d := openTmpDir(t)
+
+	// Create test files.
+	require.NoError(t, d.Mkdir(path.MustNewComponent("actual"), 0o777))
+	require.NoError(t, d.Mkdir(path.MustNewComponent("bar"), 0o777))
+	barDir, err := d.EnterDirectory(path.MustNewComponent("bar"))
+	require.NoError(t, err)
+	f, err := barDir.OpenWrite(path.MustNewComponent("test.txt"), filesystem.CreateExcl(0o666))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.NoError(t, barDir.Close())
+
+	// Create symlinks.
+	require.NoError(t, d.Symlink(path.UNIXFormat.NewParser("actual"), path.MustNewComponent("foo")))
+	require.NoError(t, d.Symlink(path.UNIXFormat.NewParser("foo/../bar"), path.MustNewComponent("link")))
+
+	// Verify symlink target.
+	linkTarget, err := d.Readlink(path.MustNewComponent("link"))
+	require.NoError(t, err)
+	linkTargetPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	require.NoError(t, path.Resolve(linkTarget, scopeWalker))
+	require.Equal(t, "foo/../bar", linkTargetPath.GetUNIXString())
+
+	require.NoError(t, d.Close())
+}
+
 func TestLocalDirectoryRemoveNonExistent(t *testing.T) {
 	d := openTmpDir(t)
 	require.True(t, os.IsNotExist(d.Remove(path.MustNewComponent("nonexistent"))))
