@@ -49,7 +49,7 @@ func (t *Trace) GetUNIXString() string {
 
 // GetWindowsString returns a string representation of the path for use
 // on Windows.
-func (t *Trace) GetWindowsString() (string, error) {
+func (t *Trace) GetWindowsString(format WindowsPathFormat) (string, error) {
 	if t == nil {
 		return ".", nil
 	}

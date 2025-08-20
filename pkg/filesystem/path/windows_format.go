@@ -16,7 +16,7 @@ func (windowsFormat) NewParser(path string) Parser {
 }
 
 func (windowsFormat) GetString(s Stringer) (string, error) {
-	return s.GetWindowsString()
+	return s.GetWindowsString(WindowsPathFormatStandard)
 }
 
 // WindowsFormat is capable of parsing Windows-style pathname strings, and
