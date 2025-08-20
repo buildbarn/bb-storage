@@ -79,9 +79,10 @@ type Configuration struct {
 	//
 	//	*Configuration_DevicePath
 	//	*Configuration_File
-	Source        isConfiguration_Source `protobuf_oneof:"source"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Source                isConfiguration_Source `protobuf_oneof:"source"`
+	WriteConcurrencyLimit int64                  `protobuf:"varint,3,opt,name=write_concurrency_limit,json=writeConcurrencyLimit,proto3" json:"write_concurrency_limit,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Configuration) Reset() {
@@ -139,6 +140,13 @@ func (x *Configuration) GetFile() *FileConfiguration {
 	return nil
 }
 
+func (x *Configuration) GetWriteConcurrencyLimit() int64 {
+	if x != nil {
+		return x.WriteConcurrencyLimit
+	}
+	return 0
+}
+
 type isConfiguration_Source interface {
 	isConfiguration_Source()
 }
@@ -163,11 +171,12 @@ const file_pkg_proto_configuration_blockdevice_blockdevice_proto_rawDesc = "" +
 	"\x11FileConfiguration\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\"\x8a\x01\n" +
+	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\"\xc2\x01\n" +
 	"\rConfiguration\x12!\n" +
 	"\vdevice_path\x18\x01 \x01(\tH\x00R\n" +
 	"devicePath\x12L\n" +
-	"\x04file\x18\x02 \x01(\v26.buildbarn.configuration.blockdevice.FileConfigurationH\x00R\x04fileB\b\n" +
+	"\x04file\x18\x02 \x01(\v26.buildbarn.configuration.blockdevice.FileConfigurationH\x00R\x04file\x126\n" +
+	"\x17write_concurrency_limit\x18\x03 \x01(\x03R\x15writeConcurrencyLimitB\b\n" +
 	"\x06sourceBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdeviceb\x06proto3"
 
 var (
