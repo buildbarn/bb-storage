@@ -29,4 +29,14 @@ message Configuration {
     // losetup, FreeBSD's mdconfig, etc.
     FileConfiguration file = 2;
   };
+
+  // If set to a non-zero value, limit the maximum number of write
+  // system calls that may run in parallel.
+  //
+  // For every write system call running in parallel, Go needs to create
+  // an operating system level thread. If the underlying block device is
+  // slow, writes may start to accumulate. This may at some point cause
+  // this process to crash, due to the Go runtime being unable to create
+  // any more threads.
+  int64 write_concurrency_limit = 3;
 }
