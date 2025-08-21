@@ -99,6 +99,15 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
+	case *pb.BlobAccessConfiguration_Compressed:
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Compressed.Grpc, terminationGroup)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		return BlobAccessInfo{
+			BlobAccess:      grpcclients.NewCASWithZstdBlobAccess(client, uuid.NewRandom, 65536, backend.Compressed.CompressionThresholdBytes),
+			DigestKeyFormat: digest.KeyWithInstance,
+		}, "compressed", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:
 		// The backend used by ReferenceExpandingBlobAccess is
 		// an Indirect Content Addressable Storage (ICAS). This
