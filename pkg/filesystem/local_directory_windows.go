@@ -143,11 +143,29 @@ func newLocalDirectory(absPath string, openReparsePoint bool) (DirectoryCloser, 
 }
 
 func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
-	directoryPath, scopeWalker := path.EmptyBuilder.Join(path.VoidScopeWalker)
-	if err := path.Resolve(directoryParser, scopeWalker); err != nil {
+	builder, sw := path.EmptyBuilder.Join(path.VoidScopeWalker)
+	if err := path.Resolve(directoryParser, sw); err != nil {
 		return nil, util.StatusWrap(err, "Failed to resolve directory")
 	}
-	pathString, err := directoryPath.GetWindowsString(path.WindowsPathFormatDevicePath)
+	switch builder.WindowsPathKind() {
+	case path.WindowsPathKindAbsolute:
+		break
+	case path.WindowsPathKindDriveRelative, path.WindowsPathKindRelative:
+		// Then we need to make the path into an absolute path.
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to resolve working directory")
+		}
+		builder, sw = path.EmptyBuilder.Join(path.VoidScopeWalker)
+		if err := path.Resolve(path.LocalFormat.NewParser(wd), sw); err != nil {
+			return nil, util.StatusWrap(err, "Failed to resolve working directory")
+		}
+		builder, sw = builder.Join(path.VoidScopeWalker)
+		if err := path.Resolve(directoryParser, sw); err != nil {
+			return nil, util.StatusWrap(err, "Failed to resolve directory")
+		}
+	}
+	pathString, err := builder.GetWindowsString(path.WindowsPathFormatDevicePath)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
 	}

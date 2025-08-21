@@ -129,3 +129,23 @@ func TestLocalDirectorySymlinkWindowsDriveRelative(t *testing.T) {
 
 	require.NoError(t, d.Close())
 }
+
+func TestLocalDirectoryNewLocalDirectoryDriveRelativePath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	subdir := "test_subdir"
+	subdirPath := filepath.Join(tempDir, subdir)
+	require.NoError(t, os.Mkdir(subdirPath, 0o755))
+
+	// Save the current working directory so we can restore it.
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+
+	// Test NewLocalDirectory with a drive-relative path.
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(subdirPath[2:]))
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	require.NoError(t, os.Chdir(originalWd))
+}

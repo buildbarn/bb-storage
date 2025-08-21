@@ -5,6 +5,7 @@ package blockdevice
 
 import (
 	"fmt"
+	"path/filepath"
 	"syscall"
 	"unsafe"
 
@@ -24,6 +25,10 @@ var (
 // NewBlockDeviceFromFile creates a BlockDevice that is backed by a
 // regular file stored in a file system.
 func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bool) (BlockDevice, int, int64, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, 0, 0, util.StatusWrapf(err, "Failed to get absolute path for %#v", path)
+	}
 	pathPtr, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to convert path %#v to UTF-16", path)
