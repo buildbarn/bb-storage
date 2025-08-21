@@ -33,14 +33,29 @@ func (s *server) GetCapabilities(ctx context.Context, in *remoteexecution.GetCap
 		return nil, err
 	}
 
-	// TODO: Instead of setting these version numbers here, should
-	// we let providers set these and have MergingProvider merge
-	// those as well?
-	capabilitiesWithVersion := remoteexecution.ServerCapabilities{
-		DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
-		LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
-		HighApiVersion:       &semver.SemVer{Major: 2, Minor: 3},
+	// Check if the MergingProvider has already determined API versions
+	// through intersection logic. If not, provide fallback defaults
+	// to maintain backwards compatibility for deployments where no
+	// providers declare API versions.
+	if capabilities.LowApiVersion == nil && capabilities.HighApiVersion == nil {
+		// No API versions from providers - set fallback defaults
+		capabilitiesWithVersion := remoteexecution.ServerCapabilities{
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 3},
+		}
+		proto.Merge(&capabilitiesWithVersion, capabilities)
+		return &capabilitiesWithVersion, nil
 	}
-	proto.Merge(&capabilitiesWithVersion, capabilities)
-	return &capabilitiesWithVersion, nil
+
+	// MergingProvider has determined API versions - use them as-is
+	// Also set DeprecatedApiVersion if not already set
+	if capabilities.DeprecatedApiVersion == nil {
+		capabilitiesWithVersion := &remoteexecution.ServerCapabilities{}
+		proto.Merge(capabilitiesWithVersion, capabilities)
+		capabilitiesWithVersion.DeprecatedApiVersion = &semver.SemVer{Major: 2, Minor: 0}
+		return capabilitiesWithVersion, nil
+	}
+
+	return capabilities, nil
 }
