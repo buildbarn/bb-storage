@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -63,6 +64,12 @@ func RunMain(routine Routine) {
 		receivedSignal := <-signalChan
 		log.Printf("Received %#v signal. Initiating graceful shutdown.", receivedSignal.String())
 		errorLogger.startShutdown(func() {
+			if runtime.GOOS == "windows" {
+				// On Windows, process.Signal() is not supported so
+				// immediately exit.
+				os.Exit(1)
+			}
+
 			// Clear the signal handler and raise the
 			// original signal once again. That way we shut
 			// down under the original circumstances.
