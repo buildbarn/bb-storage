@@ -122,3 +122,22 @@ func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
 
 	require.NoError(t, blockDevice.Close())
 }
+
+func TestNewBlockDeviceFromFileRelativePath(t *testing.T) {
+	// Check that we can open block devices with relative file paths.
+	tempDir := t.TempDir()
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+
+	blockDevicePath := "bd_relative"
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 8, false)
+	require.NoError(t, err)
+	require.NoError(t, blockDevice.Close())
+
+	_, err = os.Stat(filepath.Join(tempDir, blockDevicePath))
+	require.NoError(t, err)
+
+	require.NoError(t, os.Chdir(originalWd))
+}

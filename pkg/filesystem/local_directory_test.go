@@ -3,6 +3,7 @@ package filesystem_test
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"testing"
@@ -536,6 +537,25 @@ func TestLocalDirectoryIsWritableChild(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, isWritable, "Want file not to be writable")
 	}
+}
+
+func TestLocalDirectoryNewLocalDirectoryRelativePath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	subdir := "test_subdir"
+	subdirPath := filepath.Join(tempDir, subdir)
+	require.NoError(t, os.Mkdir(subdirPath, 0o755))
+
+	// Save the current working directory so we can restore it.
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(subdir))
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	require.NoError(t, os.Chdir(originalWd))
 }
 
 func writeFile(t *testing.T, directory filesystem.Directory, name string, permissions os.FileMode) {
