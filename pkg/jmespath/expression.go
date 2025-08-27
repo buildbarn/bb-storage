@@ -15,6 +15,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jmespath/go-jmespath"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -33,6 +34,10 @@ type Expression struct {
 // The group parameter is required when there are files and is used to schedule
 // refreshes of the file contents.
 func NewExpressionFromConfiguration(config *pb.Expression, group program.Group, clock clock.Clock) (*Expression, error) {
+	if config == nil {
+		return nil, status.Error(codes.InvalidArgument, "No JMESPath expression configuration provided")
+	}
+
 	expression, err := jmespath.Compile(config.Expression)
 	if err != nil {
 		return nil, err
