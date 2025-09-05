@@ -199,6 +199,13 @@ message BlobAccessConfiguration {
     // value. When gRPC calls are timed out a `DEADLINE_EXCEEDED` error
     // code will be returned.
     DeadlineEnforcingBlobAccess deadline_enforcing = 28;
+
+    // Read objects from/write objects to a GRPC service that implements
+    // the remote execution protocol, but uses Zstd compression for
+    // ByteStream.Read and ByteStream.Write. The server must support
+    // Zstd compression. If it is a bb_storage Instance, add 'ZSTD' to
+    // the list of supported compressors.
+    CompressedClientConfiguration compressed = 29;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -945,4 +952,15 @@ message DeadlineEnforcingBlobAccess {
 
   // The backend to which all operations are delegated.
   BlobAccessConfiguration backend = 2;
+}
+
+message CompressedClientConfiguration {
+  // Base GRPC client configuration. Must be a GRPC client that
+  // announces support for Zstd CAS compression.
+  buildbarn.configuration.grpc.ClientConfiguration grpc = 1;
+
+  // Minimum blob size in bytes to trigger compression.
+  // Blobs smaller than this threshold will use the non-compressed client
+  // for better performance on small objects.
+  int64 compression_threshold_bytes = 2;
 }
