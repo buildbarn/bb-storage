@@ -21,8 +21,16 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func parseJSONToValue(t *testing.T, jsonStr string) *structpb.Value {
+	var value structpb.Value
+	err := protojson.Unmarshal([]byte(jsonStr), &value)
+	require.NoError(t, err)
+	return &value
+}
 
 func TestNewJMESPathExpression(t *testing.T) {
 	t.Run("BasicExpression", func(t *testing.T) {
@@ -265,5 +273,87 @@ func TestExpressionWithTestVectors(t *testing.T) {
 			require.NoError(t, err)
 			return nil
 		})
+	})
+}
+
+func TestExpressionTestVectorBooleanComparison(t *testing.T) {
+	t.Run("BooleanTrueComparison", func(t *testing.T) {
+		_, err := jmespath.NewExpressionFromConfiguration(
+			&pb.Expression{
+				Expression: "payload.aud == `\"testaud\"`",
+				TestVectors: []*pb.TestVector{
+					{
+						Input: util.Must(structpb.NewStruct(map[string]any{
+							"payload": map[string]any{
+								"aud": "testaud",
+							},
+						})),
+						ExpectedOutput: parseJSONToValue(t, "true"),
+					},
+				},
+			},
+			nil,
+			nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("StringComparison", func(t *testing.T) {
+		_, err := jmespath.NewExpressionFromConfiguration(
+			&pb.Expression{
+				Expression: "payload.aud",
+				TestVectors: []*pb.TestVector{
+					{
+						Input: util.Must(structpb.NewStruct(map[string]any{
+							"payload": map[string]any{
+								"aud": "testaud",
+							},
+						})),
+						ExpectedOutput: parseJSONToValue(t, `"testaud"`),
+					},
+				},
+			},
+			nil,
+			nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("NullComparison", func(t *testing.T) {
+		_, err := jmespath.NewExpressionFromConfiguration(
+			&pb.Expression{
+				Expression: "payload.nonexistent",
+				TestVectors: []*pb.TestVector{
+					{
+						Input: util.Must(structpb.NewStruct(map[string]any{
+							"payload": map[string]any{
+								"aud": "testaud",
+							},
+						})),
+						ExpectedOutput: parseJSONToValue(t, "null"),
+					},
+				},
+			},
+			nil,
+			nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("ArrayComparison", func(t *testing.T) {
+		_, err := jmespath.NewExpressionFromConfiguration(
+			&pb.Expression{
+				Expression: "payload.items",
+				TestVectors: []*pb.TestVector{
+					{
+						Input: util.Must(structpb.NewStruct(map[string]any{
+							"payload": map[string]any{
+								"items": []any{"item1", "item2"},
+							},
+						})),
+						ExpectedOutput: parseJSONToValue(t, `["item1", "item2"]`),
+					},
+				},
+			},
+			nil,
+			nil)
+		require.NoError(t, err)
 	})
 }

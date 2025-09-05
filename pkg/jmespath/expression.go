@@ -6,7 +6,6 @@ import (
 	"log"
 	"maps"
 	"os"
-	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -124,7 +124,7 @@ func (e *Expression) checkTestVector(t *pb.TestVector) error {
 		return util.StatusWrapf(err, "Failed to convert JMESPath result to protobuf value")
 	}
 
-	if !reflect.DeepEqual(t.ExpectedOutput, actualPb) {
+	if !proto.Equal(actualPb, t.ExpectedOutput) {
 		expectedJSON, _ := json.Marshal(t.ExpectedOutput)
 		actualJSON, _ := json.Marshal(actual)
 		return status.Errorf(codes.InvalidArgument, "Test vector failed: expected %s, got %s", string(expectedJSON), string(actualJSON))
