@@ -109,7 +109,7 @@ message AuthorizationHeaderParserConfiguration {
   // The following expression would cause all of the claims in the JSON
   // Web Token's payload to become private authentication metadata:
   //
-  //     {"private": @}
+  //     {"private": payload}
   //
   // The following expression demonstrates how given a JSON Web Token
   // consisting of "given_name" and "family_name" fields can be
