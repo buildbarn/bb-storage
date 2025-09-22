@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "rerun_action_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/buildbarn/bb-storage/cmd/rerun_action",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/grpc",
+        "//pkg/program",
+        "//pkg/proto/configuration/rerun_action",
+        "//pkg/util",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)
+
+go_binary(
+    name = "rerun_action",
+    embed = [":rerun_action_lib"],
+    visibility = ["//visibility:public"],
+)

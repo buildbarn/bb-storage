@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package buildbarn.configuration.rerun_action;
+
+import "build/bazel/remote/execution/v2/remote_execution.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+
+message ApplicationConfiguration {
+  buildbarn.configuration.grpc.ClientConfiguration grpc_client = 1;
+
+  string instance_name = 2;
+
+  build.bazel.remote.execution.v2.DigestFunction.Value digest_function = 3;
+
+  build.bazel.remote.execution.v2.Digest action_digest = 4;
+}
