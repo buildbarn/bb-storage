@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
-	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
@@ -14,7 +14,7 @@ import (
 // program.Group, based on a configuration message. The web servers are
 // automatically terminated if the context associated with the group is
 // canceled.
-func NewServersFromConfigurationAndServe(configurations []*configuration.ServerConfiguration, handler http.Handler, group program.Group, grpcClientFactory grpc.ClientFactory) {
+func NewServersFromConfigurationAndServe(configurations []*configuration.Configuration, handler http.Handler, group program.Group, grpcClientFactory grpc.ClientFactory) {
 	group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
 		for _, configuration := range configurations {
 			authenticator, err := NewAuthenticatorFromConfiguration(configuration.AuthenticationPolicy, dependenciesGroup, grpcClientFactory)

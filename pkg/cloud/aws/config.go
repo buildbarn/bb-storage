@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/client"
 	aws_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/util"
 

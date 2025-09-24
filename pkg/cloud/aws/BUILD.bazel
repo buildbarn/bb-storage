@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/cloud/aws",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/http",
+        "//pkg/http/client",
         "//pkg/proto/configuration/cloud/aws",
         "//pkg/util",
         "@com_github_aws_aws_sdk_go_v2//aws",

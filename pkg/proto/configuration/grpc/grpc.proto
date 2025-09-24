@@ -3,10 +3,10 @@ syntax = "proto3";
 package buildbarn.configuration.grpc;
 
 import "google/protobuf/duration.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "pkg/proto/auth/auth.proto";
 import "pkg/proto/configuration/eviction/eviction.proto";
+import "pkg/proto/configuration/http/client/client.proto";
 import "pkg/proto/configuration/jwt/jwt.proto";
 import "pkg/proto/configuration/tls/tls.proto";
 import "pkg/proto/configuration/x509/x509.proto";
@@ -95,7 +95,7 @@ message ClientConfiguration {
 
   // Oauth authentication settings. More information:
   // https://grpc.io/docs/guides/auth/
-  ClientOAuthConfiguration oauth = 6;
+  buildbarn.configuration.http.client.OAuthConfiguration oauth = 6;
 
   // Was 'forward_and_reuse_metadata'. This option has been moved to
   // 'global.grpc_forward_and_reuse_metadata', so that headers are
@@ -144,21 +144,6 @@ message ClientKeepaliveConfiguration {
   // Whether the client should send keepalive requests even if no RPC
   // activity is taking place.
   bool permit_without_stream = 3;
-}
-
-message ClientOAuthConfiguration {
-  oneof credentials {
-    // Use default Google credentials. More information:
-    // https://developers.google.com/accounts/docs/application-default-credentials
-    google.protobuf.Empty google_default_credentials = 1;
-
-    // Service account private key to use to obtain access token.
-    string service_account_key = 2;
-  }
-
-  // OAuth scopes. More information:
-  // https://developers.google.com/identity/protocols/oauth2/scopes
-  repeated string scopes = 3;
 }
 
 message ServerConfiguration {

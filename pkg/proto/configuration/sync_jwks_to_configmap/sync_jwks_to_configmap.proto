@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package buildbarn.configuration.sync_jwks_to_configmap;
 
-import "pkg/proto/configuration/http/http.proto";
+import "pkg/proto/configuration/http/client/client.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap";
 
 message ApplicationConfiguration {
   // Configuration options for the HTTP client that is used to download
   // the JSON Web Key Set (JWKS).
-  buildbarn.configuration.http.ClientConfiguration http_client = 1;
+  buildbarn.configuration.http.client.Configuration http_client = 1;
 
   // The URL of the JWKS to download.
   string jwks_url = 2;

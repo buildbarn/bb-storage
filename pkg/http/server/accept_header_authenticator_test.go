@@ -1,4 +1,4 @@
-package http_test
+package server_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/server"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"

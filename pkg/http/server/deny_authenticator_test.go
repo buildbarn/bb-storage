@@ -1,11 +1,11 @@
-package http_test
+package server_test
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/server"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 

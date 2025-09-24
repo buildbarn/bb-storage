@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "client",
+    srcs = [
+        "configuration.go",
+        "header_adding_round_tripper.go",
+        "metrics_round_tripper.go",
+        "oauth2_credentials.go",
+        "oauth_adding_round_tripper.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/http/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/proto/configuration/http/client",
+        "//pkg/util",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_prometheus_client_golang//prometheus/promhttp",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_x_oauth2//:oauth2",
+        "@org_golang_x_oauth2//clientcredentials",
+    ],
+)

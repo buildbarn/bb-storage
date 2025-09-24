@@ -8,7 +8,8 @@ package global
 
 import (
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
-	http "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
+	server "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -33,7 +34,7 @@ type PrometheusPushgatewayConfiguration struct {
 	Job                     string                                                       `protobuf:"bytes,2,opt,name=job,proto3" json:"job,omitempty"`
 	Grouping                map[string]string                                            `protobuf:"bytes,4,rep,name=grouping,proto3" json:"grouping,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	PushInterval            *durationpb.Duration                                         `protobuf:"bytes,5,opt,name=push_interval,json=pushInterval,proto3" json:"push_interval,omitempty"`
-	HttpClient              *http.ClientConfiguration                                    `protobuf:"bytes,6,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	HttpClient              *client.Configuration                                        `protobuf:"bytes,6,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
 	PushTimeout             *durationpb.Duration                                         `protobuf:"bytes,7,opt,name=push_timeout,json=pushTimeout,proto3" json:"push_timeout,omitempty"`
 	AdditionalScrapeTargets []*PrometheusPushgatewayConfiguration_AdditionalScrapeTarget `protobuf:"bytes,8,rep,name=additional_scrape_targets,json=additionalScrapeTargets,proto3" json:"additional_scrape_targets,omitempty"`
 	unknownFields           protoimpl.UnknownFields
@@ -98,7 +99,7 @@ func (x *PrometheusPushgatewayConfiguration) GetPushInterval() *durationpb.Durat
 	return nil
 }
 
-func (x *PrometheusPushgatewayConfiguration) GetHttpClient() *http.ClientConfiguration {
+func (x *PrometheusPushgatewayConfiguration) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -384,11 +385,11 @@ func (x *Configuration) GetSetResourceLimits() map[string]*SetResourceLimitConfi
 }
 
 type DiagnosticsHTTPServerConfiguration struct {
-	state             protoimpl.MessageState      `protogen:"open.v1"`
-	HttpServers       []*http.ServerConfiguration `protobuf:"bytes,5,rep,name=http_servers,json=httpServers,proto3" json:"http_servers,omitempty"`
-	EnablePprof       bool                        `protobuf:"varint,2,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`
-	EnablePrometheus  bool                        `protobuf:"varint,3,opt,name=enable_prometheus,json=enablePrometheus,proto3" json:"enable_prometheus,omitempty"`
-	EnableActiveSpans bool                        `protobuf:"varint,4,opt,name=enable_active_spans,json=enableActiveSpans,proto3" json:"enable_active_spans,omitempty"`
+	state             protoimpl.MessageState  `protogen:"open.v1"`
+	HttpServers       []*server.Configuration `protobuf:"bytes,5,rep,name=http_servers,json=httpServers,proto3" json:"http_servers,omitempty"`
+	EnablePprof       bool                    `protobuf:"varint,2,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`
+	EnablePrometheus  bool                    `protobuf:"varint,3,opt,name=enable_prometheus,json=enablePrometheus,proto3" json:"enable_prometheus,omitempty"`
+	EnableActiveSpans bool                    `protobuf:"varint,4,opt,name=enable_active_spans,json=enableActiveSpans,proto3" json:"enable_active_spans,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -423,7 +424,7 @@ func (*DiagnosticsHTTPServerConfiguration) Descriptor() ([]byte, []int) {
 	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *DiagnosticsHTTPServerConfiguration) GetHttpServers() []*http.ServerConfiguration {
+func (x *DiagnosticsHTTPServerConfiguration) GetHttpServers() []*server.Configuration {
 	if x != nil {
 		return x.HttpServers
 	}
@@ -452,9 +453,9 @@ func (x *DiagnosticsHTTPServerConfiguration) GetEnableActiveSpans() bool {
 }
 
 type GRPCKubernetesResolver struct {
-	state               protoimpl.MessageState    `protogen:"open.v1"`
-	ApiServerHttpClient *http.ClientConfiguration `protobuf:"bytes,1,opt,name=api_server_http_client,json=apiServerHttpClient,proto3" json:"api_server_http_client,omitempty"`
-	ApiServerUrl        string                    `protobuf:"bytes,2,opt,name=api_server_url,json=apiServerUrl,proto3" json:"api_server_url,omitempty"`
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ApiServerHttpClient *client.Configuration  `protobuf:"bytes,1,opt,name=api_server_http_client,json=apiServerHttpClient,proto3" json:"api_server_http_client,omitempty"`
+	ApiServerUrl        string                 `protobuf:"bytes,2,opt,name=api_server_url,json=apiServerUrl,proto3" json:"api_server_url,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -489,7 +490,7 @@ func (*GRPCKubernetesResolver) Descriptor() ([]byte, []int) {
 	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GRPCKubernetesResolver) GetApiServerHttpClient() *http.ClientConfiguration {
+func (x *GRPCKubernetesResolver) GetApiServerHttpClient() *client.Configuration {
 	if x != nil {
 		return x.ApiServerHttpClient
 	}
@@ -504,10 +505,10 @@ func (x *GRPCKubernetesResolver) GetApiServerUrl() string {
 }
 
 type PrometheusPushgatewayConfiguration_AdditionalScrapeTarget struct {
-	state             protoimpl.MessageState    `protogen:"open.v1"`
-	HttpClient        *http.ClientConfiguration `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
-	Url               string                    `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
-	MetricNamePattern string                    `protobuf:"bytes,3,opt,name=metric_name_pattern,json=metricNamePattern,proto3" json:"metric_name_pattern,omitempty"`
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	HttpClient        *client.Configuration  `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	Url               string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	MetricNamePattern string                 `protobuf:"bytes,3,opt,name=metric_name_pattern,json=metricNamePattern,proto3" json:"metric_name_pattern,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -542,7 +543,7 @@ func (*PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) Descriptor() (
 	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{0, 1}
 }
 
-func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) GetHttpClient() *http.ClientConfiguration {
+func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -825,11 +826,11 @@ func (*TracingConfiguration_Sampler_TraceIdRatioBased) isTracingConfiguration_Sa
 func (*TracingConfiguration_Sampler_MaximumRate_) isTracingConfiguration_Sampler_Policy() {}
 
 type TracingConfiguration_Backend_JaegerCollectorSpanExporter struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Endpoint      string                    `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	HttpClient    *http.ClientConfiguration `protobuf:"bytes,2,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
-	Password      string                    `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	Username      string                    `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Endpoint      string                 `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	HttpClient    *client.Configuration  `protobuf:"bytes,2,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -871,7 +872,7 @@ func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) GetEndpoint()
 	return ""
 }
 
-func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) GetHttpClient() *http.ClientConfiguration {
+func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -1100,36 +1101,36 @@ var File_pkg_proto_configuration_global_global_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_global_global_proto_rawDesc = "" +
 	"\n" +
-	"+pkg/proto/configuration/global/global.proto\x12\x1ebuildbarn.configuration.global\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a*opentelemetry/proto/common/v1/common.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a'pkg/proto/configuration/http/http.proto\"\x94\x06\n" +
+	"+pkg/proto/configuration/global/global.proto\x12\x1ebuildbarn.configuration.global\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a*opentelemetry/proto/common/v1/common.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a0pkg/proto/configuration/http/server/server.proto\x1a0pkg/proto/configuration/http/client/client.proto\"\x96\x06\n" +
 	"\"PrometheusPushgatewayConfiguration\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x10\n" +
 	"\x03job\x18\x02 \x01(\tR\x03job\x12l\n" +
 	"\bgrouping\x18\x04 \x03(\v2P.buildbarn.configuration.global.PrometheusPushgatewayConfiguration.GroupingEntryR\bgrouping\x12>\n" +
-	"\rpush_interval\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\fpushInterval\x12R\n" +
-	"\vhttp_client\x18\x06 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"\rpush_interval\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\fpushInterval\x12S\n" +
+	"\vhttp_client\x18\x06 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12<\n" +
 	"\fpush_timeout\x18\a \x01(\v2\x19.google.protobuf.DurationR\vpushTimeout\x12\x95\x01\n" +
 	"\x19additional_scrape_targets\x18\b \x03(\v2Y.buildbarn.configuration.global.PrometheusPushgatewayConfiguration.AdditionalScrapeTargetR\x17additionalScrapeTargets\x1a;\n" +
 	"\rGroupingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xae\x01\n" +
-	"\x16AdditionalScrapeTarget\x12R\n" +
-	"\vhttp_client\x18\x01 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xaf\x01\n" +
+	"\x16AdditionalScrapeTarget\x12S\n" +
+	"\vhttp_client\x18\x01 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12.\n" +
-	"\x13metric_name_pattern\x18\x03 \x01(\tR\x11metricNamePatternJ\x04\b\x03\x10\x04\"\xc3\x12\n" +
+	"\x13metric_name_pattern\x18\x03 \x01(\tR\x11metricNamePatternJ\x04\b\x03\x10\x04\"\xc4\x12\n" +
 	"\x14TracingConfiguration\x12X\n" +
 	"\bbackends\x18\x01 \x03(\v2<.buildbarn.configuration.global.TracingConfiguration.BackendR\bbackends\x12X\n" +
 	"\x13resource_attributes\x18\x02 \x03(\v2'.opentelemetry.proto.common.v1.KeyValueR\x12resourceAttributes\x12V\n" +
-	"\asampler\x18\x03 \x01(\v2<.buildbarn.configuration.global.TracingConfiguration.SamplerR\asampler\x1a\xdb\a\n" +
+	"\asampler\x18\x03 \x01(\v2<.buildbarn.configuration.global.TracingConfiguration.SamplerR\asampler\x1a\xdc\a\n" +
 	"\aBackend\x12\x9f\x01\n" +
 	"\x1ejaeger_collector_span_exporter\x18\x01 \x01(\v2X.buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporterH\x00R\x1bjaegerCollectorSpanExporter\x12a\n" +
 	"\x12otlp_span_exporter\x18\x04 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationH\x00R\x10otlpSpanExporter\x12L\n" +
 	"\x15simple_span_processor\x18\x02 \x01(\v2\x16.google.protobuf.EmptyH\x01R\x13simpleSpanProcessor\x12\x83\x01\n" +
-	"\x14batch_span_processor\x18\x03 \x01(\v2O.buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessorH\x01R\x12batchSpanProcessor\x1a\xc5\x01\n" +
+	"\x14batch_span_processor\x18\x03 \x01(\v2O.buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessorH\x01R\x12batchSpanProcessor\x1a\xc6\x01\n" +
 	"\x1bJaegerCollectorSpanExporter\x12\x1a\n" +
-	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12R\n" +
-	"\vhttp_client\x18\x02 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12S\n" +
+	"\vhttp_client\x18\x02 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x1a\x8b\x02\n" +
@@ -1179,14 +1180,14 @@ const file_pkg_proto_configuration_global_global_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v26.buildbarn.configuration.global.GRPCKubernetesResolverR\x05value:\x028\x01\x1a\x83\x01\n" +
 	"\x16SetResourceLimitsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12S\n" +
-	"\x05value\x18\x02 \x01(\v2=.buildbarn.configuration.global.SetResourceLimitConfigurationR\x05value:\x028\x01J\x04\b\x04\x10\x05\"\x80\x02\n" +
-	"\"DiagnosticsHTTPServerConfiguration\x12T\n" +
-	"\fhttp_servers\x18\x05 \x03(\v21.buildbarn.configuration.http.ServerConfigurationR\vhttpServers\x12!\n" +
+	"\x05value\x18\x02 \x01(\v2=.buildbarn.configuration.global.SetResourceLimitConfigurationR\x05value:\x028\x01J\x04\b\x04\x10\x05\"\x81\x02\n" +
+	"\"DiagnosticsHTTPServerConfiguration\x12U\n" +
+	"\fhttp_servers\x18\x05 \x03(\v22.buildbarn.configuration.http.server.ConfigurationR\vhttpServers\x12!\n" +
 	"\fenable_pprof\x18\x02 \x01(\bR\venablePprof\x12+\n" +
 	"\x11enable_prometheus\x18\x03 \x01(\bR\x10enablePrometheus\x12.\n" +
-	"\x13enable_active_spans\x18\x04 \x01(\bR\x11enableActiveSpansJ\x04\b\x01\x10\x02\"\xa6\x01\n" +
-	"\x16GRPCKubernetesResolver\x12f\n" +
-	"\x16api_server_http_client\x18\x01 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\x13apiServerHttpClient\x12$\n" +
+	"\x13enable_active_spans\x18\x04 \x01(\bR\x11enableActiveSpansJ\x04\b\x01\x10\x02\"\xa7\x01\n" +
+	"\x16GRPCKubernetesResolver\x12g\n" +
+	"\x16api_server_http_client\x18\x01 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\x13apiServerHttpClient\x12$\n" +
 	"\x0eapi_server_url\x18\x02 \x01(\tR\fapiServerUrlB@Z>github.com/buildbarn/bb-storage/pkg/proto/configuration/globalb\x06proto3"
 
 var (
@@ -1221,17 +1222,17 @@ var file_pkg_proto_configuration_global_global_proto_goTypes = []any{
 	nil,                              // 15: buildbarn.configuration.global.Configuration.GrpcKubernetesResolversEntry
 	nil,                              // 16: buildbarn.configuration.global.Configuration.SetResourceLimitsEntry
 	(*durationpb.Duration)(nil),      // 17: google.protobuf.Duration
-	(*http.ClientConfiguration)(nil), // 18: buildbarn.configuration.http.ClientConfiguration
+	(*client.Configuration)(nil),     // 18: buildbarn.configuration.http.client.Configuration
 	(*v1.KeyValue)(nil),              // 19: opentelemetry.proto.common.v1.KeyValue
 	(*wrapperspb.UInt64Value)(nil),   // 20: google.protobuf.UInt64Value
-	(*http.ServerConfiguration)(nil), // 21: buildbarn.configuration.http.ServerConfiguration
+	(*server.Configuration)(nil),     // 21: buildbarn.configuration.http.server.Configuration
 	(*grpc.ClientConfiguration)(nil), // 22: buildbarn.configuration.grpc.ClientConfiguration
 	(*emptypb.Empty)(nil),            // 23: google.protobuf.Empty
 }
 var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	7,  // 0: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.grouping:type_name -> buildbarn.configuration.global.PrometheusPushgatewayConfiguration.GroupingEntry
 	17, // 1: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.push_interval:type_name -> google.protobuf.Duration
-	18, // 2: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	18, // 2: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	17, // 3: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.push_timeout:type_name -> google.protobuf.Duration
 	8,  // 4: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.additional_scrape_targets:type_name -> buildbarn.configuration.global.PrometheusPushgatewayConfiguration.AdditionalScrapeTarget
 	9,  // 5: buildbarn.configuration.global.TracingConfiguration.backends:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend
@@ -1245,9 +1246,9 @@ var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	2,  // 13: buildbarn.configuration.global.Configuration.set_umask:type_name -> buildbarn.configuration.global.SetUmaskConfiguration
 	15, // 14: buildbarn.configuration.global.Configuration.grpc_kubernetes_resolvers:type_name -> buildbarn.configuration.global.Configuration.GrpcKubernetesResolversEntry
 	16, // 15: buildbarn.configuration.global.Configuration.set_resource_limits:type_name -> buildbarn.configuration.global.Configuration.SetResourceLimitsEntry
-	21, // 16: buildbarn.configuration.global.DiagnosticsHTTPServerConfiguration.http_servers:type_name -> buildbarn.configuration.http.ServerConfiguration
-	18, // 17: buildbarn.configuration.global.GRPCKubernetesResolver.api_server_http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
-	18, // 18: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.AdditionalScrapeTarget.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	21, // 16: buildbarn.configuration.global.DiagnosticsHTTPServerConfiguration.http_servers:type_name -> buildbarn.configuration.http.server.Configuration
+	18, // 17: buildbarn.configuration.global.GRPCKubernetesResolver.api_server_http_client:type_name -> buildbarn.configuration.http.client.Configuration
+	18, // 18: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.AdditionalScrapeTarget.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	11, // 19: buildbarn.configuration.global.TracingConfiguration.Backend.jaeger_collector_span_exporter:type_name -> buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter
 	22, // 20: buildbarn.configuration.global.TracingConfiguration.Backend.otlp_span_exporter:type_name -> buildbarn.configuration.grpc.ClientConfiguration
 	23, // 21: buildbarn.configuration.global.TracingConfiguration.Backend.simple_span_processor:type_name -> google.protobuf.Empty
@@ -1256,7 +1257,7 @@ var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	23, // 24: buildbarn.configuration.global.TracingConfiguration.Sampler.never:type_name -> google.protobuf.Empty
 	13, // 25: buildbarn.configuration.global.TracingConfiguration.Sampler.parent_based:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased
 	14, // 26: buildbarn.configuration.global.TracingConfiguration.Sampler.maximum_rate:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler.MaximumRate
-	18, // 27: buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	18, // 27: buildbarn.configuration.global.TracingConfiguration.Backend.JaegerCollectorSpanExporter.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	17, // 28: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.batch_timeout:type_name -> google.protobuf.Duration
 	17, // 29: buildbarn.configuration.global.TracingConfiguration.Backend.BatchSpanProcessor.export_timeout:type_name -> google.protobuf.Duration
 	10, // 30: buildbarn.configuration.global.TracingConfiguration.Sampler.ParentBased.no_parent:type_name -> buildbarn.configuration.global.TracingConfiguration.Sampler

@@ -6,7 +6,7 @@ proto_library(
     name = "sync_jwks_to_configmap_proto",
     srcs = ["sync_jwks_to_configmap.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/http:http_proto"],
+    deps = ["//pkg/proto/configuration/http/client:client_proto"],
 )
 
 go_proto_library(
@@ -14,7 +14,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap",
     proto = ":sync_jwks_to_configmap_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/http"],
+    deps = ["//pkg/proto/configuration/http/client"],
 )
 
 go_library(

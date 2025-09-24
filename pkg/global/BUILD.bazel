@@ -18,7 +18,8 @@ go_library(
     deps = [
         "//pkg/clock",
         "//pkg/grpc",
-        "//pkg/http",
+        "//pkg/http/client",
+        "//pkg/http/server",
         "//pkg/otel",
         "//pkg/program",
         "//pkg/prometheus",

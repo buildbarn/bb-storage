@@ -8,9 +8,11 @@ import (
 	"net/url"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	http_configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"
@@ -120,18 +122,9 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 
 	// Optional: OAuth authentication.
 	if oauthConfig := config.Oauth; oauthConfig != nil {
-		var perRPC credentials.PerRPCCredentials
-		var err error
-		switch credentials := oauthConfig.Credentials.(type) {
-		case *configuration.ClientOAuthConfiguration_GoogleDefaultCredentials:
-			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
-		case *configuration.ClientOAuthConfiguration_ServiceAccountKey:
-			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauthConfig.Scopes...)
-		default:
-			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials or serviceAccountKey should be provided")
-		}
+		perRPC, err := perRPCCredentials(oauthConfig)
 		if err != nil {
-			return nil, util.StatusWrap(err, "Failed to create gRPC credentials")
+			return nil, util.StatusWrap(err, "Failed to create per RPC credentials")
 		}
 		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
 	}
@@ -213,4 +206,28 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...))
 	return cf.dialer(context.Background(), config.Address, dialOptions...)
+}
+
+func perRPCCredentials(oauthConfig *http_configuration.OAuthConfiguration) (credentials.PerRPCCredentials, error) {
+	var perRPC credentials.PerRPCCredentials
+	var err error
+
+	switch credentials := oauthConfig.Credentials.(type) {
+	case *http_configuration.OAuthConfiguration_GoogleDefaultCredentials:
+		perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
+	case *http_configuration.OAuthConfiguration_ServiceAccountKey:
+		perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauthConfig.Scopes...)
+	case *http_configuration.OAuthConfiguration_ClientCredentials:
+		tokenSource, err := http_client.ClientCredentialsTokenSource(oauthConfig.Scopes, credentials)
+		if err != nil {
+			return nil, err
+		}
+		perRPC = oauth.TokenSource{TokenSource: tokenSource}
+	default:
+		return nil, status.Error(codes.InvalidArgument, "oauth client credentials are wrong: one of googleDefaultCredentials, serviceAccountKey, or clientCredentials should be provided")
+	}
+	if err != nil {
+		return nil, util.StatusWrap(err, "Failed to create oauth configuration")
+	}
+	return perRPC, err
 }

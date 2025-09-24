@@ -1,4 +1,4 @@
-package http_test
+package server_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/server"
 	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/proto/http/oidc"

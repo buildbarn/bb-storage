@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap"
 	"github.com/buildbarn/bb-storage/pkg/util"

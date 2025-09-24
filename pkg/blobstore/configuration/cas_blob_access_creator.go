@@ -15,7 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	bb_http "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
