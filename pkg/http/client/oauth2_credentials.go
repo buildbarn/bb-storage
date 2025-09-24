@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// TokenSource uses the given OAuthConfiguration to create a token source for HTTP clients.
 func TokenSource(oauthConfig *configuration.OAuthConfiguration) (oauth2.TokenSource, error) {
 	var source oauth2.TokenSource
 	var err error
@@ -29,6 +30,8 @@ func TokenSource(oauthConfig *configuration.OAuthConfiguration) (oauth2.TokenSou
 	return source, err
 }
 
+// ClientCredentialsTokenSource uses the config to create a token source
+// directly for the given ClientCredentials configuration.
 func ClientCredentialsTokenSource(scopes []string, config *configuration.OAuthConfiguration_ClientCredentials) (oauth2.TokenSource, error) {
 	roundTripper, err := NewRoundTripperFromConfiguration(config.ClientCredentials.HttpClient)
 	if err != nil {
