@@ -60,11 +60,11 @@ func isReparsePointByHandle(handle windows.Handle) (isReparsePoint bool, reparse
 	err = windows.GetFileInformationByHandleEx(handle, windows.FileAttributeTagInfo,
 		(*byte)(unsafe.Pointer(&fileAttrTagInfo)), uint32(unsafe.Sizeof(fileAttrTagInfo)))
 	if err != nil {
-		return
+		return isReparsePoint, reparseTag, err
 	}
 	isReparsePoint = (fileAttrTagInfo.FileAttributes & windows.FILE_ATTRIBUTE_REPARSE_POINT) == windows.FILE_ATTRIBUTE_REPARSE_POINT
 	reparseTag = fileAttrTagInfo.ReparseTag
-	return
+	return isReparsePoint, reparseTag, err
 }
 
 type localDirectory struct {
@@ -875,17 +875,17 @@ func haveSameUnderlyingFile(left, right windows.Handle) (res bool, err error) {
 	var leftInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(left, &leftInfo)
 	if err != nil {
-		return
+		return res, err
 	}
 	var rightInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(right, &rightInfo)
 	if err != nil {
-		return
+		return res, err
 	}
 	res = leftInfo.VolumeSerialNumber == rightInfo.VolumeSerialNumber &&
 		leftInfo.FileIndexLow == rightInfo.FileIndexLow &&
 		leftInfo.FileIndexHigh == rightInfo.FileIndexHigh
-	return
+	return res, err
 }
 
 func buildFileLinkInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
@@ -943,28 +943,28 @@ func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSa
 		if os.IsNotExist(err) {
 			err = nil
 		}
-		return
+		return areSame, err
 	}
 	defer windows.CloseHandle(targetHandle)
 	var targetInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(targetHandle, &targetInfo)
 	if err != nil {
-		return
+		return areSame, err
 	}
 	var sourceInfo windows.ByHandleFileInformation
 	err = windows.GetFileInformationByHandle(sourceHandle, &sourceInfo)
 	if err != nil {
-		return
+		return areSame, err
 	}
 	if (targetInfo.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY) == windows.FILE_ATTRIBUTE_DIRECTORY ||
 		(sourceInfo.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY) == windows.FILE_ATTRIBUTE_DIRECTORY {
 		err = syscall.EEXIST
-		return
+		return areSame, err
 	}
 	areSame = targetInfo.VolumeSerialNumber == sourceInfo.VolumeSerialNumber &&
 		targetInfo.FileIndexLow == sourceInfo.FileIndexLow &&
 		targetInfo.FileIndexHigh == sourceInfo.FileIndexHigh
-	return
+	return areSame, err
 }
 
 func buildFileRenameInfo(root windows.Handle, name []uint16) ([]byte, uint32) {

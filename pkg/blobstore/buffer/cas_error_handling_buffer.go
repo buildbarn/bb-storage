@@ -74,7 +74,7 @@ func (b *casErrorHandlingBuffer) ReadAt(p []byte, off int64) (n int, translatedE
 		n, originalErr = base.ReadAt(p, off)
 		return originalErr
 	})
-	return
+	return n, translatedErr
 }
 
 func (b *casErrorHandlingBuffer) ToProto(m proto.Message, maximumSizeBytes int) (mResult proto.Message, translatedErr error) {
@@ -83,7 +83,7 @@ func (b *casErrorHandlingBuffer) ToProto(m proto.Message, maximumSizeBytes int) 
 		mResult, originalErr = base.ToProto(m, maximumSizeBytes)
 		return originalErr
 	})
-	return
+	return mResult, translatedErr
 }
 
 func (b *casErrorHandlingBuffer) ToByteSlice(maximumSizeBytes int) (data []byte, translatedErr error) {
@@ -92,7 +92,7 @@ func (b *casErrorHandlingBuffer) ToByteSlice(maximumSizeBytes int) (data []byte,
 		data, originalErr = base.ToByteSlice(maximumSizeBytes)
 		return originalErr
 	})
-	return
+	return data, translatedErr
 }
 
 func (b *casErrorHandlingBuffer) ToChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

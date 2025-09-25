@@ -133,7 +133,7 @@ func GetDifferenceAndIntersection(setA, setB Set) (onlyA, both, onlyB Set) {
 	}
 	onlyA.digests = append(onlyA.digests, a...)
 	onlyB.digests = append(onlyB.digests, b...)
-	return
+	return onlyA, both, onlyB
 }
 
 // GetUnion merges all of the elements stored in a list of sets into a

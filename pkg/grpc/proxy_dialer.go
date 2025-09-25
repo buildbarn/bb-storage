@@ -133,13 +133,13 @@ func (d *proxyDialer) proxyDial(ctx context.Context, addr string) (conn net.Conn
 
 	conn, err = (&net.Dialer{}).DialContext(ctx, "tcp", newAddr)
 	if err != nil {
-		return
+		return conn, err
 	}
 	if proxyURL != nil {
 		// proxy is disabled if proxyURL is nil.
 		conn, err = doHTTPConnectHandshake(ctx, conn, addr, proxyURL)
 	}
-	return
+	return conn, err
 }
 
 func sendHTTPRequest(ctx context.Context, req *http.Request, conn net.Conn) error {
