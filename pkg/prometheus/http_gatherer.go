@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 )
 
 type httpGatherer struct {
@@ -41,7 +42,7 @@ func (g *httpGatherer) Gather() ([]*io_prometheus_client.MetricFamily, error) {
 
 	// parser.TextToMetricFamilies() returns a dictionary that is
 	// keyed by metric name. Gatherer needs to return a slice.
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := parser.TextToMetricFamilies(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse metrics: %w", err)
