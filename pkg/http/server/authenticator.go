@@ -10,7 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	bb_http_client "github.com/buildbarn/bb-storage/pkg/http/client"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/jwt"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -99,7 +99,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to compile OIDC metadata extraction JMESPath expression")
 		}
-		roundTripper, err := bb_http_client.NewRoundTripperFromConfiguration(policyKind.Oidc.HttpClient)
+		roundTripper, err := http_client.NewRoundTripperFromConfiguration(policyKind.Oidc.HttpClient)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to create OIDC HTTP client")
 		}
@@ -133,7 +133,7 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			oidcClaimsFetcher,
 			metadataExtractor,
 			&http.Client{
-				Transport: bb_http_client.NewMetricsRoundTripper(roundTripper, "OIDCAuthenticator"),
+				Transport: http_client.NewMetricsRoundTripper(roundTripper, "OIDCAuthenticator"),
 			},
 			random.CryptoThreadSafeGenerator,
 			cookieName,

@@ -18,8 +18,8 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
-	bb_http_client "github.com/buildbarn/bb-storage/pkg/http/client"
-	bb_http_server "github.com/buildbarn/bb-storage/pkg/http/server"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	bb_otel "github.com/buildbarn/bb-storage/pkg/otel"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	bb_prometheus "github.com/buildbarn/bb-storage/pkg/prometheus"
@@ -77,9 +77,9 @@ func (ls *LifecycleState) MarkReadyAndWait(group program.Group) {
 			router.Handle("/active_spans", httpHandler)
 		}
 
-		bb_http_server.NewServersFromConfigurationAndServe(
+		http_server.NewServersFromConfigurationAndServe(
 			ls.config.HttpServers,
-			bb_http_server.NewMetricsHandler(router, "Diagnostics"),
+			http_server.NewMetricsHandler(router, "Diagnostics"),
 			group,
 			ls.grpcClientFactory,
 		)
@@ -119,7 +119,7 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 	// gRPC resolvers for connecting to Kubernetes service endpoints
 	// without using cluster internal DNS.
 	for schema, resolverConfiguration := range configuration.GetGrpcKubernetesResolvers() {
-		roundTripper, err := bb_http_client.NewRoundTripperFromConfiguration(resolverConfiguration.ApiServerHttpClient)
+		roundTripper, err := http_client.NewRoundTripperFromConfiguration(resolverConfiguration.ApiServerHttpClient)
 		if err != nil {
 			return nil, nil, util.StatusWrapf(err, "Failed to create HTTP client for gRPC Kubernetes resolver for schema %#v", schema)
 		}
@@ -127,7 +127,7 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 			kuberesolver.NewBuilder(
 				newSimpleK8sClient(
 					&http.Client{
-						Transport: bb_http_client.NewMetricsRoundTripper(roundTripper, "GRPCKubernetesResolver"),
+						Transport: http_client.NewMetricsRoundTripper(roundTripper, "GRPCKubernetesResolver"),
 					},
 					resolverConfiguration.ApiServerUrl,
 				),
@@ -188,12 +188,12 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 					if endpoint := jaegerConfiguration.Endpoint; endpoint != "" {
 						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithEndpoint(endpoint))
 					}
-					roundTripper, err := bb_http_client.NewRoundTripperFromConfiguration(jaegerConfiguration.HttpClient)
+					roundTripper, err := http_client.NewRoundTripperFromConfiguration(jaegerConfiguration.HttpClient)
 					if err != nil {
 						return nil, nil, util.StatusWrap(err, "Failed to create Jaeger collector HTTP client")
 					}
 					collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithHTTPClient(&http.Client{
-						Transport: bb_http_client.NewMetricsRoundTripper(roundTripper, "Jaeger"),
+						Transport: http_client.NewMetricsRoundTripper(roundTripper, "Jaeger"),
 					}))
 					if password := jaegerConfiguration.Password; password != "" {
 						collectorEndpointOptions = append(collectorEndpointOptions, jaeger.WithPassword(password))
@@ -304,7 +304,7 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 			// as Prometheus Node Exporter.
 			allGatherers := make(prometheus.Gatherers, 0, len(pushgateway.AdditionalScrapeTargets)+1)
 			for _, scrapeTarget := range pushgateway.AdditionalScrapeTargets {
-				roundTripper, err := bb_http_client.NewRoundTripperFromConfiguration(scrapeTarget.HttpClient)
+				roundTripper, err := http_client.NewRoundTripperFromConfiguration(scrapeTarget.HttpClient)
 				if err != nil {
 					return nil, nil, util.StatusWrapf(err, "Failed to create HTTP client for additional scrape target %#v", scrapeTarget.Url)
 				}
@@ -328,12 +328,12 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 		for key, value := range pushgateway.Grouping {
 			pusher.Grouping(key, value)
 		}
-		roundTripper, err := bb_http_client.NewRoundTripperFromConfiguration(pushgateway.HttpClient)
+		roundTripper, err := http_client.NewRoundTripperFromConfiguration(pushgateway.HttpClient)
 		if err != nil {
 			return nil, nil, util.StatusWrap(err, "Failed to create Prometheus Pushgateway HTTP client")
 		}
 		pusher.Client(&http.Client{
-			Transport: bb_http_client.NewMetricsRoundTripper(roundTripper, "Pushgateway"),
+			Transport: http_client.NewMetricsRoundTripper(roundTripper, "Pushgateway"),
 		})
 
 		pushInterval := pushgateway.PushInterval

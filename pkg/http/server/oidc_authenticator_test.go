@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http/server"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/proto/http/oidc"
@@ -69,11 +69,11 @@ func TestOIDCAuthenticator(t *testing.T) {
 
 	t.Run("UserInfo", func(t *testing.T) {
 		cookieAEAD.EXPECT().NonceSize().Return(4)
-		claimsFetcher := bb_http.NewUserInfoOIDCClaimsFetcher(
+		claimsFetcher := http_server.NewUserInfoOIDCClaimsFetcher(
 			oauth2Config,
 			"https://login.com/userinfo",
 		)
-		authenticator, err := bb_http.NewOIDCAuthenticator(
+		authenticator, err := http_server.NewOIDCAuthenticator(
 			oauth2Config,
 			claimsFetcher,
 			jmespath.MustCompile("{\"public\": @}"),
@@ -540,8 +540,8 @@ func TestOIDCAuthenticator(t *testing.T) {
 
 	t.Run("IDToken", func(t *testing.T) {
 		cookieAEAD.EXPECT().NonceSize().Return(4)
-		claimsFetcher := bb_http.IDTokenOIDCClaimsFetcher
-		authenticator, err := bb_http.NewOIDCAuthenticator(
+		claimsFetcher := http_server.IDTokenOIDCClaimsFetcher
+		authenticator, err := http_server.NewOIDCAuthenticator(
 			oauth2Config,
 			claimsFetcher,
 			jmespath.MustCompile("{\"public\": @}"),
