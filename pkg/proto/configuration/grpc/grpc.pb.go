@@ -37,7 +37,7 @@ type ClientConfiguration struct {
 	Keepalive                     *ClientKeepaliveConfiguration          `protobuf:"bytes,3,opt,name=keepalive,proto3" json:"keepalive,omitempty"`
 	AddMetadata                   []*ClientConfiguration_HeaderValues    `protobuf:"bytes,5,rep,name=add_metadata,json=addMetadata,proto3" json:"add_metadata,omitempty"`
 	AddMetadataJmespathExpression *jmespath.Expression                   `protobuf:"bytes,12,opt,name=add_metadata_jmespath_expression,json=addMetadataJmespathExpression,proto3" json:"add_metadata_jmespath_expression,omitempty"`
-	Oauth                         *client.OAuthConfiguration             `protobuf:"bytes,6,opt,name=oauth,proto3" json:"oauth,omitempty"`
+	Oauth2                        *client.OAuth2Configuration            `protobuf:"bytes,6,opt,name=oauth2,proto3" json:"oauth2,omitempty"`
 	InitialWindowSizeBytes        int32                                  `protobuf:"varint,8,opt,name=initial_window_size_bytes,json=initialWindowSizeBytes,proto3" json:"initial_window_size_bytes,omitempty"`
 	InitialConnWindowSizeBytes    int32                                  `protobuf:"varint,9,opt,name=initial_conn_window_size_bytes,json=initialConnWindowSizeBytes,proto3" json:"initial_conn_window_size_bytes,omitempty"`
 	ProxyUrl                      string                                 `protobuf:"bytes,10,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
@@ -112,9 +112,9 @@ func (x *ClientConfiguration) GetAddMetadataJmespathExpression() *jmespath.Expre
 	return nil
 }
 
-func (x *ClientConfiguration) GetOauth() *client.OAuthConfiguration {
+func (x *ClientConfiguration) GetOauth2() *client.OAuth2Configuration {
 	if x != nil {
-		return x.Oauth
+		return x.Oauth2
 	}
 	return nil
 }
@@ -984,14 +984,14 @@ var File_pkg_proto_configuration_grpc_grpc_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x19pkg/proto/auth/auth.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a0pkg/proto/configuration/http/client/client.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a'pkg/proto/configuration/x509/x509.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xfd\a\n" +
+	"'pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x19pkg/proto/auth/auth.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a0pkg/proto/configuration/http/client/client.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a'pkg/proto/configuration/x509/x509.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\x80\b\n" +
 	"\x13ClientConfiguration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12B\n" +
 	"\x03tls\x18\x02 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12X\n" +
 	"\tkeepalive\x18\x03 \x01(\v2:.buildbarn.configuration.grpc.ClientKeepaliveConfigurationR\tkeepalive\x12a\n" +
 	"\fadd_metadata\x18\x05 \x03(\v2>.buildbarn.configuration.grpc.ClientConfiguration.HeaderValuesR\vaddMetadata\x12u\n" +
-	" add_metadata_jmespath_expression\x18\f \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR\x1daddMetadataJmespathExpression\x12M\n" +
-	"\x05oauth\x18\x06 \x01(\v27.buildbarn.configuration.http.client.OAuthConfigurationR\x05oauth\x129\n" +
+	" add_metadata_jmespath_expression\x18\f \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR\x1daddMetadataJmespathExpression\x12P\n" +
+	"\x06oauth2\x18\x06 \x01(\v28.buildbarn.configuration.http.client.OAuth2ConfigurationR\x06oauth2\x129\n" +
 	"\x19initial_window_size_bytes\x18\b \x01(\x05R\x16initialWindowSizeBytes\x12B\n" +
 	"\x1einitial_conn_window_size_bytes\x18\t \x01(\x05R\x1ainitialConnWindowSizeBytes\x12\x1b\n" +
 	"\tproxy_url\x18\n" +
@@ -1092,7 +1092,7 @@ var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
 	nil,                                                 // 13: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
 	(*tls.ClientConfiguration)(nil),                     // 14: buildbarn.configuration.tls.ClientConfiguration
 	(*jmespath.Expression)(nil),                         // 15: buildbarn.configuration.jmespath.Expression
-	(*client.OAuthConfiguration)(nil),                   // 16: buildbarn.configuration.http.client.OAuthConfiguration
+	(*client.OAuth2Configuration)(nil),                  // 16: buildbarn.configuration.http.client.OAuth2Configuration
 	(*structpb.Struct)(nil),                             // 17: google.protobuf.Struct
 	(*durationpb.Duration)(nil),                         // 18: google.protobuf.Duration
 	(*tls.ServerConfiguration)(nil),                     // 19: buildbarn.configuration.tls.ServerConfiguration
@@ -1107,7 +1107,7 @@ var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
 	1,  // 1: buildbarn.configuration.grpc.ClientConfiguration.keepalive:type_name -> buildbarn.configuration.grpc.ClientKeepaliveConfiguration
 	11, // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
 	15, // 3: buildbarn.configuration.grpc.ClientConfiguration.add_metadata_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	16, // 4: buildbarn.configuration.grpc.ClientConfiguration.oauth:type_name -> buildbarn.configuration.http.client.OAuthConfiguration
+	16, // 4: buildbarn.configuration.grpc.ClientConfiguration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
 	12, // 5: buildbarn.configuration.grpc.ClientConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
 	17, // 6: buildbarn.configuration.grpc.ClientConfiguration.default_service_config:type_name -> google.protobuf.Struct
 	18, // 7: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.time:type_name -> google.protobuf.Duration

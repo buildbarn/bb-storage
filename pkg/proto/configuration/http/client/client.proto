@@ -41,23 +41,23 @@ message Configuration {
   // https://github.com/golang/go/issues/59690
   bool disable_http2 = 6;
 
-  // Oauth authentication settings. HTTP only supports OAuthClientCredentials.
+  // Oauth authentication settings.
   // More information: https://grpc.io/docs/guides/auth/
-  OAuthConfiguration oauth = 7;
+  OAuth2Configuration oauth2 = 7;
 }
 
-message OAuthConfiguration {
+message OAuth2Configuration {
   oneof credentials {
-    // Use default Google credentials. More information:
+    // Use default Google credentials. gRPC only. More information:
     // https://developers.google.com/accounts/docs/application-default-credentials
     google.protobuf.Empty google_default_credentials = 1;
 
-    // Service account private key to use to obtain access token.
+    // Service account private key to use to obtain access token. gRPC only.
     string service_account_key = 2;
 
     // Client credentials OAuth2 grant flow. More information:
     // https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
-    OAuthClientCredentials client_credentials = 4;
+    OAuth2ClientCredentials client_credentials = 4;
   }
 
   // OAuth scopes. More information:
@@ -65,7 +65,7 @@ message OAuthConfiguration {
   repeated string scopes = 3;
 }
 
-message OAuthClientCredentials {
+message OAuth2ClientCredentials {
   // The client identifier to provide to the authorization endpoint.
   string client_id = 1;
 

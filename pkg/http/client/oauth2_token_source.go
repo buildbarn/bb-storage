@@ -13,13 +13,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// NewTokenSourceFromConfiguration uses the given OAuthConfiguration to create a token source for HTTP clients.
-func NewTokenSourceFromConfiguration(oauthConfig *configuration.OAuthConfiguration) (oauth2.TokenSource, error) {
+// NewTokenSourceFromConfiguration uses the given configuration to create a
+// token source for HTTP clients.
+func NewTokenSourceFromConfiguration(oauthConfig *configuration.OAuth2Configuration) (oauth2.TokenSource, error) {
 	var source oauth2.TokenSource
 	var err error
 
 	switch credentials := oauthConfig.Credentials.(type) {
-	case *configuration.OAuthConfiguration_ClientCredentials:
+	case *configuration.OAuth2Configuration_ClientCredentials:
 		source, err = clientCredentialsTokenSource(oauthConfig.Scopes, credentials)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "oauth credentials are wrong")
@@ -30,9 +31,7 @@ func NewTokenSourceFromConfiguration(oauthConfig *configuration.OAuthConfigurati
 	return source, err
 }
 
-// clientCredentialsTokenSource uses the config to create a token source
-// directly for the given ClientCredentials configuration.
-func clientCredentialsTokenSource(scopes []string, config *configuration.OAuthConfiguration_ClientCredentials) (oauth2.TokenSource, error) {
+func clientCredentialsTokenSource(scopes []string, config *configuration.OAuth2Configuration_ClientCredentials) (oauth2.TokenSource, error) {
 	roundTripper, err := NewRoundTripperFromConfiguration(config.ClientCredentials.HttpClient)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create HTTP client")

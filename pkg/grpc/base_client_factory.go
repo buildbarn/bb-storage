@@ -121,23 +121,23 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	// Optional: OAuth authentication.
-	if oauthConfig := config.Oauth; oauthConfig != nil {
+	if oauth2Config := config.Oauth2; oauth2Config != nil {
 		var perRPC credentials.PerRPCCredentials
 		var err error
-		switch credentials := oauthConfig.Credentials.(type) {
-		case *http_configuration.OAuthConfiguration_GoogleDefaultCredentials:
-			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
-		case *http_configuration.OAuthConfiguration_ServiceAccountKey:
-			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauthConfig.Scopes...)
+		switch credentials := oauth2Config.Credentials.(type) {
+		case *http_configuration.OAuth2Configuration_GoogleDefaultCredentials:
+			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauth2Config.Scopes...)
+		case *http_configuration.OAuth2Configuration_ServiceAccountKey:
+			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauth2Config.Scopes...)
 		default:
-			tokenSource, err := http_client.NewTokenSourceFromConfiguration(oauthConfig)
+			tokenSource, err := http_client.NewTokenSourceFromConfiguration(oauth2Config)
 			if err != nil {
 				return nil, err
 			}
 			perRPC = oauth.TokenSource{TokenSource: tokenSource}
 		}
 		if err != nil {
-			return nil, util.StatusWrap(err, "Failed to create oauth configuration")
+			return nil, util.StatusWrap(err, "Failed to create oauth2 per rpc credentials")
 		}
 		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
 	}
