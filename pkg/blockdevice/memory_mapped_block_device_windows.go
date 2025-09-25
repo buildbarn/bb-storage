@@ -76,7 +76,7 @@ func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (n int, err error
 	if n < len(p) {
 		err = io.EOF
 	}
-	return
+	return n, err
 }
 
 func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
