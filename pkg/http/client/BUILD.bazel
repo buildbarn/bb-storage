@@ -6,7 +6,7 @@ go_library(
         "configuration.go",
         "header_adding_round_tripper.go",
         "metrics_round_tripper.go",
-        "oauth2_credentials.go",
+        "oauth2_token_source.go",
         "oauth_adding_round_tripper.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/http/client",

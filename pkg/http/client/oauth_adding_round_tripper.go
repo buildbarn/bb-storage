@@ -12,7 +12,7 @@ import (
 // OAuth2 token from the TokenSource and add its to the HTTP header on all
 // outgoing requests.
 func NewOAuthAddingRoundTripper(base http.RoundTripper, config *pb.OAuthConfiguration) (http.RoundTripper, error) {
-	source, err := TokenSource(config)
+	source, err := NewTokenSourceFromConfiguration(config)
 	if err != nil {
 		return nil, err
 	}
