@@ -12,3 +12,8 @@ expand_template(
     template = ["_TAG_"],
     visibility = ["//visibility:public"],
 )
+
+sh_binary(
+    name = "reformat",
+    srcs = ["reformat.sh"],
+)
