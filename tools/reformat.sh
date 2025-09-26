@@ -32,7 +32,7 @@ bazel mod tidy
 bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)
 
 # Protobuf
-# find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +
+find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +
 
 # Generated .pb.go files
 find bazel-bin/pkg/proto -name '*.pb.go' -delete || true
