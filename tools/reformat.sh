@@ -1,15 +1,19 @@
-#!/bin/sh
+#!/bin/bash
 
-set -eu
+# --- begin runfiles.bash initialization v3 ---
+# Copy-pasted from the Bazel Bash runfiles library v3.
+set -uo pipefail; set +e; f=bazel_tools/tools/bash/runfiles/runfiles.bash
+# shellcheck disable=SC1090
+source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$0.runfiles/$f" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "$0.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "$0.exe.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  { echo>&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
+# --- end runfiles.bash initialization v3 ---
 
-working_dir="${BUILD_WORKSPACE_DIRECTORY:-$1}"
-if [ -z "$working_dir" ]; then
-  echo "Either the environment variable BUILD_WORKSPACE_DIRECTORY"
-  echo "must be set, or a directory must be passed in as an argument."
-  exit 1
-fi
-
-cd "$working_dir"
+# Start in the root directory
+cd "$BUILD_WORKSPACE_DIRECTORY"
 
 # Go dependencies
 find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
@@ -29,10 +33,10 @@ bazel run //:gazelle
 bazel mod tidy
 
 # Go
-bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)
+"$(rlocation gazelle++go_deps+cc_mvdan_gofumpt/gofumpt_/gofumpt)" -w -extra "$(pwd)"
 
 # Protobuf
-find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +
+find . -name '*.proto' -exec "$(rlocation toolchains_llvm++llvm+llvm_toolchain_llvm/bin/clang-format)" -i {} +
 
 # Generated .pb.go files
 find bazel-bin/pkg/proto -name '*.pb.go' -delete || true

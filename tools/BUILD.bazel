@@ -1,6 +1,7 @@
 # gazelle:ignore
 
 load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 # When built with --stamp, creates a non-deterministic output file for pushing images to a remote registry.
 # With --nostamp, produces a deterministic output so dependents get cache hits.
@@ -16,4 +17,11 @@ expand_template(
 sh_binary(
     name = "reformat",
     srcs = ["reformat.sh"],
+    data = [
+        "@cc_mvdan_gofumpt//:gofumpt",
+        "@llvm_toolchain_llvm//:bin/clang-format",
+    ],
+    deps = [
+        "@rules_shell//shell/runfiles",
+    ],
 )
