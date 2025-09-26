@@ -12,11 +12,31 @@ source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
   { echo>&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
 # --- end runfiles.bash initialization v3 ---
 
+# Check required binaries exist
+go="$(rlocation rules_go++go_sdk+main___download_0/bin/go)"
+if [ -z "$go" ]; then
+  echo "go binary not found"
+  exit 1
+fi
+
+gofumpt="$(rlocation gazelle++go_deps+cc_mvdan_gofumpt/gofumpt_/gofumpt)"
+if [ -z "$gofumpt" ]; then
+  echo "gofumpt binary not found"
+  exit 1
+fi
+
+clang_format="$(rlocation toolchains_llvm++llvm+llvm_toolchain_llvm/bin/clang-format)"
+if [ -z "$clang_format" ]; then
+  echo "clang-format binary not found"
+  exit 1
+fi
+
 # Start in the root directory
+original_dir="$(pwd)"
 cd "$BUILD_WORKSPACE_DIRECTORY"
 
 # Get the go module name
-go_module_name=$("$(rlocation rules_go++go_sdk+main___download_0/bin/go)" list -m)
+go_module_name=$($go list -m)
 
 # Go dependencies
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
@@ -25,8 +45,8 @@ find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
   cat "$f" > $(echo "$f" | sed -e "s|.*/${go_module_name}/||")
 done
 
-#go get -d -u ./... || true
-go mod tidy || true
+#$go get -d -u ./... || true
+$go mod tidy || true
 
 # Gazelle
 find . -name '*.pb.go' -delete
@@ -37,10 +57,10 @@ bazel run //:gazelle
 bazel mod tidy
 
 # Go
-"$(rlocation gazelle++go_deps+cc_mvdan_gofumpt/gofumpt_/gofumpt)" -w -extra "$(pwd)"
+$gofumpt -w -extra "$(pwd)"
 
 # Protobuf
-find . -name '*.proto' -exec "$(rlocation toolchains_llvm++llvm+llvm_toolchain_llvm/bin/clang-format)" -i {} +
+find . -name '*.proto' -exec "$clang_format" -i {} +
 
 # Generated .pb.go files
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
