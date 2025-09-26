@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.cloud.aws;
 
-import "pkg/proto/configuration/http/http.proto";
+import "pkg/proto/configuration/http/client/client.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws";
 
@@ -55,5 +55,5 @@ message SessionConfiguration {
   }
 
   // Optional: Options to be used by the HTTP client.
-  buildbarn.configuration.http.ClientConfiguration http_client = 6;
+  buildbarn.configuration.http.client.Configuration http_client = 6;
 }

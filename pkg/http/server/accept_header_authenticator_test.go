@@ -1,4 +1,4 @@
-package http_test
+package server_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -23,7 +23,7 @@ func TestAcceptHeaderAuthenticator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	baseAuthenticator := mock.NewMockHTTPAuthenticator(ctrl)
-	authenticator := bb_http.NewAcceptHeaderAuthenticator(baseAuthenticator, []string{"text/html", "font/*"})
+	authenticator := http_server.NewAcceptHeaderAuthenticator(baseAuthenticator, []string{"text/html", "font/*"})
 
 	t.Run("MissingHeader", func(t *testing.T) {
 		w := mock.NewMockResponseWriter(ctrl)

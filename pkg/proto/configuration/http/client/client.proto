@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package buildbarn.configuration.http.client;
+
+import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/tls/tls.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client";
+
+message Configuration {
+  // TLS client configuration, in case resources are requested through
+  // https://. The system-wide certificate authorities and no client
+  // certificate will be used when left unset.
+  buildbarn.configuration.tls.ClientConfiguration tls = 1;
+
+  // If set, forward all traffic through a proxy with a given URL.
+  string proxy_url = 2;
+
+  message HeaderValues {
+    string header = 1;
+    repeated string values = 2;
+  }
+
+  // HTTP headers to attach to every outgoing request.
+  //
+  // This option can, amongst other things, be used to perform HTTP
+  // basic access authentication, by providing an "Authorization" header
+  // with value:
+  //
+  //         "Basic " + std.base64(username + ":" + password)
+  repeated HeaderValues add_headers = 5;
+
+  // Use HTTP/1.1, even if the server supports HTTP/2.
+  //
+  // This option can be used to work around HTTP client or server bugs.
+  // For example, the following bug in Go's HTTP/2 client may cause
+  // requests to be sent across network connections that are known to be
+  // unresponsive, leading to request timeouts:
+  //
+  // https://github.com/golang/go/issues/36026
+  // https://github.com/golang/go/issues/59690
+  bool disable_http2 = 6;
+
+  // Oauth authentication settings.
+  // More information: https://grpc.io/docs/guides/auth/
+  OAuth2Configuration oauth2 = 7;
+}
+
+message OAuth2Configuration {
+  oneof credentials {
+    // Use default Google credentials. gRPC only. More information:
+    // https://developers.google.com/accounts/docs/application-default-credentials
+    google.protobuf.Empty google_default_credentials = 1;
+
+    // Service account private key to use to obtain access token. gRPC only.
+    string service_account_key = 2;
+
+    // Client credentials OAuth2 grant flow. More information:
+    // https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+    OAuth2ClientCredentials client_credentials = 4;
+  }
+
+  // OAuth scopes. More information:
+  // https://developers.google.com/identity/protocols/oauth2/scopes
+  repeated string scopes = 3;
+}
+
+message OAuth2ClientCredentials {
+  // The client identifier to provide to the authorization endpoint.
+  string client_id = 1;
+
+  // The client secret to provide to the token endpoint.
+  string client_secret = 2;
+
+  // The URL of the token endpoint. The HTTP server will make calls to
+  // it to obtain access tokens and refresh tokens.
+  string token_endpoint_url = 3;
+
+  // Configuration options for the HTTP client that is used to send
+  // requests to the token endpoint and user info endpoint.
+  Configuration http_client = 4;
+}

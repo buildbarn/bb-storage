@@ -12,7 +12,7 @@ proto_library(
         "//pkg/proto/configuration/cloud/gcp:gcp_proto",
         "//pkg/proto/configuration/digest:digest_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
-        "//pkg/proto/configuration/http:http_proto",
+        "//pkg/proto/configuration/http/client:client_proto",
         "@googleapis//google/rpc:status_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -31,7 +31,7 @@ go_proto_library(
         "//pkg/proto/configuration/cloud/gcp",
         "//pkg/proto/configuration/digest",
         "//pkg/proto/configuration/grpc",
-        "//pkg/proto/configuration/http",
+        "//pkg/proto/configuration/http/client",
         "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )

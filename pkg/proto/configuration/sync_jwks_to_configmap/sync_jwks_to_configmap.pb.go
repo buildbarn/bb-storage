@@ -7,7 +7,7 @@
 package sync_jwks_to_configmap
 
 import (
-	http "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,12 +23,12 @@ const (
 )
 
 type ApplicationConfiguration struct {
-	state              protoimpl.MessageState    `protogen:"open.v1"`
-	HttpClient         *http.ClientConfiguration `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
-	JwksUrl            string                    `protobuf:"bytes,2,opt,name=jwks_url,json=jwksUrl,proto3" json:"jwks_url,omitempty"`
-	ConfigMapNamespace string                    `protobuf:"bytes,3,opt,name=config_map_namespace,json=configMapNamespace,proto3" json:"config_map_namespace,omitempty"`
-	ConfigMapName      string                    `protobuf:"bytes,4,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
-	ConfigMapKey       string                    `protobuf:"bytes,5,opt,name=config_map_key,json=configMapKey,proto3" json:"config_map_key,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	HttpClient         *client.Configuration  `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	JwksUrl            string                 `protobuf:"bytes,2,opt,name=jwks_url,json=jwksUrl,proto3" json:"jwks_url,omitempty"`
+	ConfigMapNamespace string                 `protobuf:"bytes,3,opt,name=config_map_namespace,json=configMapNamespace,proto3" json:"config_map_namespace,omitempty"`
+	ConfigMapName      string                 `protobuf:"bytes,4,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
+	ConfigMapKey       string                 `protobuf:"bytes,5,opt,name=config_map_key,json=configMapKey,proto3" json:"config_map_key,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -63,7 +63,7 @@ func (*ApplicationConfiguration) Descriptor() ([]byte, []int) {
 	return file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ApplicationConfiguration) GetHttpClient() *http.ClientConfiguration {
+func (x *ApplicationConfiguration) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -102,9 +102,9 @@ var File_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_p
 
 const file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc = "" +
 	"\n" +
-	"Kpkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto\x12.buildbarn.configuration.sync_jwks_to_configmap\x1a'pkg/proto/configuration/http/http.proto\"\x89\x02\n" +
-	"\x18ApplicationConfiguration\x12R\n" +
-	"\vhttp_client\x18\x01 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"Kpkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto\x12.buildbarn.configuration.sync_jwks_to_configmap\x1a0pkg/proto/configuration/http/client/client.proto\"\x8a\x02\n" +
+	"\x18ApplicationConfiguration\x12S\n" +
+	"\vhttp_client\x18\x01 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12\x19\n" +
 	"\bjwks_url\x18\x02 \x01(\tR\ajwksUrl\x120\n" +
 	"\x14config_map_namespace\x18\x03 \x01(\tR\x12configMapNamespace\x12&\n" +
@@ -126,10 +126,10 @@ func file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_
 var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes = []any{
 	(*ApplicationConfiguration)(nil), // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration
-	(*http.ClientConfiguration)(nil), // 1: buildbarn.configuration.http.ClientConfiguration
+	(*client.Configuration)(nil),     // 1: buildbarn.configuration.http.client.Configuration
 }
 var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs = []int32{
-	1, // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	1, // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

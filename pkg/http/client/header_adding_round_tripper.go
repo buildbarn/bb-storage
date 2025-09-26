@@ -1,19 +1,19 @@
-package http
+package client
 
 import (
 	"net/http"
 
-	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 )
 
 type headerAddingRoundTripper struct {
 	base         http.RoundTripper
-	headerValues []*pb.ClientConfiguration_HeaderValues
+	headerValues []*pb.Configuration_HeaderValues
 }
 
 // NewHeaderAddingRoundTripper is a decorator for RoundTripper that adds
 // additional HTTP header values to all outgoing requests.
-func NewHeaderAddingRoundTripper(base http.RoundTripper, headerValues []*pb.ClientConfiguration_HeaderValues) http.RoundTripper {
+func NewHeaderAddingRoundTripper(base http.RoundTripper, headerValues []*pb.Configuration_HeaderValues) http.RoundTripper {
 	return &headerAddingRoundTripper{
 		base:         base,
 		headerValues: headerValues,

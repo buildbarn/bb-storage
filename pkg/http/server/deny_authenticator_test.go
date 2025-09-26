@@ -1,11 +1,11 @@
-package http_test
+package server_test
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +18,7 @@ import (
 func TestDenyAuthenticator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	authenticator := bb_http.NewDenyAuthenticator("This service has been disabled")
+	authenticator := http_server.NewDenyAuthenticator("This service has been disabled")
 
 	w := mock.NewMockResponseWriter(ctrl)
 	r, err := http.NewRequest(http.MethodGet, "/path", nil)

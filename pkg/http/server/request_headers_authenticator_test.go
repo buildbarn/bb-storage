@@ -1,4 +1,4 @@
-package http_test
+package server_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -43,7 +43,7 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 			Public: structpb.NewStringValue("You're totally who you say you are"),
 		})), nil)
 
-		authenticator, err := bb_http.NewRequestHeadersAuthenticator(
+		authenticator, err := http_server.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{
 				"Authorization",
@@ -67,7 +67,7 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 			ctx, map[string][]string{},
 		).Return(nil, status.Error(codes.Unauthenticated, "Server offline"))
 
-		authenticator, err := bb_http.NewRequestHeadersAuthenticator(
+		authenticator, err := http_server.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{},
 		)
@@ -83,7 +83,7 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 	// The current implementation forwards headers in canonical form, so don't
 	// allow configuring headers in other forms as that may confuse the users.
 	t.Run("OnlyAcceptCanonicalHeaders", func(t *testing.T) {
-		_, err := bb_http.NewRequestHeadersAuthenticator(
+		_, err := http_server.NewRequestHeadersAuthenticator(
 			backend,
 			[]string{"Non-CANONICAL-Header"},
 		)

@@ -12,7 +12,7 @@ import (
 	gcp "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp"
 	digest "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
-	http "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	status "google.golang.org/genproto/googleapis/rpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -972,7 +972,7 @@ type ReferenceExpandingBlobAccessConfiguration struct {
 	state                             protoimpl.MessageState          `protogen:"open.v1"`
 	IndirectContentAddressableStorage *BlobAccessConfiguration        `protobuf:"bytes,1,opt,name=indirect_content_addressable_storage,json=indirectContentAddressableStorage,proto3" json:"indirect_content_addressable_storage,omitempty"`
 	AwsSession                        *aws.SessionConfiguration       `protobuf:"bytes,2,opt,name=aws_session,json=awsSession,proto3" json:"aws_session,omitempty"`
-	HttpClient                        *http.ClientConfiguration       `protobuf:"bytes,3,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	HttpClient                        *client.Configuration           `protobuf:"bytes,3,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
 	GcpClientOptions                  *gcp.ClientOptionsConfiguration `protobuf:"bytes,4,opt,name=gcp_client_options,json=gcpClientOptions,proto3" json:"gcp_client_options,omitempty"`
 	ContentAddressableStorage         *BlobAccessConfiguration        `protobuf:"bytes,5,opt,name=content_addressable_storage,json=contentAddressableStorage,proto3" json:"content_addressable_storage,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
@@ -1023,7 +1023,7 @@ func (x *ReferenceExpandingBlobAccessConfiguration) GetAwsSession() *aws.Session
 	return nil
 }
 
-func (x *ReferenceExpandingBlobAccessConfiguration) GetHttpClient() *http.ClientConfiguration {
+func (x *ReferenceExpandingBlobAccessConfiguration) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -1990,7 +1990,7 @@ var File_pkg_proto_configuration_blobstore_blobstore_proto protoreflect.FileDesc
 
 const file_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc = "" +
 	"\n" +
-	"1pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a\x17google/rpc/status.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a5pkg/proto/configuration/blockdevice/blockdevice.proto\x1a+pkg/proto/configuration/cloud/aws/aws.proto\x1a+pkg/proto/configuration/cloud/gcp/gcp.proto\x1a+pkg/proto/configuration/digest/digest.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a'pkg/proto/configuration/http/http.proto\"\xf3\x01\n" +
+	"1pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a\x17google/rpc/status.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a5pkg/proto/configuration/blockdevice/blockdevice.proto\x1a+pkg/proto/configuration/cloud/aws/aws.proto\x1a+pkg/proto/configuration/cloud/gcp/gcp.proto\x1a+pkg/proto/configuration/digest/digest.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a0pkg/proto/configuration/http/client/client.proto\"\xf3\x01\n" +
 	"\x16BlobstoreConfiguration\x12z\n" +
 	"\x1bcontent_addressable_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x19contentAddressableStorage\x12]\n" +
 	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xd6\x0f\n" +
@@ -2085,12 +2085,12 @@ const file_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc = "" +
 	"\tsecondary\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\tsecondary\x12^\n" +
 	"\n" +
 	"replicator\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\n" +
-	"replicator\"\xd0\x04\n" +
+	"replicator\"\xd1\x04\n" +
 	")ReferenceExpandingBlobAccessConfiguration\x12\x8b\x01\n" +
 	"$indirect_content_addressable_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR!indirectContentAddressableStorage\x12X\n" +
 	"\vaws_session\x18\x02 \x01(\v27.buildbarn.configuration.cloud.aws.SessionConfigurationR\n" +
-	"awsSession\x12R\n" +
-	"\vhttp_client\x18\x03 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"awsSession\x12S\n" +
+	"\vhttp_client\x18\x03 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12k\n" +
 	"\x12gcp_client_options\x18\x04 \x01(\v2=.buildbarn.configuration.cloud.gcp.ClientOptionsConfigurationR\x10gcpClientOptions\x12z\n" +
 	"\x1bcontent_addressable_storage\x18\x05 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x19contentAddressableStorage\"\xa1\x04\n" +
@@ -2187,7 +2187,7 @@ var file_pkg_proto_configuration_blobstore_blobstore_proto_goTypes = []any{
 	(*blockdevice.Configuration)(nil), // 31: buildbarn.configuration.blockdevice.Configuration
 	(*digest.ExistenceCacheConfiguration)(nil), // 32: buildbarn.configuration.digest.ExistenceCacheConfiguration
 	(*aws.SessionConfiguration)(nil),           // 33: buildbarn.configuration.cloud.aws.SessionConfiguration
-	(*http.ClientConfiguration)(nil),           // 34: buildbarn.configuration.http.ClientConfiguration
+	(*client.Configuration)(nil),               // 34: buildbarn.configuration.http.client.Configuration
 	(*gcp.ClientOptionsConfiguration)(nil),     // 35: buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
 	(*emptypb.Empty)(nil),                      // 36: google.protobuf.Empty
 	(*durationpb.Duration)(nil),                // 37: google.protobuf.Duration
@@ -2236,7 +2236,7 @@ var file_pkg_proto_configuration_blobstore_blobstore_proto_depIdxs = []int32{
 	10, // 39: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
 	1,  // 40: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.indirect_content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	33, // 41: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.aws_session:type_name -> buildbarn.configuration.cloud.aws.SessionConfiguration
-	34, // 42: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	34, // 42: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	35, // 43: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.gcp_client_options:type_name -> buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
 	1,  // 44: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	36, // 45: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.local:type_name -> google.protobuf.Empty

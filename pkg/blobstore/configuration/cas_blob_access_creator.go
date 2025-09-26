@@ -15,7 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -131,7 +131,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
 
-		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
+		roundTripper, err := http_client.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
 		if err != nil {
 			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
@@ -154,7 +154,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 				indirectContentAddressableStorage.BlobAccess,
 				contentAddressableStorage,
 				&http.Client{
-					Transport: bb_http.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
+					Transport: http_client.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
 				},
 				s3.NewFromConfig(awsConfig),
 				gcsClient,

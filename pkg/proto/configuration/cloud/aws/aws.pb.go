@@ -7,7 +7,7 @@
 package aws
 
 import (
-	http "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -134,7 +134,7 @@ type SessionConfiguration struct {
 	//	*SessionConfiguration_StaticCredentials
 	//	*SessionConfiguration_WebIdentityRoleCredentials
 	Credentials   isSessionConfiguration_Credentials `protobuf_oneof:"credentials"`
-	HttpClient    *http.ClientConfiguration          `protobuf:"bytes,6,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	HttpClient    *client.Configuration              `protobuf:"bytes,6,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -201,7 +201,7 @@ func (x *SessionConfiguration) GetWebIdentityRoleCredentials() *WebIdentityRoleC
 	return nil
 }
 
-func (x *SessionConfiguration) GetHttpClient() *http.ClientConfiguration {
+func (x *SessionConfiguration) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -228,19 +228,19 @@ var File_pkg_proto_configuration_cloud_aws_aws_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_configuration_cloud_aws_aws_proto_rawDesc = "" +
 	"\n" +
-	"+pkg/proto/configuration/cloud/aws/aws.proto\x12!buildbarn.configuration.cloud.aws\x1a'pkg/proto/configuration/http/http.proto\"c\n" +
+	"+pkg/proto/configuration/cloud/aws/aws.proto\x12!buildbarn.configuration.cloud.aws\x1a0pkg/proto/configuration/http/client/client.proto\"c\n" +
 	"\x11StaticCredentials\x12\"\n" +
 	"\raccess_key_id\x18\x01 \x01(\tR\vaccessKeyId\x12*\n" +
 	"\x11secret_access_key\x18\x02 \x01(\tR\x0fsecretAccessKey\"V\n" +
 	"\x1aWebIdentityRoleCredentials\x12\x19\n" +
 	"\brole_arn\x18\x01 \x01(\tR\aroleArn\x12\x1d\n" +
 	"\n" +
-	"token_file\x18\x02 \x01(\tR\ttokenFile\"\x8f\x03\n" +
+	"token_file\x18\x02 \x01(\tR\ttokenFile\"\x90\x03\n" +
 	"\x14SessionConfiguration\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12e\n" +
 	"\x12static_credentials\x18\x05 \x01(\v24.buildbarn.configuration.cloud.aws.StaticCredentialsH\x00R\x11staticCredentials\x12\x82\x01\n" +
-	"\x1dweb_identity_role_credentials\x18\a \x01(\v2=.buildbarn.configuration.cloud.aws.WebIdentityRoleCredentialsH\x00R\x1awebIdentityRoleCredentials\x12R\n" +
-	"\vhttp_client\x18\x06 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"\x1dweb_identity_role_credentials\x18\a \x01(\v2=.buildbarn.configuration.cloud.aws.WebIdentityRoleCredentialsH\x00R\x1awebIdentityRoleCredentials\x12S\n" +
+	"\vhttp_client\x18\x06 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClientB\r\n" +
 	"\vcredentialsJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05BCZAgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/awsb\x06proto3"
 
@@ -261,12 +261,12 @@ var file_pkg_proto_configuration_cloud_aws_aws_proto_goTypes = []any{
 	(*StaticCredentials)(nil),          // 0: buildbarn.configuration.cloud.aws.StaticCredentials
 	(*WebIdentityRoleCredentials)(nil), // 1: buildbarn.configuration.cloud.aws.WebIdentityRoleCredentials
 	(*SessionConfiguration)(nil),       // 2: buildbarn.configuration.cloud.aws.SessionConfiguration
-	(*http.ClientConfiguration)(nil),   // 3: buildbarn.configuration.http.ClientConfiguration
+	(*client.Configuration)(nil),       // 3: buildbarn.configuration.http.client.Configuration
 }
 var file_pkg_proto_configuration_cloud_aws_aws_proto_depIdxs = []int32{
 	0, // 0: buildbarn.configuration.cloud.aws.SessionConfiguration.static_credentials:type_name -> buildbarn.configuration.cloud.aws.StaticCredentials
 	1, // 1: buildbarn.configuration.cloud.aws.SessionConfiguration.web_identity_role_credentials:type_name -> buildbarn.configuration.cloud.aws.WebIdentityRoleCredentials
-	3, // 2: buildbarn.configuration.cloud.aws.SessionConfiguration.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+	3, // 2: buildbarn.configuration.cloud.aws.SessionConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

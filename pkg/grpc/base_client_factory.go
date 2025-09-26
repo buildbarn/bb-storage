@@ -8,9 +8,11 @@ import (
 	"net/url"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/jmespath"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	http_configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc"
@@ -119,19 +121,23 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 	}
 
 	// Optional: OAuth authentication.
-	if oauthConfig := config.Oauth; oauthConfig != nil {
+	if oauth2Config := config.Oauth2; oauth2Config != nil {
 		var perRPC credentials.PerRPCCredentials
 		var err error
-		switch credentials := oauthConfig.Credentials.(type) {
-		case *configuration.ClientOAuthConfiguration_GoogleDefaultCredentials:
-			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauthConfig.Scopes...)
-		case *configuration.ClientOAuthConfiguration_ServiceAccountKey:
-			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauthConfig.Scopes...)
+		switch credentials := oauth2Config.Credentials.(type) {
+		case *http_configuration.OAuth2Configuration_GoogleDefaultCredentials:
+			perRPC, err = oauth.NewApplicationDefault(context.Background(), oauth2Config.Scopes...)
+		case *http_configuration.OAuth2Configuration_ServiceAccountKey:
+			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauth2Config.Scopes...)
 		default:
-			return nil, status.Error(codes.InvalidArgument, "gRPC client credentials are wrong: one of googleDefaultCredentials or serviceAccountKey should be provided")
+			tokenSource, err := http_client.NewOAuth2TokenSourceFromConfiguration(oauth2Config)
+			if err != nil {
+				return nil, err
+			}
+			perRPC = oauth.TokenSource{TokenSource: tokenSource}
 		}
 		if err != nil {
-			return nil, util.StatusWrap(err, "Failed to create gRPC credentials")
+			return nil, util.StatusWrap(err, "Failed to create oauth2 per rpc credentials")
 		}
 		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
 	}
