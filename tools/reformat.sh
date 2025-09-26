@@ -15,12 +15,16 @@ source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
 # Start in the root directory
 cd "$BUILD_WORKSPACE_DIRECTORY"
 
+# Get the go module name
+go_module_name=$("$(rlocation rules_go++go_sdk+main___download_0/bin/go)" list -m)
+
 # Go dependencies
-find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true
-bazel build -k --output_groups=go_generated_srcs $(bazel query --output=label 'kind("go_proto_library", //...)') || true
-find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
-  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')
+find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
+bazel build $(bazel query --output=label 'kind("go_proto_library", //...)')
+find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
+  cat "$f" > $(echo "$f" | sed -e "s|.*/${go_module_name}/||")
 done
+
 #go get -d -u ./... || true
 go mod tidy || true
 
@@ -39,10 +43,10 @@ bazel mod tidy
 find . -name '*.proto' -exec "$(rlocation toolchains_llvm++llvm+llvm_toolchain_llvm/bin/clang-format)" -i {} +
 
 # Generated .pb.go files
-find bazel-bin/pkg/proto -name '*.pb.go' -delete || true
+find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
 bazel build --output_groups=go_generated_srcs $(bazel query --output=label 'kind("go_proto_library", //...)')
-find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do
-  cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')
+find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
+  cat $f > $(echo $f | sed -e "s|.*/${go_module_name}/||")
 done
 
 # Files embedded into Go binaries
