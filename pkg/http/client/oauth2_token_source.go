@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// NewTokenSourceFromConfiguration uses the given configuration to create a
+// NewOAuth2TokenSourceFromConfiguration uses the given configuration to create a
 // token source for HTTP clients.
-func NewTokenSourceFromConfiguration(oauthConfig *configuration.OAuth2Configuration) (oauth2.TokenSource, error) {
+func NewOAuth2TokenSourceFromConfiguration(oauthConfig *configuration.OAuth2Configuration) (oauth2.TokenSource, error) {
 	var source oauth2.TokenSource
 	var err error
 

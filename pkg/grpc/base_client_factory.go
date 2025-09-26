@@ -130,7 +130,7 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		case *http_configuration.OAuth2Configuration_ServiceAccountKey:
 			perRPC, err = oauth.NewServiceAccountFromKey([]byte(credentials.ServiceAccountKey), oauth2Config.Scopes...)
 		default:
-			tokenSource, err := http_client.NewTokenSourceFromConfiguration(oauth2Config)
+			tokenSource, err := http_client.NewOAuth2TokenSourceFromConfiguration(oauth2Config)
 			if err != nil {
 				return nil, err
 			}

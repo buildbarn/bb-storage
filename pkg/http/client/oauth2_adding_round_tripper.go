@@ -8,11 +8,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// NewOAuthAddingRoundTripper is a decorator for RoundTripper that requests a
+// NewOAuth2AddingRoundTripper is a decorator for RoundTripper that requests a
 // OAuth2 token from the TokenSource and add its to the HTTP header on all
 // outgoing requests.
-func NewOAuthAddingRoundTripper(base http.RoundTripper, config *pb.OAuth2Configuration) (http.RoundTripper, error) {
-	source, err := NewTokenSourceFromConfiguration(config)
+func NewOAuth2AddingRoundTripper(base http.RoundTripper, config *pb.OAuth2Configuration) (http.RoundTripper, error) {
+	source, err := NewOAuth2TokenSourceFromConfiguration(config)
 	if err != nil {
 		return nil, err
 	}
