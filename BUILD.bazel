@@ -14,13 +14,9 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve proto go google/rpc/status.proto @org_golang_google_genproto_googleapis_rpc//status
 # gazelle:resolve proto go opentelemetry/proto/common/v1/common.proto @io_opentelemetry_go_proto_otlp//common/v1:common
 # gazelle:resolve proto google/bytestream/bytestream.proto @googleapis//google/bytestream:bytestream_proto
-# gazelle:resolve proto google/protobuf/duration.proto @protobuf//:duration_proto
-# gazelle:resolve proto google/protobuf/empty.proto @protobuf//:empty_proto
-# gazelle:resolve proto google/protobuf/struct.proto @protobuf//:struct_proto
-# gazelle:resolve proto google/protobuf/timestamp.proto @protobuf//:timestamp_proto
-# gazelle:resolve proto google/protobuf/wrappers.proto @protobuf//:wrappers_proto
 # gazelle:resolve proto google/rpc/status.proto @googleapis//google/rpc:status_proto
 # gazelle:resolve proto opentelemetry/proto/common/v1/common.proto @opentelemetry-proto//:common_proto
+# gazelle:resolve_regexp proto google/protobuf/(.*)\.proto @protobuf//:${1}_proto
 gazelle(
     name = "gazelle",
 )
