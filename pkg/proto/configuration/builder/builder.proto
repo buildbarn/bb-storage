@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.builder;
 
-import "pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder";
 

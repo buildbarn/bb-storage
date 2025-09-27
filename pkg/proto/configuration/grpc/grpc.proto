@@ -2,15 +2,15 @@ syntax = "proto3";
 
 package buildbarn.configuration.grpc;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
-import "pkg/proto/auth/auth.proto";
-import "pkg/proto/configuration/eviction/eviction.proto";
-import "pkg/proto/configuration/http/client/client.proto";
-import "pkg/proto/configuration/jwt/jwt.proto";
-import "pkg/proto/configuration/tls/tls.proto";
-import "pkg/proto/configuration/x509/x509.proto";
-import "pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
 

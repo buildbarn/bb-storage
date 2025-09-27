@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.cloud.aws;
 
-import "pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws";
 

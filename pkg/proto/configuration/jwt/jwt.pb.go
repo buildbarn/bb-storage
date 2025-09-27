@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/jwt/jwt.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto
 
 package jwt
 
@@ -41,7 +41,7 @@ type AuthorizationHeaderParserConfiguration struct {
 
 func (x *AuthorizationHeaderParserConfiguration) Reset() {
 	*x = AuthorizationHeaderParserConfiguration{}
-	mi := &file_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -53,7 +53,7 @@ func (x *AuthorizationHeaderParserConfiguration) String() string {
 func (*AuthorizationHeaderParserConfiguration) ProtoMessage() {}
 
 func (x *AuthorizationHeaderParserConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -66,7 +66,7 @@ func (x *AuthorizationHeaderParserConfiguration) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AuthorizationHeaderParserConfiguration.ProtoReflect.Descriptor instead.
 func (*AuthorizationHeaderParserConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_jwt_jwt_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AuthorizationHeaderParserConfiguration) GetJwks() isAuthorizationHeaderParserConfiguration_Jwks {
@@ -140,11 +140,11 @@ func (*AuthorizationHeaderParserConfiguration_JwksInline) isAuthorizationHeaderP
 func (*AuthorizationHeaderParserConfiguration_JwksFile) isAuthorizationHeaderParserConfiguration_Jwks() {
 }
 
-var File_pkg_proto_configuration_jwt_jwt_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_jwt_jwt_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDesc = "" +
 	"\n" +
-	"%pkg/proto/configuration/jwt/jwt.proto\x12\x1bbuildbarn.configuration.jwt\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xc0\x04\n" +
+	"Egithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x12\x1bbuildbarn.configuration.jwt\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xc0\x04\n" +
 	"&AuthorizationHeaderParserConfiguration\x12:\n" +
 	"\vjwks_inline\x18\a \x01(\v2\x17.google.protobuf.StructH\x00R\n" +
 	"jwksInline\x12\x1d\n" +
@@ -156,25 +156,25 @@ const file_pkg_proto_configuration_jwt_jwt_proto_rawDesc = "" +
 	"\x04jwksJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03B=Z;github.com/buildbarn/bb-storage/pkg/proto/configuration/jwtb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_jwt_jwt_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_jwt_jwt_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_jwt_jwt_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_jwt_jwt_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_jwt_jwt_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_jwt_jwt_proto_rawDesc), len(file_pkg_proto_configuration_jwt_jwt_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_jwt_jwt_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_jwt_jwt_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_pkg_proto_configuration_jwt_jwt_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_goTypes = []any{
 	(*AuthorizationHeaderParserConfiguration)(nil), // 0: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
 	(*structpb.Struct)(nil),                        // 1: google.protobuf.Struct
 	(eviction.CacheReplacementPolicy)(0),           // 2: buildbarn.configuration.eviction.CacheReplacementPolicy
 	(*jmespath.Expression)(nil),                    // 3: buildbarn.configuration.jmespath.Expression
 }
-var file_pkg_proto_configuration_jwt_jwt_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_depIdxs = []int32{
 	1, // 0: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.jwks_inline:type_name -> google.protobuf.Struct
 	2, // 1: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
 	3, // 2: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration.claims_validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
@@ -186,12 +186,12 @@ var file_pkg_proto_configuration_jwt_jwt_proto_depIdxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_jwt_jwt_proto_init() }
-func file_pkg_proto_configuration_jwt_jwt_proto_init() {
-	if File_pkg_proto_configuration_jwt_jwt_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_msgTypes[0].OneofWrappers = []any{
 		(*AuthorizationHeaderParserConfiguration_JwksInline)(nil),
 		(*AuthorizationHeaderParserConfiguration_JwksFile)(nil),
 	}
@@ -199,17 +199,17 @@ func file_pkg_proto_configuration_jwt_jwt_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_jwt_jwt_proto_rawDesc), len(file_pkg_proto_configuration_jwt_jwt_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_jwt_jwt_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_jwt_jwt_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_jwt_jwt_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_jwt_jwt_proto = out.File
-	file_pkg_proto_configuration_jwt_jwt_proto_goTypes = nil
-	file_pkg_proto_configuration_jwt_jwt_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jwt_jwt_proto_depIdxs = nil
 }

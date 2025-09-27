@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.31.1
-// source: pkg/proto/fsac/fsac.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/fsac/fsac.proto
 
 package fsac
 
@@ -154,5 +154,5 @@ var FileSystemAccessCache_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/fsac/fsac.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/fsac/fsac.proto",
 }

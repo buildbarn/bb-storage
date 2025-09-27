@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/http/client/client.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto
 
 package client
 
@@ -36,7 +36,7 @@ type Configuration struct {
 
 func (x *Configuration) Reset() {
 	*x = Configuration{}
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +48,7 @@ func (x *Configuration) String() string {
 func (*Configuration) ProtoMessage() {}
 
 func (x *Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +61,7 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Configuration) GetTls() *tls.ClientConfiguration {
@@ -114,7 +114,7 @@ type OAuth2Configuration struct {
 
 func (x *OAuth2Configuration) Reset() {
 	*x = OAuth2Configuration{}
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -126,7 +126,7 @@ func (x *OAuth2Configuration) String() string {
 func (*OAuth2Configuration) ProtoMessage() {}
 
 func (x *OAuth2Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -139,7 +139,7 @@ func (x *OAuth2Configuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OAuth2Configuration.ProtoReflect.Descriptor instead.
 func (*OAuth2Configuration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *OAuth2Configuration) GetCredentials() isOAuth2Configuration_Credentials {
@@ -217,7 +217,7 @@ type OAuth2ClientCredentials struct {
 
 func (x *OAuth2ClientCredentials) Reset() {
 	*x = OAuth2ClientCredentials{}
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +229,7 @@ func (x *OAuth2ClientCredentials) String() string {
 func (*OAuth2ClientCredentials) ProtoMessage() {}
 
 func (x *OAuth2ClientCredentials) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +242,7 @@ func (x *OAuth2ClientCredentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OAuth2ClientCredentials.ProtoReflect.Descriptor instead.
 func (*OAuth2ClientCredentials) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *OAuth2ClientCredentials) GetClientId() string {
@@ -283,7 +283,7 @@ type Configuration_HeaderValues struct {
 
 func (x *Configuration_HeaderValues) Reset() {
 	*x = Configuration_HeaderValues{}
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +295,7 @@ func (x *Configuration_HeaderValues) String() string {
 func (*Configuration_HeaderValues) ProtoMessage() {}
 
 func (x *Configuration_HeaderValues) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_client_client_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +308,7 @@ func (x *Configuration_HeaderValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Configuration_HeaderValues.ProtoReflect.Descriptor instead.
 func (*Configuration_HeaderValues) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{0, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *Configuration_HeaderValues) GetHeader() string {
@@ -325,11 +325,11 @@ func (x *Configuration_HeaderValues) GetValues() []string {
 	return nil
 }
 
-var File_pkg_proto_configuration_http_client_client_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_http_client_client_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc = "" +
 	"\n" +
-	"0pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1a\x1bgoogle/protobuf/empty.proto\x1a%pkg/proto/configuration/tls/tls.proto\"\x89\x03\n" +
+	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x89\x03\n" +
 	"\rConfiguration\x12B\n" +
 	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1b\n" +
 	"\tproxy_url\x18\x02 \x01(\tR\bproxyUrl\x12`\n" +
@@ -354,19 +354,19 @@ const file_pkg_proto_configuration_http_client_client_proto_rawDesc = "" +
 	"httpClientBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/clientb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_http_client_client_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_http_client_client_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_http_client_client_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_http_client_client_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_http_client_client_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_http_client_client_proto_rawDesc), len(file_pkg_proto_configuration_http_client_client_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_http_client_client_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_http_client_client_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_pkg_proto_configuration_http_client_client_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_goTypes = []any{
 	(*Configuration)(nil),              // 0: buildbarn.configuration.http.client.Configuration
 	(*OAuth2Configuration)(nil),        // 1: buildbarn.configuration.http.client.OAuth2Configuration
 	(*OAuth2ClientCredentials)(nil),    // 2: buildbarn.configuration.http.client.OAuth2ClientCredentials
@@ -374,7 +374,7 @@ var file_pkg_proto_configuration_http_client_client_proto_goTypes = []any{
 	(*tls.ClientConfiguration)(nil),    // 4: buildbarn.configuration.tls.ClientConfiguration
 	(*emptypb.Empty)(nil),              // 5: google.protobuf.Empty
 }
-var file_pkg_proto_configuration_http_client_client_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_depIdxs = []int32{
 	4, // 0: buildbarn.configuration.http.client.Configuration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
 	3, // 1: buildbarn.configuration.http.client.Configuration.add_headers:type_name -> buildbarn.configuration.http.client.Configuration.HeaderValues
 	1, // 2: buildbarn.configuration.http.client.Configuration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
@@ -388,12 +388,14 @@ var file_pkg_proto_configuration_http_client_client_proto_depIdxs = []int32{
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_http_client_client_proto_init() }
-func file_pkg_proto_configuration_http_client_client_proto_init() {
-	if File_pkg_proto_configuration_http_client_client_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_http_client_client_proto_msgTypes[1].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[1].OneofWrappers = []any{
 		(*OAuth2Configuration_GoogleDefaultCredentials)(nil),
 		(*OAuth2Configuration_ServiceAccountKey)(nil),
 		(*OAuth2Configuration_ClientCredentials)(nil),
@@ -402,17 +404,17 @@ func file_pkg_proto_configuration_http_client_client_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_http_client_client_proto_rawDesc), len(file_pkg_proto_configuration_http_client_client_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_http_client_client_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_http_client_client_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_http_client_client_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_http_client_client_proto = out.File
-	file_pkg_proto_configuration_http_client_client_proto_goTypes = nil
-	file_pkg_proto_configuration_http_client_client_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_depIdxs = nil
 }

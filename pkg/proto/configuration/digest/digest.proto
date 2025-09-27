@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.digest;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto";
 import "google/protobuf/duration.proto";
-import "pkg/proto/configuration/eviction/eviction.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest";
 

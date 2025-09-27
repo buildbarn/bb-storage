@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/grpc/grpc.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto
 
 package grpc
 
@@ -49,7 +49,7 @@ type ClientConfiguration struct {
 
 func (x *ClientConfiguration) Reset() {
 	*x = ClientConfiguration{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -61,7 +61,7 @@ func (x *ClientConfiguration) String() string {
 func (*ClientConfiguration) ProtoMessage() {}
 
 func (x *ClientConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -74,7 +74,7 @@ func (x *ClientConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientConfiguration.ProtoReflect.Descriptor instead.
 func (*ClientConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ClientConfiguration) GetAddress() string {
@@ -165,7 +165,7 @@ type ClientKeepaliveConfiguration struct {
 
 func (x *ClientKeepaliveConfiguration) Reset() {
 	*x = ClientKeepaliveConfiguration{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -177,7 +177,7 @@ func (x *ClientKeepaliveConfiguration) String() string {
 func (*ClientKeepaliveConfiguration) ProtoMessage() {}
 
 func (x *ClientKeepaliveConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -190,7 +190,7 @@ func (x *ClientKeepaliveConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientKeepaliveConfiguration.ProtoReflect.Descriptor instead.
 func (*ClientKeepaliveConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ClientKeepaliveConfiguration) GetTime() *durationpb.Duration {
@@ -234,7 +234,7 @@ type ServerConfiguration struct {
 
 func (x *ServerConfiguration) Reset() {
 	*x = ServerConfiguration{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -246,7 +246,7 @@ func (x *ServerConfiguration) String() string {
 func (*ServerConfiguration) ProtoMessage() {}
 
 func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -259,7 +259,7 @@ func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerConfiguration.ProtoReflect.Descriptor instead.
 func (*ServerConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ServerConfiguration) GetListenAddresses() []string {
@@ -356,7 +356,7 @@ type ServerKeepaliveEnforcementPolicy struct {
 
 func (x *ServerKeepaliveEnforcementPolicy) Reset() {
 	*x = ServerKeepaliveEnforcementPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -368,7 +368,7 @@ func (x *ServerKeepaliveEnforcementPolicy) String() string {
 func (*ServerKeepaliveEnforcementPolicy) ProtoMessage() {}
 
 func (x *ServerKeepaliveEnforcementPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -381,7 +381,7 @@ func (x *ServerKeepaliveEnforcementPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerKeepaliveEnforcementPolicy.ProtoReflect.Descriptor instead.
 func (*ServerKeepaliveEnforcementPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ServerKeepaliveEnforcementPolicy) GetMinTime() *durationpb.Duration {
@@ -411,7 +411,7 @@ type ServerKeepaliveParameters struct {
 
 func (x *ServerKeepaliveParameters) Reset() {
 	*x = ServerKeepaliveParameters{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +423,7 @@ func (x *ServerKeepaliveParameters) String() string {
 func (*ServerKeepaliveParameters) ProtoMessage() {}
 
 func (x *ServerKeepaliveParameters) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +436,7 @@ func (x *ServerKeepaliveParameters) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerKeepaliveParameters.ProtoReflect.Descriptor instead.
 func (*ServerKeepaliveParameters) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ServerKeepaliveParameters) GetMaxConnectionIdle() *durationpb.Duration {
@@ -493,7 +493,7 @@ type AuthenticationPolicy struct {
 
 func (x *AuthenticationPolicy) Reset() {
 	*x = AuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +505,7 @@ func (x *AuthenticationPolicy) String() string {
 func (*AuthenticationPolicy) ProtoMessage() {}
 
 func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +518,7 @@ func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{5}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AuthenticationPolicy) GetPolicy() isAuthenticationPolicy_Policy {
@@ -661,7 +661,7 @@ type AnyAuthenticationPolicy struct {
 
 func (x *AnyAuthenticationPolicy) Reset() {
 	*x = AnyAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +673,7 @@ func (x *AnyAuthenticationPolicy) String() string {
 func (*AnyAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +686,7 @@ func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnyAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AnyAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{6}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AnyAuthenticationPolicy) GetPolicies() []*AuthenticationPolicy {
@@ -705,7 +705,7 @@ type AllAuthenticationPolicy struct {
 
 func (x *AllAuthenticationPolicy) Reset() {
 	*x = AllAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -717,7 +717,7 @@ func (x *AllAuthenticationPolicy) String() string {
 func (*AllAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AllAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -730,7 +730,7 @@ func (x *AllAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AllAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{7}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AllAuthenticationPolicy) GetPolicies() []*AuthenticationPolicy {
@@ -751,7 +751,7 @@ type TLSClientCertificateAuthenticationPolicy struct {
 
 func (x *TLSClientCertificateAuthenticationPolicy) Reset() {
 	*x = TLSClientCertificateAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +763,7 @@ func (x *TLSClientCertificateAuthenticationPolicy) String() string {
 func (*TLSClientCertificateAuthenticationPolicy) ProtoMessage() {}
 
 func (x *TLSClientCertificateAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +776,7 @@ func (x *TLSClientCertificateAuthenticationPolicy) ProtoReflect() protoreflect.M
 
 // Deprecated: Use TLSClientCertificateAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*TLSClientCertificateAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{8}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TLSClientCertificateAuthenticationPolicy) GetClientCertificateAuthorities() string {
@@ -813,7 +813,7 @@ type RemoteAuthenticationPolicy struct {
 
 func (x *RemoteAuthenticationPolicy) Reset() {
 	*x = RemoteAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -825,7 +825,7 @@ func (x *RemoteAuthenticationPolicy) String() string {
 func (*RemoteAuthenticationPolicy) ProtoMessage() {}
 
 func (x *RemoteAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -838,7 +838,7 @@ func (x *RemoteAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoteAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*RemoteAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{9}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RemoteAuthenticationPolicy) GetHeaders() []string {
@@ -886,7 +886,7 @@ type TracingMethodConfiguration struct {
 
 func (x *TracingMethodConfiguration) Reset() {
 	*x = TracingMethodConfiguration{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -898,7 +898,7 @@ func (x *TracingMethodConfiguration) String() string {
 func (*TracingMethodConfiguration) ProtoMessage() {}
 
 func (x *TracingMethodConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -911,7 +911,7 @@ func (x *TracingMethodConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingMethodConfiguration.ProtoReflect.Descriptor instead.
 func (*TracingMethodConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{10}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TracingMethodConfiguration) GetAttributesFromFirstRequestMessage() []string {
@@ -938,7 +938,7 @@ type ClientConfiguration_HeaderValues struct {
 
 func (x *ClientConfiguration_HeaderValues) Reset() {
 	*x = ClientConfiguration_HeaderValues{}
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +950,7 @@ func (x *ClientConfiguration_HeaderValues) String() string {
 func (*ClientConfiguration_HeaderValues) ProtoMessage() {}
 
 func (x *ClientConfiguration_HeaderValues) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +963,7 @@ func (x *ClientConfiguration_HeaderValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientConfiguration_HeaderValues.ProtoReflect.Descriptor instead.
 func (*ClientConfiguration_HeaderValues) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{0, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *ClientConfiguration_HeaderValues) GetHeader() string {
@@ -980,11 +980,11 @@ func (x *ClientConfiguration_HeaderValues) GetValues() []string {
 	return nil
 }
 
-var File_pkg_proto_configuration_grpc_grpc_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x19pkg/proto/auth/auth.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a0pkg/proto/configuration/http/client/client.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a'pkg/proto/configuration/x509/x509.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\x80\b\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x80\b\n" +
 	"\x13ClientConfiguration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12B\n" +
 	"\x03tls\x18\x02 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12X\n" +
@@ -1063,19 +1063,19 @@ const file_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"&attributes_from_first_response_message\x18\x02 \x03(\tR\"attributesFromFirstResponseMessageB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/grpcb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_grpc_grpc_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_grpc_grpc_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_grpc_grpc_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_grpc_grpc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_grpc_grpc_proto_rawDesc), len(file_pkg_proto_configuration_grpc_grpc_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_grpc_grpc_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
 	(*ClientConfiguration)(nil),                         // 0: buildbarn.configuration.grpc.ClientConfiguration
 	(*ClientKeepaliveConfiguration)(nil),                // 1: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
 	(*ServerConfiguration)(nil),                         // 2: buildbarn.configuration.grpc.ServerConfiguration
@@ -1102,7 +1102,7 @@ var file_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
 	(*structpb.Value)(nil),                              // 23: google.protobuf.Value
 	(eviction.CacheReplacementPolicy)(0),                // 24: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
-var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
 	14, // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
 	1,  // 1: buildbarn.configuration.grpc.ClientConfiguration.keepalive:type_name -> buildbarn.configuration.grpc.ClientKeepaliveConfiguration
 	11, // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
@@ -1146,12 +1146,12 @@ var file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
 	0,  // [0:36] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_grpc_grpc_proto_init() }
-func file_pkg_proto_configuration_grpc_grpc_proto_init() {
-	if File_pkg_proto_configuration_grpc_grpc_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5].OneofWrappers = []any{
 		(*AuthenticationPolicy_Allow)(nil),
 		(*AuthenticationPolicy_Any)(nil),
 		(*AuthenticationPolicy_All)(nil),
@@ -1165,17 +1165,17 @@ func file_pkg_proto_configuration_grpc_grpc_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_grpc_grpc_proto_rawDesc), len(file_pkg_proto_configuration_grpc_grpc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_grpc_grpc_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_grpc_grpc_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_grpc_grpc_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_grpc_grpc_proto = out.File
-	file_pkg_proto_configuration_grpc_grpc_proto_goTypes = nil
-	file_pkg_proto_configuration_grpc_grpc_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_depIdxs = nil
 }

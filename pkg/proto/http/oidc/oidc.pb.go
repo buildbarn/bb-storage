@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/http/oidc/oidc.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/http/oidc/oidc.proto
 
 package oidc
 
@@ -37,7 +37,7 @@ type CookieValue struct {
 
 func (x *CookieValue) Reset() {
 	*x = CookieValue{}
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -49,7 +49,7 @@ func (x *CookieValue) String() string {
 func (*CookieValue) ProtoMessage() {}
 
 func (x *CookieValue) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -62,7 +62,7 @@ func (x *CookieValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CookieValue.ProtoReflect.Descriptor instead.
 func (*CookieValue) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CookieValue) GetSessionState() isCookieValue_SessionState {
@@ -116,7 +116,7 @@ type CookieValue_Authenticating struct {
 
 func (x *CookieValue_Authenticating) Reset() {
 	*x = CookieValue_Authenticating{}
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -128,7 +128,7 @@ func (x *CookieValue_Authenticating) String() string {
 func (*CookieValue_Authenticating) ProtoMessage() {}
 
 func (x *CookieValue_Authenticating) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -141,7 +141,7 @@ func (x *CookieValue_Authenticating) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CookieValue_Authenticating.ProtoReflect.Descriptor instead.
 func (*CookieValue_Authenticating) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *CookieValue_Authenticating) GetStateVerifier() []byte {
@@ -170,7 +170,7 @@ type CookieValue_Authenticated struct {
 
 func (x *CookieValue_Authenticated) Reset() {
 	*x = CookieValue_Authenticated{}
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -182,7 +182,7 @@ func (x *CookieValue_Authenticated) String() string {
 func (*CookieValue_Authenticated) ProtoMessage() {}
 
 func (x *CookieValue_Authenticated) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_http_oidc_oidc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -195,7 +195,7 @@ func (x *CookieValue_Authenticated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CookieValue_Authenticated.ProtoReflect.Descriptor instead.
 func (*CookieValue_Authenticated) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescGZIP(), []int{0, 1}
 }
 
 func (x *CookieValue_Authenticated) GetAuthenticationMetadata() *auth.AuthenticationMetadata {
@@ -226,11 +226,11 @@ func (x *CookieValue_Authenticated) GetDefaultExpiration() *durationpb.Duration 
 	return nil
 }
 
-var File_pkg_proto_http_oidc_oidc_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_http_oidc_oidc_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc = "" +
 	"\n" +
-	"\x1epkg/proto/http/oidc/oidc.proto\x12\x13buildbarn.http.oidc\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19pkg/proto/auth/auth.proto\"\xda\x04\n" +
+	">github.com/buildbarn/bb-storage/pkg/proto/http/oidc/oidc.proto\x12\x13buildbarn.http.oidc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x04\n" +
 	"\vCookieValue\x12Y\n" +
 	"\x0eauthenticating\x18\x01 \x01(\v2/.buildbarn.http.oidc.CookieValue.AuthenticatingH\x00R\x0eauthenticating\x12V\n" +
 	"\rauthenticated\x18\x02 \x01(\v2..buildbarn.http.oidc.CookieValue.AuthenticatedH\x00R\rauthenticated\x1ai\n" +
@@ -247,19 +247,19 @@ const file_pkg_proto_http_oidc_oidc_proto_rawDesc = "" +
 	"\rsession_stateB5Z3github.com/buildbarn/bb-storage/pkg/proto/http/oidcb\x06proto3"
 
 var (
-	file_pkg_proto_http_oidc_oidc_proto_rawDescOnce sync.Once
-	file_pkg_proto_http_oidc_oidc_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescData []byte
 )
 
-func file_pkg_proto_http_oidc_oidc_proto_rawDescGZIP() []byte {
-	file_pkg_proto_http_oidc_oidc_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_http_oidc_oidc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_http_oidc_oidc_proto_rawDesc), len(file_pkg_proto_http_oidc_oidc_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc)))
 	})
-	return file_pkg_proto_http_oidc_oidc_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDescData
 }
 
-var file_pkg_proto_http_oidc_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pkg_proto_http_oidc_oidc_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_goTypes = []any{
 	(*CookieValue)(nil),                 // 0: buildbarn.http.oidc.CookieValue
 	(*CookieValue_Authenticating)(nil),  // 1: buildbarn.http.oidc.CookieValue.Authenticating
 	(*CookieValue_Authenticated)(nil),   // 2: buildbarn.http.oidc.CookieValue.Authenticated
@@ -267,7 +267,7 @@ var file_pkg_proto_http_oidc_oidc_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),       // 4: google.protobuf.Timestamp
 	(*durationpb.Duration)(nil),         // 5: google.protobuf.Duration
 }
-var file_pkg_proto_http_oidc_oidc_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_depIdxs = []int32{
 	1, // 0: buildbarn.http.oidc.CookieValue.authenticating:type_name -> buildbarn.http.oidc.CookieValue.Authenticating
 	2, // 1: buildbarn.http.oidc.CookieValue.authenticated:type_name -> buildbarn.http.oidc.CookieValue.Authenticated
 	3, // 2: buildbarn.http.oidc.CookieValue.Authenticated.authentication_metadata:type_name -> buildbarn.auth.AuthenticationMetadata
@@ -280,12 +280,12 @@ var file_pkg_proto_http_oidc_oidc_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_http_oidc_oidc_proto_init() }
-func file_pkg_proto_http_oidc_oidc_proto_init() {
-	if File_pkg_proto_http_oidc_oidc_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto != nil {
 		return
 	}
-	file_pkg_proto_http_oidc_oidc_proto_msgTypes[0].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes[0].OneofWrappers = []any{
 		(*CookieValue_Authenticating_)(nil),
 		(*CookieValue_Authenticated_)(nil),
 	}
@@ -293,17 +293,17 @@ func file_pkg_proto_http_oidc_oidc_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_http_oidc_oidc_proto_rawDesc), len(file_pkg_proto_http_oidc_oidc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_http_oidc_oidc_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_http_oidc_oidc_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_http_oidc_oidc_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_http_oidc_oidc_proto = out.File
-	file_pkg_proto_http_oidc_oidc_proto_goTypes = nil
-	file_pkg_proto_http_oidc_oidc_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_depIdxs = nil
 }

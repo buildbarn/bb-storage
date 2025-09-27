@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/global/global.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto
 
 package global
 
@@ -43,7 +43,7 @@ type PrometheusPushgatewayConfiguration struct {
 
 func (x *PrometheusPushgatewayConfiguration) Reset() {
 	*x = PrometheusPushgatewayConfiguration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -55,7 +55,7 @@ func (x *PrometheusPushgatewayConfiguration) String() string {
 func (*PrometheusPushgatewayConfiguration) ProtoMessage() {}
 
 func (x *PrometheusPushgatewayConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -68,7 +68,7 @@ func (x *PrometheusPushgatewayConfiguration) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use PrometheusPushgatewayConfiguration.ProtoReflect.Descriptor instead.
 func (*PrometheusPushgatewayConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PrometheusPushgatewayConfiguration) GetUrl() string {
@@ -131,7 +131,7 @@ type TracingConfiguration struct {
 
 func (x *TracingConfiguration) Reset() {
 	*x = TracingConfiguration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +143,7 @@ func (x *TracingConfiguration) String() string {
 func (*TracingConfiguration) ProtoMessage() {}
 
 func (x *TracingConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +156,7 @@ func (x *TracingConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingConfiguration.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *TracingConfiguration) GetBackends() []*TracingConfiguration_Backend {
@@ -189,7 +189,7 @@ type SetUmaskConfiguration struct {
 
 func (x *SetUmaskConfiguration) Reset() {
 	*x = SetUmaskConfiguration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +201,7 @@ func (x *SetUmaskConfiguration) String() string {
 func (*SetUmaskConfiguration) ProtoMessage() {}
 
 func (x *SetUmaskConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +214,7 @@ func (x *SetUmaskConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUmaskConfiguration.ProtoReflect.Descriptor instead.
 func (*SetUmaskConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SetUmaskConfiguration) GetUmask() uint32 {
@@ -234,7 +234,7 @@ type SetResourceLimitConfiguration struct {
 
 func (x *SetResourceLimitConfiguration) Reset() {
 	*x = SetResourceLimitConfiguration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -246,7 +246,7 @@ func (x *SetResourceLimitConfiguration) String() string {
 func (*SetResourceLimitConfiguration) ProtoMessage() {}
 
 func (x *SetResourceLimitConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -259,7 +259,7 @@ func (x *SetResourceLimitConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetResourceLimitConfiguration.ProtoReflect.Descriptor instead.
 func (*SetResourceLimitConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SetResourceLimitConfiguration) GetSoftLimit() *wrapperspb.UInt64Value {
@@ -293,7 +293,7 @@ type Configuration struct {
 
 func (x *Configuration) Reset() {
 	*x = Configuration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -305,7 +305,7 @@ func (x *Configuration) String() string {
 func (*Configuration) ProtoMessage() {}
 
 func (x *Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -318,7 +318,7 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Configuration) GetTracing() *TracingConfiguration {
@@ -396,7 +396,7 @@ type DiagnosticsHTTPServerConfiguration struct {
 
 func (x *DiagnosticsHTTPServerConfiguration) Reset() {
 	*x = DiagnosticsHTTPServerConfiguration{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +408,7 @@ func (x *DiagnosticsHTTPServerConfiguration) String() string {
 func (*DiagnosticsHTTPServerConfiguration) ProtoMessage() {}
 
 func (x *DiagnosticsHTTPServerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +421,7 @@ func (x *DiagnosticsHTTPServerConfiguration) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use DiagnosticsHTTPServerConfiguration.ProtoReflect.Descriptor instead.
 func (*DiagnosticsHTTPServerConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{5}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DiagnosticsHTTPServerConfiguration) GetHttpServers() []*server.Configuration {
@@ -462,7 +462,7 @@ type GRPCKubernetesResolver struct {
 
 func (x *GRPCKubernetesResolver) Reset() {
 	*x = GRPCKubernetesResolver{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +474,7 @@ func (x *GRPCKubernetesResolver) String() string {
 func (*GRPCKubernetesResolver) ProtoMessage() {}
 
 func (x *GRPCKubernetesResolver) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +487,7 @@ func (x *GRPCKubernetesResolver) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GRPCKubernetesResolver.ProtoReflect.Descriptor instead.
 func (*GRPCKubernetesResolver) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{6}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GRPCKubernetesResolver) GetApiServerHttpClient() *client.Configuration {
@@ -515,7 +515,7 @@ type PrometheusPushgatewayConfiguration_AdditionalScrapeTarget struct {
 
 func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) Reset() {
 	*x = PrometheusPushgatewayConfiguration_AdditionalScrapeTarget{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -527,7 +527,7 @@ func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) String() str
 func (*PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) ProtoMessage() {}
 
 func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -540,7 +540,7 @@ func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) ProtoReflect
 
 // Deprecated: Use PrometheusPushgatewayConfiguration_AdditionalScrapeTarget.ProtoReflect.Descriptor instead.
 func (*PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{0, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{0, 1}
 }
 
 func (x *PrometheusPushgatewayConfiguration_AdditionalScrapeTarget) GetHttpClient() *client.Configuration {
@@ -582,7 +582,7 @@ type TracingConfiguration_Backend struct {
 
 func (x *TracingConfiguration_Backend) Reset() {
 	*x = TracingConfiguration_Backend{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -594,7 +594,7 @@ func (x *TracingConfiguration_Backend) String() string {
 func (*TracingConfiguration_Backend) ProtoMessage() {}
 
 func (x *TracingConfiguration_Backend) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -607,7 +607,7 @@ func (x *TracingConfiguration_Backend) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingConfiguration_Backend.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Backend) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0}
 }
 
 func (x *TracingConfiguration_Backend) GetSpanExporter() isTracingConfiguration_Backend_SpanExporter {
@@ -711,7 +711,7 @@ type TracingConfiguration_Sampler struct {
 
 func (x *TracingConfiguration_Sampler) Reset() {
 	*x = TracingConfiguration_Sampler{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -723,7 +723,7 @@ func (x *TracingConfiguration_Sampler) String() string {
 func (*TracingConfiguration_Sampler) ProtoMessage() {}
 
 func (x *TracingConfiguration_Sampler) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -736,7 +736,7 @@ func (x *TracingConfiguration_Sampler) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingConfiguration_Sampler.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Sampler) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1}
 }
 
 func (x *TracingConfiguration_Sampler) GetPolicy() isTracingConfiguration_Sampler_Policy {
@@ -837,7 +837,7 @@ type TracingConfiguration_Backend_JaegerCollectorSpanExporter struct {
 
 func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) Reset() {
 	*x = TracingConfiguration_Backend_JaegerCollectorSpanExporter{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -849,7 +849,7 @@ func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) String() stri
 func (*TracingConfiguration_Backend_JaegerCollectorSpanExporter) ProtoMessage() {}
 
 func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -862,7 +862,7 @@ func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) ProtoReflect(
 
 // Deprecated: Use TracingConfiguration_Backend_JaegerCollectorSpanExporter.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Backend_JaegerCollectorSpanExporter) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0, 0}
 }
 
 func (x *TracingConfiguration_Backend_JaegerCollectorSpanExporter) GetEndpoint() string {
@@ -906,7 +906,7 @@ type TracingConfiguration_Backend_BatchSpanProcessor struct {
 
 func (x *TracingConfiguration_Backend_BatchSpanProcessor) Reset() {
 	*x = TracingConfiguration_Backend_BatchSpanProcessor{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -918,7 +918,7 @@ func (x *TracingConfiguration_Backend_BatchSpanProcessor) String() string {
 func (*TracingConfiguration_Backend_BatchSpanProcessor) ProtoMessage() {}
 
 func (x *TracingConfiguration_Backend_BatchSpanProcessor) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -931,7 +931,7 @@ func (x *TracingConfiguration_Backend_BatchSpanProcessor) ProtoReflect() protore
 
 // Deprecated: Use TracingConfiguration_Backend_BatchSpanProcessor.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Backend_BatchSpanProcessor) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 0, 1}
 }
 
 func (x *TracingConfiguration_Backend_BatchSpanProcessor) GetBatchTimeout() *durationpb.Duration {
@@ -982,7 +982,7 @@ type TracingConfiguration_Sampler_ParentBased struct {
 
 func (x *TracingConfiguration_Sampler_ParentBased) Reset() {
 	*x = TracingConfiguration_Sampler_ParentBased{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[13]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -994,7 +994,7 @@ func (x *TracingConfiguration_Sampler_ParentBased) String() string {
 func (*TracingConfiguration_Sampler_ParentBased) ProtoMessage() {}
 
 func (x *TracingConfiguration_Sampler_ParentBased) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[13]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1007,7 +1007,7 @@ func (x *TracingConfiguration_Sampler_ParentBased) ProtoReflect() protoreflect.M
 
 // Deprecated: Use TracingConfiguration_Sampler_ParentBased.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Sampler_ParentBased) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1, 0}
 }
 
 func (x *TracingConfiguration_Sampler_ParentBased) GetNoParent() *TracingConfiguration_Sampler {
@@ -1055,7 +1055,7 @@ type TracingConfiguration_Sampler_MaximumRate struct {
 
 func (x *TracingConfiguration_Sampler_MaximumRate) Reset() {
 	*x = TracingConfiguration_Sampler_MaximumRate{}
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[14]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1067,7 +1067,7 @@ func (x *TracingConfiguration_Sampler_MaximumRate) String() string {
 func (*TracingConfiguration_Sampler_MaximumRate) ProtoMessage() {}
 
 func (x *TracingConfiguration_Sampler_MaximumRate) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_global_global_proto_msgTypes[14]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1080,7 +1080,7 @@ func (x *TracingConfiguration_Sampler_MaximumRate) ProtoReflect() protoreflect.M
 
 // Deprecated: Use TracingConfiguration_Sampler_MaximumRate.ProtoReflect.Descriptor instead.
 func (*TracingConfiguration_Sampler_MaximumRate) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP(), []int{1, 1, 1}
 }
 
 func (x *TracingConfiguration_Sampler_MaximumRate) GetSamplesPerEpoch() int64 {
@@ -1097,11 +1097,11 @@ func (x *TracingConfiguration_Sampler_MaximumRate) GetEpochDuration() *durationp
 	return nil
 }
 
-var File_pkg_proto_configuration_global_global_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_global_global_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDesc = "" +
 	"\n" +
-	"+pkg/proto/configuration/global/global.proto\x12\x1ebuildbarn.configuration.global\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a*opentelemetry/proto/common/v1/common.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a0pkg/proto/configuration/http/server/server.proto\x1a0pkg/proto/configuration/http/client/client.proto\"\x96\x06\n" +
+	"Kgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x12\x1ebuildbarn.configuration.global\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/server/server.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a*opentelemetry/proto/common/v1/common.proto\"\x96\x06\n" +
 	"\"PrometheusPushgatewayConfiguration\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x10\n" +
 	"\x03job\x18\x02 \x01(\tR\x03job\x12l\n" +
@@ -1191,19 +1191,19 @@ const file_pkg_proto_configuration_global_global_proto_rawDesc = "" +
 	"\x0eapi_server_url\x18\x02 \x01(\tR\fapiServerUrlB@Z>github.com/buildbarn/bb-storage/pkg/proto/configuration/globalb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_global_global_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_global_global_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_global_global_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_global_global_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_global_global_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_global_global_proto_rawDesc), len(file_pkg_proto_configuration_global_global_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_global_global_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_global_global_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
-var file_pkg_proto_configuration_global_global_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_goTypes = []any{
 	(*PrometheusPushgatewayConfiguration)(nil), // 0: buildbarn.configuration.global.PrometheusPushgatewayConfiguration
 	(*TracingConfiguration)(nil),               // 1: buildbarn.configuration.global.TracingConfiguration
 	(*SetUmaskConfiguration)(nil),              // 2: buildbarn.configuration.global.SetUmaskConfiguration
@@ -1229,7 +1229,7 @@ var file_pkg_proto_configuration_global_global_proto_goTypes = []any{
 	(*grpc.ClientConfiguration)(nil), // 22: buildbarn.configuration.grpc.ClientConfiguration
 	(*emptypb.Empty)(nil),            // 23: google.protobuf.Empty
 }
-var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	7,  // 0: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.grouping:type_name -> buildbarn.configuration.global.PrometheusPushgatewayConfiguration.GroupingEntry
 	17, // 1: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.push_interval:type_name -> google.protobuf.Duration
 	18, // 2: buildbarn.configuration.global.PrometheusPushgatewayConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
@@ -1275,18 +1275,18 @@ var file_pkg_proto_configuration_global_global_proto_depIdxs = []int32{
 	0,  // [0:38] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_global_global_proto_init() }
-func file_pkg_proto_configuration_global_global_proto_init() {
-	if File_pkg_proto_configuration_global_global_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_global_global_proto_msgTypes[9].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[9].OneofWrappers = []any{
 		(*TracingConfiguration_Backend_JaegerCollectorSpanExporter_)(nil),
 		(*TracingConfiguration_Backend_OtlpSpanExporter)(nil),
 		(*TracingConfiguration_Backend_SimpleSpanProcessor)(nil),
 		(*TracingConfiguration_Backend_BatchSpanProcessor_)(nil),
 	}
-	file_pkg_proto_configuration_global_global_proto_msgTypes[10].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes[10].OneofWrappers = []any{
 		(*TracingConfiguration_Sampler_Always)(nil),
 		(*TracingConfiguration_Sampler_Never)(nil),
 		(*TracingConfiguration_Sampler_ParentBased_)(nil),
@@ -1297,17 +1297,17 @@ func file_pkg_proto_configuration_global_global_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_global_global_proto_rawDesc), len(file_pkg_proto_configuration_global_global_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_global_global_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_global_global_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_global_global_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_global_global_proto = out.File
-	file_pkg_proto_configuration_global_global_proto_goTypes = nil
-	file_pkg_proto_configuration_global_global_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_global_global_proto_depIdxs = nil
 }

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/replicator/replicator.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/replicator/replicator.proto
 
 package replicator
 
@@ -34,7 +34,7 @@ type ReplicateBlobsRequest struct {
 
 func (x *ReplicateBlobsRequest) Reset() {
 	*x = ReplicateBlobsRequest{}
-	mi := &file_pkg_proto_replicator_replicator_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *ReplicateBlobsRequest) String() string {
 func (*ReplicateBlobsRequest) ProtoMessage() {}
 
 func (x *ReplicateBlobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_replicator_replicator_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *ReplicateBlobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicateBlobsRequest.ProtoReflect.Descriptor instead.
 func (*ReplicateBlobsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_replicator_replicator_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ReplicateBlobsRequest) GetInstanceName() string {
@@ -83,11 +83,11 @@ func (x *ReplicateBlobsRequest) GetDigestFunction() v2.DigestFunction_Value {
 	return v2.DigestFunction_Value(0)
 }
 
-var File_pkg_proto_replicator_replicator_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_replicator_replicator_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDesc = "" +
 	"\n" +
-	"%pkg/proto/replicator/replicator.proto\x12\x14buildbarn.replicator\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe8\x01\n" +
+	"Egithub.com/buildbarn/bb-storage/pkg/proto/replicator/replicator.proto\x12\x14buildbarn.replicator\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe8\x01\n" +
 	"\x15ReplicateBlobsRequest\x12#\n" +
 	"\rinstance_name\x18\x01 \x01(\tR\finstanceName\x12J\n" +
 	"\fblob_digests\x18\x02 \x03(\v2'.build.bazel.remote.execution.v2.DigestR\vblobDigests\x12^\n" +
@@ -97,25 +97,25 @@ const file_pkg_proto_replicator_replicator_proto_rawDesc = "" +
 	"\x0eReplicateBlobs\x12+.buildbarn.replicator.ReplicateBlobsRequest\x1a\x16.google.protobuf.EmptyB6Z4github.com/buildbarn/bb-storage/pkg/proto/replicatorb\x06proto3"
 
 var (
-	file_pkg_proto_replicator_replicator_proto_rawDescOnce sync.Once
-	file_pkg_proto_replicator_replicator_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescData []byte
 )
 
-func file_pkg_proto_replicator_replicator_proto_rawDescGZIP() []byte {
-	file_pkg_proto_replicator_replicator_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_replicator_replicator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_replicator_replicator_proto_rawDesc), len(file_pkg_proto_replicator_replicator_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDesc)))
 	})
-	return file_pkg_proto_replicator_replicator_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDescData
 }
 
-var file_pkg_proto_replicator_replicator_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_pkg_proto_replicator_replicator_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_goTypes = []any{
 	(*ReplicateBlobsRequest)(nil), // 0: buildbarn.replicator.ReplicateBlobsRequest
 	(*v2.Digest)(nil),             // 1: build.bazel.remote.execution.v2.Digest
 	(v2.DigestFunction_Value)(0),  // 2: build.bazel.remote.execution.v2.DigestFunction.Value
 	(*emptypb.Empty)(nil),         // 3: google.protobuf.Empty
 }
-var file_pkg_proto_replicator_replicator_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_depIdxs = []int32{
 	1, // 0: buildbarn.replicator.ReplicateBlobsRequest.blob_digests:type_name -> build.bazel.remote.execution.v2.Digest
 	2, // 1: buildbarn.replicator.ReplicateBlobsRequest.digest_function:type_name -> build.bazel.remote.execution.v2.DigestFunction.Value
 	0, // 2: buildbarn.replicator.Replicator.ReplicateBlobs:input_type -> buildbarn.replicator.ReplicateBlobsRequest
@@ -127,26 +127,26 @@ var file_pkg_proto_replicator_replicator_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_replicator_replicator_proto_init() }
-func file_pkg_proto_replicator_replicator_proto_init() {
-	if File_pkg_proto_replicator_replicator_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_replicator_replicator_proto_rawDesc), len(file_pkg_proto_replicator_replicator_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pkg_proto_replicator_replicator_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_replicator_replicator_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_replicator_replicator_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_replicator_replicator_proto = out.File
-	file_pkg_proto_replicator_replicator_proto_goTypes = nil
-	file_pkg_proto_replicator_replicator_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_replicator_replicator_proto_depIdxs = nil
 }

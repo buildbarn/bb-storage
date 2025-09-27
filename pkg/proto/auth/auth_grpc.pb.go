@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.31.1
-// source: pkg/proto/auth/auth.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto
 
 package auth
 
@@ -115,7 +115,7 @@ var Authentication_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/auth/auth.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto",
 }
 
 const (
@@ -215,5 +215,5 @@ var Authorizer_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/auth/auth.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto",
 }

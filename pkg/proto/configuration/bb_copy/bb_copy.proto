@@ -3,7 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.bb_copy;
 
 import "build/bazel/remote/execution/v2/remote_execution.proto";
-import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto";
 
 message ApplicationConfiguration {
   // Content Addressable Storage where data needs to be read.

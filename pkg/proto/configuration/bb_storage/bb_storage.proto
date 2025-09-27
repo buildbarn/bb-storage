@@ -3,11 +3,11 @@ syntax = "proto3";
 package buildbarn.configuration.bb_storage;
 
 import "build/bazel/remote/execution/v2/remote_execution.proto";
-import "pkg/proto/configuration/auth/auth.proto";
-import "pkg/proto/configuration/blobstore/blobstore.proto";
-import "pkg/proto/configuration/builder/builder.proto";
-import "pkg/proto/configuration/global/global.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
 

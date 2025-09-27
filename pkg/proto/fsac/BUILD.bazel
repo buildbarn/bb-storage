@@ -5,6 +5,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "fsac_proto",
     srcs = ["fsac.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
     visibility = ["//visibility:public"],
     deps = [
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",

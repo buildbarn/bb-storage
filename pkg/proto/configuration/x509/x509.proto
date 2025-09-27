@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.x509;
 
-import "pkg/proto/configuration/jmespath/jmespath.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509";
 

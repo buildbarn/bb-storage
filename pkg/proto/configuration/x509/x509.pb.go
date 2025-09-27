@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/x509/x509.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto
 
 package x509
 
@@ -33,7 +33,7 @@ type ClientCertificateVerifierConfiguration struct {
 
 func (x *ClientCertificateVerifierConfiguration) Reset() {
 	*x = ClientCertificateVerifierConfiguration{}
-	mi := &file_pkg_proto_configuration_x509_x509_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *ClientCertificateVerifierConfiguration) String() string {
 func (*ClientCertificateVerifierConfiguration) ProtoMessage() {}
 
 func (x *ClientCertificateVerifierConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_x509_x509_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,7 @@ func (x *ClientCertificateVerifierConfiguration) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use ClientCertificateVerifierConfiguration.ProtoReflect.Descriptor instead.
 func (*ClientCertificateVerifierConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_x509_x509_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ClientCertificateVerifierConfiguration) GetClientCertificateAuthorities() string {
@@ -82,34 +82,34 @@ func (x *ClientCertificateVerifierConfiguration) GetMetadataExtractionJmespathEx
 	return nil
 }
 
-var File_pkg_proto_configuration_x509_x509_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_x509_x509_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/x509/x509.proto\x12\x1cbuildbarn.configuration.x509\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xe8\x02\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x12\x1cbuildbarn.configuration.x509\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\"\xe8\x02\n" +
 	"&ClientCertificateVerifierConfiguration\x12D\n" +
 	"\x1eclient_certificate_authorities\x18\x01 \x01(\tR\x1cclientCertificateAuthorities\x12r\n" +
 	"\x1evalidation_jmespath_expression\x18\x02 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR\x1cvalidationJmespathExpression\x12\x83\x01\n" +
 	"'metadata_extraction_jmespath_expression\x18\x03 \x01(\v2,.buildbarn.configuration.jmespath.ExpressionR$metadataExtractionJmespathExpressionB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/x509b\x06proto3"
 
 var (
-	file_pkg_proto_configuration_x509_x509_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_x509_x509_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_x509_x509_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_x509_x509_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_x509_x509_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_x509_x509_proto_rawDesc), len(file_pkg_proto_configuration_x509_x509_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_x509_x509_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_x509_x509_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_pkg_proto_configuration_x509_x509_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_goTypes = []any{
 	(*ClientCertificateVerifierConfiguration)(nil), // 0: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
 	(*jmespath.Expression)(nil),                    // 1: buildbarn.configuration.jmespath.Expression
 }
-var file_pkg_proto_configuration_x509_x509_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_depIdxs = []int32{
 	1, // 0: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration.validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
 	1, // 1: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
 	2, // [2:2] is the sub-list for method output_type
@@ -119,26 +119,26 @@ var file_pkg_proto_configuration_x509_x509_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_x509_x509_proto_init() }
-func file_pkg_proto_configuration_x509_x509_proto_init() {
-	if File_pkg_proto_configuration_x509_x509_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_x509_x509_proto_rawDesc), len(file_pkg_proto_configuration_x509_x509_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_x509_x509_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_x509_x509_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_x509_x509_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_x509_x509_proto = out.File
-	file_pkg_proto_configuration_x509_x509_proto_goTypes = nil
-	file_pkg_proto_configuration_x509_x509_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_x509_x509_proto_depIdxs = nil
 }
