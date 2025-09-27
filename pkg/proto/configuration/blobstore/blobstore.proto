@@ -2,16 +2,16 @@ syntax = "proto3";
 
 package buildbarn.configuration.blobstore;
 
-import "google/rpc/status.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
-import "pkg/proto/configuration/blockdevice/blockdevice.proto";
-import "pkg/proto/configuration/cloud/aws/aws.proto";
-import "pkg/proto/configuration/cloud/gcp/gcp.proto";
-import "pkg/proto/configuration/digest/digest.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/http/client/client.proto";
+import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 

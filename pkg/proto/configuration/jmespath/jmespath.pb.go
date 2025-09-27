@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/jmespath/jmespath.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto
 
 package jmespath
 
@@ -33,7 +33,7 @@ type Expression struct {
 
 func (x *Expression) Reset() {
 	*x = Expression{}
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *Expression) String() string {
 func (*Expression) ProtoMessage() {}
 
 func (x *Expression) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,7 @@ func (x *Expression) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Expression.ProtoReflect.Descriptor instead.
 func (*Expression) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Expression) GetExpression() string {
@@ -92,7 +92,7 @@ type File struct {
 
 func (x *File) Reset() {
 	*x = File{}
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -104,7 +104,7 @@ func (x *File) String() string {
 func (*File) ProtoMessage() {}
 
 func (x *File) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -117,7 +117,7 @@ func (x *File) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use File.ProtoReflect.Descriptor instead.
 func (*File) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *File) GetKey() string {
@@ -144,7 +144,7 @@ type TestVector struct {
 
 func (x *TestVector) Reset() {
 	*x = TestVector{}
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +156,7 @@ func (x *TestVector) String() string {
 func (*TestVector) ProtoMessage() {}
 
 func (x *TestVector) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +169,7 @@ func (x *TestVector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestVector.ProtoReflect.Descriptor instead.
 func (*TestVector) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TestVector) GetInput() *structpb.Struct {
@@ -186,11 +186,11 @@ func (x *TestVector) GetExpectedOutput() *structpb.Value {
 	return nil
 }
 
-var File_pkg_proto_configuration_jmespath_jmespath_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc = "" +
 	"\n" +
-	"/pkg/proto/configuration/jmespath/jmespath.proto\x12 buildbarn.configuration.jmespath\x1a\x1cgoogle/protobuf/struct.proto\"\xbb\x01\n" +
+	"Ogithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x12 buildbarn.configuration.jmespath\x1a\x1cgoogle/protobuf/struct.proto\"\xbb\x01\n" +
 	"\n" +
 	"Expression\x12\x1e\n" +
 	"\n" +
@@ -207,26 +207,26 @@ const file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc = "" +
 	"\x0fexpected_output\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x0eexpectedOutputBBZ@github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespathb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc), len(file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pkg_proto_configuration_jmespath_jmespath_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_goTypes = []any{
 	(*Expression)(nil),      // 0: buildbarn.configuration.jmespath.Expression
 	(*File)(nil),            // 1: buildbarn.configuration.jmespath.File
 	(*TestVector)(nil),      // 2: buildbarn.configuration.jmespath.TestVector
 	(*structpb.Struct)(nil), // 3: google.protobuf.Struct
 	(*structpb.Value)(nil),  // 4: google.protobuf.Value
 }
-var file_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs = []int32{
 	1, // 0: buildbarn.configuration.jmespath.Expression.files:type_name -> buildbarn.configuration.jmespath.File
 	2, // 1: buildbarn.configuration.jmespath.Expression.test_vectors:type_name -> buildbarn.configuration.jmespath.TestVector
 	3, // 2: buildbarn.configuration.jmespath.TestVector.input:type_name -> google.protobuf.Struct
@@ -238,26 +238,28 @@ var file_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_jmespath_jmespath_proto_init() }
-func file_pkg_proto_configuration_jmespath_jmespath_proto_init() {
-	if File_pkg_proto_configuration_jmespath_jmespath_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc), len(file_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_jmespath_jmespath_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_jmespath_jmespath_proto = out.File
-	file_pkg_proto_configuration_jmespath_jmespath_proto_goTypes = nil
-	file_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_jmespath_jmespath_proto_depIdxs = nil
 }

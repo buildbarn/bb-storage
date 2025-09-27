@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package buildbarn.configuration.http.client;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto";
 import "google/protobuf/empty.proto";
-import "pkg/proto/configuration/tls/tls.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client";
 

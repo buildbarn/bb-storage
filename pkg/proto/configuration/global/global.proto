@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package buildbarn.configuration.global;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server/server.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 import "opentelemetry/proto/common/v1/common.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/http/server/server.proto";
-import "pkg/proto/configuration/http/client/client.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 

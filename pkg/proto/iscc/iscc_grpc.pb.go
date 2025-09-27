@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.31.1
-// source: pkg/proto/iscc/iscc.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/iscc/iscc.proto
 
 package iscc
 
@@ -154,5 +154,5 @@ var InitialSizeClassCache_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/iscc/iscc.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/iscc/iscc.proto",
 }

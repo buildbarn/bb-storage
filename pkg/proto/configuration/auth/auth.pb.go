@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/auth/auth.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto
 
 package auth
 
@@ -42,7 +42,7 @@ type AuthorizerConfiguration struct {
 
 func (x *AuthorizerConfiguration) Reset() {
 	*x = AuthorizerConfiguration{}
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +54,7 @@ func (x *AuthorizerConfiguration) String() string {
 func (*AuthorizerConfiguration) ProtoMessage() {}
 
 func (x *AuthorizerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +67,7 @@ func (x *AuthorizerConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizerConfiguration.ProtoReflect.Descriptor instead.
 func (*AuthorizerConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AuthorizerConfiguration) GetPolicy() isAuthorizerConfiguration_Policy {
@@ -165,7 +165,7 @@ type InstanceNameAuthorizer struct {
 
 func (x *InstanceNameAuthorizer) Reset() {
 	*x = InstanceNameAuthorizer{}
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -177,7 +177,7 @@ func (x *InstanceNameAuthorizer) String() string {
 func (*InstanceNameAuthorizer) ProtoMessage() {}
 
 func (x *InstanceNameAuthorizer) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -190,7 +190,7 @@ func (x *InstanceNameAuthorizer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstanceNameAuthorizer.ProtoReflect.Descriptor instead.
 func (*InstanceNameAuthorizer) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *InstanceNameAuthorizer) GetAllowedInstanceNamePrefixes() []string {
@@ -212,7 +212,7 @@ type RemoteAuthorizer struct {
 
 func (x *RemoteAuthorizer) Reset() {
 	*x = RemoteAuthorizer{}
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +224,7 @@ func (x *RemoteAuthorizer) String() string {
 func (*RemoteAuthorizer) ProtoMessage() {}
 
 func (x *RemoteAuthorizer) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_auth_auth_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +237,7 @@ func (x *RemoteAuthorizer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoteAuthorizer.ProtoReflect.Descriptor instead.
 func (*RemoteAuthorizer) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RemoteAuthorizer) GetEndpoint() *grpc.ClientConfiguration {
@@ -268,11 +268,11 @@ func (x *RemoteAuthorizer) GetCacheReplacementPolicy() eviction.CacheReplacement
 	return eviction.CacheReplacementPolicy(0)
 }
 
-var File_pkg_proto_configuration_auth_auth_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_auth_auth_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/auth/auth.proto\x12\x1cbuildbarn.configuration.auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a/pkg/proto/configuration/eviction/eviction.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\x96\x03\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x12\x1cbuildbarn.configuration.auth\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x96\x03\n" +
 	"\x17AuthorizerConfiguration\x12.\n" +
 	"\x05allow\x18\x01 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x05allow\x12h\n" +
 	"\x14instance_name_prefix\x18\x02 \x01(\v24.buildbarn.configuration.auth.InstanceNameAuthorizerH\x00R\x12instanceNamePrefix\x12,\n" +
@@ -289,19 +289,19 @@ const file_pkg_proto_configuration_auth_auth_proto_rawDesc = "" +
 	"\x18cache_replacement_policy\x18\x04 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicyB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/authb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_auth_auth_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_auth_auth_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_auth_auth_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_auth_auth_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_auth_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_auth_auth_proto_rawDesc), len(file_pkg_proto_configuration_auth_auth_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_auth_auth_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pkg_proto_configuration_auth_auth_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_goTypes = []any{
 	(*AuthorizerConfiguration)(nil),      // 0: buildbarn.configuration.auth.AuthorizerConfiguration
 	(*InstanceNameAuthorizer)(nil),       // 1: buildbarn.configuration.auth.InstanceNameAuthorizer
 	(*RemoteAuthorizer)(nil),             // 2: buildbarn.configuration.auth.RemoteAuthorizer
@@ -311,7 +311,7 @@ var file_pkg_proto_configuration_auth_auth_proto_goTypes = []any{
 	(*structpb.Value)(nil),               // 6: google.protobuf.Value
 	(eviction.CacheReplacementPolicy)(0), // 7: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
-var file_pkg_proto_configuration_auth_auth_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_depIdxs = []int32{
 	3, // 0: buildbarn.configuration.auth.AuthorizerConfiguration.allow:type_name -> google.protobuf.Empty
 	1, // 1: buildbarn.configuration.auth.AuthorizerConfiguration.instance_name_prefix:type_name -> buildbarn.configuration.auth.InstanceNameAuthorizer
 	3, // 2: buildbarn.configuration.auth.AuthorizerConfiguration.deny:type_name -> google.protobuf.Empty
@@ -327,12 +327,12 @@ var file_pkg_proto_configuration_auth_auth_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_auth_auth_proto_init() }
-func file_pkg_proto_configuration_auth_auth_proto_init() {
-	if File_pkg_proto_configuration_auth_auth_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_auth_auth_proto_msgTypes[0].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes[0].OneofWrappers = []any{
 		(*AuthorizerConfiguration_Allow)(nil),
 		(*AuthorizerConfiguration_InstanceNamePrefix)(nil),
 		(*AuthorizerConfiguration_Deny)(nil),
@@ -343,17 +343,17 @@ func file_pkg_proto_configuration_auth_auth_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_auth_auth_proto_rawDesc), len(file_pkg_proto_configuration_auth_auth_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_auth_auth_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_auth_auth_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_auth_auth_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_auth_auth_proto = out.File
-	file_pkg_proto_configuration_auth_auth_proto_goTypes = nil
-	file_pkg_proto_configuration_auth_auth_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_auth_auth_proto_depIdxs = nil
 }

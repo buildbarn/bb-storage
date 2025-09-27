@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.31.1
-// source: pkg/proto/icas/icas.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/icas/icas.proto
 
 package icas
 
@@ -192,5 +192,5 @@ var IndirectContentAddressableStorage_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/icas/icas.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/icas/icas.proto",
 }

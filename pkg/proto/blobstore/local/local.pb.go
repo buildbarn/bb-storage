@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/blobstore/local/local.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/blobstore/local/local.proto
 
 package local
 
@@ -31,7 +31,7 @@ type BlockLocation struct {
 
 func (x *BlockLocation) Reset() {
 	*x = BlockLocation{}
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +43,7 @@ func (x *BlockLocation) String() string {
 func (*BlockLocation) ProtoMessage() {}
 
 func (x *BlockLocation) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +56,7 @@ func (x *BlockLocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockLocation.ProtoReflect.Descriptor instead.
 func (*BlockLocation) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *BlockLocation) GetOffsetBytes() int64 {
@@ -84,7 +84,7 @@ type BlockState struct {
 
 func (x *BlockState) Reset() {
 	*x = BlockState{}
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -96,7 +96,7 @@ func (x *BlockState) String() string {
 func (*BlockState) ProtoMessage() {}
 
 func (x *BlockState) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -109,7 +109,7 @@ func (x *BlockState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockState.ProtoReflect.Descriptor instead.
 func (*BlockState) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *BlockState) GetWriteOffsetBytes() int64 {
@@ -144,7 +144,7 @@ type PersistentState struct {
 
 func (x *PersistentState) Reset() {
 	*x = PersistentState{}
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +156,7 @@ func (x *PersistentState) String() string {
 func (*PersistentState) ProtoMessage() {}
 
 func (x *PersistentState) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_blobstore_local_local_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +169,7 @@ func (x *PersistentState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistentState.ProtoReflect.Descriptor instead.
 func (*PersistentState) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PersistentState) GetOldestEpochId() uint32 {
@@ -193,11 +193,11 @@ func (x *PersistentState) GetKeyLocationMapHashInitialization() uint64 {
 	return 0
 }
 
-var File_pkg_proto_blobstore_local_local_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_blobstore_local_local_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDesc = "" +
 	"\n" +
-	"%pkg/proto/blobstore/local/local.proto\x12\x19buildbarn.blobstore.local\"Q\n" +
+	"Egithub.com/buildbarn/bb-storage/pkg/proto/blobstore/local/local.proto\x12\x19buildbarn.blobstore.local\"Q\n" +
 	"\rBlockLocation\x12!\n" +
 	"\foffset_bytes\x18\x01 \x01(\x03R\voffsetBytes\x12\x1d\n" +
 	"\n" +
@@ -213,24 +213,24 @@ const file_pkg_proto_blobstore_local_local_proto_rawDesc = "" +
 	"$key_location_map_hash_initialization\x18\x03 \x01(\x04R keyLocationMapHashInitializationB;Z9github.com/buildbarn/bb-storage/pkg/proto/blobstore/localb\x06proto3"
 
 var (
-	file_pkg_proto_blobstore_local_local_proto_rawDescOnce sync.Once
-	file_pkg_proto_blobstore_local_local_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescData []byte
 )
 
-func file_pkg_proto_blobstore_local_local_proto_rawDescGZIP() []byte {
-	file_pkg_proto_blobstore_local_local_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_blobstore_local_local_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_blobstore_local_local_proto_rawDesc), len(file_pkg_proto_blobstore_local_local_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDesc)))
 	})
-	return file_pkg_proto_blobstore_local_local_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDescData
 }
 
-var file_pkg_proto_blobstore_local_local_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pkg_proto_blobstore_local_local_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_goTypes = []any{
 	(*BlockLocation)(nil),   // 0: buildbarn.blobstore.local.BlockLocation
 	(*BlockState)(nil),      // 1: buildbarn.blobstore.local.BlockState
 	(*PersistentState)(nil), // 2: buildbarn.blobstore.local.PersistentState
 }
-var file_pkg_proto_blobstore_local_local_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_depIdxs = []int32{
 	0, // 0: buildbarn.blobstore.local.BlockState.block_location:type_name -> buildbarn.blobstore.local.BlockLocation
 	1, // 1: buildbarn.blobstore.local.PersistentState.blocks:type_name -> buildbarn.blobstore.local.BlockState
 	2, // [2:2] is the sub-list for method output_type
@@ -240,26 +240,26 @@ var file_pkg_proto_blobstore_local_local_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_blobstore_local_local_proto_init() }
-func file_pkg_proto_blobstore_local_local_proto_init() {
-	if File_pkg_proto_blobstore_local_local_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_blobstore_local_local_proto_rawDesc), len(file_pkg_proto_blobstore_local_local_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_blobstore_local_local_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_blobstore_local_local_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_blobstore_local_local_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_blobstore_local_local_proto = out.File
-	file_pkg_proto_blobstore_local_local_proto_goTypes = nil
-	file_pkg_proto_blobstore_local_local_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_blobstore_local_local_proto_depIdxs = nil
 }

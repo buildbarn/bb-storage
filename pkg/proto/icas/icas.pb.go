@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/icas/icas.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/icas/icas.proto
 
 package icas
 
@@ -40,7 +40,7 @@ type Reference struct {
 
 func (x *Reference) Reset() {
 	*x = Reference{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -52,7 +52,7 @@ func (x *Reference) String() string {
 func (*Reference) ProtoMessage() {}
 
 func (x *Reference) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -65,7 +65,7 @@ func (x *Reference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Reference.ProtoReflect.Descriptor instead.
 func (*Reference) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Reference) GetMedium() isReference_Medium {
@@ -171,7 +171,7 @@ type BatchUpdateReferencesRequest struct {
 
 func (x *BatchUpdateReferencesRequest) Reset() {
 	*x = BatchUpdateReferencesRequest{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -183,7 +183,7 @@ func (x *BatchUpdateReferencesRequest) String() string {
 func (*BatchUpdateReferencesRequest) ProtoMessage() {}
 
 func (x *BatchUpdateReferencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -196,7 +196,7 @@ func (x *BatchUpdateReferencesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchUpdateReferencesRequest.ProtoReflect.Descriptor instead.
 func (*BatchUpdateReferencesRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *BatchUpdateReferencesRequest) GetInstanceName() string {
@@ -231,7 +231,7 @@ type GetReferenceRequest struct {
 
 func (x *GetReferenceRequest) Reset() {
 	*x = GetReferenceRequest{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -243,7 +243,7 @@ func (x *GetReferenceRequest) String() string {
 func (*GetReferenceRequest) ProtoMessage() {}
 
 func (x *GetReferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -256,7 +256,7 @@ func (x *GetReferenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReferenceRequest.ProtoReflect.Descriptor instead.
 func (*GetReferenceRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetReferenceRequest) GetInstanceName() string {
@@ -290,7 +290,7 @@ type Reference_S3 struct {
 
 func (x *Reference_S3) Reset() {
 	*x = Reference_S3{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -302,7 +302,7 @@ func (x *Reference_S3) String() string {
 func (*Reference_S3) ProtoMessage() {}
 
 func (x *Reference_S3) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -315,7 +315,7 @@ func (x *Reference_S3) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Reference_S3.ProtoReflect.Descriptor instead.
 func (*Reference_S3) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *Reference_S3) GetBucket() string {
@@ -342,7 +342,7 @@ type Reference_GCS struct {
 
 func (x *Reference_GCS) Reset() {
 	*x = Reference_GCS{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,7 +354,7 @@ func (x *Reference_GCS) String() string {
 func (*Reference_GCS) ProtoMessage() {}
 
 func (x *Reference_GCS) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +367,7 @@ func (x *Reference_GCS) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Reference_GCS.ProtoReflect.Descriptor instead.
 func (*Reference_GCS) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 1}
 }
 
 func (x *Reference_GCS) GetBucket() string {
@@ -395,7 +395,7 @@ type Reference_ContentAddressableStorage struct {
 
 func (x *Reference_ContentAddressableStorage) Reset() {
 	*x = Reference_ContentAddressableStorage{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -407,7 +407,7 @@ func (x *Reference_ContentAddressableStorage) String() string {
 func (*Reference_ContentAddressableStorage) ProtoMessage() {}
 
 func (x *Reference_ContentAddressableStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -420,7 +420,7 @@ func (x *Reference_ContentAddressableStorage) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use Reference_ContentAddressableStorage.ProtoReflect.Descriptor instead.
 func (*Reference_ContentAddressableStorage) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{0, 2}
 }
 
 func (x *Reference_ContentAddressableStorage) GetInstanceName() string {
@@ -454,7 +454,7 @@ type BatchUpdateReferencesRequest_Request struct {
 
 func (x *BatchUpdateReferencesRequest_Request) Reset() {
 	*x = BatchUpdateReferencesRequest_Request{}
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +466,7 @@ func (x *BatchUpdateReferencesRequest_Request) String() string {
 func (*BatchUpdateReferencesRequest_Request) ProtoMessage() {}
 
 func (x *BatchUpdateReferencesRequest_Request) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_icas_icas_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +479,7 @@ func (x *BatchUpdateReferencesRequest_Request) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use BatchUpdateReferencesRequest_Request.ProtoReflect.Descriptor instead.
 func (*BatchUpdateReferencesRequest_Request) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{1, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP(), []int{1, 0}
 }
 
 func (x *BatchUpdateReferencesRequest_Request) GetDigest() *v2.Digest {
@@ -496,11 +496,11 @@ func (x *BatchUpdateReferencesRequest_Request) GetReference() *Reference {
 	return nil
 }
 
-var File_pkg_proto_icas_icas_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_icas_icas_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDesc = "" +
 	"\n" +
-	"\x19pkg/proto/icas/icas.proto\x12\x0ebuildbarn.icas\x1a6build/bazel/remote/execution/v2/remote_execution.proto\"\xff\x05\n" +
+	"9github.com/buildbarn/bb-storage/pkg/proto/icas/icas.proto\x12\x0ebuildbarn.icas\x1a6build/bazel/remote/execution/v2/remote_execution.proto\"\xff\x05\n" +
 	"\tReference\x12\x1b\n" +
 	"\bhttp_url\x18\x01 \x01(\tH\x00R\ahttpUrl\x12.\n" +
 	"\x02s3\x18\x02 \x01(\v2\x1c.buildbarn.icas.Reference.S3H\x00R\x02s3\x121\n" +
@@ -539,19 +539,19 @@ const file_pkg_proto_icas_icas_proto_rawDesc = "" +
 	"\fGetReference\x12#.buildbarn.icas.GetReferenceRequest\x1a\x19.buildbarn.icas.ReferenceB0Z.github.com/buildbarn/bb-storage/pkg/proto/icasb\x06proto3"
 
 var (
-	file_pkg_proto_icas_icas_proto_rawDescOnce sync.Once
-	file_pkg_proto_icas_icas_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescData []byte
 )
 
-func file_pkg_proto_icas_icas_proto_rawDescGZIP() []byte {
-	file_pkg_proto_icas_icas_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_icas_icas_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_icas_icas_proto_rawDesc), len(file_pkg_proto_icas_icas_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDesc)))
 	})
-	return file_pkg_proto_icas_icas_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDescData
 }
 
-var file_pkg_proto_icas_icas_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_pkg_proto_icas_icas_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_goTypes = []any{
 	(*Reference)(nil),                            // 0: buildbarn.icas.Reference
 	(*BatchUpdateReferencesRequest)(nil),         // 1: buildbarn.icas.BatchUpdateReferencesRequest
 	(*GetReferenceRequest)(nil),                  // 2: buildbarn.icas.GetReferenceRequest
@@ -566,7 +566,7 @@ var file_pkg_proto_icas_icas_proto_goTypes = []any{
 	(*v2.FindMissingBlobsResponse)(nil),          // 11: build.bazel.remote.execution.v2.FindMissingBlobsResponse
 	(*v2.BatchUpdateBlobsResponse)(nil),          // 12: build.bazel.remote.execution.v2.BatchUpdateBlobsResponse
 }
-var file_pkg_proto_icas_icas_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_depIdxs = []int32{
 	3,  // 0: buildbarn.icas.Reference.s3:type_name -> buildbarn.icas.Reference.S3
 	4,  // 1: buildbarn.icas.Reference.gcs:type_name -> buildbarn.icas.Reference.GCS
 	5,  // 2: buildbarn.icas.Reference.content_addressable_storage:type_name -> buildbarn.icas.Reference.ContentAddressableStorage
@@ -592,12 +592,12 @@ var file_pkg_proto_icas_icas_proto_depIdxs = []int32{
 	0,  // [0:12] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_icas_icas_proto_init() }
-func file_pkg_proto_icas_icas_proto_init() {
-	if File_pkg_proto_icas_icas_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto != nil {
 		return
 	}
-	file_pkg_proto_icas_icas_proto_msgTypes[0].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes[0].OneofWrappers = []any{
 		(*Reference_HttpUrl)(nil),
 		(*Reference_S3_)(nil),
 		(*Reference_Gcs)(nil),
@@ -607,17 +607,17 @@ func file_pkg_proto_icas_icas_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_icas_icas_proto_rawDesc), len(file_pkg_proto_icas_icas_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pkg_proto_icas_icas_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_icas_icas_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_icas_icas_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_icas_icas_proto = out.File
-	file_pkg_proto_icas_icas_proto_goTypes = nil
-	file_pkg_proto_icas_icas_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_icas_icas_proto_depIdxs = nil
 }

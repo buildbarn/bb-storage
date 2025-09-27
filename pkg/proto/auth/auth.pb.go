@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/auth/auth.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto
 
 package auth
 
@@ -36,7 +36,7 @@ type AuthenticationMetadata struct {
 
 func (x *AuthenticationMetadata) Reset() {
 	*x = AuthenticationMetadata{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +48,7 @@ func (x *AuthenticationMetadata) String() string {
 func (*AuthenticationMetadata) ProtoMessage() {}
 
 func (x *AuthenticationMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +61,7 @@ func (x *AuthenticationMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticationMetadata.ProtoReflect.Descriptor instead.
 func (*AuthenticationMetadata) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AuthenticationMetadata) GetPublic() *structpb.Value {
@@ -95,7 +95,7 @@ type AuthenticateRequest struct {
 
 func (x *AuthenticateRequest) Reset() {
 	*x = AuthenticateRequest{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -107,7 +107,7 @@ func (x *AuthenticateRequest) String() string {
 func (*AuthenticateRequest) ProtoMessage() {}
 
 func (x *AuthenticateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -120,7 +120,7 @@ func (x *AuthenticateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticateRequest.ProtoReflect.Descriptor instead.
 func (*AuthenticateRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AuthenticateRequest) GetRequestMetadata() map[string]*AuthenticateRequest_ValueList {
@@ -151,7 +151,7 @@ type AuthenticateResponse struct {
 
 func (x *AuthenticateResponse) Reset() {
 	*x = AuthenticateResponse{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +163,7 @@ func (x *AuthenticateResponse) String() string {
 func (*AuthenticateResponse) ProtoMessage() {}
 
 func (x *AuthenticateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +176,7 @@ func (x *AuthenticateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticateResponse.ProtoReflect.Descriptor instead.
 func (*AuthenticateResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AuthenticateResponse) GetVerdict() isAuthenticateResponse_Verdict {
@@ -238,7 +238,7 @@ type AuthorizeRequest struct {
 
 func (x *AuthorizeRequest) Reset() {
 	*x = AuthorizeRequest{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,7 +250,7 @@ func (x *AuthorizeRequest) String() string {
 func (*AuthorizeRequest) ProtoMessage() {}
 
 func (x *AuthorizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -263,7 +263,7 @@ func (x *AuthorizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizeRequest.ProtoReflect.Descriptor instead.
 func (*AuthorizeRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AuthorizeRequest) GetAuthenticationMetadata() *AuthenticationMetadata {
@@ -301,7 +301,7 @@ type AuthorizeResponse struct {
 
 func (x *AuthorizeResponse) Reset() {
 	*x = AuthorizeResponse{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -313,7 +313,7 @@ func (x *AuthorizeResponse) String() string {
 func (*AuthorizeResponse) ProtoMessage() {}
 
 func (x *AuthorizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -326,7 +326,7 @@ func (x *AuthorizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizeResponse.ProtoReflect.Descriptor instead.
 func (*AuthorizeResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AuthorizeResponse) GetVerdict() isAuthorizeResponse_Verdict {
@@ -386,7 +386,7 @@ type AuthenticateRequest_ValueList struct {
 
 func (x *AuthenticateRequest_ValueList) Reset() {
 	*x = AuthenticateRequest_ValueList{}
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +398,7 @@ func (x *AuthenticateRequest_ValueList) String() string {
 func (*AuthenticateRequest_ValueList) ProtoMessage() {}
 
 func (x *AuthenticateRequest_ValueList) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_auth_auth_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +411,7 @@ func (x *AuthenticateRequest_ValueList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticateRequest_ValueList.ProtoReflect.Descriptor instead.
 func (*AuthenticateRequest_ValueList) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{1, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP(), []int{1, 0}
 }
 
 func (x *AuthenticateRequest_ValueList) GetValue() []string {
@@ -421,11 +421,11 @@ func (x *AuthenticateRequest_ValueList) GetValue() []string {
 	return nil
 }
 
-var File_pkg_proto_auth_auth_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_auth_auth_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x19pkg/proto/auth/auth.proto\x12\x0ebuildbarn.auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*opentelemetry/proto/common/v1/common.proto\"\xd2\x01\n" +
+	"9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x12\x0ebuildbarn.auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*opentelemetry/proto/common/v1/common.proto\"\xd2\x01\n" +
 	"\x16AuthenticationMetadata\x12.\n" +
 	"\x06public\x18\x01 \x01(\v2\x16.google.protobuf.ValueR\x06public\x12V\n" +
 	"\x12tracing_attributes\x18\x02 \x03(\v2'.opentelemetry.proto.common.v1.KeyValueR\x11tracingAttributes\x120\n" +
@@ -459,19 +459,19 @@ const file_pkg_proto_auth_auth_proto_rawDesc = "" +
 	"\tAuthorize\x12 .buildbarn.auth.AuthorizeRequest\x1a!.buildbarn.auth.AuthorizeResponse\"\x00B0Z.github.com/buildbarn/bb-storage/pkg/proto/authb\x06proto3"
 
 var (
-	file_pkg_proto_auth_auth_proto_rawDescOnce sync.Once
-	file_pkg_proto_auth_auth_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescData []byte
 )
 
-func file_pkg_proto_auth_auth_proto_rawDescGZIP() []byte {
-	file_pkg_proto_auth_auth_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_auth_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_auth_auth_proto_rawDesc), len(file_pkg_proto_auth_auth_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDesc)))
 	})
-	return file_pkg_proto_auth_auth_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDescData
 }
 
-var file_pkg_proto_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_pkg_proto_auth_auth_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_goTypes = []any{
 	(*AuthenticationMetadata)(nil),        // 0: buildbarn.auth.AuthenticationMetadata
 	(*AuthenticateRequest)(nil),           // 1: buildbarn.auth.AuthenticateRequest
 	(*AuthenticateResponse)(nil),          // 2: buildbarn.auth.AuthenticateResponse
@@ -484,7 +484,7 @@ var file_pkg_proto_auth_auth_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),         // 9: google.protobuf.Timestamp
 	(*emptypb.Empty)(nil),                 // 10: google.protobuf.Empty
 }
-var file_pkg_proto_auth_auth_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_depIdxs = []int32{
 	7,  // 0: buildbarn.auth.AuthenticationMetadata.public:type_name -> google.protobuf.Value
 	8,  // 1: buildbarn.auth.AuthenticationMetadata.tracing_attributes:type_name -> opentelemetry.proto.common.v1.KeyValue
 	7,  // 2: buildbarn.auth.AuthenticationMetadata.private:type_name -> google.protobuf.Value
@@ -508,16 +508,16 @@ var file_pkg_proto_auth_auth_proto_depIdxs = []int32{
 	0,  // [0:12] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_auth_auth_proto_init() }
-func file_pkg_proto_auth_auth_proto_init() {
-	if File_pkg_proto_auth_auth_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto != nil {
 		return
 	}
-	file_pkg_proto_auth_auth_proto_msgTypes[2].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[2].OneofWrappers = []any{
 		(*AuthenticateResponse_Allow)(nil),
 		(*AuthenticateResponse_Deny)(nil),
 	}
-	file_pkg_proto_auth_auth_proto_msgTypes[4].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes[4].OneofWrappers = []any{
 		(*AuthorizeResponse_Allow)(nil),
 		(*AuthorizeResponse_Deny)(nil),
 	}
@@ -525,17 +525,17 @@ func file_pkg_proto_auth_auth_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_auth_auth_proto_rawDesc), len(file_pkg_proto_auth_auth_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
-		GoTypes:           file_pkg_proto_auth_auth_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_auth_auth_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_auth_auth_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_auth_auth_proto = out.File
-	file_pkg_proto_auth_auth_proto_goTypes = nil
-	file_pkg_proto_auth_auth_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_auth_auth_proto_depIdxs = nil
 }

@@ -4,6 +4,7 @@ load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:go_grpc_compilers @rules_go//proto:go_proto,@rules_go//proto:go_grpc_v2
 # gazelle:prefix github.com/buildbarn/bb-storage
+# gazelle:proto_import_prefix github.com/buildbarn/bb-storage
 # gazelle:resolve go github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2 @bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto
 # gazelle:resolve go github.com/bazelbuild/remote-apis/build/bazel/semver @bazel_remote_apis//build/bazel/semver:semver_go_proto
 # gazelle:resolve go github.com/google/go-jsonnet @jsonnet_go//:go_default_library

@@ -5,6 +5,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "client_proto",
     srcs = ["client.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/tls:tls_proto",

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/fsac/fsac.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/fsac/fsac.proto
 
 package fsac
 
@@ -33,7 +33,7 @@ type FileSystemAccessProfile struct {
 
 func (x *FileSystemAccessProfile) Reset() {
 	*x = FileSystemAccessProfile{}
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *FileSystemAccessProfile) String() string {
 func (*FileSystemAccessProfile) ProtoMessage() {}
 
 func (x *FileSystemAccessProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,7 @@ func (x *FileSystemAccessProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileSystemAccessProfile.ProtoReflect.Descriptor instead.
 func (*FileSystemAccessProfile) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *FileSystemAccessProfile) GetBloomFilter() []byte {
@@ -86,7 +86,7 @@ type GetFileSystemAccessProfileRequest struct {
 
 func (x *GetFileSystemAccessProfileRequest) Reset() {
 	*x = GetFileSystemAccessProfileRequest{}
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -98,7 +98,7 @@ func (x *GetFileSystemAccessProfileRequest) String() string {
 func (*GetFileSystemAccessProfileRequest) ProtoMessage() {}
 
 func (x *GetFileSystemAccessProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -111,7 +111,7 @@ func (x *GetFileSystemAccessProfileRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetFileSystemAccessProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetFileSystemAccessProfileRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetFileSystemAccessProfileRequest) GetInstanceName() string {
@@ -147,7 +147,7 @@ type UpdateFileSystemAccessProfileRequest struct {
 
 func (x *UpdateFileSystemAccessProfileRequest) Reset() {
 	*x = UpdateFileSystemAccessProfileRequest{}
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +159,7 @@ func (x *UpdateFileSystemAccessProfileRequest) String() string {
 func (*UpdateFileSystemAccessProfileRequest) ProtoMessage() {}
 
 func (x *UpdateFileSystemAccessProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_fsac_fsac_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +172,7 @@ func (x *UpdateFileSystemAccessProfileRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdateFileSystemAccessProfileRequest.ProtoReflect.Descriptor instead.
 func (*UpdateFileSystemAccessProfileRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *UpdateFileSystemAccessProfileRequest) GetInstanceName() string {
@@ -203,11 +203,11 @@ func (x *UpdateFileSystemAccessProfileRequest) GetFileSystemAccessProfile() *Fil
 	return nil
 }
 
-var File_pkg_proto_fsac_fsac_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_fsac_fsac_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDesc = "" +
 	"\n" +
-	"\x19pkg/proto/fsac/fsac.proto\x12\x0ebuildbarn.fsac\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1bgoogle/protobuf/empty.proto\"{\n" +
+	"9github.com/buildbarn/bb-storage/pkg/proto/fsac/fsac.proto\x12\x0ebuildbarn.fsac\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1bgoogle/protobuf/empty.proto\"{\n" +
 	"\x17FileSystemAccessProfile\x12!\n" +
 	"\fbloom_filter\x18\x01 \x01(\fR\vbloomFilter\x12=\n" +
 	"\x1bbloom_filter_hash_functions\x18\x02 \x01(\rR\x18bloomFilterHashFunctions\"\x85\x02\n" +
@@ -225,19 +225,19 @@ const file_pkg_proto_fsac_fsac_proto_rawDesc = "" +
 	"\x1dUpdateFileSystemAccessProfile\x124.buildbarn.fsac.UpdateFileSystemAccessProfileRequest\x1a\x16.google.protobuf.EmptyB0Z.github.com/buildbarn/bb-storage/pkg/proto/fsacb\x06proto3"
 
 var (
-	file_pkg_proto_fsac_fsac_proto_rawDescOnce sync.Once
-	file_pkg_proto_fsac_fsac_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescData []byte
 )
 
-func file_pkg_proto_fsac_fsac_proto_rawDescGZIP() []byte {
-	file_pkg_proto_fsac_fsac_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_fsac_fsac_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_fsac_fsac_proto_rawDesc), len(file_pkg_proto_fsac_fsac_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDesc)))
 	})
-	return file_pkg_proto_fsac_fsac_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDescData
 }
 
-var file_pkg_proto_fsac_fsac_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pkg_proto_fsac_fsac_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_goTypes = []any{
 	(*FileSystemAccessProfile)(nil),              // 0: buildbarn.fsac.FileSystemAccessProfile
 	(*GetFileSystemAccessProfileRequest)(nil),    // 1: buildbarn.fsac.GetFileSystemAccessProfileRequest
 	(*UpdateFileSystemAccessProfileRequest)(nil), // 2: buildbarn.fsac.UpdateFileSystemAccessProfileRequest
@@ -245,7 +245,7 @@ var file_pkg_proto_fsac_fsac_proto_goTypes = []any{
 	(*v2.Digest)(nil),                            // 4: build.bazel.remote.execution.v2.Digest
 	(*emptypb.Empty)(nil),                        // 5: google.protobuf.Empty
 }
-var file_pkg_proto_fsac_fsac_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_depIdxs = []int32{
 	3, // 0: buildbarn.fsac.GetFileSystemAccessProfileRequest.digest_function:type_name -> build.bazel.remote.execution.v2.DigestFunction.Value
 	4, // 1: buildbarn.fsac.GetFileSystemAccessProfileRequest.reduced_action_digest:type_name -> build.bazel.remote.execution.v2.Digest
 	3, // 2: buildbarn.fsac.UpdateFileSystemAccessProfileRequest.digest_function:type_name -> build.bazel.remote.execution.v2.DigestFunction.Value
@@ -262,26 +262,26 @@ var file_pkg_proto_fsac_fsac_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_fsac_fsac_proto_init() }
-func file_pkg_proto_fsac_fsac_proto_init() {
-	if File_pkg_proto_fsac_fsac_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_fsac_fsac_proto_rawDesc), len(file_pkg_proto_fsac_fsac_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pkg_proto_fsac_fsac_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_fsac_fsac_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_fsac_fsac_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_fsac_fsac_proto = out.File
-	file_pkg_proto_fsac_fsac_proto_goTypes = nil
-	file_pkg_proto_fsac_fsac_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_fsac_fsac_proto_depIdxs = nil
 }
