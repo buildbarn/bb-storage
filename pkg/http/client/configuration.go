@@ -38,7 +38,7 @@ func NewRoundTripperFromConfiguration(configuration *pb.Configuration) (http.Rou
 		roundTripper = NewHeaderAddingRoundTripper(roundTripper, headerValues)
 	}
 
-	if oauth2Config := configuration.Oauth2; oauth2Config != nil {
+	if oauth2Config := configuration.GetOauth2(); oauth2Config != nil {
 		if roundTripper, err = NewOAuth2AddingRoundTripper(roundTripper, oauth2Config); err != nil {
 			return nil, util.StatusWrap(err, "Failed to create oauth2 round tripper")
 		}
