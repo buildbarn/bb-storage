@@ -38,5 +38,5 @@ type BlobAccess interface {
 //
 // It would be nice if such an API also supported decomposition of large
 // objects natively. See the "Future work" section in ADR#3 for details:
-// https://github.com/buildbarn/bb-adrs/blob/master/0003-cas-decomposition.md#future-work
+// https://github.com/buildbarn/bb-adrs/blob/main/0003-cas-decomposition.md#future-work
 const RecommendedFindMissingDigestsCount = 10000

@@ -237,13 +237,13 @@ message BlobAccessConfiguration {
   // with ShardingBlobAccess and MirroredBlobAccess. More details can be
   // found in the following Architecture Decision Record (ADR):
   //
-  // https://github.com/buildbarn/bb-adrs/blob/master/0002-storage.md
+  // https://github.com/buildbarn/bb-adrs/blob/main/0002-storage.md
   //
   // If S3 was mainly used to integrate existing large corpora into the
   // CAS, it may be sufficient to use ReferenceExpandingBlobAccess
   // instead. More details about that can be found in this ADR:
   //
-  // https://github.com/buildbarn/bb-adrs/blob/master/0004-icas.md
+  // https://github.com/buildbarn/bb-adrs/blob/main/0004-icas.md
   reserved 10;
 }
 

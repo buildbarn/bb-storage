@@ -10,7 +10,7 @@ jsonnet_to_json(
     name = "github_workflows",
     src = "github_workflows.jsonnet",
     outs = [
-        "master.yaml",
+        "main.yaml",
         "pull-requests.yaml",
     ],
     deps = [":workflows_template"],
