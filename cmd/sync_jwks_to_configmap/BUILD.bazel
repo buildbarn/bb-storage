@@ -7,7 +7,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/cmd/sync_jwks_to_configmap",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/http",
+        "//pkg/http/client",
         "//pkg/program",
         "//pkg/proto/configuration/sync_jwks_to_configmap",
         "//pkg/util",

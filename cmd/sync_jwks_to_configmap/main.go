@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_client "github.com/buildbarn/bb-storage/pkg/http/client"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -54,7 +54,7 @@ func main() {
 		}
 
 		// Send a HTTP request to fetch the JWKS.
-		roundTripper, err := bb_http.NewRoundTripperFromConfiguration(configuration.HttpClient)
+		roundTripper, err := http_client.NewRoundTripperFromConfiguration(configuration.HttpClient)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create HTTP client")
 		}

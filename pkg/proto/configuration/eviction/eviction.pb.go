@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/eviction/eviction.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto
 
 package eviction
 
@@ -57,11 +57,11 @@ func (x CacheReplacementPolicy) String() string {
 }
 
 func (CacheReplacementPolicy) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_proto_configuration_eviction_eviction_proto_enumTypes[0].Descriptor()
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_enumTypes[0].Descriptor()
 }
 
 func (CacheReplacementPolicy) Type() protoreflect.EnumType {
-	return &file_pkg_proto_configuration_eviction_eviction_proto_enumTypes[0]
+	return &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_enumTypes[0]
 }
 
 func (x CacheReplacementPolicy) Number() protoreflect.EnumNumber {
@@ -70,14 +70,14 @@ func (x CacheReplacementPolicy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CacheReplacementPolicy.Descriptor instead.
 func (CacheReplacementPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_eviction_eviction_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescGZIP(), []int{0}
 }
 
-var File_pkg_proto_configuration_eviction_eviction_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_eviction_eviction_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDesc = "" +
 	"\n" +
-	"/pkg/proto/configuration/eviction/eviction.proto\x12 buildbarn.configuration.eviction*n\n" +
+	"Ogithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x12 buildbarn.configuration.eviction*n\n" +
 	"\x16CacheReplacementPolicy\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\x16\n" +
 	"\x12FIRST_IN_FIRST_OUT\x10\x01\x12\x17\n" +
@@ -85,22 +85,22 @@ const file_pkg_proto_configuration_eviction_eviction_proto_rawDesc = "" +
 	"\x12RANDOM_REPLACEMENT\x10\x03BBZ@github.com/buildbarn/bb-storage/pkg/proto/configuration/evictionb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_eviction_eviction_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_eviction_eviction_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_eviction_eviction_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_eviction_eviction_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_eviction_eviction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_eviction_eviction_proto_rawDesc), len(file_pkg_proto_configuration_eviction_eviction_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_eviction_eviction_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_eviction_eviction_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_proto_configuration_eviction_eviction_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_goTypes = []any{
 	(CacheReplacementPolicy)(0), // 0: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
-var file_pkg_proto_configuration_eviction_eviction_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -108,26 +108,28 @@ var file_pkg_proto_configuration_eviction_eviction_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_eviction_eviction_proto_init() }
-func file_pkg_proto_configuration_eviction_eviction_proto_init() {
-	if File_pkg_proto_configuration_eviction_eviction_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_eviction_eviction_proto_rawDesc), len(file_pkg_proto_configuration_eviction_eviction_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_eviction_eviction_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_eviction_eviction_proto_depIdxs,
-		EnumInfos:         file_pkg_proto_configuration_eviction_eviction_proto_enumTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_depIdxs,
+		EnumInfos:         file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_enumTypes,
 	}.Build()
-	File_pkg_proto_configuration_eviction_eviction_proto = out.File
-	file_pkg_proto_configuration_eviction_eviction_proto_goTypes = nil
-	file_pkg_proto_configuration_eviction_eviction_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_eviction_eviction_proto_depIdxs = nil
 }

@@ -5,8 +5,9 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "aws_proto",
     srcs = ["aws.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/http:http_proto"],
+    deps = ["//pkg/proto/configuration/http/client:client_proto"],
 )
 
 go_proto_library(
@@ -14,7 +15,7 @@ go_proto_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws",
     proto = ":aws_proto",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/proto/configuration/http"],
+    deps = ["//pkg/proto/configuration/http/client"],
 )
 
 go_library(

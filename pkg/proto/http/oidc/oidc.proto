@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package buildbarn.http.oidc;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "pkg/proto/auth/auth.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/http/oidc";
 

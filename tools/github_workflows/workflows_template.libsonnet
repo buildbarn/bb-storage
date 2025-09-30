@@ -214,14 +214,14 @@
   },
 
   getWorkflows(binaries, containers, setupSteps=[], extraSteps=[]): {
-    'master.yaml': {
-      name: 'master',
-      on: { push: { branches: ['main', 'master'] } },
+    'main.yaml': {
+      name: 'main',
+      on: { push: { branches: ['main'] } },
       jobs: getJobs(binaries, containers, setupSteps, extraSteps, true, false),
     },
     'pull-requests.yaml': {
       name: 'pull-requests',
-      on: { pull_request: { branches: ['main', 'master'] } },
+      on: { pull_request: { branches: ['main'] } },
       jobs: getJobs(binaries, containers, setupSteps, extraSteps, false, false),
     },
   },

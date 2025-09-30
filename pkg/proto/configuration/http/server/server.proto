@@ -1,52 +1,18 @@
 syntax = "proto3";
 
-package buildbarn.configuration.http;
+package buildbarn.configuration.http.server;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto";
 import "google/protobuf/empty.proto";
-import "pkg/proto/auth/auth.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/jwt/jwt.proto";
-import "pkg/proto/configuration/tls/tls.proto";
-import "pkg/proto/configuration/jmespath/jmespath.proto";
 
-option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http";
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server";
 
-message ClientConfiguration {
-  // TLS client configuration, in case resources are requested through
-  // https://. The system-wide certificate authorities and no client
-  // certificate will be used when left unset.
-  buildbarn.configuration.tls.ClientConfiguration tls = 1;
-
-  // If set, forward all traffic through a proxy with a given URL.
-  string proxy_url = 2;
-
-  message HeaderValues {
-    string header = 1;
-    repeated string values = 2;
-  }
-
-  // HTTP headers to attach to every outgoing request.
-  //
-  // This option can, amongst other things, be used to perform HTTP
-  // basic access authentication, by providing an "Authorization" header
-  // with value:
-  //
-  //         "Basic " + std.base64(username + ":" + password)
-  repeated HeaderValues add_headers = 5;
-
-  // Use HTTP/1.1, even if the server supports HTTP/2.
-  //
-  // This option can be used to work around HTTP client or server bugs.
-  // For example, the following bug in Go's HTTP/2 client may cause
-  // requests to be sent across network connections that are known to be
-  // unresponsive, leading to request timeouts:
-  //
-  // https://github.com/golang/go/issues/36026
-  // https://github.com/golang/go/issues/59690
-  bool disable_http2 = 6;
-}
-
-message ServerConfiguration {
+message Configuration {
   // Network addresses on which to listen (e.g., ":443").
   repeated string listen_addresses = 1;
 
@@ -185,7 +151,7 @@ message OIDCAuthenticationPolicy {
 
   // Configuration options for the HTTP client that is used to send
   // requests to the token endpoint and user info endpoint.
-  ClientConfiguration http_client = 10;
+  buildbarn.configuration.http.client.Configuration http_client = 10;
 }
 
 message AcceptHeaderAuthenticationPolicy {

@@ -2,16 +2,16 @@ syntax = "proto3";
 
 package buildbarn.configuration.blobstore;
 
-import "google/rpc/status.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
-import "pkg/proto/configuration/blockdevice/blockdevice.proto";
-import "pkg/proto/configuration/cloud/aws/aws.proto";
-import "pkg/proto/configuration/cloud/gcp/gcp.proto";
-import "pkg/proto/configuration/digest/digest.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/http/http.proto";
+import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
@@ -237,13 +237,13 @@ message BlobAccessConfiguration {
   // with ShardingBlobAccess and MirroredBlobAccess. More details can be
   // found in the following Architecture Decision Record (ADR):
   //
-  // https://github.com/buildbarn/bb-adrs/blob/master/0002-storage.md
+  // https://github.com/buildbarn/bb-adrs/blob/main/0002-storage.md
   //
   // If S3 was mainly used to integrate existing large corpora into the
   // CAS, it may be sufficient to use ReferenceExpandingBlobAccess
   // instead. More details about that can be found in this ADR:
   //
-  // https://github.com/buildbarn/bb-adrs/blob/master/0004-icas.md
+  // https://github.com/buildbarn/bb-adrs/blob/main/0004-icas.md
   reserved 10;
 }
 
@@ -716,7 +716,7 @@ message ReferenceExpandingBlobAccessConfiguration {
   buildbarn.configuration.cloud.aws.SessionConfiguration aws_session = 2;
 
   // Optional: Options to be used by the HTTP client.
-  buildbarn.configuration.http.ClientConfiguration http_client = 3;
+  buildbarn.configuration.http.client.Configuration http_client = 3;
 
   // Optional: Google Cloud Platform (GCP) client options for objects
   // loaded from GCS. Support for GCS is disabled if left unspecified.

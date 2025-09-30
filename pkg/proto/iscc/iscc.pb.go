@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/iscc/iscc.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/iscc/iscc.proto
 
 package iscc
 
@@ -39,7 +39,7 @@ type PreviousExecution struct {
 
 func (x *PreviousExecution) Reset() {
 	*x = PreviousExecution{}
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -51,7 +51,7 @@ func (x *PreviousExecution) String() string {
 func (*PreviousExecution) ProtoMessage() {}
 
 func (x *PreviousExecution) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -64,7 +64,7 @@ func (x *PreviousExecution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousExecution.ProtoReflect.Descriptor instead.
 func (*PreviousExecution) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PreviousExecution) GetOutcome() isPreviousExecution_Outcome {
@@ -133,7 +133,7 @@ type PerSizeClassStats struct {
 
 func (x *PerSizeClassStats) Reset() {
 	*x = PerSizeClassStats{}
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +145,7 @@ func (x *PerSizeClassStats) String() string {
 func (*PerSizeClassStats) ProtoMessage() {}
 
 func (x *PerSizeClassStats) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,7 +158,7 @@ func (x *PerSizeClassStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PerSizeClassStats.ProtoReflect.Descriptor instead.
 func (*PerSizeClassStats) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *PerSizeClassStats) GetPreviousExecutions() []*PreviousExecution {
@@ -185,7 +185,7 @@ type PreviousExecutionStats struct {
 
 func (x *PreviousExecutionStats) Reset() {
 	*x = PreviousExecutionStats{}
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,7 +197,7 @@ func (x *PreviousExecutionStats) String() string {
 func (*PreviousExecutionStats) ProtoMessage() {}
 
 func (x *PreviousExecutionStats) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -210,7 +210,7 @@ func (x *PreviousExecutionStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousExecutionStats.ProtoReflect.Descriptor instead.
 func (*PreviousExecutionStats) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PreviousExecutionStats) GetSizeClasses() map[uint32]*PerSizeClassStats {
@@ -238,7 +238,7 @@ type GetPreviousExecutionStatsRequest struct {
 
 func (x *GetPreviousExecutionStatsRequest) Reset() {
 	*x = GetPreviousExecutionStatsRequest{}
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,7 +250,7 @@ func (x *GetPreviousExecutionStatsRequest) String() string {
 func (*GetPreviousExecutionStatsRequest) ProtoMessage() {}
 
 func (x *GetPreviousExecutionStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -263,7 +263,7 @@ func (x *GetPreviousExecutionStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPreviousExecutionStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetPreviousExecutionStatsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetPreviousExecutionStatsRequest) GetInstanceName() string {
@@ -299,7 +299,7 @@ type UpdatePreviousExecutionStatsRequest struct {
 
 func (x *UpdatePreviousExecutionStatsRequest) Reset() {
 	*x = UpdatePreviousExecutionStatsRequest{}
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -311,7 +311,7 @@ func (x *UpdatePreviousExecutionStatsRequest) String() string {
 func (*UpdatePreviousExecutionStatsRequest) ProtoMessage() {}
 
 func (x *UpdatePreviousExecutionStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_iscc_iscc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -324,7 +324,7 @@ func (x *UpdatePreviousExecutionStatsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdatePreviousExecutionStatsRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePreviousExecutionStatsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpdatePreviousExecutionStatsRequest) GetInstanceName() string {
@@ -355,11 +355,11 @@ func (x *UpdatePreviousExecutionStatsRequest) GetDigestFunction() v2.DigestFunct
 	return v2.DigestFunction_Value(0)
 }
 
-var File_pkg_proto_iscc_iscc_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_iscc_iscc_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDesc = "" +
 	"\n" +
-	"\x19pkg/proto/iscc/iscc.proto\x12\x0ebuildbarn.iscc\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x01\n" +
+	"9github.com/buildbarn/bb-storage/pkg/proto/iscc/iscc.proto\x12\x0ebuildbarn.iscc\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x01\n" +
 	"\x11PreviousExecution\x120\n" +
 	"\x06failed\x18\x01 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x06failed\x128\n" +
 	"\ttimed_out\x18\x02 \x01(\v2\x19.google.protobuf.DurationH\x00R\btimedOut\x129\n" +
@@ -388,19 +388,19 @@ const file_pkg_proto_iscc_iscc_proto_rawDesc = "" +
 	"\x1cUpdatePreviousExecutionStats\x123.buildbarn.iscc.UpdatePreviousExecutionStatsRequest\x1a\x16.google.protobuf.EmptyB0Z.github.com/buildbarn/bb-storage/pkg/proto/isccb\x06proto3"
 
 var (
-	file_pkg_proto_iscc_iscc_proto_rawDescOnce sync.Once
-	file_pkg_proto_iscc_iscc_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescData []byte
 )
 
-func file_pkg_proto_iscc_iscc_proto_rawDescGZIP() []byte {
-	file_pkg_proto_iscc_iscc_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_iscc_iscc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_iscc_iscc_proto_rawDesc), len(file_pkg_proto_iscc_iscc_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDesc)))
 	})
-	return file_pkg_proto_iscc_iscc_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDescData
 }
 
-var file_pkg_proto_iscc_iscc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_pkg_proto_iscc_iscc_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_goTypes = []any{
 	(*PreviousExecution)(nil),                   // 0: buildbarn.iscc.PreviousExecution
 	(*PerSizeClassStats)(nil),                   // 1: buildbarn.iscc.PerSizeClassStats
 	(*PreviousExecutionStats)(nil),              // 2: buildbarn.iscc.PreviousExecutionStats
@@ -413,7 +413,7 @@ var file_pkg_proto_iscc_iscc_proto_goTypes = []any{
 	(*v2.Digest)(nil),             // 9: build.bazel.remote.execution.v2.Digest
 	(v2.DigestFunction_Value)(0),  // 10: build.bazel.remote.execution.v2.DigestFunction.Value
 }
-var file_pkg_proto_iscc_iscc_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_depIdxs = []int32{
 	6,  // 0: buildbarn.iscc.PreviousExecution.failed:type_name -> google.protobuf.Empty
 	7,  // 1: buildbarn.iscc.PreviousExecution.timed_out:type_name -> google.protobuf.Duration
 	7,  // 2: buildbarn.iscc.PreviousExecution.succeeded:type_name -> google.protobuf.Duration
@@ -437,12 +437,12 @@ var file_pkg_proto_iscc_iscc_proto_depIdxs = []int32{
 	0,  // [0:12] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_iscc_iscc_proto_init() }
-func file_pkg_proto_iscc_iscc_proto_init() {
-	if File_pkg_proto_iscc_iscc_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto != nil {
 		return
 	}
-	file_pkg_proto_iscc_iscc_proto_msgTypes[0].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes[0].OneofWrappers = []any{
 		(*PreviousExecution_Failed)(nil),
 		(*PreviousExecution_TimedOut)(nil),
 		(*PreviousExecution_Succeeded)(nil),
@@ -451,17 +451,17 @@ func file_pkg_proto_iscc_iscc_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_iscc_iscc_proto_rawDesc), len(file_pkg_proto_iscc_iscc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pkg_proto_iscc_iscc_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_iscc_iscc_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_iscc_iscc_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_iscc_iscc_proto = out.File
-	file_pkg_proto_iscc_iscc_proto_goTypes = nil
-	file_pkg_proto_iscc_iscc_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_iscc_iscc_proto_depIdxs = nil
 }

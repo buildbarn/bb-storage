@@ -272,10 +272,10 @@ gomock(
 )
 
 gomock(
-    name = "http",
-    out = "http.go",
+    name = "http_server",
+    out = "http_server.go",
     interfaces = ["Authenticator"],
-    library = "//pkg/http",
+    library = "//pkg/http/server",
     mock_names = {"Authenticator": "MockHTTPAuthenticator"},
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
@@ -385,7 +385,7 @@ go_library(
         "filesystem_path.go",
         "grpc.go",
         "grpc_go.go",
-        "http.go",
+        "http_server.go",
         "jwt.go",
         "prometheus.go",
         "random.go",

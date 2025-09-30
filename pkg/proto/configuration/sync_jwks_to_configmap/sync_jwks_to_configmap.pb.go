@@ -2,12 +2,12 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto
 
 package sync_jwks_to_configmap
 
 import (
-	http "github.com/buildbarn/bb-storage/pkg/proto/configuration/http"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,19 +23,19 @@ const (
 )
 
 type ApplicationConfiguration struct {
-	state              protoimpl.MessageState    `protogen:"open.v1"`
-	HttpClient         *http.ClientConfiguration `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
-	JwksUrl            string                    `protobuf:"bytes,2,opt,name=jwks_url,json=jwksUrl,proto3" json:"jwks_url,omitempty"`
-	ConfigMapNamespace string                    `protobuf:"bytes,3,opt,name=config_map_namespace,json=configMapNamespace,proto3" json:"config_map_namespace,omitempty"`
-	ConfigMapName      string                    `protobuf:"bytes,4,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
-	ConfigMapKey       string                    `protobuf:"bytes,5,opt,name=config_map_key,json=configMapKey,proto3" json:"config_map_key,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	HttpClient         *client.Configuration  `protobuf:"bytes,1,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	JwksUrl            string                 `protobuf:"bytes,2,opt,name=jwks_url,json=jwksUrl,proto3" json:"jwks_url,omitempty"`
+	ConfigMapNamespace string                 `protobuf:"bytes,3,opt,name=config_map_namespace,json=configMapNamespace,proto3" json:"config_map_namespace,omitempty"`
+	ConfigMapName      string                 `protobuf:"bytes,4,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
+	ConfigMapKey       string                 `protobuf:"bytes,5,opt,name=config_map_key,json=configMapKey,proto3" json:"config_map_key,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ApplicationConfiguration) Reset() {
 	*x = ApplicationConfiguration{}
-	mi := &file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *ApplicationConfiguration) String() string {
 func (*ApplicationConfiguration) ProtoMessage() {}
 
 func (x *ApplicationConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,10 +60,10 @@ func (x *ApplicationConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationConfiguration.ProtoReflect.Descriptor instead.
 func (*ApplicationConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ApplicationConfiguration) GetHttpClient() *http.ClientConfiguration {
+func (x *ApplicationConfiguration) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -98,13 +98,13 @@ func (x *ApplicationConfiguration) GetConfigMapKey() string {
 	return ""
 }
 
-var File_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc = "" +
 	"\n" +
-	"Kpkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto\x12.buildbarn.configuration.sync_jwks_to_configmap\x1a'pkg/proto/configuration/http/http.proto\"\x89\x02\n" +
-	"\x18ApplicationConfiguration\x12R\n" +
-	"\vhttp_client\x18\x01 \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	"kgithub.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmap/sync_jwks_to_configmap.proto\x12.buildbarn.configuration.sync_jwks_to_configmap\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\"\x8a\x02\n" +
+	"\x18ApplicationConfiguration\x12S\n" +
+	"\vhttp_client\x18\x01 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClient\x12\x19\n" +
 	"\bjwks_url\x18\x02 \x01(\tR\ajwksUrl\x120\n" +
 	"\x14config_map_namespace\x18\x03 \x01(\tR\x12configMapNamespace\x12&\n" +
@@ -112,24 +112,24 @@ const file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap
 	"\x0econfig_map_key\x18\x05 \x01(\tR\fconfigMapKeyBPZNgithub.com/buildbarn/bb-storage/pkg/proto/configuration/sync_jwks_to_configmapb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc), len(file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes = []any{
 	(*ApplicationConfiguration)(nil), // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration
-	(*http.ClientConfiguration)(nil), // 1: buildbarn.configuration.http.ClientConfiguration
+	(*client.Configuration)(nil),     // 1: buildbarn.configuration.http.client.Configuration
 }
-var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs = []int32{
-	1, // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs = []int32{
+	1, // 0: buildbarn.configuration.sync_jwks_to_configmap.ApplicationConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -137,26 +137,28 @@ var file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_p
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_init() }
-func file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_init() {
-	if File_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc), len(file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto = out.File
-	file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes = nil
-	file_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_sync_jwks_to_configmap_sync_jwks_to_configmap_proto_depIdxs = nil
 }

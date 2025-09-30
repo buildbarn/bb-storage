@@ -1,4 +1,4 @@
-package http_test
+package server_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	bb_http "github.com/buildbarn/bb-storage/pkg/http"
+	http_server "github.com/buildbarn/bb-storage/pkg/http/server"
 	auth_pb "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ func TestAllowAuthenticator(t *testing.T) {
 			},
 		}),
 	}))
-	authenticator := bb_http.NewAllowAuthenticator(expectedMetadata)
+	authenticator := http_server.NewAllowAuthenticator(expectedMetadata)
 
 	w := mock.NewMockResponseWriter(ctrl)
 	r, err := http.NewRequest(http.MethodGet, "/path", nil)

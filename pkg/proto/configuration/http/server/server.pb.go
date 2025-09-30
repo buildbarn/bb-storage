@@ -2,13 +2,14 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/http/http.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server/server.proto
 
-package http
+package server
 
 import (
 	auth "github.com/buildbarn/bb-storage/pkg/proto/auth"
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	client "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	jmespath "github.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath"
 	jwt "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt"
 	tls "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
@@ -27,75 +28,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ClientConfiguration struct {
-	state         protoimpl.MessageState              `protogen:"open.v1"`
-	Tls           *tls.ClientConfiguration            `protobuf:"bytes,1,opt,name=tls,proto3" json:"tls,omitempty"`
-	ProxyUrl      string                              `protobuf:"bytes,2,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
-	AddHeaders    []*ClientConfiguration_HeaderValues `protobuf:"bytes,5,rep,name=add_headers,json=addHeaders,proto3" json:"add_headers,omitempty"`
-	DisableHttp2  bool                                `protobuf:"varint,6,opt,name=disable_http2,json=disableHttp2,proto3" json:"disable_http2,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientConfiguration) Reset() {
-	*x = ClientConfiguration{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientConfiguration) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientConfiguration) ProtoMessage() {}
-
-func (x *ClientConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientConfiguration.ProtoReflect.Descriptor instead.
-func (*ClientConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *ClientConfiguration) GetTls() *tls.ClientConfiguration {
-	if x != nil {
-		return x.Tls
-	}
-	return nil
-}
-
-func (x *ClientConfiguration) GetProxyUrl() string {
-	if x != nil {
-		return x.ProxyUrl
-	}
-	return ""
-}
-
-func (x *ClientConfiguration) GetAddHeaders() []*ClientConfiguration_HeaderValues {
-	if x != nil {
-		return x.AddHeaders
-	}
-	return nil
-}
-
-func (x *ClientConfiguration) GetDisableHttp2() bool {
-	if x != nil {
-		return x.DisableHttp2
-	}
-	return false
-}
-
-type ServerConfiguration struct {
+type Configuration struct {
 	state                protoimpl.MessageState   `protogen:"open.v1"`
 	ListenAddresses      []string                 `protobuf:"bytes,1,rep,name=listen_addresses,json=listenAddresses,proto3" json:"listen_addresses,omitempty"`
 	AuthenticationPolicy *AuthenticationPolicy    `protobuf:"bytes,2,opt,name=authentication_policy,json=authenticationPolicy,proto3" json:"authentication_policy,omitempty"`
@@ -104,21 +37,21 @@ type ServerConfiguration struct {
 	sizeCache            protoimpl.SizeCache
 }
 
-func (x *ServerConfiguration) Reset() {
-	*x = ServerConfiguration{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[1]
+func (x *Configuration) Reset() {
+	*x = Configuration{}
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ServerConfiguration) String() string {
+func (x *Configuration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ServerConfiguration) ProtoMessage() {}
+func (*Configuration) ProtoMessage() {}
 
-func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[1]
+func (x *Configuration) ProtoReflect() protoreflect.Message {
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -129,26 +62,26 @@ func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ServerConfiguration.ProtoReflect.Descriptor instead.
-func (*ServerConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
+func (*Configuration) Descriptor() ([]byte, []int) {
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ServerConfiguration) GetListenAddresses() []string {
+func (x *Configuration) GetListenAddresses() []string {
 	if x != nil {
 		return x.ListenAddresses
 	}
 	return nil
 }
 
-func (x *ServerConfiguration) GetAuthenticationPolicy() *AuthenticationPolicy {
+func (x *Configuration) GetAuthenticationPolicy() *AuthenticationPolicy {
 	if x != nil {
 		return x.AuthenticationPolicy
 	}
 	return nil
 }
 
-func (x *ServerConfiguration) GetTls() *tls.ServerConfiguration {
+func (x *Configuration) GetTls() *tls.ServerConfiguration {
 	if x != nil {
 		return x.Tls
 	}
@@ -173,7 +106,7 @@ type AuthenticationPolicy struct {
 
 func (x *AuthenticationPolicy) Reset() {
 	*x = AuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -185,7 +118,7 @@ func (x *AuthenticationPolicy) String() string {
 func (*AuthenticationPolicy) ProtoMessage() {}
 
 func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -198,7 +131,7 @@ func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AuthenticationPolicy) GetPolicy() isAuthenticationPolicy_Policy {
@@ -326,7 +259,7 @@ type AnyAuthenticationPolicy struct {
 
 func (x *AnyAuthenticationPolicy) Reset() {
 	*x = AnyAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -338,7 +271,7 @@ func (x *AnyAuthenticationPolicy) String() string {
 func (*AnyAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -351,7 +284,7 @@ func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnyAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AnyAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AnyAuthenticationPolicy) GetPolicies() []*AuthenticationPolicy {
@@ -376,14 +309,14 @@ type OIDCAuthenticationPolicy struct {
 	RedirectUrl                          string                                    `protobuf:"bytes,7,opt,name=redirect_url,json=redirectUrl,proto3" json:"redirect_url,omitempty"`
 	Scopes                               []string                                  `protobuf:"bytes,8,rep,name=scopes,proto3" json:"scopes,omitempty"`
 	CookieSeed                           []byte                                    `protobuf:"bytes,9,opt,name=cookie_seed,json=cookieSeed,proto3" json:"cookie_seed,omitempty"`
-	HttpClient                           *ClientConfiguration                      `protobuf:"bytes,10,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	HttpClient                           *client.Configuration                     `protobuf:"bytes,10,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
 	unknownFields                        protoimpl.UnknownFields
 	sizeCache                            protoimpl.SizeCache
 }
 
 func (x *OIDCAuthenticationPolicy) Reset() {
 	*x = OIDCAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -395,7 +328,7 @@ func (x *OIDCAuthenticationPolicy) String() string {
 func (*OIDCAuthenticationPolicy) ProtoMessage() {}
 
 func (x *OIDCAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -408,7 +341,7 @@ func (x *OIDCAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OIDCAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*OIDCAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OIDCAuthenticationPolicy) GetClientId() string {
@@ -492,7 +425,7 @@ func (x *OIDCAuthenticationPolicy) GetCookieSeed() []byte {
 	return nil
 }
 
-func (x *OIDCAuthenticationPolicy) GetHttpClient() *ClientConfiguration {
+func (x *OIDCAuthenticationPolicy) GetHttpClient() *client.Configuration {
 	if x != nil {
 		return x.HttpClient
 	}
@@ -525,7 +458,7 @@ type AcceptHeaderAuthenticationPolicy struct {
 
 func (x *AcceptHeaderAuthenticationPolicy) Reset() {
 	*x = AcceptHeaderAuthenticationPolicy{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -537,7 +470,7 @@ func (x *AcceptHeaderAuthenticationPolicy) String() string {
 func (*AcceptHeaderAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AcceptHeaderAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -550,7 +483,7 @@ func (x *AcceptHeaderAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptHeaderAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AcceptHeaderAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{5}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AcceptHeaderAuthenticationPolicy) GetMediaTypes() []string {
@@ -567,87 +500,26 @@ func (x *AcceptHeaderAuthenticationPolicy) GetPolicy() *AuthenticationPolicy {
 	return nil
 }
 
-type ClientConfiguration_HeaderValues struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Header        string                 `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
-	Values        []string               `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto protoreflect.FileDescriptor
 
-func (x *ClientConfiguration_HeaderValues) Reset() {
-	*x = ClientConfiguration_HeaderValues{}
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientConfiguration_HeaderValues) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientConfiguration_HeaderValues) ProtoMessage() {}
-
-func (x *ClientConfiguration_HeaderValues) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_http_http_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientConfiguration_HeaderValues.ProtoReflect.Descriptor instead.
-func (*ClientConfiguration_HeaderValues) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_http_http_proto_rawDescGZIP(), []int{0, 0}
-}
-
-func (x *ClientConfiguration_HeaderValues) GetHeader() string {
-	if x != nil {
-		return x.Header
-	}
-	return ""
-}
-
-func (x *ClientConfiguration_HeaderValues) GetValues() []string {
-	if x != nil {
-		return x.Values
-	}
-	return nil
-}
-
-var File_pkg_proto_configuration_http_http_proto protoreflect.FileDescriptor
-
-const file_pkg_proto_configuration_http_http_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/http/http.proto\x12\x1cbuildbarn.configuration.http\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19pkg/proto/auth/auth.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\x1a%pkg/proto/configuration/jwt/jwt.proto\x1a%pkg/proto/configuration/tls/tls.proto\x1a/pkg/proto/configuration/jmespath/jmespath.proto\"\xbc\x02\n" +
-	"\x13ClientConfiguration\x12B\n" +
-	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1b\n" +
-	"\tproxy_url\x18\x02 \x01(\tR\bproxyUrl\x12_\n" +
-	"\vadd_headers\x18\x05 \x03(\v2>.buildbarn.configuration.http.ClientConfiguration.HeaderValuesR\n" +
-	"addHeaders\x12#\n" +
-	"\rdisable_http2\x18\x06 \x01(\bR\fdisableHttp2\x1a>\n" +
-	"\fHeaderValues\x12\x16\n" +
-	"\x06header\x18\x01 \x01(\tR\x06header\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xed\x01\n" +
-	"\x13ServerConfiguration\x12)\n" +
-	"\x10listen_addresses\x18\x01 \x03(\tR\x0flistenAddresses\x12g\n" +
-	"\x15authentication_policy\x18\x02 \x01(\v22.buildbarn.configuration.http.AuthenticationPolicyR\x14authenticationPolicy\x12B\n" +
-	"\x03tls\x18\x03 \x01(\v20.buildbarn.configuration.tls.ServerConfigurationR\x03tls\"\xa3\x04\n" +
+	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/server/server.proto\x12#buildbarn.configuration.http.server\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xee\x01\n" +
+	"\rConfiguration\x12)\n" +
+	"\x10listen_addresses\x18\x01 \x03(\tR\x0flistenAddresses\x12n\n" +
+	"\x15authentication_policy\x18\x02 \x01(\v29.buildbarn.configuration.http.server.AuthenticationPolicyR\x14authenticationPolicy\x12B\n" +
+	"\x03tls\x18\x03 \x01(\v20.buildbarn.configuration.tls.ServerConfigurationR\x03tls\"\xb8\x04\n" +
 	"\x14AuthenticationPolicy\x12>\n" +
-	"\x05allow\x18\x01 \x01(\v2&.buildbarn.auth.AuthenticationMetadataH\x00R\x05allow\x12I\n" +
-	"\x03any\x18\x02 \x01(\v25.buildbarn.configuration.http.AnyAuthenticationPolicyH\x00R\x03any\x12\x14\n" +
+	"\x05allow\x18\x01 \x01(\v2&.buildbarn.auth.AuthenticationMetadataH\x00R\x05allow\x12P\n" +
+	"\x03any\x18\x02 \x01(\v2<.buildbarn.configuration.http.server.AnyAuthenticationPolicyH\x00R\x03any\x12\x14\n" +
 	"\x04deny\x18\x03 \x01(\tH\x00R\x04deny\x12W\n" +
-	"\x03jwt\x18\x04 \x01(\v2C.buildbarn.configuration.jwt.AuthorizationHeaderParserConfigurationH\x00R\x03jwt\x12L\n" +
-	"\x04oidc\x18\x05 \x01(\v26.buildbarn.configuration.http.OIDCAuthenticationPolicyH\x00R\x04oidc\x12e\n" +
-	"\raccept_header\x18\x06 \x01(\v2>.buildbarn.configuration.http.AcceptHeaderAuthenticationPolicyH\x00R\facceptHeader\x12R\n" +
+	"\x03jwt\x18\x04 \x01(\v2C.buildbarn.configuration.jwt.AuthorizationHeaderParserConfigurationH\x00R\x03jwt\x12S\n" +
+	"\x04oidc\x18\x05 \x01(\v2=.buildbarn.configuration.http.server.OIDCAuthenticationPolicyH\x00R\x04oidc\x12l\n" +
+	"\raccept_header\x18\x06 \x01(\v2E.buildbarn.configuration.http.server.AcceptHeaderAuthenticationPolicyH\x00R\facceptHeader\x12R\n" +
 	"\x06remote\x18\a \x01(\v28.buildbarn.configuration.grpc.RemoteAuthenticationPolicyH\x00R\x06remoteB\b\n" +
-	"\x06policy\"i\n" +
-	"\x17AnyAuthenticationPolicy\x12N\n" +
-	"\bpolicies\x18\x01 \x03(\v22.buildbarn.configuration.http.AuthenticationPolicyR\bpolicies\"\x92\x05\n" +
+	"\x06policy\"p\n" +
+	"\x17AnyAuthenticationPolicy\x12U\n" +
+	"\bpolicies\x18\x01 \x03(\v29.buildbarn.configuration.http.server.AuthenticationPolicyR\bpolicies\"\x93\x05\n" +
 	"\x18OIDCAuthenticationPolicy\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12#\n" +
 	"\rclient_secret\x18\x02 \x01(\tR\fclientSecret\x12<\n" +
@@ -659,74 +531,72 @@ const file_pkg_proto_configuration_http_http_proto_rawDesc = "" +
 	"\fredirect_url\x18\a \x01(\tR\vredirectUrl\x12\x16\n" +
 	"\x06scopes\x18\b \x03(\tR\x06scopes\x12\x1f\n" +
 	"\vcookie_seed\x18\t \x01(\fR\n" +
-	"cookieSeed\x12R\n" +
+	"cookieSeed\x12S\n" +
 	"\vhttp_client\x18\n" +
-	" \x01(\v21.buildbarn.configuration.http.ClientConfigurationR\n" +
+	" \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
 	"httpClientB\x12\n" +
-	"\x10user_info_source\"\x8f\x01\n" +
+	"\x10user_info_source\"\x96\x01\n" +
 	" AcceptHeaderAuthenticationPolicy\x12\x1f\n" +
 	"\vmedia_types\x18\x01 \x03(\tR\n" +
-	"mediaTypes\x12J\n" +
-	"\x06policy\x18\x02 \x01(\v22.buildbarn.configuration.http.AuthenticationPolicyR\x06policyB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/httpb\x06proto3"
+	"mediaTypes\x12Q\n" +
+	"\x06policy\x18\x02 \x01(\v29.buildbarn.configuration.http.server.AuthenticationPolicyR\x06policyBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/serverb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_http_http_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_http_http_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_http_http_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_http_http_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_http_http_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_http_http_proto_rawDesc), len(file_pkg_proto_configuration_http_http_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_http_http_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_http_http_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_pkg_proto_configuration_http_http_proto_goTypes = []any{
-	(*ClientConfiguration)(nil),                        // 0: buildbarn.configuration.http.ClientConfiguration
-	(*ServerConfiguration)(nil),                        // 1: buildbarn.configuration.http.ServerConfiguration
-	(*AuthenticationPolicy)(nil),                       // 2: buildbarn.configuration.http.AuthenticationPolicy
-	(*AnyAuthenticationPolicy)(nil),                    // 3: buildbarn.configuration.http.AnyAuthenticationPolicy
-	(*OIDCAuthenticationPolicy)(nil),                   // 4: buildbarn.configuration.http.OIDCAuthenticationPolicy
-	(*AcceptHeaderAuthenticationPolicy)(nil),           // 5: buildbarn.configuration.http.AcceptHeaderAuthenticationPolicy
-	(*ClientConfiguration_HeaderValues)(nil),           // 6: buildbarn.configuration.http.ClientConfiguration.HeaderValues
-	(*tls.ClientConfiguration)(nil),                    // 7: buildbarn.configuration.tls.ClientConfiguration
-	(*tls.ServerConfiguration)(nil),                    // 8: buildbarn.configuration.tls.ServerConfiguration
-	(*auth.AuthenticationMetadata)(nil),                // 9: buildbarn.auth.AuthenticationMetadata
-	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 10: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	(*grpc.RemoteAuthenticationPolicy)(nil),            // 11: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
-	(*emptypb.Empty)(nil),                              // 12: google.protobuf.Empty
-	(*jmespath.Expression)(nil),                        // 13: buildbarn.configuration.jmespath.Expression
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_goTypes = []any{
+	(*Configuration)(nil),                              // 0: buildbarn.configuration.http.server.Configuration
+	(*AuthenticationPolicy)(nil),                       // 1: buildbarn.configuration.http.server.AuthenticationPolicy
+	(*AnyAuthenticationPolicy)(nil),                    // 2: buildbarn.configuration.http.server.AnyAuthenticationPolicy
+	(*OIDCAuthenticationPolicy)(nil),                   // 3: buildbarn.configuration.http.server.OIDCAuthenticationPolicy
+	(*AcceptHeaderAuthenticationPolicy)(nil),           // 4: buildbarn.configuration.http.server.AcceptHeaderAuthenticationPolicy
+	(*tls.ServerConfiguration)(nil),                    // 5: buildbarn.configuration.tls.ServerConfiguration
+	(*auth.AuthenticationMetadata)(nil),                // 6: buildbarn.auth.AuthenticationMetadata
+	(*jwt.AuthorizationHeaderParserConfiguration)(nil), // 7: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	(*grpc.RemoteAuthenticationPolicy)(nil),            // 8: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
+	(*emptypb.Empty)(nil),                              // 9: google.protobuf.Empty
+	(*jmespath.Expression)(nil),                        // 10: buildbarn.configuration.jmespath.Expression
+	(*client.Configuration)(nil),                       // 11: buildbarn.configuration.http.client.Configuration
 }
-var file_pkg_proto_configuration_http_http_proto_depIdxs = []int32{
-	7,  // 0: buildbarn.configuration.http.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
-	6,  // 1: buildbarn.configuration.http.ClientConfiguration.add_headers:type_name -> buildbarn.configuration.http.ClientConfiguration.HeaderValues
-	2,  // 2: buildbarn.configuration.http.ServerConfiguration.authentication_policy:type_name -> buildbarn.configuration.http.AuthenticationPolicy
-	8,  // 3: buildbarn.configuration.http.ServerConfiguration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
-	9,  // 4: buildbarn.configuration.http.AuthenticationPolicy.allow:type_name -> buildbarn.auth.AuthenticationMetadata
-	3,  // 5: buildbarn.configuration.http.AuthenticationPolicy.any:type_name -> buildbarn.configuration.http.AnyAuthenticationPolicy
-	10, // 6: buildbarn.configuration.http.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	4,  // 7: buildbarn.configuration.http.AuthenticationPolicy.oidc:type_name -> buildbarn.configuration.http.OIDCAuthenticationPolicy
-	5,  // 8: buildbarn.configuration.http.AuthenticationPolicy.accept_header:type_name -> buildbarn.configuration.http.AcceptHeaderAuthenticationPolicy
-	11, // 9: buildbarn.configuration.http.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
-	2,  // 10: buildbarn.configuration.http.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.http.AuthenticationPolicy
-	12, // 11: buildbarn.configuration.http.OIDCAuthenticationPolicy.use_id_token_claims:type_name -> google.protobuf.Empty
-	13, // 12: buildbarn.configuration.http.OIDCAuthenticationPolicy.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	0,  // 13: buildbarn.configuration.http.OIDCAuthenticationPolicy.http_client:type_name -> buildbarn.configuration.http.ClientConfiguration
-	2,  // 14: buildbarn.configuration.http.AcceptHeaderAuthenticationPolicy.policy:type_name -> buildbarn.configuration.http.AuthenticationPolicy
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_depIdxs = []int32{
+	1,  // 0: buildbarn.configuration.http.server.Configuration.authentication_policy:type_name -> buildbarn.configuration.http.server.AuthenticationPolicy
+	5,  // 1: buildbarn.configuration.http.server.Configuration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
+	6,  // 2: buildbarn.configuration.http.server.AuthenticationPolicy.allow:type_name -> buildbarn.auth.AuthenticationMetadata
+	2,  // 3: buildbarn.configuration.http.server.AuthenticationPolicy.any:type_name -> buildbarn.configuration.http.server.AnyAuthenticationPolicy
+	7,  // 4: buildbarn.configuration.http.server.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	3,  // 5: buildbarn.configuration.http.server.AuthenticationPolicy.oidc:type_name -> buildbarn.configuration.http.server.OIDCAuthenticationPolicy
+	4,  // 6: buildbarn.configuration.http.server.AuthenticationPolicy.accept_header:type_name -> buildbarn.configuration.http.server.AcceptHeaderAuthenticationPolicy
+	8,  // 7: buildbarn.configuration.http.server.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
+	1,  // 8: buildbarn.configuration.http.server.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.http.server.AuthenticationPolicy
+	9,  // 9: buildbarn.configuration.http.server.OIDCAuthenticationPolicy.use_id_token_claims:type_name -> google.protobuf.Empty
+	10, // 10: buildbarn.configuration.http.server.OIDCAuthenticationPolicy.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	11, // 11: buildbarn.configuration.http.server.OIDCAuthenticationPolicy.http_client:type_name -> buildbarn.configuration.http.client.Configuration
+	1,  // 12: buildbarn.configuration.http.server.AcceptHeaderAuthenticationPolicy.policy:type_name -> buildbarn.configuration.http.server.AuthenticationPolicy
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_http_http_proto_init() }
-func file_pkg_proto_configuration_http_http_proto_init() {
-	if File_pkg_proto_configuration_http_http_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_http_http_proto_msgTypes[2].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[1].OneofWrappers = []any{
 		(*AuthenticationPolicy_Allow)(nil),
 		(*AuthenticationPolicy_Any)(nil),
 		(*AuthenticationPolicy_Deny)(nil),
@@ -735,7 +605,7 @@ func file_pkg_proto_configuration_http_http_proto_init() {
 		(*AuthenticationPolicy_AcceptHeader)(nil),
 		(*AuthenticationPolicy_Remote)(nil),
 	}
-	file_pkg_proto_configuration_http_http_proto_msgTypes[4].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes[3].OneofWrappers = []any{
 		(*OIDCAuthenticationPolicy_UserInfoEndpointUrl)(nil),
 		(*OIDCAuthenticationPolicy_UseIdTokenClaims)(nil),
 	}
@@ -743,17 +613,17 @@ func file_pkg_proto_configuration_http_http_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_http_http_proto_rawDesc), len(file_pkg_proto_configuration_http_http_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_http_http_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_http_http_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_http_http_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_http_http_proto = out.File
-	file_pkg_proto_configuration_http_http_proto_goTypes = nil
-	file_pkg_proto_configuration_http_http_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_server_server_proto_depIdxs = nil
 }

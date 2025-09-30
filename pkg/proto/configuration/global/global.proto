@@ -2,12 +2,13 @@ syntax = "proto3";
 
 package buildbarn.configuration.global;
 
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/server/server.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 import "opentelemetry/proto/common/v1/common.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
-import "pkg/proto/configuration/http/http.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/global";
 
@@ -30,7 +31,7 @@ message PrometheusPushgatewayConfiguration {
   google.protobuf.Duration push_interval = 5;
 
   // Optional: Options to be used by the HTTP client.
-  buildbarn.configuration.http.ClientConfiguration http_client = 6;
+  buildbarn.configuration.http.client.Configuration http_client = 6;
 
   // Maximum amount of time that pushing metrics may take.
   google.protobuf.Duration push_timeout = 7;
@@ -38,7 +39,7 @@ message PrometheusPushgatewayConfiguration {
   message AdditionalScrapeTarget {
     // Optional: Options to be used by the HTTP client that scrapes the
     // target.
-    buildbarn.configuration.http.ClientConfiguration http_client = 1;
+    buildbarn.configuration.http.client.Configuration http_client = 1;
 
     // The URL of the target to scrape (e.g.,
     // "http://localhost:9100/metrics").
@@ -74,7 +75,7 @@ message TracingConfiguration {
       string endpoint = 1;
 
       // Optional: Options to be used by the HTTP client.
-      buildbarn.configuration.http.ClientConfiguration http_client = 2;
+      buildbarn.configuration.http.client.Configuration http_client = 2;
 
       // The password to be used in the authorization header sent for
       // all requests to the collector.
@@ -304,7 +305,7 @@ message DiagnosticsHTTPServerConfiguration {
   // Default endpoints:
   // - /-/healthy: Returns HTTP 200 OK if the application managed to
   //               start successfully.
-  repeated buildbarn.configuration.http.ServerConfiguration http_servers = 5;
+  repeated buildbarn.configuration.http.server.Configuration http_servers = 5;
 
   // Enables endpoints:
   // - /debug/pprof/*: Endpoints for Go's pprof debug tool.
@@ -324,7 +325,7 @@ message DiagnosticsHTTPServerConfiguration {
 message GRPCKubernetesResolver {
   // Options to be used by the HTTP client to connect to the Kubernetes
   // API server.
-  buildbarn.configuration.http.ClientConfiguration api_server_http_client = 1;
+  buildbarn.configuration.http.client.Configuration api_server_http_client = 1;
 
   // The URL of the Kubernetes API server.
   string api_server_url = 2;

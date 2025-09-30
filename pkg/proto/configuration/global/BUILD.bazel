@@ -5,10 +5,12 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "global_proto",
     srcs = ["global.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/grpc:grpc_proto",
-        "//pkg/proto/configuration/http:http_proto",
+        "//pkg/proto/configuration/http/client:client_proto",
+        "//pkg/proto/configuration/http/server:server_proto",
         "@opentelemetry-proto//:common_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -23,7 +25,8 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/grpc",
-        "//pkg/proto/configuration/http",
+        "//pkg/proto/configuration/http/client",
+        "//pkg/proto/configuration/http/server",
         "@io_opentelemetry_go_proto_otlp//common/v1:common",
     ],
 )

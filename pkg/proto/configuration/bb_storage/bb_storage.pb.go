@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/bb_storage/bb_storage.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto
 
 package bb_storage
 
@@ -46,7 +46,7 @@ type ApplicationConfiguration struct {
 
 func (x *ApplicationConfiguration) Reset() {
 	*x = ApplicationConfiguration{}
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -58,7 +58,7 @@ func (x *ApplicationConfiguration) String() string {
 func (*ApplicationConfiguration) ProtoMessage() {}
 
 func (x *ApplicationConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -71,7 +71,7 @@ func (x *ApplicationConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationConfiguration.ProtoReflect.Descriptor instead.
 func (*ApplicationConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ApplicationConfiguration) GetGrpcServers() []*grpc.ServerConfiguration {
@@ -162,7 +162,7 @@ type NonScannableBlobAccessConfiguration struct {
 
 func (x *NonScannableBlobAccessConfiguration) Reset() {
 	*x = NonScannableBlobAccessConfiguration{}
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -174,7 +174,7 @@ func (x *NonScannableBlobAccessConfiguration) String() string {
 func (*NonScannableBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *NonScannableBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -187,7 +187,7 @@ func (x *NonScannableBlobAccessConfiguration) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use NonScannableBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*NonScannableBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *NonScannableBlobAccessConfiguration) GetBackend() *blobstore.BlobAccessConfiguration {
@@ -223,7 +223,7 @@ type ScannableBlobAccessConfiguration struct {
 
 func (x *ScannableBlobAccessConfiguration) Reset() {
 	*x = ScannableBlobAccessConfiguration{}
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +235,7 @@ func (x *ScannableBlobAccessConfiguration) String() string {
 func (*ScannableBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *ScannableBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +248,7 @@ func (x *ScannableBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScannableBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*ScannableBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ScannableBlobAccessConfiguration) GetBackend() *blobstore.BlobAccessConfiguration {
@@ -279,11 +279,11 @@ func (x *ScannableBlobAccessConfiguration) GetFindMissingAuthorizer() *auth.Auth
 	return nil
 }
 
-var File_pkg_proto_configuration_bb_storage_bb_storage_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc = "" +
 	"\n" +
-	"3pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1a'pkg/proto/configuration/auth/auth.proto\x1a1pkg/proto/configuration/blobstore/blobstore.proto\x1a-pkg/proto/configuration/builder/builder.proto\x1a+pkg/proto/configuration/global/global.proto\x1a'pkg/proto/configuration/grpc/grpc.proto\"\xef\n" +
+	"Sgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x1aMgithub.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\"\xef\n" +
 	"\n" +
 	"\x18ApplicationConfiguration\x12T\n" +
 	"\fgrpc_servers\x18\x04 \x03(\v21.buildbarn.configuration.grpc.ServerConfigurationR\vgrpcServers\x12l\n" +
@@ -314,19 +314,19 @@ const file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc = "" +
 	"\x17find_missing_authorizer\x18\x04 \x01(\v25.buildbarn.configuration.auth.AuthorizerConfigurationR\x15findMissingAuthorizerBDZBgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storageb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc), len(file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = []any{
 	(*ApplicationConfiguration)(nil),            // 0: buildbarn.configuration.bb_storage.ApplicationConfiguration
 	(*NonScannableBlobAccessConfiguration)(nil), // 1: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
 	(*ScannableBlobAccessConfiguration)(nil),    // 2: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
@@ -338,7 +338,7 @@ var file_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = []any{
 	(*blobstore.BlobAccessConfiguration)(nil),   // 8: buildbarn.configuration.blobstore.BlobAccessConfiguration
 	(*builder.SchedulerConfiguration)(nil),      // 9: buildbarn.configuration.builder.SchedulerConfiguration
 }
-var file_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = []int32{
 	4,  // 0: buildbarn.configuration.bb_storage.ApplicationConfiguration.grpc_servers:type_name -> buildbarn.configuration.grpc.ServerConfiguration
 	3,  // 1: buildbarn.configuration.bb_storage.ApplicationConfiguration.schedulers:type_name -> buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry
 	5,  // 2: buildbarn.configuration.bb_storage.ApplicationConfiguration.global:type_name -> buildbarn.configuration.global.Configuration
@@ -364,26 +364,28 @@ var file_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = []int32{
 	0,  // [0:18] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_bb_storage_bb_storage_proto_init() }
-func file_pkg_proto_configuration_bb_storage_bb_storage_proto_init() {
-	if File_pkg_proto_configuration_bb_storage_bb_storage_proto != nil {
+func init() {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_init()
+}
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc), len(file_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_bb_storage_bb_storage_proto = out.File
-	file_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = nil
-	file_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = nil
 }

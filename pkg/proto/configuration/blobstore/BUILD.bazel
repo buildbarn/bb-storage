@@ -5,6 +5,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "blobstore_proto",
     srcs = ["blobstore.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/blockdevice:blockdevice_proto",
@@ -12,7 +13,7 @@ proto_library(
         "//pkg/proto/configuration/cloud/gcp:gcp_proto",
         "//pkg/proto/configuration/digest:digest_proto",
         "//pkg/proto/configuration/grpc:grpc_proto",
-        "//pkg/proto/configuration/http:http_proto",
+        "//pkg/proto/configuration/http/client:client_proto",
         "@googleapis//google/rpc:status_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -31,7 +32,7 @@ go_proto_library(
         "//pkg/proto/configuration/cloud/gcp",
         "//pkg/proto/configuration/digest",
         "//pkg/proto/configuration/grpc",
-        "//pkg/proto/configuration/http",
+        "//pkg/proto/configuration/http/client",
         "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )

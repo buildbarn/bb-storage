@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.31.1
-// source: pkg/proto/replicator/replicator.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/replicator/replicator.proto
 
 package replicator
 
@@ -116,5 +116,5 @@ var Replicator_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/proto/replicator/replicator.proto",
+	Metadata: "github.com/buildbarn/bb-storage/pkg/proto/replicator/replicator.proto",
 }

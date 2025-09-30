@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.31.1
-// source: pkg/proto/configuration/tls/tls.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto
 
 package tls
 
@@ -34,7 +34,7 @@ type ClientConfiguration struct {
 
 func (x *ClientConfiguration) Reset() {
 	*x = ClientConfiguration{}
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *ClientConfiguration) String() string {
 func (*ClientConfiguration) ProtoMessage() {}
 
 func (x *ClientConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *ClientConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientConfiguration.ProtoReflect.Descriptor instead.
 func (*ClientConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ClientConfiguration) GetServerCertificateAuthorities() string {
@@ -100,7 +100,7 @@ type ServerConfiguration struct {
 
 func (x *ServerConfiguration) Reset() {
 	*x = ServerConfiguration{}
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -112,7 +112,7 @@ func (x *ServerConfiguration) String() string {
 func (*ServerConfiguration) ProtoMessage() {}
 
 func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -125,7 +125,7 @@ func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerConfiguration.ProtoReflect.Descriptor instead.
 func (*ServerConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ServerConfiguration) GetCipherSuites() []string {
@@ -155,7 +155,7 @@ type X509KeyPair struct {
 
 func (x *X509KeyPair) Reset() {
 	*x = X509KeyPair{}
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -167,7 +167,7 @@ func (x *X509KeyPair) String() string {
 func (*X509KeyPair) ProtoMessage() {}
 
 func (x *X509KeyPair) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -180,7 +180,7 @@ func (x *X509KeyPair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use X509KeyPair.ProtoReflect.Descriptor instead.
 func (*X509KeyPair) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *X509KeyPair) GetKeyPair() isX509KeyPair_KeyPair {
@@ -234,7 +234,7 @@ type X509KeyPair_Inline struct {
 
 func (x *X509KeyPair_Inline) Reset() {
 	*x = X509KeyPair_Inline{}
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -246,7 +246,7 @@ func (x *X509KeyPair_Inline) String() string {
 func (*X509KeyPair_Inline) ProtoMessage() {}
 
 func (x *X509KeyPair_Inline) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -259,7 +259,7 @@ func (x *X509KeyPair_Inline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use X509KeyPair_Inline.ProtoReflect.Descriptor instead.
 func (*X509KeyPair_Inline) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2, 0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2, 0}
 }
 
 func (x *X509KeyPair_Inline) GetCertificate() string {
@@ -287,7 +287,7 @@ type X509KeyPair_Files struct {
 
 func (x *X509KeyPair_Files) Reset() {
 	*x = X509KeyPair_Files{}
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -299,7 +299,7 @@ func (x *X509KeyPair_Files) String() string {
 func (*X509KeyPair_Files) ProtoMessage() {}
 
 func (x *X509KeyPair_Files) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_tls_tls_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +312,7 @@ func (x *X509KeyPair_Files) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use X509KeyPair_Files.ProtoReflect.Descriptor instead.
 func (*X509KeyPair_Files) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2, 1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP(), []int{2, 1}
 }
 
 func (x *X509KeyPair_Files) GetCertificatePath() string {
@@ -336,11 +336,11 @@ func (x *X509KeyPair_Files) GetRefreshInterval() *durationpb.Duration {
 	return nil
 }
 
-var File_pkg_proto_configuration_tls_tls_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_tls_tls_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDesc = "" +
 	"\n" +
-	"%pkg/proto/configuration/tls/tls.proto\x12\x1bbuildbarn.configuration.tls\x1a\x1egoogle/protobuf/duration.proto\"\xff\x01\n" +
+	"Egithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x12\x1bbuildbarn.configuration.tls\x1a\x1egoogle/protobuf/duration.proto\"\xff\x01\n" +
 	"\x13ClientConfiguration\x12D\n" +
 	"\x1eserver_certificate_authorities\x18\x01 \x01(\tR\x1cserverCertificateAuthorities\x12#\n" +
 	"\rcipher_suites\x18\x04 \x03(\tR\fcipherSuites\x12\x1f\n" +
@@ -365,19 +365,19 @@ const file_pkg_proto_configuration_tls_tls_proto_rawDesc = "" +
 	"\bkey_pairB=Z;github.com/buildbarn/bb-storage/pkg/proto/configuration/tlsb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_tls_tls_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_tls_tls_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_tls_tls_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_tls_tls_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_tls_tls_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_tls_tls_proto_rawDesc), len(file_pkg_proto_configuration_tls_tls_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_tls_tls_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_tls_tls_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
-var file_pkg_proto_configuration_tls_tls_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_goTypes = []any{
 	(*ClientConfiguration)(nil), // 0: buildbarn.configuration.tls.ClientConfiguration
 	(*ServerConfiguration)(nil), // 1: buildbarn.configuration.tls.ServerConfiguration
 	(*X509KeyPair)(nil),         // 2: buildbarn.configuration.tls.X509KeyPair
@@ -385,7 +385,7 @@ var file_pkg_proto_configuration_tls_tls_proto_goTypes = []any{
 	(*X509KeyPair_Files)(nil),   // 4: buildbarn.configuration.tls.X509KeyPair.Files
 	(*durationpb.Duration)(nil), // 5: google.protobuf.Duration
 }
-var file_pkg_proto_configuration_tls_tls_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_depIdxs = []int32{
 	2, // 0: buildbarn.configuration.tls.ClientConfiguration.client_key_pair:type_name -> buildbarn.configuration.tls.X509KeyPair
 	2, // 1: buildbarn.configuration.tls.ServerConfiguration.server_key_pair:type_name -> buildbarn.configuration.tls.X509KeyPair
 	3, // 2: buildbarn.configuration.tls.X509KeyPair.inline:type_name -> buildbarn.configuration.tls.X509KeyPair.Inline
@@ -398,12 +398,12 @@ var file_pkg_proto_configuration_tls_tls_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_tls_tls_proto_init() }
-func file_pkg_proto_configuration_tls_tls_proto_init() {
-	if File_pkg_proto_configuration_tls_tls_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto != nil {
 		return
 	}
-	file_pkg_proto_configuration_tls_tls_proto_msgTypes[2].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes[2].OneofWrappers = []any{
 		(*X509KeyPair_Inline_)(nil),
 		(*X509KeyPair_Files_)(nil),
 	}
@@ -411,17 +411,17 @@ func file_pkg_proto_configuration_tls_tls_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_tls_tls_proto_rawDesc), len(file_pkg_proto_configuration_tls_tls_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_tls_tls_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_tls_tls_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_tls_tls_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_tls_tls_proto = out.File
-	file_pkg_proto_configuration_tls_tls_proto_goTypes = nil
-	file_pkg_proto_configuration_tls_tls_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_tls_tls_proto_depIdxs = nil
 }

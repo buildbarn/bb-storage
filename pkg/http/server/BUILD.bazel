@@ -1,33 +1,31 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "http",
+    name = "server",
     srcs = [
         "accept_header_authenticator.go",
         "allow_authenticator.go",
         "any_authenticator.go",
         "authenticating_handler.go",
         "authenticator.go",
-        "configuration.go",
         "deny_authenticator.go",
-        "header_adding_round_tripper.go",
         "metrics_handler.go",
-        "metrics_round_tripper.go",
         "oidc_authenticator.go",
         "request_headers_authenticator.go",
         "server.go",
         "status_code.go",
     ],
-    importpath = "github.com/buildbarn/bb-storage/pkg/http",
+    importpath = "github.com/buildbarn/bb-storage/pkg/http/server",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/auth",
         "//pkg/clock",
         "//pkg/grpc",
+        "//pkg/http/client",
         "//pkg/jmespath",
         "//pkg/jwt",
         "//pkg/program",
-        "//pkg/proto/configuration/http",
+        "//pkg/proto/configuration/http/server",
         "//pkg/proto/http/oidc",
         "//pkg/random",
         "//pkg/util",
@@ -44,7 +42,7 @@ go_library(
 )
 
 go_test(
-    name = "http_test",
+    name = "server_test",
     srcs = [
         "accept_header_authenticator_test.go",
         "allow_authenticator_test.go",
@@ -53,7 +51,7 @@ go_test(
         "request_headers_authenticator_test.go",
     ],
     deps = [
-        ":http",
+        ":server",
         "//internal/mock",
         "//pkg/auth",
         "//pkg/jmespath",
