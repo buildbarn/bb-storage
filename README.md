@@ -167,7 +167,7 @@ found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-
 
 # Join us on Slack!
 
-There is a [#buildbarn channel on buildteamworld.slack.com](https://bit.ly/2SG1amT)
+There is a [#buildbarn channel on buildteamworld.slack.com](https://join.slack.com/t/buildteamworld/shared_invite/zt-3epswjmkj-bsCAPUtTmXEtlPcBl5C_lQ)
 that you can join to get in touch with other people who use and hack on
 Buildbarn.
 

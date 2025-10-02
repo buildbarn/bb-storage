@@ -116,4 +116,4 @@ $ bazel build --remote_cache=grpc://localhost:8980 --remote_instance_name=foo //
 
 # 到Slack上一起聊聊吧！
 
-在[buildteamworld.slack.com有一个buildbarn频道](https://bit.ly/2SG1amT)，在这里可以与使用和探究Buildbarn的人相互交流。
+在[buildteamworld.slack.com有一个buildbarn频道](https://join.slack.com/t/buildteamworld/shared_invite/zt-3epswjmkj-bsCAPUtTmXEtlPcBl5C_lQ)，在这里可以与使用和探究Buildbarn的人相互交流。
