@@ -25,6 +25,13 @@ buildifier(
     name = "buildifier",
 )
 
+buildifier(
+    name = "buildifier.check",
+    exclude_patterns = ["./.git/*"],
+    lint_mode = "warn",
+    mode = "diff",
+)
+
 npm_link_all_packages(
     name = "node_modules",
 )

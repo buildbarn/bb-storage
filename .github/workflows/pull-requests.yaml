@@ -30,11 +30,6 @@
             },
             {
                "if": "matrix.host.lint",
-               "name": "Buildifier",
-               "run": "bazel run @com_github_bazelbuild_buildtools//:buildifier"
-            },
-            {
-               "if": "matrix.host.lint",
                "name": "Gofmt",
                "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)"
             },
