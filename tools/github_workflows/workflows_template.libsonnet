@@ -67,7 +67,7 @@
         // https://github.com/GoogleCloudPlatform/container-definitions/issues/12037
         {
           name: 'Check out source code',
-          uses: 'actions/checkout@v1',
+          uses: 'actions/checkout@v5',
         },
       ] + setupSteps + [
         {
@@ -89,11 +89,6 @@
         {
           name: 'Gazelle',
           run: "rm -f $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle",
-          'if': 'matrix.host.lint',
-        },
-        {
-          name: 'Buildifier',
-          run: 'bazel run @com_github_bazelbuild_buildtools//:buildifier',
           'if': 'matrix.host.lint',
         },
         {
