@@ -18,6 +18,7 @@ sh_binary(
     name = "reformat",
     srcs = ["reformat.sh"],
     data = [
+        "//:gazelle",
         "@cc_mvdan_gofumpt//:gofumpt",
         "@llvm_toolchain_llvm//:bin/clang-format",
         "@rules_go//go",

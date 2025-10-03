@@ -13,26 +13,21 @@ source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
 # --- end runfiles.bash initialization v3 ---
 
 # Check required binaries exist
-go="$(rlocation rules_go++go_sdk+main___download_0/bin/go)"
-if [ -z "$go" ]; then
-  echo "go binary not found"
-  exit 1
-fi
+go="$(rlocation rules_go/go/tools/go_bin_runner/bin/go)"
+gofumpt="$(rlocation cc_mvdan_gofumpt/gofumpt_/gofumpt)"
+clang_format="$(rlocation llvm_toolchain_llvm/bin/clang-format)"
+gazelle="$(rlocation com_github_buildbarn_bb_storage/gazelle)"
 
-gofumpt="$(rlocation gazelle++go_deps+cc_mvdan_gofumpt/gofumpt_/gofumpt)"
-if [ -z "$gofumpt" ]; then
-  echo "gofumpt binary not found"
-  exit 1
-fi
-
-clang_format="$(rlocation toolchains_llvm++llvm+llvm_toolchain_llvm/bin/clang-format)"
-if [ -z "$clang_format" ]; then
-  echo "clang-format binary not found"
+if [ ! -x "$go" ] || [ ! -x "$gofumpt" ] || [ ! -x "$clang_format" ] || [ ! -x "$gazelle" ]; then
+  echo "Missing dependency binaries: \n"
+  echo "go: $go"
+  echo "goumpt: $gofumpt"
+  echo "clang-format: $clang_format"
+  echo "gazelle: $gazelle"
   exit 1
 fi
 
 # Start in the root directory
-original_dir="$(pwd)"
 cd "$BUILD_WORKSPACE_DIRECTORY"
 
 # Get the go module name
@@ -51,7 +46,7 @@ $go mod tidy || true
 # Gazelle
 find . -name '*.pb.go' -delete
 rm -f $(find . -name '*.proto' | sed -e 's/[^/]*$/BUILD.bazel/')
-bazel run //:gazelle
+$gazelle
 
 # bzlmod
 bazel mod tidy
