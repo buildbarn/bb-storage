@@ -19,6 +19,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve_regexp proto google/protobuf/(.*)\.proto @protobuf//:${1}_proto
 gazelle(
     name = "gazelle",
+    visibility = ["//tools:__pkg__"],
 )
 
 buildifier(
