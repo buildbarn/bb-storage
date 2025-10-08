@@ -541,7 +541,6 @@
                   {
                      "bazel_os": "linux",
                      "cross_compile": true,
-                     "lint": true,
                      "os": "ubuntu-latest",
                      "platform_name": "linux_amd64",
                      "upload": true
@@ -549,7 +548,6 @@
                   {
                      "bazel_os": "windows",
                      "cross_compile": false,
-                     "lint": false,
                      "os": "windows-latest",
                      "platform_name": "windows_amd64",
                      "upload": false
@@ -559,8 +557,8 @@
          }
       },
       "lint": {
-         "name": "lint ${{ matrix.host.os }}",
-         "runs-on": "${{ matrix.host.os }}",
+         "name": "lint",
+         "runs-on": "ubuntu-latest",
          "steps": [
             {
                "name": "Check out source code",
@@ -568,45 +566,12 @@
             },
             {
                "name": "Installing Bazel",
-               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-${{matrix.host.bazel_os}}-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}",
+               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-linux-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}",
                "shell": "bash"
             },
             {
-               "if": "matrix.host.platform_name == 'windows_amd64'",
-               "name": "Override .bazelrc",
-               "run": "echo \"startup --output_base=D:/bazel_output\" >> .bazelrc"
-            },
-            {
-               "name": "Bazel mod tidy",
-               "run": "bazel mod tidy"
-            },
-            {
-               "name": "Gazelle",
-               "run": "rm -f $(find . -name '*.pb.go' | sed -e 's/[^/]*$/BUILD.bazel/') && bazel run //:gazelle"
-            },
-            {
-               "name": "Buildifier",
-               "run": "bazel run @com_github_bazelbuild_buildtools//:buildifier"
-            },
-            {
-               "name": "Gofmt",
-               "run": "bazel run @cc_mvdan_gofumpt//:gofumpt -- -w -extra $(pwd)"
-            },
-            {
-               "name": "Clang format",
-               "run": "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +"
-            },
-            {
-               "name": "GitHub workflows",
-               "run": "bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows"
-            },
-            {
-               "name": "Protobuf generation",
-               "run": "if [ -d pkg/proto ]; then\n  find . bazel-bin/pkg/proto -name '*.pb.go' -delete || true\n  bazel build $(bazel query --output=label 'kind(\"go_proto_library\", //...)')\n  find bazel-bin/pkg/proto -name '*.pb.go' | while read f; do\n    cat $f > $(echo $f | sed -e 's|.*/pkg/proto/|pkg/proto/|')\n  done\nfi\n"
-            },
-            {
-               "name": "Embedded asset generation",
-               "run": "bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |//\\1:|; s|\"||g; s| .*||' | sort -u)\ngit grep '^[[:space:]]*//go:embed ' | sed -e 's|\\(.*\\)/.*//go:embed |\\1/|' | while read o; do\n  if [ -e \"bazel-bin/$o\" ]; then\n    rm -rf \"$o\"\n    cp -r \"bazel-bin/$o\" \"$o\"\n    find \"$o\" -type f -exec chmod -x {} +\n  fi\ndone\n"
+               "name": "Reformat",
+               "run": "bazel run @com_github_buildbarn_bb_storage//tools:reformat"
             },
             {
                "name": "Test style conformance",
@@ -616,21 +581,7 @@
                "name": "Golint",
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
             }
-         ],
-         "strategy": {
-            "matrix": {
-               "host": [
-                  {
-                     "bazel_os": "linux",
-                     "cross_compile": true,
-                     "lint": true,
-                     "os": "ubuntu-latest",
-                     "platform_name": "linux_amd64",
-                     "upload": true
-                  }
-               ]
-            }
-         }
+         ]
       }
    },
    "name": "main",
