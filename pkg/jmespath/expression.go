@@ -17,6 +17,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -57,7 +58,12 @@ func NewExpressionFromConfiguration(config *pb.Expression, group program.Group, 
 	for _, t := range config.TestVectors {
 		err := expr.checkTestVector(t)
 		if err != nil {
-			return nil, util.StatusWrapf(err, "Failed to validate JMESPath expression %q with test vector %q", config.Expression, t.Input)
+			return nil, util.StatusWrapf(
+				err,
+				"Failed to validate JMESPath expression %q with test vector %s",
+				config.Expression,
+				protojson.MarshalOptions{}.Format(t.Input),
+			)
 		}
 	}
 
