@@ -110,6 +110,7 @@ type CookieValue_Authenticating struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	StateVerifier      []byte                 `protobuf:"bytes,1,opt,name=state_verifier,json=stateVerifier,proto3" json:"state_verifier,omitempty"`
 	OriginalRequestUri string                 `protobuf:"bytes,2,opt,name=original_request_uri,json=originalRequestUri,proto3" json:"original_request_uri,omitempty"`
+	CodeVerifier       []byte                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -156,6 +157,13 @@ func (x *CookieValue_Authenticating) GetOriginalRequestUri() string {
 		return x.OriginalRequestUri
 	}
 	return ""
+}
+
+func (x *CookieValue_Authenticating) GetCodeVerifier() []byte {
+	if x != nil {
+		return x.CodeVerifier
+	}
+	return nil
 }
 
 type CookieValue_Authenticated struct {
@@ -230,13 +238,14 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto protoref
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_http_oidc_oidc_proto_rawDesc = "" +
 	"\n" +
-	">github.com/buildbarn/bb-storage/pkg/proto/http/oidc/oidc.proto\x12\x13buildbarn.http.oidc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x04\n" +
+	">github.com/buildbarn/bb-storage/pkg/proto/http/oidc/oidc.proto\x12\x13buildbarn.http.oidc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x05\n" +
 	"\vCookieValue\x12Y\n" +
 	"\x0eauthenticating\x18\x01 \x01(\v2/.buildbarn.http.oidc.CookieValue.AuthenticatingH\x00R\x0eauthenticating\x12V\n" +
-	"\rauthenticated\x18\x02 \x01(\v2..buildbarn.http.oidc.CookieValue.AuthenticatedH\x00R\rauthenticated\x1ai\n" +
+	"\rauthenticated\x18\x02 \x01(\v2..buildbarn.http.oidc.CookieValue.AuthenticatedH\x00R\rauthenticated\x1a\x8e\x01\n" +
 	"\x0eAuthenticating\x12%\n" +
 	"\x0estate_verifier\x18\x01 \x01(\fR\rstateVerifier\x120\n" +
-	"\x14original_request_uri\x18\x02 \x01(\tR\x12originalRequestUri\x1a\x9b\x02\n" +
+	"\x14original_request_uri\x18\x02 \x01(\tR\x12originalRequestUri\x12#\n" +
+	"\rcode_verifier\x18\x03 \x01(\fR\fcodeVerifier\x1a\x9b\x02\n" +
 	"\rAuthenticated\x12_\n" +
 	"\x17authentication_metadata\x18\x01 \x01(\v2&.buildbarn.auth.AuthenticationMetadataR\x16authenticationMetadata\x12:\n" +
 	"\n" +

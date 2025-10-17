@@ -21,6 +21,13 @@ message CookieValue {
     // the authorization endpoint URL took place. The user will be
     // redirected back to this page upon success.
     string original_request_uri = 2;
+
+    // The value that was used to compute the code challenge that was
+    // provided to the authorization endpoint URL. It is used to
+    // implement Proof Key for Code Exchange (RFC 7636) and is sent to
+    // the token endpoint URL when exchanging the authorization code for
+    // an access token.
+    bytes code_verifier = 3;
   }
 
   message Authenticated {
