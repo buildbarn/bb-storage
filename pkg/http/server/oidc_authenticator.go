@@ -188,7 +188,7 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Obtain an access token and refresh token.
-		token, err := a.oauth2Config.Exchange(ctx, r.FormValue("code"))
+		token, err := a.oauth2Config.Exchange(ctx, r.FormValue("code"), oauth2.VerifierOption(authenticating.CodeVerifier))
 		if err != nil {
 			// Strip the token endpoint URL from the error
 			// message, as it's not for the user to see.
@@ -247,17 +247,23 @@ func (a *oidcAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request)
 	if _, err := a.randomNumberGenerator.Read(stateVerifier[:]); err != nil {
 		return nil, err
 	}
+	var codeVerifierBytes [32]byte
+	if _, err := a.randomNumberGenerator.Read(codeVerifierBytes[:]); err != nil {
+		return nil, err
+	}
+	codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBytes[:])
 	if err := a.setCookieValue(w, &oidc.CookieValue{
 		SessionState: &oidc.CookieValue_Authenticating_{
 			Authenticating: &oidc.CookieValue_Authenticating{
 				StateVerifier:      stateVerifier[:],
 				OriginalRequestUri: r.URL.RequestURI(),
+				CodeVerifier:       codeVerifier,
 			},
 		},
 	}); err != nil {
 		return nil, util.StatusWrap(err, "Failed to set OIDC session state cookie")
 	}
-	authCodeURL := a.oauth2Config.AuthCodeURL(base64.RawURLEncoding.EncodeToString(stateVerifier[:]))
+	authCodeURL := a.oauth2Config.AuthCodeURL(base64.RawURLEncoding.EncodeToString(stateVerifier[:]), oauth2.S256ChallengeOption(codeVerifier))
 	http.Redirect(w, r, authCodeURL, http.StatusSeeOther)
 	return nil, nil
 }

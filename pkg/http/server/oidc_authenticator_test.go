@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -93,6 +94,8 @@ func TestOIDCAuthenticator(t *testing.T) {
 			// redirect URI, and scopes.
 			stateVerifier := []byte{0x75, 0xe6, 0x5d, 0xc1, 0x2c, 0x0e, 0x35, 0x16, 0x8a, 0xbd, 0xc7, 0xc7, 0x39, 0xa4, 0xd0, 0xe0}
 			expectRead(randomNumberGenerator, stateVerifier)
+			codeVerifier := []byte{0x7e, 0x74, 0x20, 0x0c, 0x5f, 0x49, 0x3c, 0xa9, 0xa6, 0xc4, 0x4c, 0xb3, 0xb8, 0x8e, 0xb3, 0x64, 0xf4, 0xeb, 0xf6, 0x2e, 0x38, 0xee, 0x48, 0x26, 0x5f, 0xf1, 0xba, 0x9a, 0xfd, 0xaf, 0x4a, 0x90}
+			expectRead(randomNumberGenerator, codeVerifier)
 			nonce := []byte{0x5b, 0xd1, 0x9b, 0x39}
 			expectRead(randomNumberGenerator, nonce)
 			cookieAEAD.EXPECT().Seal(
@@ -103,6 +106,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 						Authenticating: &oidc.CookieValue_Authenticating{
 							StateVerifier:      stateVerifier,
 							OriginalRequestUri: "/index.html?foo=bar&baz=qux",
+							CodeVerifier:       base64.RawURLEncoding.EncodeToString(codeVerifier[:]),
 						},
 					},
 				}),
@@ -121,7 +125,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 			require.Equal(t, http.StatusSeeOther, w.Code)
 			require.Equal(t, http.Header{
 				"Content-Type": []string{"text/html; charset=utf-8"},
-				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
+				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&code_challenge=ya15shOa2KSrjk6mdtC4_bsdTT9FqvT1Om78-bkACOk&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
 				"Set-Cookie":   []string{"CookieName=W9GbOSKiQqu9n_US; Path=/; HttpOnly; Secure; SameSite=Lax"},
 			}, w.HeaderMap)
 		})
@@ -133,6 +137,8 @@ func TestOIDCAuthenticator(t *testing.T) {
 			// Sec-Fetch-Dest=document header.
 			stateVerifier := []byte{0x75, 0xe6, 0x5d, 0xc1, 0x2c, 0x0e, 0x35, 0x16, 0x8a, 0xbd, 0xc7, 0xc7, 0x39, 0xa4, 0xd0, 0xe0}
 			expectRead(randomNumberGenerator, stateVerifier)
+			codeVerifier := []byte{0x7e, 0x74, 0x20, 0x0c, 0x5f, 0x49, 0x3c, 0xa9, 0xa6, 0xc4, 0x4c, 0xb3, 0xb8, 0x8e, 0xb3, 0x64, 0xf4, 0xeb, 0xf6, 0x2e, 0x38, 0xee, 0x48, 0x26, 0x5f, 0xf1, 0xba, 0x9a, 0xfd, 0xaf, 0x4a, 0x90}
+			expectRead(randomNumberGenerator, codeVerifier)
 			nonce := []byte{0x5b, 0xd1, 0x9b, 0x39}
 			expectRead(randomNumberGenerator, nonce)
 			cookieAEAD.EXPECT().Seal(
@@ -143,6 +149,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 						Authenticating: &oidc.CookieValue_Authenticating{
 							StateVerifier:      stateVerifier,
 							OriginalRequestUri: "/index.html?foo=bar&baz=qux",
+							CodeVerifier:       base64.RawURLEncoding.EncodeToString(codeVerifier[:]),
 						},
 					},
 				}),
@@ -162,7 +169,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 			require.Equal(t, http.StatusSeeOther, w.Code)
 			require.Equal(t, http.Header{
 				"Content-Type": []string{"text/html; charset=utf-8"},
-				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
+				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&code_challenge=ya15shOa2KSrjk6mdtC4_bsdTT9FqvT1Om78-bkACOk&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=deZdwSwONRaKvcfHOaTQ4A"},
 				"Set-Cookie":   []string{"CookieName=W9GbOSKiQqu9n_US; Path=/; HttpOnly; Secure; SameSite=Lax"},
 			}, w.HeaderMap)
 		})
@@ -202,6 +209,8 @@ func TestOIDCAuthenticator(t *testing.T) {
 			clock.EXPECT().Now().Return(time.Unix(1693146029, 0))
 			stateVerifier := []byte{0x25, 0xd8, 0xc0, 0xb6, 0x57, 0xf1, 0xf1, 0x3e, 0xaf, 0x78, 0x01, 0x40, 0x3c, 0xa9, 0x4b, 0xdf}
 			expectRead(randomNumberGenerator, stateVerifier)
+			codeVerifier := []byte{0x7e, 0x74, 0x20, 0x0c, 0x5f, 0x49, 0x3c, 0xa9, 0xa6, 0xc4, 0x4c, 0xb3, 0xb8, 0x8e, 0xb3, 0x64, 0xf4, 0xeb, 0xf6, 0x2e, 0x38, 0xee, 0x48, 0x26, 0x5f, 0xf1, 0xba, 0x9a, 0xfd, 0xaf, 0x4a, 0x90}
+			expectRead(randomNumberGenerator, codeVerifier)
 			nonce := []byte{0xa1, 0x6d, 0x1f, 0xf2}
 			expectRead(randomNumberGenerator, nonce)
 			cookieAEAD.EXPECT().Seal(
@@ -212,6 +221,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 						Authenticating: &oidc.CookieValue_Authenticating{
 							StateVerifier:      stateVerifier,
 							OriginalRequestUri: "/favicon.ico",
+							CodeVerifier:       base64.RawURLEncoding.EncodeToString(codeVerifier[:]),
 						},
 					},
 				}),
@@ -234,7 +244,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 			require.Equal(t, http.StatusSeeOther, w.Code)
 			require.Equal(t, http.Header{
 				"Content-Type": []string{"text/html; charset=utf-8"},
-				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=JdjAtlfx8T6veAFAPKlL3w"},
+				"Location":     []string{"https://login.com/authorize?client_id=MyClientID&code_challenge=ya15shOa2KSrjk6mdtC4_bsdTT9FqvT1Om78-bkACOk&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmyserver.com%2Fcallback&response_type=code&scope=openid+email&state=JdjAtlfx8T6veAFAPKlL3w"},
 				"Set-Cookie":   []string{"CookieName=oW0f8kXFDrvmDiwv; Path=/; HttpOnly; Secure; SameSite=Lax"},
 			}, w.HeaderMap)
 		})
@@ -508,6 +518,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 					SessionState: &oidc.CookieValue_Authenticating_{
 						Authenticating: &oidc.CookieValue_Authenticating{
 							StateVerifier: []byte{0x7a, 0xbe, 0x5c, 0x8c, 0xe4, 0xdf, 0x0e, 0xb4, 0x09, 0xd9, 0x23, 0xe4, 0x79, 0x9a, 0x45, 0x7d},
+							CodeVerifier:  "MyCodeVerifier",
 						},
 					},
 				})...), nil
@@ -520,6 +531,7 @@ func TestOIDCAuthenticator(t *testing.T) {
 					"client_id":     []string{"MyClientID"},
 					"client_secret": []string{"MyClientSecret"},
 					"code":          []string{"MyCode"},
+					"code_verifier": []string{"MyCodeVerifier"},
 					"grant_type":    []string{"authorization_code"},
 					"redirect_uri":  []string{"https://myserver.com/callback"},
 				}, r.Form)
