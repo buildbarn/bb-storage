@@ -968,7 +968,8 @@ func renameHelper(sourceHandle, newHandle windows.Handle, newName string) (areSa
 }
 
 func buildFileRenameInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
-	fileNameLen := len(name)*2 - 2
+	unterminatedName := name[:len(name)-1]
+	fileNameLen := len(unterminatedName) * 2
 	bufferSize := int(unsafe.Offsetof(windowsext.FILE_RENAME_INFORMATION{}.FileName)) + fileNameLen
 	buffer := make([]byte, bufferSize)
 	typedBufferPtr := (*windowsext.FILE_RENAME_INFORMATION)(unsafe.Pointer(&buffer[0]))
@@ -976,7 +977,7 @@ func buildFileRenameInfo(root windows.Handle, name []uint16) ([]byte, uint32) {
 	typedBufferPtr.ReplaceIfExists = windows.FILE_RENAME_REPLACE_IF_EXISTS | windows.FILE_RENAME_POSIX_SEMANTICS
 	typedBufferPtr.RootDirectory = root
 	typedBufferPtr.FileNameLength = uint32(fileNameLen)
-	copy((*[windows.MAX_LONG_PATH]uint16)(unsafe.Pointer(&typedBufferPtr.FileName[0]))[:], name)
+	copy((*[windows.MAX_LONG_PATH]uint16)(unsafe.Pointer(&typedBufferPtr.FileName[0]))[:], unterminatedName)
 
 	return buffer, uint32(bufferSize)
 }
