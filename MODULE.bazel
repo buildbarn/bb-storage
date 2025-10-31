@@ -56,7 +56,6 @@ single_version_override(
         "//:patches/gazelle/dont-flatten-srcs.diff",
         "//:patches/gazelle/gazelle-binary-struct.diff",
         "//:patches/gazelle/go-tool.diff",
-        "//:patches/gazelle/unlink.diff",
     ],
 )
 
