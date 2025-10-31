@@ -17,6 +17,7 @@ def multiarch_go_image(name, binary):
         srcs = [binary],
         include_runfiles = True,
         package_dir = "app",
+        extension = "tar.gz",
     )
 
     oci_image(
