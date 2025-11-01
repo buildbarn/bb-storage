@@ -5,6 +5,7 @@ import (
 	"os"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -218,6 +219,14 @@ func main() {
 					remoteexecution.RegisterExecutionServer(s, buildQueue)
 				}
 				if len(capabilitiesProviders) > 0 {
+					capabilitiesProviders = append(
+						capabilitiesProviders,
+						capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+							DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+							LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
+							HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
+						}),
+					)
 					remoteexecution.RegisterCapabilitiesServer(
 						s,
 						capabilities.NewServer(

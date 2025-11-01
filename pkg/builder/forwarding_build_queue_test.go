@@ -69,8 +69,9 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 						remoteexecution.Compressor_ZSTD,
 					},
 				},
-				LowApiVersion:  &semver.SemVer{Major: 2},
-				HighApiVersion: &semver.SemVer{Major: 2},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2},
+				LowApiVersion:        &semver.SemVer{Major: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2},
 			})
 			return nil
 		})
@@ -95,8 +96,9 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
-				LowApiVersion:  &semver.SemVer{Major: 2},
-				HighApiVersion: &semver.SemVer{Major: 2},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2},
+				LowApiVersion:        &semver.SemVer{Major: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2},
 			})
 			return nil
 		})
@@ -109,6 +111,9 @@ func TestForwardingBuildQueueGetCapabilities(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 				ExecEnabled:     true,
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2},
+			LowApiVersion:        &semver.SemVer{Major: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2},
 		}, serverCapabilities)
 	})
 }

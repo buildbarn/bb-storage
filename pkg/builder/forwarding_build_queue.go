@@ -40,6 +40,9 @@ func (bq *forwardingBuildQueue) GetCapabilities(ctx context.Context, instanceNam
 	if executionCapabilities := serverCapabilities.ExecutionCapabilities; executionCapabilities != nil {
 		return &remoteexecution.ServerCapabilities{
 			ExecutionCapabilities: executionCapabilities,
+			DeprecatedApiVersion:  serverCapabilities.DeprecatedApiVersion,
+			LowApiVersion:         serverCapabilities.LowApiVersion,
+			HighApiVersion:        serverCapabilities.HighApiVersion,
 		}, nil
 	}
 	return nil, status.Errorf(codes.InvalidArgument, "Instance name %#v does not support remote execution", instanceName.String())

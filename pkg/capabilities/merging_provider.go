@@ -4,6 +4,7 @@ import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -82,7 +83,19 @@ func (p *mergingProvider) GetCapabilities(ctx context.Context, instanceName dige
 	// ServerCapabilities message.
 	var capabilities remoteexecution.ServerCapabilities
 	for _, result := range results {
-		proto.Merge(&capabilities, result.capabilities)
+		proto.Merge(&capabilities, &remoteexecution.ServerCapabilities{
+			CacheCapabilities:     result.capabilities.CacheCapabilities,
+			ExecutionCapabilities: result.capabilities.ExecutionCapabilities,
+		})
+		if capabilities.DeprecatedApiVersion == nil || (result.capabilities.DeprecatedApiVersion != nil && versionIsLess(capabilities.DeprecatedApiVersion, result.capabilities.DeprecatedApiVersion)) {
+			capabilities.DeprecatedApiVersion = result.capabilities.DeprecatedApiVersion
+		}
+		if capabilities.LowApiVersion == nil || (result.capabilities.LowApiVersion != nil && versionIsLess(capabilities.LowApiVersion, result.capabilities.LowApiVersion)) {
+			capabilities.LowApiVersion = result.capabilities.LowApiVersion
+		}
+		if capabilities.HighApiVersion == nil || (result.capabilities.HighApiVersion != nil && versionIsLess(result.capabilities.HighApiVersion, capabilities.HighApiVersion)) {
+			capabilities.HighApiVersion = result.capabilities.HighApiVersion
+		}
 	}
 	if capabilities.CacheCapabilities != nil || capabilities.ExecutionCapabilities != nil {
 		return &capabilities, nil
@@ -103,4 +116,26 @@ type emptyProvider struct{}
 
 func (emptyProvider) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	return nil, status.Error(codes.NotFound, "No capabilities providers registered")
+}
+
+func versionIsLess(a, b *semver.SemVer) bool {
+	if a.Major < b.Major {
+		return true
+	}
+	if a.Major > b.Major {
+		return false
+	}
+	if a.Minor < b.Minor {
+		return true
+	}
+	if a.Minor > b.Minor {
+		return false
+	}
+	if a.Patch < b.Patch {
+		return true
+	}
+	if a.Patch > b.Patch {
+		return false
+	}
+	return a.Prerelease < b.Prerelease
 }

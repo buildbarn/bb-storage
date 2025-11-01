@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -43,6 +44,9 @@ func TestMergingProviderOne(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 
 		serverCapabilities, err := provider.GetCapabilities(ctx, instanceName)
@@ -53,6 +57,9 @@ func TestMergingProviderOne(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 				ExecEnabled:     true,
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, serverCapabilities)
 	})
 }
@@ -90,6 +97,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 		contentAddressableStorage.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(nil, status.Error(codes.NotFound, "Unknown instance name: \"example\""))
@@ -108,6 +118,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 		contentAddressableStorage.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(&remoteexecution.ServerCapabilities{
@@ -116,6 +129,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 						remoteexecution.DigestFunction_SHA256,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 1},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 1},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 8},
 			}, nil)
 		scheduler.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(nil, status.Error(codes.NotFound, "Unknown instance name: \"example\""))
@@ -131,6 +147,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 					remoteexecution.DigestFunction_SHA256,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 1},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 8},
 		}, serverCapabilities)
 	})
 
@@ -142,6 +161,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 8},
 			}, nil)
 		contentAddressableStorage.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(&remoteexecution.ServerCapabilities{
@@ -150,6 +172,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 						remoteexecution.DigestFunction_SHA256,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 3},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 		scheduler.EXPECT().GetCapabilities(gomock.Any(), instanceName).
 			Return(&remoteexecution.ServerCapabilities{
@@ -158,6 +183,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 1},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 3},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 9},
 			}, nil)
 
 		serverCapabilities, err := provider.GetCapabilities(ctx, instanceName)
@@ -176,6 +204,9 @@ func TestMergingProviderMultiple(t *testing.T) {
 				DigestFunctions: digest.SupportedDigestFunctions,
 				ExecEnabled:     true,
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 1},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 3},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 8},
 		}, serverCapabilities)
 	})
 }
@@ -208,6 +239,9 @@ func TestMergingProviderWithCompression(t *testing.T) {
 					remoteexecution.DigestFunction_SHA1,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, nil)
 
 	serverCapabilities, err := provider.GetCapabilities(ctx, instanceName)
@@ -223,5 +257,8 @@ func TestMergingProviderWithCompression(t *testing.T) {
 				remoteexecution.Compressor_ZSTD,
 			},
 		},
+		DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+		LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+		HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 	}, serverCapabilities)
 }

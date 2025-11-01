@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -62,6 +63,9 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 				CacheCapabilities: &remoteexecution.CacheCapabilities{
 					DigestFunctions: digest.SupportedDigestFunctions,
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 
 		response, err := demultiplexingBuildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("ubuntu1804")))
@@ -70,6 +74,9 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			CacheCapabilities: &remoteexecution.CacheCapabilities{
 				DigestFunctions: digest.SupportedDigestFunctions,
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, response)
 	})
 }

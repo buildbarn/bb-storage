@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
@@ -422,6 +423,9 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 
 		serverCapabilities, err := blobAccess.GetCapabilities(ctx, util.Must(digest.NewInstanceName("hello/world")))
@@ -432,6 +436,9 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 					UpdateEnabled: true,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, serverCapabilities)
 	})
 }

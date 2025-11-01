@@ -50,6 +50,9 @@ func TestServer(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 3},
 			}, nil)
 
 		serverCapabilities, err := server.GetCapabilities(ctx, &remoteexecution.GetCapabilitiesRequest{
