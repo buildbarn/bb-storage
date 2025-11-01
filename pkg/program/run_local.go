@@ -33,8 +33,6 @@ func RunLocal(ctx context.Context, routine Routine) error {
 		cancel: cancel,
 	}
 	run(innerCtx, errorLogger, routine)
-	errorLogger.shutdownStarted.Do(func() {
-		errorLogger.cancel()
-	})
+	errorLogger.shutdownStarted.Do(cancel)
 	return errorLogger.firstError
 }
