@@ -201,8 +201,9 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
-				LowApiVersion:  &semver.SemVer{Major: 2},
-				HighApiVersion: &semver.SemVer{Major: 2},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2},
+				LowApiVersion:        &semver.SemVer{Major: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2},
 			})
 			return nil
 		})
@@ -241,8 +242,9 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 					DigestFunctions: digest.SupportedDigestFunctions,
 					ExecEnabled:     true,
 				},
-				LowApiVersion:  &semver.SemVer{Major: 2},
-				HighApiVersion: &semver.SemVer{Major: 2},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2},
+				LowApiVersion:        &semver.SemVer{Major: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2},
 			})
 			return nil
 		})
@@ -255,6 +257,9 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 					remoteexecution.DigestFunction_SHA256,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2},
+			LowApiVersion:        &semver.SemVer{Major: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2},
 		}, serverCapabilities)
 	})
 }

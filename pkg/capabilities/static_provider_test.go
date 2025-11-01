@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -19,6 +20,9 @@ func TestStaticProvider(t *testing.T) {
 			DigestFunctions: digest.SupportedDigestFunctions,
 			ExecEnabled:     true,
 		},
+		DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+		LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+		HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 	})
 
 	serverCapabilities, err := provider.GetCapabilities(context.Background(), util.Must(digest.NewInstanceName("example")))
@@ -29,5 +33,8 @@ func TestStaticProvider(t *testing.T) {
 			DigestFunctions: digest.SupportedDigestFunctions,
 			ExecEnabled:     true,
 		},
+		DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+		LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+		HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 	}, serverCapabilities)
 }

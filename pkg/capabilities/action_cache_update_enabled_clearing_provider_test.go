@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -57,6 +58,9 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{util.Must(digest.NewInstanceName("hello"))}).Return([]error{nil})
 
@@ -69,6 +73,9 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 					UpdateEnabled: true,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, response)
 	})
 
@@ -83,6 +90,9 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 						UpdateEnabled: true,
 					},
 				},
+				DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+				LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+				HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 			}, nil)
 		authorizer.EXPECT().Authorize(gomock.Any(), []digest.InstanceName{util.Must(digest.NewInstanceName("hello"))}).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
 
@@ -95,6 +105,9 @@ func TestActionCacheUpdateEnabledClearingProvider(t *testing.T) {
 					UpdateEnabled: false,
 				},
 			},
+			DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
+			LowApiVersion:        &semver.SemVer{Major: 2, Minor: 2},
+			HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
 		}, response)
 	})
 }

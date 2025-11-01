@@ -23,6 +23,7 @@ go_library(
         "//pkg/proto/iscc",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@bazel_remote_apis//build/bazel/semver:semver_go_proto",
         "@org_golang_google_genproto_googleapis_bytestream//:bytestream",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",

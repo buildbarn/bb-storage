@@ -175,7 +175,7 @@ func (ba *casBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 }
 
 func (ba *casBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
-	cacheCapabilities, err := getCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
+	serverCapabilities, err := getServerCapabilitiesWithCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +184,13 @@ func (ba *casBlobAccess) GetCapabilities(ctx context.Context, instanceName diges
 	// Storage. Don't set 'max_batch_total_size_bytes', as we don't
 	// issue batch operations. The same holds for fields related to
 	// compression support.
+	cacheCapabilities := serverCapabilities.CacheCapabilities
 	return &remoteexecution.ServerCapabilities{
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
 			DigestFunctions: digest.RemoveUnsupportedDigestFunctions(cacheCapabilities.DigestFunctions),
 		},
+		DeprecatedApiVersion: serverCapabilities.DeprecatedApiVersion,
+		LowApiVersion:        serverCapabilities.LowApiVersion,
+		HighApiVersion:       serverCapabilities.HighApiVersion,
 	}, nil
 }
