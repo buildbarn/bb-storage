@@ -16,7 +16,7 @@ func (s *fifoSet[T]) Insert(value T) {
 	s.elements = append(s.elements, value)
 }
 
-func (s *fifoSet[T]) Touch(value T) {
+func (fifoSet[T]) Touch(value T) {
 }
 
 func (s *fifoSet[T]) Peek() T {

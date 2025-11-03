@@ -11,15 +11,15 @@ type InstanceNamePatcher interface {
 
 type noopInstanceNamePatcher struct{}
 
-func (ip noopInstanceNamePatcher) PatchInstanceName(i InstanceName) InstanceName {
+func (noopInstanceNamePatcher) PatchInstanceName(i InstanceName) InstanceName {
 	return i
 }
 
-func (ip noopInstanceNamePatcher) PatchDigest(d Digest) Digest {
+func (noopInstanceNamePatcher) PatchDigest(d Digest) Digest {
 	return d
 }
 
-func (ip noopInstanceNamePatcher) UnpatchDigest(d Digest) Digest {
+func (noopInstanceNamePatcher) UnpatchDigest(d Digest) Digest {
 	return d
 }
 

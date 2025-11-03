@@ -2,18 +2,18 @@ package path
 
 type voidComponentWalker struct{}
 
-func (cw voidComponentWalker) OnDirectory(name Component) (GotDirectoryOrSymlink, error) {
+func (voidComponentWalker) OnDirectory(name Component) (GotDirectoryOrSymlink, error) {
 	return GotDirectory{
 		Child:        VoidComponentWalker,
 		IsReversible: false,
 	}, nil
 }
 
-func (cw voidComponentWalker) OnTerminal(name Component) (*GotSymlink, error) {
+func (voidComponentWalker) OnTerminal(name Component) (*GotSymlink, error) {
 	return nil, nil
 }
 
-func (cw voidComponentWalker) OnUp() (ComponentWalker, error) {
+func (voidComponentWalker) OnUp() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 

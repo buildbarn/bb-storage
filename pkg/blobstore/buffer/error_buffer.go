@@ -62,7 +62,7 @@ func (b errorBuffer) WithTask(task func() error) Buffer {
 	return b
 }
 
-func (b errorBuffer) Discard() {}
+func (errorBuffer) Discard() {}
 
 func (b errorBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {
 	// The buffer is in a known error state. Invoke the error

@@ -14,7 +14,7 @@ type ErrorLogger interface {
 
 type defaultErrorLogger struct{}
 
-func (l defaultErrorLogger) Log(err error) {
+func (defaultErrorLogger) Log(err error) {
 	log.Print(err)
 }
 

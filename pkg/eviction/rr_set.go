@@ -31,7 +31,7 @@ func (s *rrSet[T]) Insert(value T) {
 	}
 }
 
-func (s *rrSet[T]) Touch(value T) {
+func (rrSet[T]) Touch(value T) {
 }
 
 func (s *rrSet[T]) Peek() T {

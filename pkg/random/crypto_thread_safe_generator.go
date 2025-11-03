@@ -17,7 +17,7 @@ func mustCryptoRandRead(p []byte) (int, error) {
 
 type cryptoSource struct{}
 
-func (s cryptoSource) Uint64() uint64 {
+func (cryptoSource) Uint64() uint64 {
 	var b [8]byte
 	mustCryptoRandRead(b[:])
 	return binary.LittleEndian.Uint64(b[:])

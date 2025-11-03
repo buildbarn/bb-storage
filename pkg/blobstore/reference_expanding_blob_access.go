@@ -192,11 +192,11 @@ func (ba *referenceExpandingBlobAccess) GetFromComposite(ctx context.Context, pa
 	return b
 }
 
-func (ba *referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	return status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data")
 }
 
-func (ba *referenceExpandingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+func (referenceExpandingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	return nil, status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage cannot be queried for capabilities")
 }
 

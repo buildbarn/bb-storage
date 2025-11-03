@@ -29,11 +29,11 @@ func NewICASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessa
 	}
 }
 
-func (bac *icasBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (icasBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.ICASReadBufferFactory
 }
 
-func (bac *icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+func (icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return nil
 }
 
@@ -55,6 +55,6 @@ func (bac *icasBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.G
 	}
 }
 
-func (bac *icasBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (icasBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	return blobAccess
 }

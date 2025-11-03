@@ -143,14 +143,14 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 	return response, nil
 }
 
-func (s *contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeRequest, stream remoteexecution.ContentAddressableStorage_GetTreeServer) error {
+func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeRequest, stream remoteexecution.ContentAddressableStorage_GetTreeServer) error {
 	return status.Error(codes.Unimplemented, "This service does not support downloading directory trees")
 }
 
-func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
+func (contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "This service does not support splicing blobs")
 }
 
-func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
+func (contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "This service does not support splitting blobs")
 }

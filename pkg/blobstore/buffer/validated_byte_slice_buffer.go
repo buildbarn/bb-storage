@@ -106,7 +106,7 @@ func (b validatedByteSliceBuffer) WithTask(task func() error) Buffer {
 	return b
 }
 
-func (b validatedByteSliceBuffer) Discard() {}
+func (validatedByteSliceBuffer) Discard() {}
 
 func (b validatedByteSliceBuffer) applyErrorHandler(errorHandler ErrorHandler) (Buffer, bool) {
 	// The buffer is in a known good state. Terminate the error
@@ -153,4 +153,4 @@ func (r *byteSliceChunkReader) Read() ([]byte, error) {
 	return data[:r.maximumChunkSizeBytes], nil
 }
 
-func (r *byteSliceChunkReader) Close() {}
+func (byteSliceChunkReader) Close() {}

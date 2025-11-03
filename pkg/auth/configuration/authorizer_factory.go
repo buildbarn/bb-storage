@@ -34,7 +34,7 @@ type BaseAuthorizerFactory struct{}
 
 // NewAuthorizerFromConfiguration constructs an authorizer based on
 // options specified in a configuration message.
-func (f BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, group program.Group, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
+func (BaseAuthorizerFactory) NewAuthorizerFromConfiguration(config *pb.AuthorizerConfiguration, group program.Group, grpcClientFactory grpc.ClientFactory) (auth.Authorizer, error) {
 	if config == nil {
 		return nil, status.Error(codes.InvalidArgument, "Authorizer configuration not specified")
 	}

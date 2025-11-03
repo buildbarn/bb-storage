@@ -17,11 +17,11 @@ func NewRelativeScopeWalker(componentWalker ComponentWalker) ScopeWalker {
 	}
 }
 
-func (pw *relativeScopeWalker) OnAbsolute() (ComponentWalker, error) {
+func (relativeScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return nil, status.Error(codes.InvalidArgument, "Path is absolute, while a relative path was expected")
 }
 
-func (pw *relativeScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+func (relativeScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
 	return nil, status.Error(codes.InvalidArgument, "Path has a drive letter, while a relative path was expected")
 }
 
@@ -29,6 +29,6 @@ func (pw *relativeScopeWalker) OnRelative() (ComponentWalker, error) {
 	return pw.componentWalker, nil
 }
 
-func (pw *relativeScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+func (relativeScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
 	return nil, status.Error(codes.InvalidArgument, "Path has a UNC prefix, while a relative path was expected")
 }

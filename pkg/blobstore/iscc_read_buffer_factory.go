@@ -13,11 +13,11 @@ import (
 
 type isccReadBufferFactory struct{}
 
-func (f isccReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (isccReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromByteSlice(&iscc.PreviousExecutionStats{}, data, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f isccReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (isccReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromReader(&iscc.PreviousExecutionStats{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 

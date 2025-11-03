@@ -78,7 +78,7 @@ func (ba *acBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.
 	return err
 }
 
-func (ba *acBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (acBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 }
 

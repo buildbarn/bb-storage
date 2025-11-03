@@ -25,6 +25,6 @@ func (brc icasBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup pr
 	}
 }
 
-func (brc icasBlobReplicatorCreator) GetStorageTypeName() string {
+func (icasBlobReplicatorCreator) GetStorageTypeName() string {
 	return "icas"
 }

@@ -78,7 +78,7 @@ func (ba *zipReadingBlobAccess) GetFromComposite(ctx context.Context, parentDige
 	return b
 }
 
-func (ba *zipReadingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (zipReadingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 	b.Discard()
 	return status.Error(codes.InvalidArgument, "The ZIP reading storage backend does not permit writes")
 }
@@ -97,6 +97,6 @@ type nopAtCloser struct {
 	io.ReaderAt
 }
 
-func (f nopAtCloser) Close() error {
+func (nopAtCloser) Close() error {
 	return nil
 }

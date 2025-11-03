@@ -25,11 +25,11 @@ func NewGRPCOTLPTraceClient(conn grpc.ClientConnInterface) otlptrace.Client {
 	}
 }
 
-func (c grpcOTLPTraceClient) Start(ctx context.Context) error {
+func (grpcOTLPTraceClient) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c grpcOTLPTraceClient) Stop(ctx context.Context) error {
+func (grpcOTLPTraceClient) Stop(ctx context.Context) error {
 	return nil
 }
 

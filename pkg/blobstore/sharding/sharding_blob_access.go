@@ -121,4 +121,4 @@ func (eh shardKeyAddingErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	return nil, util.StatusWrapf(err, "Shard %s", eh.key)
 }
 
-func (eh shardKeyAddingErrorHandler) Done() {}
+func (shardKeyAddingErrorHandler) Done() {}

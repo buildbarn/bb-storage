@@ -21,7 +21,7 @@ func newSimpleK8sClient(httpClient *http.Client, url string) kuberesolver.K8sCli
 	}
 }
 
-func (kc *simpleK8sClient) GetRequest(url string) (*http.Request, error) {
+func (simpleK8sClient) GetRequest(url string) (*http.Request, error) {
 	return http.NewRequest(http.MethodGet, url, nil)
 }
 

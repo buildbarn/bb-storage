@@ -22,7 +22,7 @@ func NewEd25519SignatureGenerator(privateKey ed25519.PrivateKey) SignatureGenera
 	}
 }
 
-func (sc ed25519SignatureGenerator) GetAlgorithm() string {
+func (ed25519SignatureGenerator) GetAlgorithm() string {
 	return "EdDSA"
 }
 

@@ -29,15 +29,15 @@ func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessa
 	}
 }
 
-func (bac *fsacBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (fsacBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.FSACReadBufferFactory
 }
 
-func (bac *fsacBlobAccessCreator) GetStorageTypeName() string {
+func (fsacBlobAccessCreator) GetStorageTypeName() string {
 	return "fsac"
 }
 
-func (bac *fsacBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+func (fsacBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return nil
 }
 
@@ -57,6 +57,6 @@ func (bac *fsacBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.G
 	}
 }
 
-func (bac *fsacBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (fsacBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	return blobAccess
 }

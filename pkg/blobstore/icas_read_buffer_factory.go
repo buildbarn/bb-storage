@@ -10,11 +10,11 @@ import (
 
 type icasReadBufferFactory struct{}
 
-func (f icasReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (icasReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromByteSlice(&icas.Reference{}, data, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f icasReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (icasReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromReader(&icas.Reference{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 

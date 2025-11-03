@@ -67,10 +67,10 @@ func (ba *fsacBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffe
 	return err
 }
 
-func (ba *fsacBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (fsacBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	return digest.EmptySet, status.Error(codes.Unimplemented, "File System Access Cache does not support bulk existence checking")
 }
 
-func (ba *fsacBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+func (fsacBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	panic("GetCapabilities() should only be called against BlobAccess instances for the Content Addressable Storage and Action Cache")
 }

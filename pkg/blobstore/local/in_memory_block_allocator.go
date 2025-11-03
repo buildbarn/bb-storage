@@ -28,7 +28,7 @@ func (ia *inMemoryBlockAllocator) NewBlock() (Block, *pb.BlockLocation, error) {
 	}, nil, nil
 }
 
-func (ia *inMemoryBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation, writeOffsetBytes int64) (Block, bool) {
+func (inMemoryBlockAllocator) NewBlockAtLocation(location *pb.BlockLocation, writeOffsetBytes int64) (Block, bool) {
 	// There is no way to access old blocks again.
 	return nil, false
 }
@@ -59,4 +59,4 @@ func (ib *inMemoryBlock) Put(sizeBytes int64) BlockPutWriter {
 	}
 }
 
-func (ib *inMemoryBlock) Release() {}
+func (inMemoryBlock) Release() {}

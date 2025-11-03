@@ -2,19 +2,19 @@ package path
 
 type voidScopeWalker struct{}
 
-func (w voidScopeWalker) OnAbsolute() (ComponentWalker, error) {
+func (voidScopeWalker) OnAbsolute() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 
-func (w voidScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
+func (voidScopeWalker) OnDriveLetter(drive rune) (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 
-func (w voidScopeWalker) OnRelative() (ComponentWalker, error) {
+func (voidScopeWalker) OnRelative() (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 
-func (w voidScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
+func (voidScopeWalker) OnShare(server, share string) (ComponentWalker, error) {
 	return VoidComponentWalker, nil
 }
 

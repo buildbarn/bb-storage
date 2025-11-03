@@ -47,15 +47,15 @@ func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClien
 	}
 }
 
-func (bac *acBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (acBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.ACReadBufferFactory
 }
 
-func (bac *acBlobAccessCreator) GetStorageTypeName() string {
+func (acBlobAccessCreator) GetStorageTypeName() string {
 	return "ac"
 }
 
-func (bac *acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+func (acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return acCapabilitiesProvider
 }
 

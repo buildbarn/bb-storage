@@ -145,4 +145,4 @@ func (eh backendNamePrefixingErrorHandler) OnError(err error) (buffer.Buffer, er
 	return nil, util.StatusWrapf(err, "Backend %#v", eh.backendName)
 }
 
-func (eh backendNamePrefixingErrorHandler) Done() {}
+func (backendNamePrefixingErrorHandler) Done() {}

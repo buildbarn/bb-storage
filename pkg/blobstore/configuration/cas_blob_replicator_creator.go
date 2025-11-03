@@ -25,7 +25,7 @@ func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobRepli
 	}
 }
 
-func (brc *casBlobReplicatorCreator) GetStorageTypeName() string {
+func (casBlobReplicatorCreator) GetStorageTypeName() string {
 	return "cas"
 }
 

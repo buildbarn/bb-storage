@@ -29,15 +29,15 @@ func NewISCCBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessa
 	}
 }
 
-func (bac *isccBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (isccBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.ISCCReadBufferFactory
 }
 
-func (bac *isccBlobAccessCreator) GetStorageTypeName() string {
+func (isccBlobAccessCreator) GetStorageTypeName() string {
 	return "iscc"
 }
 
-func (bac *isccBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+func (isccBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return nil
 }
 
@@ -57,6 +57,6 @@ func (bac *isccBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.G
 	}
 }
 
-func (bac *isccBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (isccBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	return blobAccess
 }

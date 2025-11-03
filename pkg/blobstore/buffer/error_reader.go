@@ -18,6 +18,6 @@ func (r errorReader) Read(p []byte) (int, error) {
 	return 0, r.err
 }
 
-func (r errorReader) Close() error {
+func (errorReader) Close() error {
 	return nil
 }

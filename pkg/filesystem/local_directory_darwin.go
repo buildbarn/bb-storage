@@ -18,7 +18,7 @@ type rawDeviceNumber = int32
 
 const oflagSearch = unix.O_SEARCH
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
+func (localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Darwin")
 }
 
@@ -26,6 +26,6 @@ func clonefileImpl(oldFD int, oldName string, newFD int, newName string) error {
 	return unix.Clonefileat(oldFD, oldName, newFD, newName, unix.CLONE_NOFOLLOW)
 }
 
-func (d *localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
+func (localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
 	return status.Error(codes.Unimplemented, "Mount is not supported")
 }

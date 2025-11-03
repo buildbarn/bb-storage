@@ -53,23 +53,23 @@ func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessag
 	}
 }
 
-func (bac *casBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
+func (casBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
 	return digest.KeyWithoutInstance
 }
 
-func (bac *casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.CASReadBufferFactory
 }
 
-func (bac *casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+func (casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
 	return casCapabilitiesProvider
 }
 
-func (bac *casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
+func (casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
-func (bac *casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
+func (casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
 	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
 }
 
@@ -166,7 +166,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 	}
 }
 
-func (bac *casBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (casBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	// For the Content Addressable Storage it is required that the empty
 	// blob is always present. This decorator ensures that requests
 	// for the empty blob never contact the storage backend.

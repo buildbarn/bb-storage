@@ -153,7 +153,7 @@ func (eh *hierarchicalInstanceNamesGetErrorHandler) OnError(err error) (buffer.B
 	return eh.blobAccess.Get(eh.context, eh.digests[len(eh.digests)-1]), nil
 }
 
-func (eh *hierarchicalInstanceNamesGetErrorHandler) Done() {}
+func (hierarchicalInstanceNamesGetErrorHandler) Done() {}
 
 type hierarchicalInstanceNamesGetFromCompositeErrorHandler struct {
 	blobAccess    BlobAccess
@@ -184,4 +184,4 @@ func (eh *hierarchicalInstanceNamesGetFromCompositeErrorHandler) OnError(err err
 	), nil
 }
 
-func (eh *hierarchicalInstanceNamesGetFromCompositeErrorHandler) Done() {}
+func (hierarchicalInstanceNamesGetFromCompositeErrorHandler) Done() {}

@@ -10,11 +10,11 @@ import (
 
 type fsacReadBufferFactory struct{}
 
-func (f fsacReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (fsacReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromByteSlice(&fsac.FileSystemAccessProfile{}, data, buffer.BackendProvided(dataIntegrityCallback))
 }
 
-func (f fsacReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (fsacReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 	return buffer.NewProtoBufferFromReader(&fsac.FileSystemAccessProfile{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 

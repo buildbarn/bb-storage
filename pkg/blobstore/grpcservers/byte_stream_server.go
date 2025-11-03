@@ -124,7 +124,7 @@ func (r *byteStreamWriteServerChunkReader) Read() ([]byte, error) {
 	return data, nil
 }
 
-func (r *byteStreamWriteServerChunkReader) Close() {}
+func (byteStreamWriteServerChunkReader) Close() {}
 
 func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error {
 	request, err := stream.Recv()
@@ -202,7 +202,7 @@ func (r *zstdWriteStreamReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (r *zstdWriteStreamReader) Close() error {
+func (zstdWriteStreamReader) Close() error {
 	return nil
 }
 
@@ -231,6 +231,6 @@ func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, r
 	})
 }
 
-func (s *byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {
+func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "This service does not support querying write status")
 }

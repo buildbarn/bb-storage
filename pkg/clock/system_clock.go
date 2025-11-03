@@ -7,20 +7,20 @@ import (
 
 type systemClock struct{}
 
-func (c systemClock) Now() time.Time {
+func (systemClock) Now() time.Time {
 	return time.Now()
 }
 
-func (c systemClock) NewContextWithTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+func (systemClock) NewContextWithTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, timeout)
 }
 
-func (c systemClock) NewTimer(d time.Duration) (Timer, <-chan time.Time) {
+func (systemClock) NewTimer(d time.Duration) (Timer, <-chan time.Time) {
 	t := time.NewTimer(d)
 	return t, t.C
 }
 
-func (c systemClock) NewTicker(d time.Duration) (Ticker, <-chan time.Time) {
+func (systemClock) NewTicker(d time.Duration) (Ticker, <-chan time.Time) {
 	t := time.NewTicker(d)
 	return t, t.C
 }

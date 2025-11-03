@@ -435,7 +435,7 @@ func (d *localDirectory) Link(oldName path.Component, newDirectory Directory, ne
 	})
 }
 
-func (d *localDirectory) Clonefile(oldName path.Component, newDirectory Directory, newName path.Component) error {
+func (localDirectory) Clonefile(oldName path.Component, newDirectory Directory, newName path.Component) error {
 	return status.Error(codes.Unimplemented, "Clonefile is only supported on Darwin")
 }
 
@@ -487,7 +487,7 @@ func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	return err
 }
 
-func (d *localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
+func (localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
 	return status.Error(codes.Unimplemented, "Creation of device nodes is not supported on Windows")
 }
 
@@ -858,13 +858,13 @@ func (d *localDirectory) Chtimes(name path.Component, atime, mtime time.Time) er
 	return err
 }
 
-func (d *localDirectory) IsWritable() (bool, error) {
+func (localDirectory) IsWritable() (bool, error) {
 	// If you can enter the directory, you can write.
 	// Permission is ignored by Mkdir().
 	return true, nil
 }
 
-func (d *localDirectory) IsWritableChild(name path.Component) (bool, error) {
+func (localDirectory) IsWritableChild(name path.Component) (bool, error) {
 	return true, nil
 }
 
@@ -1045,10 +1045,10 @@ func (d *localDirectory) Apply(arg interface{}) error {
 	}
 }
 
-func (d *localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
+func (localDirectory) Mount(mountpoint path.Component, source, fstype string) error {
 	return status.Error(codes.Unimplemented, "Mount is not supported")
 }
 
-func (d *localDirectory) Unmount(mountpoint path.Component) error {
+func (localDirectory) Unmount(mountpoint path.Component) error {
 	return status.Error(codes.Unimplemented, "Unmount is not supported")
 }

@@ -43,7 +43,7 @@ func (eh *getReplicatingErrorHandler) OnError(observedErr error) (buffer.Buffer,
 	return replicator.ReplicateSingle(eh.context, eh.digest), nil
 }
 
-func (eh *getReplicatingErrorHandler) Done() {}
+func (getReplicatingErrorHandler) Done() {}
 
 // GetFromCompositeWithBlobReplicator is equivalent to
 // GetWithBlobReplicator, except that it's a common implementation of
@@ -76,4 +76,4 @@ func (eh *getFromCompositeReplicatingErrorHandler) OnError(observedErr error) (b
 	return replicator.ReplicateComposite(eh.context, eh.parentDigest, eh.childDigest, eh.slicer), nil
 }
 
-func (eh *getFromCompositeReplicatingErrorHandler) Done() {}
+func (getFromCompositeReplicatingErrorHandler) Done() {}

@@ -131,4 +131,4 @@ func (eh shardIndexAddingErrorHandler) OnError(err error) (buffer.Buffer, error)
 	return nil, util.StatusWrapf(err, "Shard %d", eh.index)
 }
 
-func (eh shardIndexAddingErrorHandler) Done() {}
+func (shardIndexAddingErrorHandler) Done() {}

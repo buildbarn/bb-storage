@@ -14,5 +14,5 @@ func (r errorChunkReader) Read() ([]byte, error) {
 	return nil, r.err
 }
 
-func (r errorChunkReader) Close() {
+func (errorChunkReader) Close() {
 }

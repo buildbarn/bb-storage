@@ -137,7 +137,7 @@ func NopDirectoryCloser(d Directory) DirectoryCloser {
 	}
 }
 
-func (d nopDirectoryCloser) Close() error {
+func (nopDirectoryCloser) Close() error {
 	return nil
 }
 

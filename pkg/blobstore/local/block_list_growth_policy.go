@@ -33,7 +33,7 @@ func (gp immutableBlockListGrowthPolicy) ShouldGrowNewBlocks(currentBlocks, newB
 	return currentBlocks+newBlocks < gp.desiredCurrentAndNewBlocks
 }
 
-func (gp immutableBlockListGrowthPolicy) ShouldGrowCurrentBlocks(currentBlocks int) bool {
+func (immutableBlockListGrowthPolicy) ShouldGrowCurrentBlocks(currentBlocks int) bool {
 	return false
 }
 
@@ -55,7 +55,7 @@ func NewMutableBlockListGrowthPolicy(currentBlocks int) BlockListGrowthPolicy {
 	}
 }
 
-func (gp mutableBlockListGrowthPolicy) ShouldGrowNewBlocks(currentBlocks, newBlocks int) bool {
+func (mutableBlockListGrowthPolicy) ShouldGrowNewBlocks(currentBlocks, newBlocks int) bool {
 	return newBlocks < 1
 }
 

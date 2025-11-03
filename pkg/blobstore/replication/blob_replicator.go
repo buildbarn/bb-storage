@@ -34,11 +34,11 @@ type BlobReplicator interface {
 // on the source may be propagated.
 type notFoundToInternalErrorHandler struct{}
 
-func (eh notFoundToInternalErrorHandler) OnError(err error) (buffer.Buffer, error) {
+func (notFoundToInternalErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	if status.Code(err) == codes.NotFound {
 		return nil, util.StatusWrapWithCode(err, codes.Internal, "Blob absent from sink after replication")
 	}
 	return nil, err
 }
 
-func (eh notFoundToInternalErrorHandler) Done() {}
+func (notFoundToInternalErrorHandler) Done() {}

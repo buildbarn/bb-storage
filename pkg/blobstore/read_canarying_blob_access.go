@@ -259,8 +259,8 @@ func (eh *readCanaryingReplicaGetFromCompositeErrorHandler) Done() {
 // to all buffers read from the source backend.
 type readCanaryingSourceErrorHandler struct{}
 
-func (eh readCanaryingSourceErrorHandler) OnError(err error) (buffer.Buffer, error) {
+func (readCanaryingSourceErrorHandler) OnError(err error) (buffer.Buffer, error) {
 	return nil, util.StatusWrap(err, "Source")
 }
 
-func (eh readCanaryingSourceErrorHandler) Done() {}
+func (readCanaryingSourceErrorHandler) Done() {}

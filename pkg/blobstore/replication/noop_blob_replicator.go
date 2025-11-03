@@ -31,6 +31,6 @@ func (br noopBlobReplicator) ReplicateComposite(ctx context.Context, parentDiges
 	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer)
 }
 
-func (br noopBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (noopBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	return nil
 }

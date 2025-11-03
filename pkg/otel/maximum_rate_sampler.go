@@ -57,6 +57,6 @@ func (s *maximumRateSampler) ShouldSample(p sdk_trace.SamplingParameters) sdk_tr
 	}
 }
 
-func (s *maximumRateSampler) Description() string {
+func (maximumRateSampler) Description() string {
 	return "MaximumRateSampler"
 }
