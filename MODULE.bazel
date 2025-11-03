@@ -114,6 +114,10 @@ go_deps_dev.module_override(
     path = "golang.org/x/sys",
 )
 go_deps_dev.module_override(
+    patches = ["//:patches/cc_mvdan_gofumpt/unused-receiver-idents.diff"],
+    path = "mvdan.cc/gofumpt",
+)
+go_deps_dev.module_override(
     patches = [
         "//:patches/org_uber_go_mock/generics.diff",
         "//:patches/org_uber_go_mock/mocks-for-funcs.diff",

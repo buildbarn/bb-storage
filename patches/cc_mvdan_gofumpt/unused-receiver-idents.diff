@@ -1,0 +1,76 @@
+diff --git format/format.go format/format.go
+index 879969d..2f6d437 100644
+--- format/format.go
++++ format/format.go
+@@ -107,6 +107,8 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
+ 		Options: opts,
+ 
+ 		minSplitFactor: 0.4,
++
++		receiverNameUsages: map[string]int{},
+ 	}
+ 	var topFuncType *ast.FuncType
+ 	pre := func(c *astutil.Cursor) bool {
+@@ -114,6 +116,13 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
+ 		switch node := c.Node().(type) {
+ 		case *ast.FuncDecl:
+ 			topFuncType = node.Type
++			if recv := node.Recv; recv != nil {
++				for _, field := range recv.List {
++					for _, ident := range field.Names {
++						f.receiverNameUsages[ident.Name] = 0
++					}
++				}
++			}
+ 			f.parentFuncTypes = append(f.parentFuncTypes, node.Type)
+ 		case *ast.FuncLit:
+ 			f.parentFuncTypes = append(f.parentFuncTypes, node.Type)
+@@ -144,6 +153,11 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
+ 			}
+ 		case *ast.BlockStmt:
+ 			f.blockLevel++
++		case *ast.Ident:
++			if usages, ok := f.receiverNameUsages[node.Name]; ok {
++				f.receiverNameUsages[node.Name] = usages + 1
++			}
++		default:
+ 		}
+ 		return true
+ 	}
+@@ -152,7 +166,26 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
+ 
+ 		// Reset minSplitFactor and blockLevel.
+ 		switch node := c.Node().(type) {
+-		case *ast.FuncDecl, *ast.FuncLit:
++		case *ast.FuncDecl:
++			if recv := node.Recv; recv != nil {
++				for _, field := range recv.List {
++					usedIdents := make([]*ast.Ident, 0, len(field.Names))
++					for _, ident := range field.Names {
++						if f.receiverNameUsages[ident.Name] > 1 {
++							usedIdents = append(usedIdents, ident)
++						}
++						delete(f.receiverNameUsages, ident.Name)
++					}
++					field.Names = usedIdents
++					if len(usedIdents) == 0 {
++						if base, ok := field.Type.(*ast.StarExpr); ok {
++							field.Type = base.X
++						}
++					}
++				}
++			}
++			f.parentFuncTypes = f.parentFuncTypes[:len(f.parentFuncTypes)-1]
++		case *ast.FuncLit:
+ 			f.parentFuncTypes = f.parentFuncTypes[:len(f.parentFuncTypes)-1]
+ 		case *ast.FuncType:
+ 			if node == topFuncType {
+@@ -194,6 +227,8 @@ type fumpter struct {
+ 	// parentFuncTypes is a stack of parent function types,
+ 	// used to determine return type information when clothing naked returns.
+ 	parentFuncTypes []*ast.FuncType
++
++	receiverNameUsages map[string]int
+ }
+ 
+ func (f *fumpter) commentsBetween(p1, p2 token.Pos) []*ast.CommentGroup {
