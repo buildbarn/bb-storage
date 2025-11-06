@@ -80,7 +80,7 @@
         [{
           name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
           // Run tests only if we're not cross-compiling.
-          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:%s' }} //..." % [
+          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:%s --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..." % [
             std.get(platform, 'testPlatform', platform.name),
             platform.name + if enableCgo then '_cgo' else '',
           ],
