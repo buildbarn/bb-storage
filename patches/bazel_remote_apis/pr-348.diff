@@ -1,0 +1,52 @@
+commit 27da36e82c53f0c44c03e1f7fbe6ac00dd6b0c8c
+Author: Ed Schouten <eschouten@apple.com>
+Date:   Thu Nov 6 09:32:33 2025 +0100
+
+    Add load() directives to keep Bazel 9.0.0rc1 happy
+    
+    These rules are no longer built into this version of Bazel. They are now
+    provided by the Protobuf module.
+
+diff --git build/bazel/remote/asset/v1/BUILD build/bazel/remote/asset/v1/BUILD
+index e78763f..5aae808 100644
+--- build/bazel/remote/asset/v1/BUILD
++++ build/bazel/remote/asset/v1/BUILD
+@@ -1,4 +1,6 @@
+ load("@grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
++load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
++load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
+ load("@rules_go//go:def.bzl", "go_library")
+ load("@rules_go//proto:def.bzl", "go_proto_library")
+ load("@rules_proto//proto:defs.bzl", "proto_library")
+diff --git build/bazel/remote/execution/v2/BUILD build/bazel/remote/execution/v2/BUILD
+index 94fa139..10f64f6 100644
+--- build/bazel/remote/execution/v2/BUILD
++++ build/bazel/remote/execution/v2/BUILD
+@@ -1,4 +1,6 @@
+ load("@grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
++load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
++load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
+ load("@rules_go//go:def.bzl", "go_library")
+ load("@rules_go//proto:def.bzl", "go_proto_library")
+ load("@rules_proto//proto:defs.bzl", "proto_library")
+diff --git build/bazel/remote/logstream/v1/BUILD build/bazel/remote/logstream/v1/BUILD
+index 760e6cd..87ecbc5 100644
+--- build/bazel/remote/logstream/v1/BUILD
++++ build/bazel/remote/logstream/v1/BUILD
+@@ -1,4 +1,6 @@
+ load("@grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
++load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
++load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
+ load("@rules_go//go:def.bzl", "go_library")
+ load("@rules_go//proto:def.bzl", "go_proto_library")
+ load("@rules_proto//proto:defs.bzl", "proto_library")
+diff --git build/bazel/semver/BUILD build/bazel/semver/BUILD
+index 25a3e22..93ce937 100644
+--- build/bazel/semver/BUILD
++++ build/bazel/semver/BUILD
+@@ -1,3 +1,5 @@
++load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
++load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
+ load("@rules_go//go:def.bzl", "go_library")
+ load("@rules_go//proto:def.bzl", "go_proto_library")
+ load("@rules_proto//proto:defs.bzl", "proto_library")
