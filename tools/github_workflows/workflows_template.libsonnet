@@ -79,11 +79,11 @@
       ] + std.flattenArrays([
         [{
           name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
-          run: ('bazel %s --platforms=@rules_go//go/toolchain:%s ' % [
-                  // Run tests only if we're not cross-compiling.
-                  "${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build' }}" % std.get(platform, 'testPlatform', platform.name),
-                  platform.name + if enableCgo then '_cgo' else '',
-                ]) + '//...',
+          // Run tests only if we're not cross-compiling.
+          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:%s' }} //..." % [
+            std.get(platform, 'testPlatform', platform.name),
+            platform.name + if enableCgo then '_cgo' else '',
+          ],
           'if': "matrix.host.cross_compile || matrix.host.platform_name == '%s'" % platform.name,
         }] + (
           if doUpload
