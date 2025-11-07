@@ -10,6 +10,7 @@ import "github.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc";
@@ -163,9 +164,6 @@ message ServerConfiguration {
   // inside directories that have access controls set up properly.
   repeated string listen_paths = 2;
 
-  // TLS configuration. TLS is not enabled when left unset.
-  buildbarn.configuration.tls.ServerConfiguration tls = 3;
-
   // Policy for authenticating clients against the gRPC server.
   //
   // Each authentication policy yields a Protobuf message of type
@@ -234,6 +232,14 @@ message ServerConfiguration {
   //
   // More details: https://github.com/kubernetes/enhancements/issues/753
   bool stop_gracefully = 12;
+
+  oneof transport_security {
+    // TLS configuration. TLS is not enabled when left unset.
+    buildbarn.configuration.tls.ServerConfiguration tls = 3;
+    // If set, enable Application Layer Transport Security (ALTS). More details:
+    // https://docs.cloud.google.com/docs/security/encryption-in-transit/application-layer-transport-security
+    google.protobuf.Empty alts = 13;
+  }
 }
 
 message ServerKeepaliveEnforcementPolicy {

@@ -7,12 +7,14 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/program"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/alts"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
@@ -69,18 +71,25 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable TLS transport credentials if provided.
 		hasCredsOption := false
-		if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(configuration.Tls, requestTLSClientCertificate); err != nil {
-			return err
-		} else if tlsConfig != nil {
+		switch transportSecurity := configuration.TransportSecurity.(type) {
+		case *grpcpb.ServerConfiguration_Tls:
+			if tlsConfig, err := util.NewTLSConfigFromServerConfiguration(transportSecurity.Tls, requestTLSClientCertificate); err != nil {
+				return err
+			} else if tlsConfig != nil {
+				hasCredsOption = true
+				serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+			}
+		case *grpcpb.ServerConfiguration_Alts:
 			hasCredsOption = true
-			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+			altsTransportCreds := alts.NewServerCreds(alts.DefaultServerOptions())
+			serverOptions = append(serverOptions, grpc.Creds(altsTransportCreds))
 		}
 
 		// Enable UNIX socket peer credentials if used in the
 		// authenticator configuration.
 		if needsPeerTransportCredentials {
 			if hasCredsOption {
-				return status.Error(codes.InvalidArgument, "Peer credentials authentication and TLS cannot be enabled at the same time")
+				return status.Error(codes.InvalidArgument, "Peer credentials authentication and TLS/ALTS cannot be enabled at the same time")
 			}
 			serverOptions = append(serverOptions, grpc.Creds(PeerTransportCredentials))
 		}
