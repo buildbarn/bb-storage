@@ -1,21 +1,9 @@
 load("@rules_go//go:def.bzl", "go_test")
 
 go_test(
-    name = "integration",
-    srcs = ["benchmarking_integration_test.go"],
-    data = ["//cmd/bb_storage"],
-    deps = [
-        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@rules_go//go/runfiles",
-    ],
-)
-
-go_test(
     name = "integration_test",
     srcs = ["benchmarking_integration_test.go"],
+    data = ["//cmd/bb_storage"],
     deps = [
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@org_golang_google_grpc//:grpc",
