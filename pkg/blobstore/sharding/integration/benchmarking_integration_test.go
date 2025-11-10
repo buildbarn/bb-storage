@@ -168,7 +168,7 @@ func performBenchmark(b *testing.B, components []component, shardCount int) {
 	if err != nil {
 		b.Fatalf("failed to intialize runfiles: %v", err)
 	}
-	bbStoragePath, err := rf.Rlocation("_main/cmd/bb_storage/bb_storage_/bb_storage")
+	bbStoragePath, err := rf.Rlocation("com_github_buildbarn_bb_storage/cmd/bb_storage/bb_storage_/bb_storage")
 	if err != nil {
 		b.Fatalf("failed to find runfiles: %v", err)
 	}
