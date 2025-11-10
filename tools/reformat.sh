@@ -35,7 +35,7 @@ go_module_name=$($go list -m)
 
 # Go dependencies
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
-bazel build $(bazel query --output=label 'kind("go_proto_library", //...)')
+bazel build $(bazel query --output=label 'kind("go_proto_library", //...)') || true
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
   cat "$f" > $(echo "$f" | sed -e "s|.*/${go_module_name}/||")
 done
