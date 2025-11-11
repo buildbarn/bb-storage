@@ -23,8 +23,7 @@ bazel_dep(name = "toolchains_llvm", version = "1.5.0")
 
 git_override(
     module_name = "bazel_remote_apis",
-    commit = "824e1ba94b2db15f68ceff97ae6da503fbc26985",
-    patches = ["//:patches/bazel_remote_apis/pr-348.diff"],
+    commit = "3860ca2d3e559d487b7d4ad07aa2a4a08d7624da",
     remote = "https://github.com/bazelbuild/remote-apis.git",
 )
 

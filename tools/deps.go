@@ -2,7 +2,7 @@ package tools
 
 import (
 	// Used by //:buildifier.
-	_ "github.com/bazelbuild/buildtools/buildifier"
+	_ "github.com/bazelbuild/buildtools/buildifier/cmd"
 	// Used by CI.
 	_ "golang.org/x/lint"
 	// Used by CI.
