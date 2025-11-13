@@ -740,7 +740,7 @@ message BlobReplicatorConfiguration {
     //
     // This strategy may still be acceptable for the Action Cache, even
     // for larger setups. The Action Cache receives less load than the
-    // Content Addressable Storage. There is also a lower propbability
+    // Content Addressable Storage. There is also a lower probability
     // of clients requesting the same object at around the same time.
     // Action Cache objects also tend to be relatively small, meaning
     // that little space and bandwidth is wasted when replicating
