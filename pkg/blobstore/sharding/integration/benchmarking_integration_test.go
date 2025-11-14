@@ -71,39 +71,6 @@ local shardCount = std.parseInt(std.extVar('SHARD_COUNT'));
 }
 `
 
-const legacyConfig = `
-local shardCount = std.parseInt(std.extVar('SHARD_COUNT'));
-{
-	grpcServers: [{
-		listenAddresses: [':8980'],
-		authenticationPolicy: { allow: {} },
-	}],
-	maximumMessageSizeBytes: 4 * 1024 * 1024,
-	contentAddressableStorage: {
-		backend: {
-			sharding: {
-				shards: {
-					[std.toString(i)]: {
-						weight: 1,
-						backend: { grpc: { address: 'localhost:8981' } },
-					}
-					for i in std.range(0, shardCount - 1)
-				},
-				legacy: {
-					shardOrder: [
-						std.toString(i)
-						for i in std.range(0, shardCount - 1)
-					]
-				}
-			},
-		},
-		getAuthorizer: { allow: {} },
-		putAuthorizer: { allow: {} },
-		findMissingAuthorizer: { allow: {} },
-	},
-}
-`
-
 // waitForTCP repeatedly tries to establish a TCP connection to addr until timeout.
 func waitForTCP(addr string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
@@ -252,38 +219,6 @@ func BenchmarkSharding10000(b *testing.B) {
 	components := []component{
 		{name: "storage", config: storageConfig},
 		{name: "frontend", config: frontendConfig},
-	}
-	performBenchmark(b, components, 10000)
-}
-
-func BenchmarkLegacy10(b *testing.B) {
-	components := []component{
-		{name: "storage", config: storageConfig},
-		{name: "legacy", config: legacyConfig},
-	}
-	performBenchmark(b, components, 10)
-}
-
-func BenchmarkLegacy100(b *testing.B) {
-	components := []component{
-		{name: "storage", config: storageConfig},
-		{name: "legacy", config: legacyConfig},
-	}
-	performBenchmark(b, components, 100)
-}
-
-func BenchmarkLegacy1000(b *testing.B) {
-	components := []component{
-		{name: "storage", config: storageConfig},
-		{name: "legacy", config: legacyConfig},
-	}
-	performBenchmark(b, components, 1000)
-}
-
-func BenchmarkLegacy10000(b *testing.B) {
-	components := []component{
-		{name: "storage", config: storageConfig},
-		{name: "legacy", config: legacyConfig},
 	}
 	performBenchmark(b, components, 10000)
 }
