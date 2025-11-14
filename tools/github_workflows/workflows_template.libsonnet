@@ -5,6 +5,10 @@
       extension: '',
     },
     {
+      name: 'linux_amd64_v3',
+      extension: '',
+    },
+    {
       name: 'linux_386',
       extension: '',
       testPlatform: 'linux_amd64',
@@ -80,7 +84,7 @@
         [{
           name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
           // Run tests only if we're not cross-compiling.
-          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:%s --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..." % [
+          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:%s --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..." % [
             std.get(platform, 'testPlatform', platform.name),
             platform.name + if enableCgo then '_cgo' else '',
           ],
@@ -92,7 +96,7 @@
               {
                 name: '%s: copy %s' % [platform.name, binary],
                 local executable = binary + platform.extension,
-                run: 'rm -f %s && bazel run --run_under cp --platforms=@rules_go//go/toolchain:%s //cmd/%s $(pwd)/%s' % [
+                run: 'rm -f %s && bazel run --run_under cp --platforms=//tools/platforms:%s //cmd/%s $(pwd)/%s' % [
                   executable,
                   platform.name + if enableCgo then '_cgo' else '',
                   binary,

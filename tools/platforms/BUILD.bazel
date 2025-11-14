@@ -15,7 +15,49 @@ platform(
 )
 
 alias(
+    name = "linux_386",
+    actual = "@rules_go//go/toolchain:linux_386",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "linux_arm",
+    actual = "@rules_go//go/toolchain:linux_arm",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "linux_arm64",
     actual = "@rules_go//go/toolchain:linux_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "darwin_amd64",
+    actual = "@rules_go//go/toolchain:darwin_amd64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "darwin_arm64",
+    actual = "@rules_go//go/toolchain:darwin_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "freebsd_amd64",
+    actual = "@rules_go//go/toolchain:freebsd_amd64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "freebsd_arm64",
+    actual = "@rules_go//go/toolchain:freebsd_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "windows_amd64",
+    actual = "@rules_go//go/toolchain:windows_amd64",
     visibility = ["//visibility:public"],
 )
