@@ -26,9 +26,3 @@ platform(
     parents = ["@rules_go//go/toolchain:linux_amd64"],
     visibility = ["//visibility:public"],
 )
-
-alias(
-    name = "linux_arm64",
-    actual = "@rules_go//go/toolchain:linux_arm64",
-    visibility = ["//visibility:public"],
-)

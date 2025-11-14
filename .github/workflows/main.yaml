@@ -21,12 +21,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64'",
                "name": "linux_amd64: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:linux_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:linux_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "linux_amd64: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -40,7 +40,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_amd64: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -54,7 +54,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_amd64: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -68,7 +68,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_amd64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -80,14 +80,75 @@
                }
             },
             {
+               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64_v3'",
+               "name": "linux_amd64_v3: build${{ matrix.host.platform_name == 'linux_amd64_v3' && ' and test' || '' }}",
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:linux_amd64_v3 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: copy bb_copy",
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64_v3 //cmd/bb_copy $(pwd)/bb_copy"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: upload bb_copy",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_copy.linux_amd64_v3",
+                  "path": "bb_copy"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: copy bb_replicator",
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64_v3 //cmd/bb_replicator $(pwd)/bb_replicator"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: upload bb_replicator",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_replicator.linux_amd64_v3",
+                  "path": "bb_replicator"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: copy bb_storage",
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64_v3 //cmd/bb_storage $(pwd)/bb_storage"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: upload bb_storage",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_storage.linux_amd64_v3",
+                  "path": "bb_storage"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: copy sync_jwks_to_configmap",
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:linux_amd64_v3 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: upload sync_jwks_to_configmap",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "sync_jwks_to_configmap.linux_amd64_v3",
+                  "path": "sync_jwks_to_configmap"
+               }
+            },
+            {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
                "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:linux_386 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:linux_386 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "linux_386: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:linux_386 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -101,7 +162,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_386: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:linux_386 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -115,7 +176,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_386: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:linux_386 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -129,7 +190,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_386: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:linux_386 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -143,12 +204,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm'",
                "name": "linux_arm: build${{ matrix.host.platform_name == 'linux_arm' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:linux_arm --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:linux_arm --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "linux_arm: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:linux_arm //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -162,7 +223,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:linux_arm //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -176,7 +237,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:linux_arm //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -190,7 +251,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:linux_arm //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -204,12 +265,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
                "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:linux_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:linux_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "linux_arm64: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:linux_arm64 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -223,7 +284,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm64: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:linux_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -237,7 +298,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm64: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:linux_arm64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -251,7 +312,7 @@
             {
                "if": "matrix.host.upload",
                "name": "linux_arm64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:linux_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -265,12 +326,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_amd64'",
                "name": "darwin_amd64: build${{ matrix.host.platform_name == 'darwin_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:darwin_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:darwin_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "darwin_amd64: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:darwin_amd64 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -284,7 +345,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_amd64: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:darwin_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -298,7 +359,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_amd64: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:darwin_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -312,7 +373,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_amd64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:darwin_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -326,12 +387,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
                "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:darwin_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:darwin_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "darwin_arm64: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:darwin_arm64 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -345,7 +406,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_arm64: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:darwin_arm64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -359,7 +420,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_arm64: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:darwin_arm64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -373,7 +434,7 @@
             {
                "if": "matrix.host.upload",
                "name": "darwin_arm64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:darwin_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -387,12 +448,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'freebsd_amd64'",
                "name": "freebsd_amd64: build${{ matrix.host.platform_name == 'freebsd_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:freebsd_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:freebsd_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "freebsd_amd64: copy bb_copy",
-               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_copy $(pwd)/bb_copy"
+               "run": "rm -f bb_copy && bazel run --run_under cp --platforms=//tools/platforms:freebsd_amd64 //cmd/bb_copy $(pwd)/bb_copy"
             },
             {
                "if": "matrix.host.upload",
@@ -406,7 +467,7 @@
             {
                "if": "matrix.host.upload",
                "name": "freebsd_amd64: copy bb_replicator",
-               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
+               "run": "rm -f bb_replicator && bazel run --run_under cp --platforms=//tools/platforms:freebsd_amd64 //cmd/bb_replicator $(pwd)/bb_replicator"
             },
             {
                "if": "matrix.host.upload",
@@ -420,7 +481,7 @@
             {
                "if": "matrix.host.upload",
                "name": "freebsd_amd64: copy bb_storage",
-               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_storage $(pwd)/bb_storage"
+               "run": "rm -f bb_storage && bazel run --run_under cp --platforms=//tools/platforms:freebsd_amd64 //cmd/bb_storage $(pwd)/bb_storage"
             },
             {
                "if": "matrix.host.upload",
@@ -434,7 +495,7 @@
             {
                "if": "matrix.host.upload",
                "name": "freebsd_amd64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
+               "run": "rm -f sync_jwks_to_configmap && bazel run --run_under cp --platforms=//tools/platforms:freebsd_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap"
             },
             {
                "if": "matrix.host.upload",
@@ -448,12 +509,12 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
                "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --platforms=@rules_go//go/toolchain:windows_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --platforms=//tools/platforms:windows_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
                "name": "windows_amd64: copy bb_copy",
-               "run": "rm -f bb_copy.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_copy $(pwd)/bb_copy.exe"
+               "run": "rm -f bb_copy.exe && bazel run --run_under cp --platforms=//tools/platforms:windows_amd64 //cmd/bb_copy $(pwd)/bb_copy.exe"
             },
             {
                "if": "matrix.host.upload",
@@ -467,7 +528,7 @@
             {
                "if": "matrix.host.upload",
                "name": "windows_amd64: copy bb_replicator",
-               "run": "rm -f bb_replicator.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_replicator $(pwd)/bb_replicator.exe"
+               "run": "rm -f bb_replicator.exe && bazel run --run_under cp --platforms=//tools/platforms:windows_amd64 //cmd/bb_replicator $(pwd)/bb_replicator.exe"
             },
             {
                "if": "matrix.host.upload",
@@ -481,7 +542,7 @@
             {
                "if": "matrix.host.upload",
                "name": "windows_amd64: copy bb_storage",
-               "run": "rm -f bb_storage.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_storage $(pwd)/bb_storage.exe"
+               "run": "rm -f bb_storage.exe && bazel run --run_under cp --platforms=//tools/platforms:windows_amd64 //cmd/bb_storage $(pwd)/bb_storage.exe"
             },
             {
                "if": "matrix.host.upload",
@@ -495,7 +556,7 @@
             {
                "if": "matrix.host.upload",
                "name": "windows_amd64: copy sync_jwks_to_configmap",
-               "run": "rm -f sync_jwks_to_configmap.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.exe"
+               "run": "rm -f sync_jwks_to_configmap.exe && bazel run --run_under cp --platforms=//tools/platforms:windows_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.exe"
             },
             {
                "if": "matrix.host.upload",
