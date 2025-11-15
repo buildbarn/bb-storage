@@ -1,0 +1,63 @@
+alias(
+    name = "linux_amd64",
+    actual = "@rules_go//go/toolchain:linux_amd64",
+    visibility = ["//visibility:public"],
+)
+
+platform(
+    name = "linux_amd64_v3",
+    constraint_values = [
+        "@rules_go//go/constraints/amd64:v3",
+        "@rules_img//img/constraints/amd64:v3",
+    ],
+    parents = ["@rules_go//go/toolchain:linux_amd64"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "linux_386",
+    actual = "@rules_go//go/toolchain:linux_386",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "linux_arm",
+    actual = "@rules_go//go/toolchain:linux_arm",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "linux_arm64",
+    actual = "@rules_go//go/toolchain:linux_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "darwin_amd64",
+    actual = "@rules_go//go/toolchain:darwin_amd64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "darwin_arm64",
+    actual = "@rules_go//go/toolchain:darwin_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "freebsd_amd64",
+    actual = "@rules_go//go/toolchain:freebsd_amd64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "freebsd_arm64",
+    actual = "@rules_go//go/toolchain:freebsd_arm64",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "windows_amd64",
+    actual = "@rules_go//go/toolchain:windows_amd64",
+    visibility = ["//visibility:public"],
+)

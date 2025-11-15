@@ -1,57 +1,58 @@
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_push")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_img//img:image.bzl", "image_index", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:push.bzl", "image_push")
 
 def multiarch_go_image(name, binary):
     """Create a container image with two variants of the given go_binary target.
 
     Args:
-        name: resulting oci_image_index target
+        name: resulting image_index target
         binary: label of a go_binary target; it may be transitioned to another architecture
     """
 
     tar_target = "_{}.tar".format(name)
     image_target = "_{}.image".format(name)
 
-    pkg_tar(
+    image_layer(
         name = tar_target,
-        srcs = [binary],
-        include_runfiles = True,
-        package_dir = "app",
-        extension = "tar.gz",
-    )
-
-    oci_image(
-        name = image_target,
-        base = Label("@distroless_static"),
-        entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)],
-        tars = [tar_target],
+        srcs = {"app/{}".format(native.package_relative_label(binary).name): binary},
         # Don't build un-transitioned images, as the default target architecture might be unsupported
         # For example when building on linux-i386.
         tags = ["manual"],
     )
 
-    oci_image_index(
+    image_manifest(
+        name = image_target,
+        base = Label("@distroless_static"),
+        entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)],
+        layers = [tar_target],
+        # Don't build un-transitioned images, as the default target architecture might be unsupported
+        # For example when building on linux-i386.
+        tags = ["manual"],
+    )
+
+    image_index(
         name = name,
-        images = [image_target],
+        manifests = [image_target],
         platforms = [
-            "@rules_go//go/toolchain:linux_amd64",
-            "@rules_go//go/toolchain:linux_arm64",
+            Label("//tools/platforms:linux_amd64"),
+            Label("//tools/platforms:linux_amd64_v3"),
+            Label("//tools/platforms:linux_arm64"),
         ],
         visibility = ["//visibility:public"],
-        target_compatible_with = select({
-            Label("@platforms//os:windows"): [Label("@platforms//:incompatible")],
-            "//conditions:default": [],
-        }),
+        # Don't build container image unless explicitly requested, as
+        # building all variants can be time-consuming.
+        tags = ["manual"],
     )
 
 def container_push_official(name, image, component):
-    oci_push(
+    image_push(
         name = name,
         image = image,
-        repository = "ghcr.io/buildbarn/" + component,
-        remote_tags = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
-        target_compatible_with = select({
-            Label("@platforms//os:windows"): [Label("@platforms//:incompatible")],
-            "//conditions:default": [],
-        }),
+        registry = "ghcr.io",
+        repository = "buildbarn/" + component,
+        tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
+        # Don't build container image unless explicitly requested, as
+        # building all variants can be time-consuming.
+        tags = ["manual"],
     )
