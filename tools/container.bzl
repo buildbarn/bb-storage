@@ -1,5 +1,5 @@
+load("@rules_img//img:image.bzl", "image_index", "image_manifest")
 load("@rules_img//img:layer.bzl", "image_layer")
-load("@rules_img//img:image.bzl", "image_manifest", "image_index")
 load("@rules_img//img:push.bzl", "image_push")
 
 def multiarch_go_image(name, binary):
@@ -16,6 +16,9 @@ def multiarch_go_image(name, binary):
     image_layer(
         name = tar_target,
         srcs = {"app/{}".format(native.package_relative_label(binary).name): binary},
+        # Don't build un-transitioned images, as the default target architecture might be unsupported
+        # For example when building on linux-i386.
+        tags = ["manual"],
     )
 
     image_manifest(
@@ -37,6 +40,9 @@ def multiarch_go_image(name, binary):
             Label("//tools/platforms:linux_arm64"),
         ],
         visibility = ["//visibility:public"],
+        # Don't build container image unless explicitly requested, as
+        # building all variants can be time-consuming.
+        tags = ["manual"],
     )
 
 def container_push_official(name, image, component):
@@ -46,4 +52,7 @@ def container_push_official(name, image, component):
         registry = "ghcr.io",
         repository = "buildbarn/" + component,
         tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
+        # Don't build container image unless explicitly requested, as
+        # building all variants can be time-consuming.
+        tags = ["manual"],
     )
