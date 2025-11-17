@@ -131,6 +131,11 @@
               },
               'if': 'matrix.host.upload',
             },
+            {
+              name: 'Clean Bazel cache from previous steps',
+              run: 'bazel clean',
+              'if': 'matrix.host.upload',
+            },
           ] + [
             {
               name: 'Push container %s' % container,

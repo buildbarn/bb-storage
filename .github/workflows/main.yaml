@@ -577,6 +577,11 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "Clean Bazel cache from previous steps",
+               "run": "bazel clean"
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "Push container bb_copy:bb_copy",
                "run": "bazel run --stamp //cmd/bb_copy:bb_copy_container_push"
             },
