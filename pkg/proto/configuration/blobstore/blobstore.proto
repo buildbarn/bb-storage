@@ -265,33 +265,16 @@ message ReadCachingBlobAccessConfiguration {
 
 message ShardingBlobAccessConfiguration {
   message Shard {
-    // Storage backend that is used by this shard. Omitting this
-    // causes the implementation to assume this shard is drained.
-    // Requests to this shard will be spread out across the other
-    // shards.
+    // Storage backend that is used by this shard.
     BlobAccessConfiguration backend = 1;
 
     // Non-zero ratio of how many keys are allocated to this shard.
     // When all shards have equal specifications (i.e., capacity and
     // bandwidth), every shard may have a weight of one.
-    //
-    // For the backend selection algorithm to run quickly, it is not
-    // not advised to let the total weight of drained backends
-    // strongly exceed the total weight of undrained ones.
     uint32 weight = 2;
   }
 
-  message Legacy {
-    // Order of the shards for the legacy schema. Each key here refers to
-    // a corresponding key in the 'shard_map' or null for drained backends.
-    repeated string shard_order = 1;
-    // Hash initialization seed used for legacy schema.
-    uint64 hash_initialization = 2;
-  }
-
-  // Was 'hash_initialization' a seed for the shards array, has been made
-  // redundant with the 'shard_map', for running in compatible legacy mode set
-  // the 'hash_initialization' in 'legacy'.
+  // Was 'hash_initialization'.
   reserved 1;
 
   // Shards identified by a key within the context of this sharding
@@ -306,11 +289,8 @@ message ShardingBlobAccessConfiguration {
   // blob will be resolved to the new shards.
   map<string, Shard> shards = 2;
 
-  // A temporary legacy mode which allows clients to use storage backends which
-  // are sharded with the old sharding topology implementation. Consumers are
-  // expected to migrate in a timely fashion and support for the legacy schema
-  // will be removed by 2025-12-31.
-  Legacy legacy = 3;
+  // Was 'legacy'.
+  reserved 3;
 }
 
 message MirroredBlobAccessConfiguration {

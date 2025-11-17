@@ -59,7 +59,6 @@ use_repo(
     "com_github_grpc_ecosystem_go_grpc_prometheus",
     "com_github_jmespath_go_jmespath",
     "com_github_klauspost_compress",
-    "com_github_lazybeaver_xorshift",
     "com_github_prometheus_client_golang",
     "com_github_prometheus_client_model",
     "com_github_prometheus_common",
