@@ -260,6 +260,7 @@ gomock(
         "ClientConnInterface",
         "ClientStream",
         "ServerStream",
+        "ServerTransportStream",
         "StreamHandler",
         "Streamer",
         "UnaryHandler",

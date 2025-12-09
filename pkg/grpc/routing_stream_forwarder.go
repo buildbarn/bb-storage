@@ -1,8 +1,6 @@
 package grpc
 
 import (
-	"fmt"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,6 +29,5 @@ func (s *RoutingStreamForwarder) HandleStream(srv any, stream grpc.ServerStream)
 	if streamHandler, ok := s.RouteTable[method]; ok {
 		return streamHandler(srv, stream)
 	}
-	errDesc := fmt.Sprintf("no route for method %v", method)
-	return status.Error(codes.Unimplemented, errDesc)
+	return status.Errorf(codes.Unimplemented, "No route for method %v", method)
 }

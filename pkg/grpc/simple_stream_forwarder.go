@@ -43,13 +43,13 @@ func (s *simpleStreamForwarder) HandleStream(srv any, incomingStream grpc.Server
 		return err
 	}
 	go func() {
+		defer outgoingStream.CloseSend()
 		for {
 			msg := &emptypb.Empty{}
 			if err := incomingStream.RecvMsg(msg); err != nil {
 				if err == io.EOF {
 					// Let's to receive on outgoingStream, so don't cancel
 					// grouptCtx.
-					outgoingStream.CloseSend()
 					return
 				}
 				// Cancel groupCtx immediately.

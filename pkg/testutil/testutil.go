@@ -138,3 +138,13 @@ func mustMarshalToString(t *testing.T, proto proto.Message) string {
 	}
 	return string(s)
 }
+
+// VerifyChannelIsBlocking checks that no value can be received from the
+// channel. If a value is ready or the channel has been closed, the test fails.
+func VerifyChannelIsBlocking[Value any](t *testing.T, channel <-chan Value) {
+	select {
+	case <-channel:
+		t.Error("Channel is not blocking")
+	default:
+	}
+}
