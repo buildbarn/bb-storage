@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"maps"
-	"strings"
 
 	"github.com/buildbarn/bb-storage/pkg/program"
 	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
@@ -14,9 +13,7 @@ import (
 	v1alphareflectiongrpc "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 type combinedServiceInfoProvider struct {
@@ -42,18 +39,10 @@ func registerReflection(backendCtx context.Context, s *grpc.Server, serverRelayC
 	// Accumulate all the service names.
 	relayServices := make(map[string]grpc.ServiceInfo)
 	for _, relay := range serverRelayConfiguration {
-		for _, serviceMethod := range relay.Methods {
-			if !strings.HasPrefix(serviceMethod, "/") {
-				return status.Errorf(codes.InvalidArgument, "Malformed service method name %q, should start with '/'", serviceMethod)
-			}
-			pos := strings.LastIndex(serviceMethod, "/")
-			if pos == -1 || pos == 0 {
-				return status.Errorf(codes.InvalidArgument, "Malformed name %q, expected '/' between service and method", serviceMethod)
-			}
-			serviceName := serviceMethod[1:pos]
+		for _, service := range relay.GetServices() {
 			// According to ServiceInfoProvider docs for ServerOptions.Services,
 			// the reflection service is only interested in the service names.
-			relayServices[serviceName] = grpc.ServiceInfo{}
+			relayServices[service] = grpc.ServiceInfo{}
 		}
 	}
 

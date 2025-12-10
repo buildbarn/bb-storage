@@ -147,9 +147,9 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 
 		if len(configuration.Relays) != 0 {
-			handler, err := newStreamRoutingFromConfiguration(configuration.Relays, grpcClientFactory, group)
+			handler, err := newRoutingStreamHandlerFromConfiguration(configuration.Relays, grpcClientFactory, group)
 			if err != nil {
-				return util.StatusWrap(err, "Failed to create authenticator RPC client")
+				return err
 			}
 			serverOptions = append(serverOptions, grpc.UnknownServiceHandler(handler))
 		}
@@ -218,19 +218,20 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 	return nil
 }
 
-func newStreamRoutingFromConfiguration(serverRelayConfiguration []*grpcpb.ServerRelayConfiguration, grpcClientFactory ClientFactory, group program.Group) (grpc.StreamHandler, error) {
-	handler := NewRoutingStreamForwarder()
-	for _, relay := range serverRelayConfiguration {
+func newRoutingStreamHandlerFromConfiguration(serverRelayConfiguration []*grpcpb.ServerRelayConfiguration, grpcClientFactory ClientFactory, group program.Group) (grpc.StreamHandler, error) {
+	routeTable := make(map[string]grpc.StreamHandler)
+	for i, relay := range serverRelayConfiguration {
 		grpcClient, err := grpcClientFactory.NewClientFromConfiguration(relay.GetEndpoint(), group)
 		if err != nil {
-			return nil, util.StatusWrap(err, "Failed to create authenticator RPC client")
+			return nil, util.StatusWrapf(err, "Failed to create gRPC relay RPC client at index %d", i)
 		}
-		for _, method := range relay.GetMethods() {
-			if _, ok := handler.RouteTable[method]; ok {
-				return nil, status.Errorf(codes.InvalidArgument, "Duplicated relay for %v", method)
+		handler := NewForwardingStreamHandler(grpcClient)
+		for _, service := range relay.GetServices() {
+			if _, ok := routeTable[service]; ok {
+				return nil, status.Errorf(codes.InvalidArgument, "Duplicated gRPC relay for %v", service)
 			}
-			handler.RouteTable[method] = NewSimpleStreamForwarder(grpcClient)
+			routeTable[service] = handler
 		}
 	}
-	return handler.HandleStream, nil
+	return NewRoutingStreamHandler(routeTable), nil
 }

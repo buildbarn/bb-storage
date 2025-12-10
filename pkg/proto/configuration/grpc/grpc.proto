@@ -516,10 +516,10 @@ message ServerRelayConfiguration {
   // The remote gRPC server to forward the gRPC calls to.
   ClientConfiguration endpoint = 1;
 
-  // The full gRPC service and method name to relay.
+  // The gRPC services to relay.
   // Examples of valid names include:
   //
-  // /build.bazel.remote.execution.v2.Execution/Execute
-  // /com.google.devtools.build.v1.PublishBuildEvent/PublishBuildEvent
-  repeated string methods = 2;
+  // build.bazel.remote.execution.v2.Execution
+  // com.google.devtools.build.v1.PublishBuildEvent
+  repeated string services = 2;
 }

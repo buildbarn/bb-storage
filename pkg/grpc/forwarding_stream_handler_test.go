@@ -59,7 +59,7 @@ type simpleStreamForwarderStandardFixture struct {
 
 func newSimpleStreamForwarderStandardFixture(ctx context.Context, ctrl *gomock.Controller, t *testing.T) *simpleStreamForwarderStandardFixture {
 	backend := mock.NewMockClientConnInterface(ctrl)
-	forwarder := bb_grpc.NewSimpleStreamForwarder(backend)
+	forwarder := bb_grpc.NewForwardingStreamHandler(backend)
 	serverTransportStream := mock.NewMockServerTransportStream(ctrl)
 	serverTransportStream.EXPECT().Method().Return("/buildbarn.buildqueuestate.BuildQueueState/ListWorkers").AnyTimes()
 	streamCtx := grpc.NewContextWithServerTransportStream(ctx, serverTransportStream)
@@ -219,13 +219,6 @@ func TestSimpleStreamForwarderRequestRecvError(t *testing.T) {
 		backendCtx, forwardResultChan := fixture.call(nil)
 
 		fixture.IncomingRecvErrorChan <- errors.New("incoming recv")
-		// Optional to call backend.SendClose(), but if called it should be done
-		// by now.
-		synctest.Wait()
-		select {
-		case <-fixture.BackendSendCloseChan:
-		default:
-		}
 
 		// In error state, so the backend context should be canceled.
 		<-backendCtx.Done()
@@ -247,13 +240,6 @@ func TestSimpleStreamForwarderRequestSendError(t *testing.T) {
 		fixture.IncomingRecvErrorChan <- nil
 		fixture.IncomingRecvValueChan <- structpb.NewStringValue("beep")
 		fixture.BackendSendErrorChan <- errors.New("backend send")
-		// Optional to call backend.SendClose(), but if called it should be done
-		// by now.
-		synctest.Wait()
-		select {
-		case <-fixture.BackendSendCloseChan:
-		default:
-		}
 
 		// In error state, so the backend context should be canceled.
 		<-backendCtx.Done()
@@ -293,7 +279,6 @@ func TestSimpleStreamForwarderResponseSuccess(t *testing.T) {
 		<-backendCtx.Done()
 		require.NoError(t, <-forwardResultChan)
 		fixture.IncomingRecvErrorChan <- context.Canceled
-		<-fixture.BackendSendCloseChan
 
 		fixture.verifyEmptyChannels(t)
 	})
@@ -306,13 +291,6 @@ func TestSimpleStreamForwarderResponseRecvError(t *testing.T) {
 		backendCtx, forwardResultChan := fixture.call(nil)
 
 		fixture.BackendRecvErrorChan <- errors.New("backend recv")
-		// Optional to call backend.SendClose(), but if called it should be done
-		// by now.
-		synctest.Wait()
-		select {
-		case <-fixture.BackendSendCloseChan:
-		default:
-		}
 
 		// In error state, so the backend context should be canceled.
 		<-backendCtx.Done()
@@ -335,13 +313,6 @@ func TestSimpleStreamForwarderResponseSendError(t *testing.T) {
 		fixture.BackendRecvErrorChan <- nil
 		fixture.BackendRecvValueChan <- structpb.NewStringValue("beep")
 		fixture.IncomingSendErrorChan <- errors.New("incoming send")
-		// Optional to call backend.SendClose(), but if called it should be done
-		// by now.
-		synctest.Wait()
-		select {
-		case <-fixture.BackendSendCloseChan:
-		default:
-		}
 
 		// In error state, so the backend context should be canceled.
 		<-backendCtx.Done()

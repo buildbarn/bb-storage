@@ -978,7 +978,7 @@ func (x *TracingMethodConfiguration) GetAttributesFromFirstResponseMessage() []s
 type ServerRelayConfiguration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Endpoint      *ClientConfiguration   `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	Methods       []string               `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty"`
+	Services      []string               `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1020,9 +1020,9 @@ func (x *ServerRelayConfiguration) GetEndpoint() *ClientConfiguration {
 	return nil
 }
 
-func (x *ServerRelayConfiguration) GetMethods() []string {
+func (x *ServerRelayConfiguration) GetServices() []string {
 	if x != nil {
-		return x.Methods
+		return x.Services
 	}
 	return nil
 }
@@ -1162,10 +1162,10 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_pro
 	"\x18cache_replacement_policy\x18\x05 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicy\"\xc2\x01\n" +
 	"\x1aTracingMethodConfiguration\x12P\n" +
 	"%attributes_from_first_request_message\x18\x01 \x03(\tR!attributesFromFirstRequestMessage\x12R\n" +
-	"&attributes_from_first_response_message\x18\x02 \x03(\tR\"attributesFromFirstResponseMessage\"\x83\x01\n" +
+	"&attributes_from_first_response_message\x18\x02 \x03(\tR\"attributesFromFirstResponseMessage\"\x85\x01\n" +
 	"\x18ServerRelayConfiguration\x12M\n" +
-	"\bendpoint\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\bendpoint\x12\x18\n" +
-	"\amethods\x18\x02 \x03(\tR\amethodsB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/grpcb\x06proto3"
+	"\bendpoint\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\bendpoint\x12\x1a\n" +
+	"\bservices\x18\x02 \x03(\tR\bservicesB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/grpcb\x06proto3"
 
 var (
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescOnce sync.Once
