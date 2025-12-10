@@ -144,6 +144,7 @@ func mustMarshalToString(t *testing.T, proto proto.Message) string {
 func VerifyChannelIsBlocking[Value any](t *testing.T, channel <-chan Value) {
 	select {
 	case <-channel:
+		t.Helper()
 		t.Error("Channel is not blocking")
 	default:
 	}

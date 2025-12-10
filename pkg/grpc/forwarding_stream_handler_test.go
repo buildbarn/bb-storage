@@ -19,311 +19,261 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// simpleStreamForwarderStandardFixture contains channels to communicate with
-// the RecvMsg and SendMsg mocks in the incoming and backend streams.
-type simpleStreamForwarderStandardFixture struct {
-	forwarder      grpc.StreamHandler
-	incomingStream *mock.MockServerStream
-
-	backendNewStreamErrorChan chan<- error
-	backendNewStreamCtx       <-chan context.Context
-
-	// IncomingRecvErrorChan provides the return value for
-	// incomingStream.RecvMsg().
-	IncomingRecvErrorChan chan<- error
-	// IncomingRecvValueChan provides the returned proto message for
-	// incomingStream.RecvMsg() if the error was nil.
-	IncomingRecvValueChan chan<- *structpb.Value
-	// BackendSendErrorChan provides the return value for
-	// backendStream.SendMsg().
-	BackendSendErrorChan chan<- error
-	// BackendSendValueChan receives the proto message provided in the call to
-	// backendStream.SendMsg().
-	BackendSendValueChan <-chan *structpb.Value
-	// BackendSendCloseChan receives an entry when backendStream.CloseSend() is
-	// called.
-	BackendSendCloseChan <-chan struct{}
-	// BackendRecvErrorChan provides the return value for
-	// backendStream.RecvMsg().
-	BackendRecvErrorChan chan<- error
-	// BackendRecvValueChan provides the returned proto message for
-	// backendStream.RecvMsg() if the error was nil.
-	BackendRecvValueChan chan<- *structpb.Value
-	// IncomingSendErrorChan provides the return value for
-	// incomingStream.SendMsg().
-	IncomingSendErrorChan chan<- error
-	// IncomingSendValueChan receives the proto message provided in the call to
-	// incomingStream.SendMsg().
-	IncomingSendValueChan <-chan *structpb.Value
+type eqProtoStringValueMatcher struct {
+	gomock.Matcher
 }
 
-func newSimpleStreamForwarderStandardFixture(ctx context.Context, ctrl *gomock.Controller, t *testing.T) *simpleStreamForwarderStandardFixture {
-	backend := mock.NewMockClientConnInterface(ctrl)
-	forwarder := bb_grpc.NewForwardingStreamHandler(backend)
-	serverTransportStream := mock.NewMockServerTransportStream(ctrl)
-	serverTransportStream.EXPECT().Method().Return("/buildbarn.buildqueuestate.BuildQueueState/ListWorkers").AnyTimes()
-	streamCtx := grpc.NewContextWithServerTransportStream(ctx, serverTransportStream)
-	incomingStream := mock.NewMockServerStream(ctrl)
-	incomingStream.EXPECT().Context().Return(streamCtx).AnyTimes()
-	backendStream := mock.NewMockClientStream(ctrl)
-
-	backendNewStreamErrorChan := make(chan error, 10)
-	backendNewStreamCtx := make(chan context.Context, 10)
-
-	backend.EXPECT().NewStream(
-		gomock.Any(),
-		gomock.Any(),
-		"/buildbarn.buildqueuestate.BuildQueueState/ListWorkers",
-	).DoAndReturn(func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		backendNewStreamCtx <- ctx
-		return backendStream, <-backendNewStreamErrorChan
-	}).AnyTimes()
-
-	incomingRecvErrorChan := make(chan error, 10)
-	incomingRecvValueChan := make(chan *structpb.Value, 10)
-	backendSendErrorChan := make(chan error, 10)
-	backendSendValueChan := make(chan *structpb.Value, 10)
-	backendSendCloseChan := make(chan struct{}, 10)
-	backendRecvErrorChan := make(chan error, 10)
-	backendRecvValueChan := make(chan *structpb.Value, 10)
-	incomingSendErrorChan := make(chan error, 10)
-	incomingSendValueChan := make(chan *structpb.Value, 10)
-
-	incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
-		if err := <-incomingRecvErrorChan; err != nil {
-			return err
-		}
-		value := <-incomingRecvValueChan
-		bytes, err := proto.Marshal(value)
-		require.NoError(t, err)
-		require.NoError(t, proto.Unmarshal(bytes, msg.(proto.Message)))
-		return nil
-	}).AnyTimes()
-	backendStream.EXPECT().SendMsg(gomock.Any()).DoAndReturn(func(msg any) error {
-		if err := <-backendSendErrorChan; err != nil {
-			return err
-		}
-		bytes, err := proto.Marshal(msg.(proto.Message))
-		require.NoError(t, err)
-		value := new(structpb.Value)
-		require.NoError(t, proto.Unmarshal(bytes, value))
-		backendSendValueChan <- value
-		return nil
-	}).AnyTimes()
-	backendStream.EXPECT().CloseSend().DoAndReturn(func() error {
-		backendSendCloseChan <- struct{}{}
-		return nil
-	}).AnyTimes()
-	backendStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
-		if err := <-backendRecvErrorChan; err != nil {
-			return err
-		}
-		value := <-backendRecvValueChan
-		bytes, err := proto.Marshal(value)
-		require.NoError(t, err)
-		require.NoError(t, proto.Unmarshal(bytes, msg.(proto.Message)))
-		return nil
-	}).AnyTimes()
-	incomingStream.EXPECT().SendMsg(gomock.Any()).DoAndReturn(func(msg any) error {
-		if err := <-incomingSendErrorChan; err != nil {
-			return err
-		}
-		bytes, err := proto.Marshal(msg.(proto.Message))
-		require.NoError(t, err)
-		value := new(structpb.Value)
-		require.NoError(t, proto.Unmarshal(bytes, value))
-		incomingSendValueChan <- value
-		return nil
-	}).AnyTimes()
-
-	return &simpleStreamForwarderStandardFixture{
-		forwarder:      forwarder,
-		incomingStream: incomingStream,
-
-		backendNewStreamErrorChan: backendNewStreamErrorChan,
-		backendNewStreamCtx:       backendNewStreamCtx,
-
-		IncomingRecvErrorChan: incomingRecvErrorChan,
-		IncomingRecvValueChan: incomingRecvValueChan,
-		BackendSendErrorChan:  backendSendErrorChan,
-		BackendSendValueChan:  backendSendValueChan,
-		BackendSendCloseChan:  backendSendCloseChan,
-		BackendRecvErrorChan:  backendRecvErrorChan,
-		BackendRecvValueChan:  backendRecvValueChan,
-		IncomingSendErrorChan: incomingSendErrorChan,
-		IncomingSendValueChan: incomingSendValueChan,
+// newEqProtoStringValueMatcher is a gomock matcher for proto equality after
+// converting the proto.Message to structpb.Value.
+func newEqProtoStringValueMatcher(t *testing.T, v string) gomock.Matcher {
+	proto := structpb.NewStringValue(v)
+	return &eqProtoStringValueMatcher{
+		Matcher: testutil.EqProto(t, proto),
 	}
 }
 
-func (f *simpleStreamForwarderStandardFixture) call(newStreamErr error) (context.Context, <-chan error) {
-	callResult := make(chan error, 1)
-	go func() {
-		defer close(callResult)
-		f.backendNewStreamErrorChan <- newStreamErr
-		callResult <- f.forwarder(nil, f.incomingStream)
-	}()
-	return <-f.backendNewStreamCtx, callResult
+func (m *eqProtoStringValueMatcher) Matches(other interface{}) bool {
+	otherProto, ok := other.(proto.Message)
+	if !ok {
+		return false
+	}
+	bytes, err := proto.Marshal(otherProto)
+	if err != nil {
+		return false
+	}
+	value := new(structpb.Value)
+	if proto.Unmarshal(bytes, value) != nil {
+		return false
+	}
+	return m.Matcher.Matches(value)
 }
 
-func (f *simpleStreamForwarderStandardFixture) verifyEmptyChannels(t *testing.T) {
-	require.Len(t, f.backendNewStreamErrorChan, 0, "backendNewStreamErrorChan")
-	require.Len(t, f.backendNewStreamCtx, 0, "backendNewStreamCtx")
-	require.Len(t, f.IncomingRecvErrorChan, 0, "IncomingRecvErrorChan")
-	require.Len(t, f.IncomingRecvValueChan, 0, "IncomingRecvValueChan")
-	require.Len(t, f.BackendSendErrorChan, 0, "BackendSendErrorChan")
-	require.Len(t, f.BackendSendValueChan, 0, "BackendSendValueChan")
-	require.Len(t, f.BackendSendCloseChan, 0, "BackendSendCloseChan")
-	require.Len(t, f.BackendRecvErrorChan, 0, "BackendRecvErrorChan")
-	require.Len(t, f.BackendRecvValueChan, 0, "BackendRecvValueChan")
-	require.Len(t, f.IncomingSendErrorChan, 0, "IncomingSendErrorChan")
-	require.Len(t, f.IncomingSendValueChan, 0, "IncomingSendValueChan")
+func newForwardingStreamRecvMsgStub(v string) func(msg any) error {
+	src := structpb.NewStringValue(v)
+	bytes, err := proto.Marshal(src)
+	return func(dst any) error {
+		if err != nil {
+			return err
+		}
+		return proto.Unmarshal(bytes, dst.(proto.Message))
+	}
 }
 
-func TestSimpleStreamForwarderRequestSuccess(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+func TestSimpleStreamForwarder(t *testing.T) {
+	ctrl, _ := gomock.WithContext(context.Background(), t)
 
-		fixture.IncomingRecvErrorChan <- nil
-		fixture.IncomingRecvValueChan <- structpb.NewStringValue("beep")
-		fixture.BackendSendErrorChan <- nil
-		testutil.RequireEqualProto(t, structpb.NewStringValue("beep"), <-fixture.BackendSendValueChan)
-		fixture.IncomingRecvErrorChan <- nil
-		fixture.IncomingRecvValueChan <- structpb.NewStringValue("boop")
-		fixture.BackendSendErrorChan <- nil
-		testutil.RequireEqualProto(t, structpb.NewStringValue("boop"), <-fixture.BackendSendValueChan)
+	backend := mock.NewMockClientConnInterface(ctrl)
+	forwarder := bb_grpc.NewForwardingStreamHandler(backend)
+	serverTransportStream := mock.NewMockServerTransportStream(ctrl)
+	serverTransportStream.EXPECT().Method().Return("/serviceA/method1").AnyTimes()
+	incomingStream := mock.NewMockServerStream(ctrl)
+	outgoingStream := mock.NewMockClientStream(ctrl)
 
-		// Should still be forwarding requests to the backend.
-		synctest.Wait()
-		require.Len(t, fixture.BackendSendCloseChan, 0)
-		fixture.IncomingRecvErrorChan <- io.EOF
-		<-fixture.BackendSendCloseChan
+	t.Run("RequestSuccess", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			outgoingRecvBarrier := make(chan struct{})
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		// Should still be receiving responses.
-		synctest.Wait()
-		testutil.VerifyChannelIsBlocking(t, backendCtx.Done())
-		require.Len(t, forwardResultChan, 0)
-		fixture.BackendRecvErrorChan <- io.EOF
-		<-backendCtx.Done()
-		require.NoError(t, <-forwardResultChan)
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
 
-		fixture.verifyEmptyChannels(t)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("beep")),
+				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(nil),
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("boop")),
+				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "boop")).Return(nil),
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).Return(io.EOF),
+				outgoingStream.EXPECT().CloseSend().DoAndReturn(func() error {
+					close(outgoingRecvBarrier)
+					return nil
+				}),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					<-outgoingRecvBarrier
+					testutil.VerifyChannelIsBlocking(t, outgoingStreamCtx.Done())
+					return io.EOF
+				}),
+			)
+
+			require.NoError(t, forwarder(nil, incomingStream))
+			<-outgoingStreamCtx.Done()
+		})
 	})
-}
 
-func TestSimpleStreamForwarderRequestRecvError(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+	t.Run("RequestRecvError", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		fixture.IncomingRecvErrorChan <- errors.New("incoming recv")
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).Return(errors.New("incoming recv")),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					// When incomingStream.RecvMsg returns, the backend context
+					// should be canceled due to the error.
+					<-outgoingStreamCtx.Done()
+					return context.Canceled
+				}),
+			)
 
-		// In error state, so the backend context should be canceled.
-		<-backendCtx.Done()
-		// Emulate that backend.RecvMsg() to returns.
-		fixture.BackendRecvErrorChan <- context.Canceled
-
-		require.EqualError(t, <-forwardResultChan, "incoming recv")
-
-		fixture.verifyEmptyChannels(t)
+			require.EqualError(t, forwarder(nil, incomingStream), "incoming recv")
+		})
 	})
-}
 
-func TestSimpleStreamForwarderRequestSendError(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+	t.Run("RequestSendError", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		fixture.IncomingRecvErrorChan <- nil
-		fixture.IncomingRecvValueChan <- structpb.NewStringValue("beep")
-		fixture.BackendSendErrorChan <- errors.New("backend send")
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("beep")),
+				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(errors.New("outgoing send")),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					// When outgoingStream.SendMsg returns, the outgoing context
+					// should be canceled due to the error.
+					<-outgoingStreamCtx.Done()
+					return context.Canceled
+				}),
+			)
 
-		// In error state, so the backend context should be canceled.
-		<-backendCtx.Done()
-		// Emulate that backend.RecvMsg() to returns.
-		fixture.BackendRecvErrorChan <- context.Canceled
-
-		require.EqualError(t, <-forwardResultChan, "backend send")
-
-		fixture.verifyEmptyChannels(t)
+			require.EqualError(t, forwarder(nil, incomingStream), "outgoing send")
+		})
 	})
-}
 
-func TestSimpleStreamForwarderResponseSuccess(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+	t.Run("ResponseSuccess", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			incomingRecvBarrier := make(chan struct{})
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		fixture.BackendRecvErrorChan <- nil
-		fixture.BackendRecvValueChan <- structpb.NewStringValue("beep")
-		fixture.IncomingSendErrorChan <- nil
-		testutil.RequireEqualProto(t, structpb.NewStringValue("beep"), <-fixture.IncomingSendValueChan)
-		fixture.BackendRecvErrorChan <- nil
-		fixture.BackendRecvValueChan <- structpb.NewStringValue("boop")
-		fixture.IncomingSendErrorChan <- nil
-		testutil.RequireEqualProto(t, structpb.NewStringValue("boop"), <-fixture.IncomingSendValueChan)
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("beep")),
+				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(nil),
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("boop")),
+				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "boop")).Return(nil),
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).Return(io.EOF),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					<-incomingRecvBarrier
+					return context.Canceled
+				}),
+			)
 
-		// Should still be forwarding requests to the backend.
-		synctest.Wait()
-		require.Len(t, fixture.BackendSendCloseChan, 0)
-		// Should still be receiving responses.
-		testutil.VerifyChannelIsBlocking(t, backendCtx.Done())
-		require.Len(t, forwardResultChan, 0)
-		fixture.BackendRecvErrorChan <- io.EOF
-		// Will not receive any more from the backend, so its context should
-		// be canceled.
-		<-backendCtx.Done()
-		require.NoError(t, <-forwardResultChan)
-		fixture.IncomingRecvErrorChan <- context.Canceled
+			require.NoError(t, forwarder(nil, incomingStream))
+			<-outgoingStreamCtx.Done()
 
-		fixture.verifyEmptyChannels(t)
+			// incomingStream.Recv() is still blocking.
+			close(incomingRecvBarrier)
+		})
 	})
-}
 
-func TestSimpleStreamForwarderResponseRecvError(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+	t.Run("ResponseRecvError", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			incomingRecvBarrier := make(chan struct{})
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		fixture.BackendRecvErrorChan <- errors.New("backend recv")
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).Return(errors.New("outgoing recv")),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					<-incomingRecvBarrier
+					return context.Canceled
+				}),
+			)
 
-		// In error state, so the backend context should be canceled.
-		<-backendCtx.Done()
-		require.EqualError(t, <-forwardResultChan, "backend recv")
+			require.EqualError(t, forwarder(nil, incomingStream), "outgoing recv")
+			<-outgoingStreamCtx.Done()
 
-		// Emulate that incoming.RecvMsg() returns now when the whole stream
-		// handler has returned.
-		fixture.IncomingRecvErrorChan <- context.Canceled
-
-		fixture.verifyEmptyChannels(t)
+			// incomingStream.Recv() is still blocking.
+			close(incomingRecvBarrier)
+		})
 	})
-}
 
-func TestSimpleStreamForwarderResponseSendError(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		fixture := newSimpleStreamForwarderStandardFixture(ctx, ctrl, t)
-		backendCtx, forwardResultChan := fixture.call(nil)
+	t.Run("ResponseSendError", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var outgoingStreamCtx context.Context
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
 
-		fixture.BackendRecvErrorChan <- nil
-		fixture.BackendRecvValueChan <- structpb.NewStringValue("beep")
-		fixture.IncomingSendErrorChan <- errors.New("incoming send")
+			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
+				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+					outgoingStreamCtx = ctx
+					return outgoingStream, nil
+				},
+			)
+			gomock.InOrder(
+				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
+				newStreamCall,
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					newForwardingStreamRecvMsgStub("beep")),
+				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(errors.New("incoming send")),
+			)
+			gomock.InOrder(
+				newStreamCall,
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
+					// When incomingStream.SendMsg returns, the outgoing context
+					// should be canceled due to the error.
+					<-outgoingStreamCtx.Done()
+					return context.Canceled
+				}),
+			)
 
-		// In error state, so the backend context should be canceled.
-		<-backendCtx.Done()
-
-		// The forwarder should return, even if the backend.RecvMsg() is slow.
-		require.EqualError(t, <-forwardResultChan, "incoming send")
-
-		// Emulate that incoming.RecvMsg() returns now when the whole stream
-		// handler has returned.
-		fixture.IncomingRecvErrorChan <- context.Canceled
-
-		fixture.verifyEmptyChannels(t)
+			require.EqualError(t, forwarder(nil, incomingStream), "incoming send")
+		})
 	})
 }
