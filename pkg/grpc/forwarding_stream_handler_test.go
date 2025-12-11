@@ -82,14 +82,12 @@ func TestSimpleStreamForwarder(t *testing.T) {
 				},
 			)
 
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
-				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("beep")),
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("beep")),
 				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(nil),
-				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("boop")),
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("boop")),
 				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "boop")).Return(nil),
 				incomingStream.EXPECT().RecvMsg(gomock.Any()).Return(io.EOF),
 				outgoingStream.EXPECT().CloseSend().DoAndReturn(func() error {
@@ -101,7 +99,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 				newStreamCall,
 				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(msg any) error {
 					<-outgoingRecvBarrier
-					testutil.VerifyChannelIsBlocking(t, outgoingStreamCtx.Done())
+					synctest.Wait()
+					require.NoError(t, outgoingStreamCtx.Err())
 					return io.EOF
 				}),
 			)
@@ -122,8 +121,9 @@ func TestSimpleStreamForwarder(t *testing.T) {
 					return outgoingStream, nil
 				},
 			)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
 				incomingStream.EXPECT().RecvMsg(gomock.Any()).Return(errors.New("incoming recv")),
 			)
@@ -152,11 +152,11 @@ func TestSimpleStreamForwarder(t *testing.T) {
 					return outgoingStream, nil
 				},
 			)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
-				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("beep")),
+				incomingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("beep")),
 				outgoingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(errors.New("outgoing send")),
 			)
 			gomock.InOrder(
@@ -185,14 +185,13 @@ func TestSimpleStreamForwarder(t *testing.T) {
 					return outgoingStream, nil
 				},
 			)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
-				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("beep")),
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("beep")),
 				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(nil),
-				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("boop")),
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("boop")),
 				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "boop")).Return(nil),
 				outgoingStream.EXPECT().RecvMsg(gomock.Any()).Return(io.EOF),
 			)
@@ -224,8 +223,9 @@ func TestSimpleStreamForwarder(t *testing.T) {
 					return outgoingStream, nil
 				},
 			)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
 				outgoingStream.EXPECT().RecvMsg(gomock.Any()).Return(errors.New("outgoing recv")),
 			)
@@ -256,11 +256,11 @@ func TestSimpleStreamForwarder(t *testing.T) {
 					return outgoingStream, nil
 				},
 			)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			gomock.InOrder(
-				incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes(),
 				newStreamCall,
-				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
-					newForwardingStreamRecvMsgStub("beep")),
+				outgoingStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(newForwardingStreamRecvMsgStub("beep")),
 				incomingStream.EXPECT().SendMsg(newEqProtoStringValueMatcher(t, "beep")).Return(errors.New("incoming send")),
 			)
 			gomock.InOrder(
@@ -274,6 +274,17 @@ func TestSimpleStreamForwarder(t *testing.T) {
 			)
 
 			require.EqualError(t, forwarder(nil, incomingStream), "incoming send")
+		})
+	})
+
+	t.Run("NewStreamError", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+
+			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
+			backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").Return(nil, errors.New("no stream"))
+
+			require.EqualError(t, forwarder(nil, incomingStream), "no stream")
 		})
 	})
 }
