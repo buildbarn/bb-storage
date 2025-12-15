@@ -16,7 +16,8 @@ import (
 // com.google.devtools.build.v1.PublishBuildEvent
 func NewRoutingStreamHandler(routeTable map[string]grpc.StreamHandler) grpc.StreamHandler {
 	return func(srv any, stream grpc.ServerStream) error {
-		serviceMethod := MustStreamMethodFromContext(stream.Context())
+		// All gRPC invocations has a grpc.ServerTransportStream context.
+		serviceMethod := grpc.ServerTransportStreamFromContext(stream.Context()).Method()
 		// Service and method name parsing based on grpc.Server.handleStream().
 		startIdx := 0
 		if serviceMethod != "" && serviceMethod[0] == '/' {

@@ -66,14 +66,14 @@ func TestSimpleStreamForwarder(t *testing.T) {
 	forwarder := bb_grpc.NewForwardingStreamHandler(backend)
 	serverTransportStream := mock.NewMockServerTransportStream(ctrl)
 	serverTransportStream.EXPECT().Method().Return("/serviceA/method1").AnyTimes()
-	incomingStream := mock.NewMockServerStream(ctrl)
-	outgoingStream := mock.NewMockClientStream(ctrl)
 
 	t.Run("RequestSuccess", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			outgoingRecvBarrier := make(chan struct{})
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -114,6 +114,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -145,6 +147,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -178,6 +182,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			incomingRecvBarrier := make(chan struct{})
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -216,6 +222,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			incomingRecvBarrier := make(chan struct{})
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -249,6 +257,8 @@ func TestSimpleStreamForwarder(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var outgoingStreamCtx context.Context
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
+			outgoingStream := mock.NewMockClientStream(ctrl)
 
 			newStreamCall := backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").DoAndReturn(
 				func(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -280,6 +290,7 @@ func TestSimpleStreamForwarder(t *testing.T) {
 	t.Run("NewStreamError", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			incomingStreamCtx := grpc.NewContextWithServerTransportStream(context.Background(), serverTransportStream)
+			incomingStream := mock.NewMockServerStream(ctrl)
 
 			incomingStream.EXPECT().Context().Return(incomingStreamCtx).AnyTimes()
 			backend.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/serviceA/method1").Return(nil, errors.New("no stream"))

@@ -9,8 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/jhump/protoreflect/v2/grpcreflect"
 	"github.com/jhump/protoreflect/v2/protoresolve"
-	v1reflectiongrpc "google.golang.org/grpc/reflection/grpc_reflection_v1"
-	v1alphareflectiongrpc "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"google.golang.org/grpc/reflection/grpc_reflection_v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -66,7 +65,6 @@ func registerReflection(backendCtx context.Context, s *grpc.Server, serverRelayC
 		DescriptorResolver: combinedRemoteResolver,
 		ExtensionResolver:  protoresolve.TypesFromDescriptorPool(combinedRemoteResolver),
 	}
-	v1reflectiongrpc.RegisterServerReflectionServer(s, reflection.NewServerV1(serverOptions))
-	v1alphareflectiongrpc.RegisterServerReflectionServer(s, reflection.NewServer(serverOptions))
+	grpc_reflection_v1.RegisterServerReflectionServer(s, reflection.NewServerV1(serverOptions))
 	return nil
 }
