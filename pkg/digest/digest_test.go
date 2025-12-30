@@ -41,6 +41,13 @@ func TestNewDigestFromByteStreamReadPath(t *testing.T) {
 	})
 
 	t.Run("NoInstanceName", func(t *testing.T) {
+		t.Run("BLAKE3", func(t *testing.T) {
+			d, compressor, err := digest.NewDigestFromByteStreamReadPath("blobs/blake3/af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/123")
+			require.NoError(t, err)
+			require.Equal(t, digest.MustNewDigest("", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 123), d)
+			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			d, compressor, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/123")
 			require.NoError(t, err)
@@ -119,6 +126,13 @@ func TestNewDigestFromByteStreamWritePath(t *testing.T) {
 	})
 
 	t.Run("NoInstanceName", func(t *testing.T) {
+		t.Run("BLAKE3", func(t *testing.T) {
+			d, compressor, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/blake3/af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/123")
+			require.NoError(t, err)
+			require.Equal(t, digest.MustNewDigest("", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 123), d)
+			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			d, compressor, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 			require.NoError(t, err)
@@ -182,6 +196,17 @@ func TestNewDigestFromByteStreamWritePath(t *testing.T) {
 
 func TestDigestGetByteStreamReadPath(t *testing.T) {
 	t.Run("NoInstanceName", func(t *testing.T) {
+		t.Run("BLAKE3", func(t *testing.T) {
+			require.Equal(
+				t,
+				"blobs/blake3/af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/123",
+				digest.MustNewDigest(
+					"",
+					remoteexecution.DigestFunction_BLAKE3,
+					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			require.Equal(
 				t,
@@ -242,6 +267,17 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 	uuid := uuid.Must(uuid.Parse("36ebab65-3c4f-4faf-818b-2eabb4cd1b02"))
 
 	t.Run("NoInstanceName", func(t *testing.T) {
+		t.Run("BLAKE3", func(t *testing.T) {
+			require.Equal(
+				t,
+				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/blake3/af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/123",
+				digest.MustNewDigest(
+					"",
+					remoteexecution.DigestFunction_BLAKE3,
+					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			require.Equal(
 				t,
@@ -409,6 +445,18 @@ func TestDigestGetSizeBytes(t *testing.T) {
 }
 
 func TestDigestGetKey(t *testing.T) {
+	t.Run("BLAKE3", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 123)
+		require.Equal(
+			t,
+			"9-af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262-123",
+			d.GetKey(digest.KeyWithoutInstance))
+		require.Equal(
+			t,
+			"9-af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262-123-hello",
+			d.GetKey(digest.KeyWithInstance))
+	})
+
 	t.Run("SHA256", func(t *testing.T) {
 		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
 		require.Equal(
@@ -503,20 +551,40 @@ func TestRemoveUnsupportedDigestFunctions(t *testing.T) {
 	require.Equal(
 		t,
 		[]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_BLAKE3,
 			remoteexecution.DigestFunction_MD5,
 			remoteexecution.DigestFunction_SHA1,
 			remoteexecution.DigestFunction_SHA256,
 		},
 		digest.RemoveUnsupportedDigestFunctions([]remoteexecution.DigestFunction_Value{
+			remoteexecution.DigestFunction_BLAKE3,
 			remoteexecution.DigestFunction_MD5,
+			remoteexecution.DigestFunction_SHA1,
+			remoteexecution.DigestFunction_SHA1,
 			remoteexecution.DigestFunction_SHA256,
-			remoteexecution.DigestFunction_SHA1,
-			remoteexecution.DigestFunction_SHA1,
 			remoteexecution.DigestFunction_VSO,
 		}))
 }
 
 func TestDigestGetCompactBinary(t *testing.T) {
+	t.Run("BLAKE3", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 124982395)
+		require.Equal(
+			t,
+			[]byte{
+				// Digest function: remoteexecution.DigestFunction_BLAKE3.
+				0x09,
+				// Hash.
+				0xaf, 0x13, 0x49, 0xb9, 0xf5, 0xf9, 0xa1, 0xa6,
+				0xa0, 0x40, 0x4d, 0xea, 0x36, 0xdc, 0xc9, 0x49,
+				0x9b, 0xcb, 0x25, 0xc9, 0xad, 0xc1, 0x12, 0xb7,
+				0xcc, 0x9a, 0x93, 0xca, 0xe4, 0x1f, 0x32, 0x62,
+				// Size.
+				0xf6, 0xd1, 0x98, 0x77,
+			},
+			d.GetCompactBinary())
+	})
+
 	t.Run("SHA256", func(t *testing.T) {
 		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "18c17f53df2fcd1f8271bc1c0e55df71b1a796eaa74ff45a68900f04e3f4c7a2", 124982395)
 		require.Equal(

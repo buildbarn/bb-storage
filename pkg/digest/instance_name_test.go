@@ -49,6 +49,19 @@ func TestInstanceNameGetDigestFunction(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown digest function"), err)
 	})
 
+	t.Run("BLAKE3", func(t *testing.T) {
+		digestFunction, err := instanceName.GetDigestFunction(remoteexecution.DigestFunction_BLAKE3, 0)
+		require.NoError(t, err)
+
+		g := digestFunction.NewGenerator(5)
+		g.Write([]byte("Hello"))
+		require.Equal(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "fbc2b0516ee8744d293b980779178a3508850fdcfe965985782c39601b65794f", 5), g.Sum())
+
+		require.True(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 123).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("bye", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 456).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA1, "5ad9e0fd2f11ec59c95c60020c2b00afbef10e5b", 789).UsesDigestFunction(digestFunction))
+	})
+
 	t.Run("MD5", func(t *testing.T) {
 		digestFunction, err := instanceName.GetDigestFunction(remoteexecution.DigestFunction_MD5, 0)
 		require.NoError(t, err)
@@ -105,6 +118,22 @@ func TestInstanceNameGetComponents(t *testing.T) {
 
 func TestInstanceNameNewDigestFromCompactBinary(t *testing.T) {
 	instanceName := util.Must(digest.NewInstanceName("hello"))
+
+	t.Run("BLAKE3", func(t *testing.T) {
+		blobDigest, err := instanceName.NewDigestFromCompactBinary(bytes.NewBuffer([]byte{
+			// Digest function: remoteexecution.DigestFunction_BLAKE3.
+			0x09,
+			// Hash.
+			0xaf, 0x13, 0x49, 0xb9, 0xf5, 0xf9, 0xa1, 0xa6,
+			0xa0, 0x40, 0x4d, 0xea, 0x36, 0xdc, 0xc9, 0x49,
+			0x9b, 0xcb, 0x25, 0xc9, 0xad, 0xc1, 0x12, 0xb7,
+			0xcc, 0x9a, 0x93, 0xca, 0xe4, 0x1f, 0x32, 0x62,
+			// Size.
+			0xf6, 0xd1, 0x98, 0x77,
+		}))
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 124982395), blobDigest)
+	})
 
 	t.Run("SHA256", func(t *testing.T) {
 		blobDigest, err := instanceName.NewDigestFromCompactBinary(bytes.NewBuffer([]byte{
