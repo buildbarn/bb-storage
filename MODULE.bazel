@@ -65,6 +65,7 @@ use_repo(
     "com_github_prometheus_common",
     "com_github_sercand_kuberesolver_v5",
     "com_github_stretchr_testify",
+    "com_github_zeebo_blake3",
     "com_google_cloud_go_longrunning",
     "com_google_cloud_go_storage",
     "io_k8s_apimachinery",

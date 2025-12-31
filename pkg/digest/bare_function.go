@@ -9,12 +9,14 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/go-sha256tree"
+	"github.com/zeebo/blake3"
 )
 
 // SupportedDigestFunctions is the list of digest functions supported by
 // digest.Digest, using the enumeration values that are part of the
 // Remote Execution protocol.
 var SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
+	remoteexecution.DigestFunction_BLAKE3,
 	remoteexecution.DigestFunction_MD5,
 	remoteexecution.DigestFunction_SHA1,
 	remoteexecution.DigestFunction_SHA256,
@@ -38,6 +40,13 @@ type bareFunction struct {
 }
 
 var (
+	blake3BareFunction = bareFunction{
+		enumValue: remoteexecution.DigestFunction_BLAKE3,
+		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+			return blake3.New()
+		},
+		hashBytesSize: 32,
+	}
 	md5BareFunction = bareFunction{
 		enumValue: remoteexecution.DigestFunction_MD5,
 		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
@@ -100,6 +109,8 @@ func getBareFunction(digestFunction remoteexecution.DigestFunction_Value, hashSt
 		case sha512.Size * 2:
 			return &sha512BareFunction
 		}
+	case remoteexecution.DigestFunction_BLAKE3:
+		return &blake3BareFunction
 	case remoteexecution.DigestFunction_MD5:
 		return &md5BareFunction
 	case remoteexecution.DigestFunction_SHA1:
