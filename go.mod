@@ -30,7 +30,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/klauspost/compress v1.18.1
-	github.com/lazybeaver/xorshift v0.0.0-20170702203709-ce511d4823dd
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.2
