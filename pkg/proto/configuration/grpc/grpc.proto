@@ -240,6 +240,16 @@ message ServerConfiguration {
     // https://docs.cloud.google.com/docs/security/encryption-in-transit/application-layer-transport-security
     google.protobuf.Empty alts = 13;
   }
+
+  // Forward calls to certain named gRPC services to a different endpoint.
+  //
+  // One use case is to let the user connect to the same DNS name for extra
+  // services without having to use separate DNS names or setup another gRPC
+  // proxy. build.bazel.remote.execution.v2.Execution is a candidate for this,
+  // but note that build.bazel.remote.execution.v2.Capabilities might still need
+  // information from the scheduler. Another use case is Bazel's Build Event
+  // Streaming.
+  repeated ServerRelayConfiguration relays = 14;
 }
 
 message ServerKeepaliveEnforcementPolicy {
@@ -500,4 +510,16 @@ message TracingMethodConfiguration {
   // Lookups are performed using the same rules as those for
   // 'attributes_from_first_request_message'.
   repeated string attributes_from_first_response_message = 2;
+}
+
+message ServerRelayConfiguration {
+  // The remote gRPC server to forward the gRPC calls to.
+  ClientConfiguration endpoint = 1;
+
+  // The gRPC services to relay.
+  // Examples of valid names include:
+  //
+  // build.bazel.remote.execution.v2.Execution
+  // com.google.devtools.build.v1.PublishBuildEvent
+  repeated string services = 2;
 }

@@ -9,7 +9,7 @@ import (
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -147,6 +146,14 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}))
 		}
 
+		if len(configuration.Relays) != 0 {
+			handler, err := newRoutingStreamHandlerFromConfiguration(configuration.Relays, grpcClientFactory, group)
+			if err != nil {
+				return err
+			}
+			serverOptions = append(serverOptions, grpc.UnknownServiceHandler(handler))
+		}
+
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
 		stopFunc := s.Stop
@@ -162,7 +169,9 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable default services.
 		grpc_prometheus.Register(s)
-		reflection.Register(s)
+		if err := registerReflection(context.Background(), s, configuration.Relays, group, grpcClientFactory); err != nil {
+			return util.StatusWrap(err, "Failed to create reflection service")
+		}
 		h := health.NewServer()
 		grpc_health_v1.RegisterHealthServer(s, h)
 		// TODO: Construct an API for the caller to indicate
@@ -207,4 +216,22 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 	}
 	return nil
+}
+
+func newRoutingStreamHandlerFromConfiguration(serverRelayConfiguration []*grpcpb.ServerRelayConfiguration, grpcClientFactory ClientFactory, group program.Group) (grpc.StreamHandler, error) {
+	routeTable := make(map[string]grpc.StreamHandler)
+	for i, relay := range serverRelayConfiguration {
+		grpcClient, err := grpcClientFactory.NewClientFromConfiguration(relay.GetEndpoint(), group)
+		if err != nil {
+			return nil, util.StatusWrapf(err, "Failed to create gRPC relay RPC client at index %d", i)
+		}
+		handler := NewForwardingStreamHandler(grpcClient)
+		for _, service := range relay.GetServices() {
+			if _, ok := routeTable[service]; ok {
+				return nil, status.Errorf(codes.InvalidArgument, "Duplicated gRPC relay for %v", service)
+			}
+			routeTable[service] = handler
+		}
+	}
+	return NewRoutingStreamHandler(routeTable), nil
 }

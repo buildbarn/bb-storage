@@ -57,6 +57,7 @@ use_repo(
     "com_github_gorilla_mux",
     "com_github_grpc_ecosystem_go_grpc_middleware",
     "com_github_grpc_ecosystem_go_grpc_prometheus",
+    "com_github_jhump_protoreflect_v2",
     "com_github_jmespath_go_jmespath",
     "com_github_klauspost_compress",
     "com_github_prometheus_client_golang",
