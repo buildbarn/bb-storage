@@ -30,6 +30,13 @@ func init() {
 			util.DecimalExponentialBuckets(-3, 6, 2)))
 }
 
+type serverRelayConfigWithGrpcClient struct {
+	// config is never nil.
+	config *grpcpb.ServerRelayConfiguration
+	// grpcClient is a client created according to config.Endpoint.
+	grpcClient grpc.ClientConnInterface
+}
+
 // NewServersFromConfigurationAndServe creates a series of gRPC servers
 // based on a configuration stored in a list of Protobuf messages. It
 // then lets all of these gRPC servers listen on the network addresses
@@ -233,7 +240,7 @@ func newRoutingStreamHandlerFromConfiguration(serverRelayConfigurations []server
 	routeTable := make(map[string]grpc.StreamHandler)
 	for _, relay := range serverRelayConfigurations {
 		handler := NewForwardingStreamHandler(relay.grpcClient)
-		for _, service := range relay.config.GetServices() {
+		for _, service := range relay.config.Services {
 			if _, ok := routeTable[service]; ok {
 				return nil, status.Errorf(codes.InvalidArgument, "Duplicated gRPC relay for %v", service)
 			}

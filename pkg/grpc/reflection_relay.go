@@ -7,10 +7,10 @@ import (
 	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/jhump/protoreflect/v2/grpcreflect"
 	"github.com/jhump/protoreflect/v2/protoresolve"
-	"google.golang.org/grpc/reflection/grpc_reflection_v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
 type combinedServiceInfoProvider struct {
@@ -30,11 +30,6 @@ func (p *combinedServiceInfoProvider) GetServiceInfo() map[string]grpc.ServiceIn
 	return services
 }
 
-type serverRelayConfigWithGrpcClient struct {
-	config     *grpcpb.ServerRelayConfiguration
-	grpcClient grpc.ClientConnInterface
-}
-
 // registerReflectionServer registers the google.golang.org/grpc/reflection/
 // service on a grpc.Server and calls remote backends in case for relayed
 // services. The connections to the backend will run with the backendCtx.
@@ -42,7 +37,7 @@ func registerReflectionServer(backendCtx context.Context, s *grpc.Server, server
 	// Accumulate all the service names.
 	relayServices := make(map[string]grpc.ServiceInfo)
 	for _, relay := range serverRelayConfigurations {
-		for _, service := range relay.config.GetServices() {
+		for _, service := range relay.config.Services {
 			// According to ServiceInfoProvider docs for ServerOptions.Services,
 			// the reflection service is only interested in the service names.
 			relayServices[service] = grpc.ServiceInfo{}
