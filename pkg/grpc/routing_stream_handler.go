@@ -17,17 +17,14 @@ import (
 func NewRoutingStreamHandler(routeTable map[string]grpc.StreamHandler) grpc.StreamHandler {
 	return func(srv any, stream grpc.ServerStream) error {
 		// All gRPC invocations has a grpc.ServerTransportStream context.
-		serviceMethod := grpc.ServerTransportStreamFromContext(stream.Context()).Method()
+		orgServiceMethod := grpc.ServerTransportStreamFromContext(stream.Context()).Method()
 		// Service and method name parsing based on grpc.Server.handleStream().
-		startIdx := 0
-		if serviceMethod != "" && serviceMethod[0] == '/' {
-			startIdx = 1
-		}
+		serviceMethod := strings.TrimPrefix(orgServiceMethod, "/")
 		endIdx := strings.LastIndex(serviceMethod, "/")
-		if endIdx <= startIdx {
-			return status.Errorf(codes.InvalidArgument, "Malformed method name %v", serviceMethod)
+		if endIdx == -1 {
+			return status.Errorf(codes.InvalidArgument, "Malformed method name %v", orgServiceMethod)
 		}
-		service := serviceMethod[startIdx:endIdx]
+		service := serviceMethod[:endIdx]
 
 		if streamHandler, ok := routeTable[service]; ok {
 			return streamHandler(srv, stream)
