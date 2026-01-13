@@ -26,7 +26,7 @@ type forwardingStreamHandler struct {
 // backend stream are sent back in the incomingStream.
 func (s *forwardingStreamHandler) HandleStream(srv any, incomingStream grpc.ServerStream) error {
 	// All gRPC invocations has a grpc.ServerTransportStream context.
-	method := grpc.ServerTransportStreamFromContext(incomingStream.Context()).Method()
+	method, _ := grpc.Method(incomingStream.Context())
 	desc := grpc.StreamDesc{
 		// According to grpc.StreamDesc documentation, StreamName and Handler
 		// are only used when registering handlers on a server.

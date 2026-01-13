@@ -17,7 +17,7 @@ import (
 func NewRoutingStreamHandler(routeTable map[string]grpc.StreamHandler) grpc.StreamHandler {
 	return func(srv any, stream grpc.ServerStream) error {
 		// All gRPC invocations has a grpc.ServerTransportStream context.
-		orgServiceMethod := grpc.ServerTransportStreamFromContext(stream.Context()).Method()
+		orgServiceMethod, _ := grpc.Method(stream.Context())
 		// Service and method name parsing based on grpc.Server.handleStream().
 		serviceMethod := strings.TrimPrefix(orgServiceMethod, "/")
 		endIdx := strings.LastIndex(serviceMethod, "/")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"maps"
 
-	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/jhump/protoreflect/v2/grpcreflect"
 	"github.com/jhump/protoreflect/v2/protoresolve"
 
