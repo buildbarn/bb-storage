@@ -9,7 +9,7 @@ import (
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	grpcpb "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -29,6 +28,13 @@ func init() {
 	grpc_prometheus.EnableHandlingTimeHistogram(
 		grpc_prometheus.WithHistogramBuckets(
 			util.DecimalExponentialBuckets(-3, 6, 2)))
+}
+
+type serverRelayConfigWithGrpcClient struct {
+	// config is never nil.
+	config *grpcpb.ServerRelayConfiguration
+	// grpcClient is a client created according to config.Endpoint.
+	grpcClient grpc.ClientConnInterface
 }
 
 // NewServersFromConfigurationAndServe creates a series of gRPC servers
@@ -147,6 +153,25 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			}))
 		}
 
+		relayConfigWithGrpcClients := make([]serverRelayConfigWithGrpcClient, len(configuration.Relays))
+		for relayIdx, relay := range configuration.Relays {
+			grpcClient, err := grpcClientFactory.NewClientFromConfiguration(relay.Endpoint, group)
+			if err != nil {
+				return util.StatusWrapf(err, "Failed to create relay RPC client %d", relayIdx+1)
+			}
+			relayConfigWithGrpcClients[relayIdx] = serverRelayConfigWithGrpcClient{
+				config:     relay,
+				grpcClient: grpcClient,
+			}
+		}
+		if len(configuration.Relays) != 0 {
+			handler, err := newRoutingStreamHandlerFromConfiguration(relayConfigWithGrpcClients)
+			if err != nil {
+				return err
+			}
+			serverOptions = append(serverOptions, grpc.UnknownServiceHandler(handler))
+		}
+
 		// Create server.
 		s := grpc.NewServer(serverOptions...)
 		stopFunc := s.Stop
@@ -162,7 +187,9 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable default services.
 		grpc_prometheus.Register(s)
-		reflection.Register(s)
+		if err := registerReflectionServer(context.Background(), s, relayConfigWithGrpcClients); err != nil {
+			return util.StatusWrap(err, "Failed to create reflection service")
+		}
 		h := health.NewServer()
 		grpc_health_v1.RegisterHealthServer(s, h)
 		// TODO: Construct an API for the caller to indicate
@@ -207,4 +234,18 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		}
 	}
 	return nil
+}
+
+func newRoutingStreamHandlerFromConfiguration(serverRelayConfigurations []serverRelayConfigWithGrpcClient) (grpc.StreamHandler, error) {
+	routeTable := make(map[string]grpc.StreamHandler)
+	for _, relay := range serverRelayConfigurations {
+		handler := NewForwardingStreamHandler(relay.grpcClient)
+		for _, service := range relay.config.Services {
+			if _, ok := routeTable[service]; ok {
+				return nil, status.Errorf(codes.InvalidArgument, "Duplicated gRPC relay for %v", service)
+			}
+			routeTable[service] = handler
+		}
+	}
+	return NewRoutingStreamHandler(routeTable), nil
 }

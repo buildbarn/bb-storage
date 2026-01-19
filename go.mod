@@ -28,6 +28,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/jhump/protoreflect/v2 v2.0.0-beta.2
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/klauspost/compress v1.18.1
 	github.com/prometheus/client_golang v1.23.2
