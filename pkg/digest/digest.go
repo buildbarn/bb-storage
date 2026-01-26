@@ -16,11 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// The offset within the digest string at which the hash starts. We
-// currently assume that all supported digest functions have an
-// enumeration value below 10, meaning all digests starts with "[0-9]-".
-const hashStart = 2
-
 // Automatically register all compression algorithms that are part of
 // the protocol.
 var (
@@ -106,7 +101,16 @@ func RemoveUnsupportedDigestFunctions(reported []remoteexecution.DigestFunction_
 
 // Unpack the individual hash, size and instance name fields from the
 // string representation stored inside the Digest object.
-func (d Digest) unpack() (remoteexecution.DigestFunction_Value, int, int64, int) {
+func (d Digest) unpack() (remoteexecution.DigestFunction_Value, int, int, int64, int) {
+	// Extract the digest function. We only support digest functions
+	// that are up to two digits long.
+	digestFunction := remoteexecution.DigestFunction_Value(d.value[0] - '0')
+	hashStart := 2
+	if v := d.value[1]; v != '-' {
+		digestFunction = digestFunction*10 + remoteexecution.DigestFunction_Value(v-'0')
+		hashStart++
+	}
+
 	// Extract the leading hash.
 	hashEnd := shortestSupportedHashStringSize
 	for d.value[hashEnd] != '-' {
@@ -121,7 +125,7 @@ func (d Digest) unpack() (remoteexecution.DigestFunction_Value, int, int64, int)
 		sizeBytesEnd++
 	}
 
-	return remoteexecution.DigestFunction_Value(d.value[0] - '0'), hashEnd, sizeBytes, sizeBytesEnd
+	return digestFunction, hashStart, hashEnd, sizeBytes, sizeBytesEnd
 }
 
 // MustNewDigest constructs a Digest similar to NewDigest, but never
@@ -241,7 +245,7 @@ func newDigestFromByteStreamPathCommon(header, trailer []string) (Digest, remote
 //
 // This notation is used to read files through the ByteStream service.
 func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Value) string {
-	digestFunction, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	digestFunction, hashStart, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
 		compressorEnumToMidfix[compressor],
@@ -258,7 +262,7 @@ func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Valu
 //
 // This notation is used to write files through the ByteStream service.
 func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecution.Compressor_Value) string {
-	digestFunction, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
+	digestFunction, hashStart, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
 		"uploads",
@@ -273,7 +277,7 @@ func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecutio
 // execution protocol, so that it may be stored in messages returned to
 // the client.
 func (d Digest) GetProto() *remoteexecution.Digest {
-	_, hashEnd, sizeBytes, _ := d.unpack()
+	_, hashStart, hashEnd, sizeBytes, _ := d.unpack()
 	return &remoteexecution.Digest{
 		Hash:      d.value[hashStart:hashEnd],
 		SizeBytes: sizeBytes,
@@ -282,7 +286,7 @@ func (d Digest) GetProto() *remoteexecution.Digest {
 
 // GetInstanceName returns the instance name of the object.
 func (d Digest) GetInstanceName() InstanceName {
-	_, _, _, sizeBytesEnd := d.unpack()
+	_, _, _, _, sizeBytesEnd := d.unpack()
 	return InstanceName{
 		value: d.value[sizeBytesEnd+1:],
 	}
@@ -290,7 +294,7 @@ func (d Digest) GetInstanceName() InstanceName {
 
 // GetHashBytes returns the hash of the object as a slice of bytes.
 func (d Digest) GetHashBytes() []byte {
-	_, hashEnd, _, _ := d.unpack()
+	_, hashStart, hashEnd, _, _ := d.unpack()
 	hash, err := hex.DecodeString(d.value[hashStart:hashEnd])
 	if err != nil {
 		panic("Failed to decode digest hash, even though its contents have already been validated")
@@ -300,13 +304,13 @@ func (d Digest) GetHashBytes() []byte {
 
 // GetHashString returns the hash of the object as a string.
 func (d Digest) GetHashString() string {
-	_, hashEnd, _, _ := d.unpack()
+	_, hashStart, hashEnd, _, _ := d.unpack()
 	return d.value[hashStart:hashEnd]
 }
 
 // GetSizeBytes returns the size of the object, in bytes.
 func (d Digest) GetSizeBytes() int64 {
-	_, _, sizeBytes, _ := d.unpack()
+	_, _, _, sizeBytes, _ := d.unpack()
 	return sizeBytes
 }
 
@@ -342,7 +346,7 @@ const (
 func (d Digest) GetKey(format KeyFormat) string {
 	switch format {
 	case KeyWithoutInstance:
-		_, _, _, sizeBytesEnd := d.unpack()
+		_, _, _, _, sizeBytesEnd := d.unpack()
 		return d.value[:sizeBytesEnd]
 	case KeyWithInstance:
 		return d.value
@@ -368,10 +372,11 @@ func (d Digest) ToSingletonSet() Set {
 // algorithm as the one that was used to create the digest, making it
 // possible to validate data against a digest.
 //
-// The expected size can be used as a hint to create an appropriately
-// sized hasher. If the expected size is unknown, provide math.MaxInt64.
+// The expected size MUST correspond to the size of the object that is
+// being hashed. Digest functions like GITSHA1 require that the size is
+// known up front.
 func (d Digest) NewHasher(expectedSizeBytes int64) hash.Hash {
-	digestFunction, _, _, _ := d.unpack()
+	digestFunction, _, _, _, _ := d.unpack()
 	return getBareFunction(digestFunction, 0).hasherFactory(expectedSizeBytes)
 }
 
@@ -381,7 +386,7 @@ func (d Digest) NewHasher(expectedSizeBytes int64) hash.Hash {
 // to be derived based on an existing instance. For example, to generate
 // a digest of an output file of a build action, given an action digest.
 func (d Digest) GetDigestFunction() Function {
-	digestFunction, _, _, sizeBytesEnd := d.unpack()
+	digestFunction, _, _, _, sizeBytesEnd := d.unpack()
 	return Function{
 		instanceName: InstanceName{
 			value: d.value[sizeBytesEnd+1:],
@@ -394,7 +399,7 @@ func (d Digest) GetDigestFunction() Function {
 // name and uses the same hashing algorithm as a provided Function
 // object.
 func (d Digest) UsesDigestFunction(f Function) bool {
-	digestFunction, _, _, sizeBytesEnd := d.unpack()
+	digestFunction, _, _, _, sizeBytesEnd := d.unpack()
 	return digestFunction == f.bareFunction.enumValue && d.value[sizeBytesEnd+1:] == f.instanceName.value
 }
 
@@ -407,7 +412,7 @@ func (d Digest) UsesDigestFunction(f Function) bool {
 // list of six digests, having instance names "", "this", "this/is",
 // "this/is/an", "this/is/an/instance" and "this/is/an/instance/name".
 func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
-	_, _, _, sizeBytesEnd := d.unpack()
+	_, _, _, _, sizeBytesEnd := d.unpack()
 	instanceNameStart := sizeBytesEnd + 1
 	digestWithoutInstanceName := Digest{
 		value: d.value[:instanceNameStart],
@@ -451,7 +456,7 @@ func (d Digest) GetDigestsWithParentInstanceNames() []Digest {
 // This representation is used by the NFSv4 server, as it needs to
 // encode digests in file handles.
 func (d Digest) GetCompactBinary() []byte {
-	digestFunction, hashEnd, sizeBytes, _ := d.unpack()
+	digestFunction, hashStart, hashEnd, sizeBytes, _ := d.unpack()
 
 	hash, err := hex.DecodeString(d.value[hashStart:hashEnd])
 	if err != nil {
