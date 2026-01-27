@@ -49,8 +49,9 @@ func (f Function) GetEnumValue() remoteexecution.DigestFunction_Value {
 // NewGenerator creates a writer that may be used to compute digests of
 // newly created files.
 //
-// The expected size can be used as a hint to create an appropriately
-// sized hasher. If the expected size is unknown, provide math.MaxInt64.
+// The expected size MUST correspond to the size of the object that is
+// being hashed. Digest functions like GITSHA1 require that the size is
+// known up front.
 func (f Function) NewGenerator(expectedSizeBytes int64) *Generator {
 	return &Generator{
 		digestFunction: f,

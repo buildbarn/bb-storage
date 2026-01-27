@@ -38,6 +38,9 @@ type FileReader interface {
 	// with Data may also return io.EOF when no more data regions
 	// exist past the provided offset.
 	GetNextRegionOffset(offset int64, regionType RegionType) (int64, error)
+
+	// Equivalent to fstat().st_size.
+	Len() (int64, error)
 }
 
 // FileReadWriter is returned by Directory.OpenReadWrite(). It is a

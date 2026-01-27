@@ -119,6 +119,16 @@ func (f localFileReadWriter) GetNextRegionOffset(offset int64, regionType Region
 	return nextOffset, err
 }
 
+func (f localFileReadWriter) Len() (int64, error) {
+	defer runtime.KeepAlive(f)
+
+	fileInfo, err := f.Stat()
+	if err != nil {
+		return -1, err
+	}
+	return fileInfo.Size(), nil
+}
+
 func (d *localDirectory) OpenRead(name path.Component) (FileReader, error) {
 	f, err := d.open(name, DontCreate, os.O_RDONLY)
 	if err != nil {

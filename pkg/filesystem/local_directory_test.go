@@ -487,6 +487,27 @@ func TestLocalDirectoryFileGetDataRegionOffset(t *testing.T) {
 	require.NoError(t, d.Close())
 }
 
+func TestLocalDirectoryFileLen(t *testing.T) {
+	d := openTmpDir(t)
+	f, err := d.OpenReadWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o444))
+	require.NoError(t, err)
+
+	sizeBytes, err := f.Len()
+	require.NoError(t, err)
+	require.Equal(t, int64(0), sizeBytes)
+
+	n, err := f.WriteAt([]byte("Hello"), 1024*1024)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+
+	sizeBytes, err = f.Len()
+	require.NoError(t, err)
+	require.Equal(t, int64(1024*1024+5), sizeBytes)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, d.Close())
+}
+
 func TestLocalDirectoryIsWritable(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		return

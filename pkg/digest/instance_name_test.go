@@ -62,6 +62,19 @@ func TestInstanceNameGetDigestFunction(t *testing.T) {
 		require.False(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA1, "5ad9e0fd2f11ec59c95c60020c2b00afbef10e5b", 789).UsesDigestFunction(digestFunction))
 	})
 
+	t.Run("GITSHA1", func(t *testing.T) {
+		digestFunction, err := instanceName.GetDigestFunction(remoteexecution.DigestFunction_GITSHA1, 0)
+		require.NoError(t, err)
+
+		g := digestFunction.NewGenerator(5)
+		g.Write([]byte("Hello"))
+		require.Equal(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_GITSHA1, "5ab2f8a4323abafb10abb68657d9d39f1a775057", 5), g.Sum())
+
+		require.True(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_GITSHA1, "fe6ea45d9d23b1eba62862afe7e630f68cc8add4", 123).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("bye", remoteexecution.DigestFunction_GITSHA1, "fe6ea45d9d23b1eba62862afe7e630f68cc8add4", 456).UsesDigestFunction(digestFunction))
+		require.False(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA1, "fe6ea45d9d23b1eba62862afe7e630f68cc8add4", 789).UsesDigestFunction(digestFunction))
+	})
+
 	t.Run("MD5", func(t *testing.T) {
 		digestFunction, err := instanceName.GetDigestFunction(remoteexecution.DigestFunction_MD5, 0)
 		require.NoError(t, err)
@@ -133,6 +146,21 @@ func TestInstanceNameNewDigestFromCompactBinary(t *testing.T) {
 		}))
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_BLAKE3, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", 124982395), blobDigest)
+	})
+
+	t.Run("GITSHA1", func(t *testing.T) {
+		blobDigest, err := instanceName.NewDigestFromCompactBinary(bytes.NewBuffer([]byte{
+			// Digest function: remoteexecution.DigestFunction_GITSHA1.
+			0x0a,
+			// Hash.
+			0x02, 0x45, 0x12, 0x55, 0x2d, 0xa5, 0x58, 0xf8,
+			0xb4, 0x3c, 0x0c, 0xca, 0x95, 0x73, 0x83, 0x28,
+			0x22, 0xf9, 0x8c, 0xdc,
+			// Size.
+			0xf6, 0xd1, 0x98, 0x77,
+		}))
+		require.NoError(t, err)
+		require.Equal(t, digest.MustNewDigest("hello", remoteexecution.DigestFunction_GITSHA1, "024512552da558f8b43c0cca9573832822f98cdc", 124982395), blobDigest)
 	})
 
 	t.Run("SHA256", func(t *testing.T) {

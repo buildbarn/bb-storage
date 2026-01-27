@@ -48,6 +48,13 @@ func TestNewDigestFromByteStreamReadPath(t *testing.T) {
 			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 		})
 
+		t.Run("GITSHA1", func(t *testing.T) {
+			d, compressor, err := digest.NewDigestFromByteStreamReadPath("blobs/gitsha1/e22e8f5c4057251e65ab28c75ef3f7c2c2e7fe32/123")
+			require.NoError(t, err)
+			require.Equal(t, digest.MustNewDigest("", remoteexecution.DigestFunction_GITSHA1, "e22e8f5c4057251e65ab28c75ef3f7c2c2e7fe32", 123), d)
+			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			d, compressor, err := digest.NewDigestFromByteStreamReadPath("blobs/8b1a9953c4611296a827abf8c47804d7/123")
 			require.NoError(t, err)
@@ -133,6 +140,13 @@ func TestNewDigestFromByteStreamWritePath(t *testing.T) {
 			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
 		})
 
+		t.Run("GITSHA1", func(t *testing.T) {
+			d, compressor, err := digest.NewDigestFromByteStreamWritePath("uploads/f50c65cd-9bbe-467d-8b9e-86c2b98c0d6a/blobs/gitsha1/f360a89d2669a6de05a290240553e64f100a4741/123")
+			require.NoError(t, err)
+			require.Equal(t, digest.MustNewDigest("", remoteexecution.DigestFunction_GITSHA1, "f360a89d2669a6de05a290240553e64f100a4741", 123), d)
+			require.Equal(t, remoteexecution.Compressor_IDENTITY, compressor)
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			d, compressor, err := digest.NewDigestFromByteStreamWritePath("uploads/da2f1135-326b-4956-b920-1646cdd6cb53/blobs/8b1a9953c4611296a827abf8c47804d7/123")
 			require.NoError(t, err)
@@ -207,6 +221,17 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
 		})
 
+		t.Run("GITSHA1", func(t *testing.T) {
+			require.Equal(
+				t,
+				"blobs/gitsha1/56a69bf74dc325e10e19ab2c69c13d1360aea147/123",
+				digest.MustNewDigest(
+					"",
+					remoteexecution.DigestFunction_GITSHA1,
+					"56a69bf74dc325e10e19ab2c69c13d1360aea147",
+					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+		})
+
 		t.Run("MD5", func(t *testing.T) {
 			require.Equal(
 				t,
@@ -275,6 +300,17 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_BLAKE3,
 					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+		})
+
+		t.Run("GITSHA1", func(t *testing.T) {
+			require.Equal(
+				t,
+				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/gitsha1/42e4b92e68ca9224a420f93ed0a73786515d75a8/123",
+				digest.MustNewDigest(
+					"",
+					remoteexecution.DigestFunction_GITSHA1,
+					"42e4b92e68ca9224a420f93ed0a73786515d75a8",
 					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
 		})
 
@@ -457,6 +493,18 @@ func TestDigestGetKey(t *testing.T) {
 			d.GetKey(digest.KeyWithInstance))
 	})
 
+	t.Run("GITSHA1", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_GITSHA1, "5fa582666e141fbb1e625792c9790eb9f5942c02", 123)
+		require.Equal(
+			t,
+			"10-5fa582666e141fbb1e625792c9790eb9f5942c02-123",
+			d.GetKey(digest.KeyWithoutInstance))
+		require.Equal(
+			t,
+			"10-5fa582666e141fbb1e625792c9790eb9f5942c02-123-hello",
+			d.GetKey(digest.KeyWithInstance))
+	})
+
 	t.Run("SHA256", func(t *testing.T) {
 		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
 		require.Equal(
@@ -579,6 +627,23 @@ func TestDigestGetCompactBinary(t *testing.T) {
 				0xa0, 0x40, 0x4d, 0xea, 0x36, 0xdc, 0xc9, 0x49,
 				0x9b, 0xcb, 0x25, 0xc9, 0xad, 0xc1, 0x12, 0xb7,
 				0xcc, 0x9a, 0x93, 0xca, 0xe4, 0x1f, 0x32, 0x62,
+				// Size.
+				0xf6, 0xd1, 0x98, 0x77,
+			},
+			d.GetCompactBinary())
+	})
+
+	t.Run("GITSHA1", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_GITSHA1, "bd10e7d4b328c8f16cbd18ffe339e1391193338f", 124982395)
+		require.Equal(
+			t,
+			[]byte{
+				// Digest function: remoteexecution.DigestFunction_GITSHA1.
+				0x0a,
+				// Hash.
+				0xbd, 0x10, 0xe7, 0xd4, 0xb3, 0x28, 0xc8, 0xf1,
+				0x6c, 0xbd, 0x18, 0xff, 0xe3, 0x39, 0xe1, 0x39,
+				0x11, 0x93, 0x33, 0x8f,
 				// Size.
 				0xf6, 0xd1, 0x98, 0x77,
 			},

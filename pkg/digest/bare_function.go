@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"hash"
+	"strconv"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/go-sha256tree"
@@ -17,6 +18,7 @@ import (
 // Remote Execution protocol.
 var SupportedDigestFunctions = []remoteexecution.DigestFunction_Value{
 	remoteexecution.DigestFunction_BLAKE3,
+	remoteexecution.DigestFunction_GITSHA1,
 	remoteexecution.DigestFunction_MD5,
 	remoteexecution.DigestFunction_SHA1,
 	remoteexecution.DigestFunction_SHA256,
@@ -46,6 +48,17 @@ var (
 			return blake3.New()
 		},
 		hashBytesSize: 32,
+	}
+	gitsha1BareFunction = bareFunction{
+		enumValue: remoteexecution.DigestFunction_GITSHA1,
+		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+			h := sha1.New()
+			h.Write([]byte("blob "))
+			h.Write([]byte(strconv.FormatInt(expectedSizeBytes, 10)))
+			h.Write([]byte{0})
+			return h
+		},
+		hashBytesSize: sha1.Size,
 	}
 	md5BareFunction = bareFunction{
 		enumValue: remoteexecution.DigestFunction_MD5,
@@ -111,6 +124,8 @@ func getBareFunction(digestFunction remoteexecution.DigestFunction_Value, hashSt
 		}
 	case remoteexecution.DigestFunction_BLAKE3:
 		return &blake3BareFunction
+	case remoteexecution.DigestFunction_GITSHA1:
+		return &gitsha1BareFunction
 	case remoteexecution.DigestFunction_MD5:
 		return &md5BareFunction
 	case remoteexecution.DigestFunction_SHA1:
