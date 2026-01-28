@@ -1,0 +1,167 @@
+diff --git MODULE.bazel MODULE.bazel
+index daacd76..3373ccd 100644
+--- MODULE.bazel
++++ MODULE.bazel
+@@ -24,11 +24,13 @@ CPP_JSONNET_URL = (
+ # even exactly match a released version).
+ http_archive(
+     name = "cpp_jsonnet",
++    patches = ["//:cpp_jsonnet.diff"],
+     sha256 = CPP_JSONNET_SHA256,
+     strip_prefix = CPP_JSONNET_STRIP_PREFIX,
+     urls = [CPP_JSONNET_URL],
+ )
+ 
++bazel_dep(name = "rules_cc", version = "0.2.16")
+ bazel_dep(name = "gazelle", version = "0.42.0", repo_name = "bazel_gazelle")
+ bazel_dep(name = "rules_go", version = "0.53.0", repo_name = "io_bazel_rules_go")
+ 
+diff --git cpp_jsonnet.diff cpp_jsonnet.diff
+new file mode 100644
+index 0000000..0126bf4
+--- /dev/null
++++ cpp_jsonnet.diff
+@@ -0,0 +1,143 @@
++commit 218bc6532798e7a530dd5a048a6be1046b77c914
++Author: Benjamin Peterson <benjamin@engflow.com>
++Date:   Mon Dec 1 15:59:23 2025 -0600
++
++    add loads for cc rules to BUILD files
++    
++    builtin rules are removed in newer versions of Bazel
++
++diff --git MODULE.bazel MODULE.bazel
++index 32c00af..9e70a3b 100644
++--- MODULE.bazel
+++++ MODULE.bazel
++@@ -5,3 +5,4 @@ module(
++ 
++ bazel_dep(name = "googletest", version = "1.16.0")
++ bazel_dep(name = "rules_python", version = "1.2.0")
+++bazel_dep(name = "rules_cc", version = "0.2.14")
++diff --git cmd/BUILD cmd/BUILD
++index 51803a4..9efb186 100644
++--- cmd/BUILD
+++++ cmd/BUILD
++@@ -1,3 +1,6 @@
+++load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ cc_library(
++diff --git core/BUILD core/BUILD
++index 5508488..1e2d485 100644
++--- core/BUILD
+++++ core/BUILD
++@@ -1,3 +1,6 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++load("@rules_cc//cc:cc_test.bzl", "cc_test")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ cc_library(
++diff --git cpp/BUILD cpp/BUILD
++index ca996c3..43770b3 100644
++--- cpp/BUILD
+++++ cpp/BUILD
++@@ -1,3 +1,6 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++load("@rules_cc//cc:cc_test.bzl", "cc_test")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ cc_library(
++diff --git examples/bazel/BUILD examples/bazel/BUILD
++index 5be8463..d95cf84 100644
++--- examples/bazel/BUILD
+++++ examples/bazel/BUILD
++@@ -1,3 +1,4 @@
+++load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
++ load("@rules_python//python:defs.bzl", "py_binary")
++ 
++ cc_binary(
++diff --git examples/bazel/MODULE.bazel examples/bazel/MODULE.bazel
++index 1888e07..728dc0b 100644
++--- examples/bazel/MODULE.bazel
+++++ examples/bazel/MODULE.bazel
++@@ -1,5 +1,9 @@
++ # Example of using jsonnet by depending on the Bazel module.
++ 
++ bazel_dep(name = "rules_python", version = "1.2.0")
+++bazel_dep(name = "rules_cc", version = "0.2.14")
++ bazel_dep(name = "jsonnet")
++-local_path_override(module_name = "jsonnet", path = "../..")
+++local_path_override(
+++    module_name = "jsonnet",
+++    path = "../..",
+++)
++diff --git include/BUILD include/BUILD
++index 3893ba4..869e438 100644
++--- include/BUILD
+++++ include/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ cc_library(
++diff --git python/BUILD python/BUILD
++index 513f2dc..ab5294f 100644
++--- python/BUILD
+++++ python/BUILD
++@@ -1,3 +1,4 @@
+++load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
++ load("@rules_python//python:defs.bzl", "py_library", "py_test")
++ 
++ package(default_visibility = ["//visibility:private"])
++diff --git stdlib/BUILD stdlib/BUILD
++index de1c31a..c7d4a70 100644
++--- stdlib/BUILD
+++++ stdlib/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ filegroup(
++diff --git test_suite/BUILD test_suite/BUILD
++index 12c8937..17ed1ad 100644
++--- test_suite/BUILD
+++++ test_suite/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_shell//shell:sh_library.bzl", "sh_library")
+++
++ package(default_visibility = ["//visibility:private"])
++ 
++ # Export the tests.source so it can be used by Bazel tests elsewhere in the repo.
++diff --git third_party/json/BUILD third_party/json/BUILD
++index 1d23af1..d4ede23 100644
++--- third_party/json/BUILD
+++++ third_party/json/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ licenses(["permissive"])
++ 
++ package(default_visibility = ["//visibility:private"])
++diff --git third_party/md5/BUILD third_party/md5/BUILD
++index 840ebd4..bd158c8 100644
++--- third_party/md5/BUILD
+++++ third_party/md5/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ licenses(["permissive"])
++ 
++ package(default_visibility = ["//visibility:private"])
++diff --git third_party/rapidyaml/BUILD third_party/rapidyaml/BUILD
++index 3ce4677..f98c6f3 100644
++--- third_party/rapidyaml/BUILD
+++++ third_party/rapidyaml/BUILD
++@@ -1,3 +1,5 @@
+++load("@rules_cc//cc:cc_library.bzl", "cc_library")
+++
++ licenses(["permissive"])
++ 
++ package(default_visibility = ["//visibility:private"])
