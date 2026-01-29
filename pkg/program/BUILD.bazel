@@ -6,6 +6,8 @@ go_library(
         "run.go",
         "run_local.go",
         "run_main.go",
+        "run_main_linux.go",
+        "run_main_other.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/program",
     visibility = ["//visibility:public"],
