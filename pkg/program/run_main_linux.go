@@ -5,6 +5,7 @@ package program
 import (
 	"log"
 	"os"
+	"os/signal"
 	"syscall"
 )
 
@@ -27,6 +28,8 @@ func relaunchIfPID1(currentPID int) {
 		if err != nil {
 			log.Fatal("Failed to obtain path of current executable: ", err)
 		}
+
+		signal.Ignore(terminationSignals...)
 		childPID, _, err := syscall.StartProcess(executable, os.Args, &syscall.ProcAttr{
 			Env:   os.Environ(),
 			Files: []uintptr{0, 1, 2},

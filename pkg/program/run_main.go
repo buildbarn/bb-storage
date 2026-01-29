@@ -71,6 +71,11 @@ func terminateWithSignal(currentPID int, terminationSignal os.Signal) {
 	os.Exit(1)
 }
 
+var terminationSignals = []os.Signal{
+	os.Interrupt,
+	syscall.SIGTERM,
+}
+
 // RunMain runs a program that supports graceful termination. Programs
 // consist of a pool of routines that may have dependencies on each
 // other. Programs terminate if one of the following three cases occur:
@@ -99,7 +104,7 @@ func RunMain(routine Routine) {
 
 	// Handle incoming signals.
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(signalChan, terminationSignals...)
 	go func() {
 		receivedSignal := <-signalChan
 		log.Printf("Received %#v signal. Initiating graceful shutdown.", receivedSignal.String())
