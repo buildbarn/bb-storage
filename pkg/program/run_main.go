@@ -34,6 +34,43 @@ func (el *runMainErrorLogger) startShutdown(shutdownFunc func()) {
 	})
 }
 
+// terminateWithSignal terminates the current process by sending a
+// signal to itself.
+func terminateWithSignal(currentPID int, terminationSignal os.Signal) {
+	if runtime.GOOS == "windows" {
+		// On Windows, process.Signal() is not supported so
+		// immediately exit.
+		os.Exit(1)
+	}
+
+	// Clear the signal handler and raise the
+	// original signal once again. That way we shut
+	// down under the original circumstances.
+	signal.Reset(terminationSignal)
+	process, err := os.FindProcess(currentPID)
+	if err != nil {
+		panic(err)
+	}
+	if err := process.Signal(terminationSignal); err != nil {
+		panic(err)
+	}
+
+	// This code should not be reached, if it weren't for the fact
+	// that process.Signal() does not guarantee that the signal is
+	// delivered to the same thread.
+	//
+	// Furthermore, signal.Reset() does not reset signals that are
+	// delivered via the process group, but ignored by the process
+	// itself. Fall back to calling os.Exit() if we don't get
+	// terminated via signal delivery.
+	//
+	// More details:
+	// https://github.com/golang/go/issues/19326
+	// https://github.com/golang/go/issues/46321
+	time.Sleep(5)
+	os.Exit(1)
+}
+
 // RunMain runs a program that supports graceful termination. Programs
 // consist of a pool of routines that may have dependencies on each
 // other. Programs terminate if one of the following three cases occur:
@@ -52,6 +89,9 @@ func (el *runMainErrorLogger) startShutdown(shutdownFunc func()) {
 // be used to ensure an outgoing database connection is terminated after
 // an integrated RPC server is shut down.
 func RunMain(routine Routine) {
+	currentPID := os.Getpid()
+	relaunchIfPID1(currentPID)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	errorLogger := &runMainErrorLogger{
 		cancel: cancel,
@@ -64,40 +104,7 @@ func RunMain(routine Routine) {
 		receivedSignal := <-signalChan
 		log.Printf("Received %#v signal. Initiating graceful shutdown.", receivedSignal.String())
 		errorLogger.startShutdown(func() {
-			if runtime.GOOS == "windows" {
-				// On Windows, process.Signal() is not supported so
-				// immediately exit.
-				os.Exit(1)
-			}
-
-			// Clear the signal handler and raise the
-			// original signal once again. That way we shut
-			// down under the original circumstances.
-			signal.Reset(receivedSignal)
-			process, err := os.FindProcess(os.Getpid())
-			if err != nil {
-				panic(err)
-			}
-			if err := process.Signal(receivedSignal); err != nil {
-				panic(err)
-			}
-
-			// This code should not be reached, if it
-			// weren't for the fact that process.Signal()
-			// does not guarantee that the signal is
-			// delivered to the same thread.
-			//
-			// Furthermore, signal.Reset() does not reset
-			// signals that are delivered via the process
-			// group, but ignored by the process itself.
-			// Fall back to calling os.Exit() if we don't
-			// get terminated via signal delivery.
-			//
-			// More details:
-			// https://github.com/golang/go/issues/19326
-			// https://github.com/golang/go/issues/46321
-			time.Sleep(5)
-			os.Exit(1)
+			terminateWithSignal(currentPID, receivedSignal)
 		})
 	}()
 
