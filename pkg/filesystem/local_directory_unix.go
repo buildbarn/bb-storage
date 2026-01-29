@@ -334,10 +334,16 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 			// A directory. Remove all children. Adjust permissions
 			// to ensure we can delete directories with degenerate
 			// permissions.
-			// TODO(edsch): This could use AT_SYMLINK_NOFOLLOW.
-			// Unfortunately, this is broken on Linux.
-			// Details: https://github.com/golang/go/issues/20130
-			unix.Fchmodat(d.fd, name, 0o700, 0)
+			if err := unix.Fchmodat(d.fd, name, 0o700, unix.AT_SYMLINK_NOFOLLOW); runtime.GOOS == "linux" && err == unix.EOPNOTSUPP {
+				// Support for fchmodat(AT_SYMLINK_NOFOLLOW)
+				// was only added in Linux 6.6. Fall back to
+				// calling fchmodat(0) when running on an
+				// older kernel version.
+				//
+				// TODO: Remove this when the world has
+				// stopped using older kernel versions.
+				unix.Fchmodat(d.fd, name, 0o700, 0)
+			}
 			subdirectory, err := d.enter(component)
 			if err != nil {
 				return err
