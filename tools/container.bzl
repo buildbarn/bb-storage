@@ -12,6 +12,8 @@ def multiarch_go_image(name, binary):
 
     tar_target = "_{}.tar".format(name)
     image_target = "_{}.image".format(name)
+    unix_binary_entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)]
+    windows_binary_entrypoint = ["C:\\app\\{}".format(native.package_relative_label(binary).name)]
 
     image_layer(
         name = tar_target,
@@ -23,8 +25,14 @@ def multiarch_go_image(name, binary):
 
     image_manifest(
         name = image_target,
-        base = Label("@distroless_static"),
-        entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)],
+        base = select({
+           "@rules_go//go/platform:linux": Label("@distroless_static"),
+           "@rules_go//go/platform:windows": Label("@nanoserver"),
+        }),
+        entrypoint = select({
+            "@rules_go//go/platform:linux": unix_binary_entrypoint,
+            "@rules_go//go/platform:windows": windows_binary_entrypoint,
+        }),
         layers = [tar_target],
         # Don't build un-transitioned images, as the default target architecture might be unsupported
         # For example when building on linux-i386.
@@ -38,6 +46,7 @@ def multiarch_go_image(name, binary):
             Label("//tools/platforms:linux_amd64"),
             Label("//tools/platforms:linux_amd64_v3"),
             Label("//tools/platforms:linux_arm64"),
+            Label("//tools/platforms:windows_amd64"),
         ],
         visibility = ["//visibility:public"],
         # Don't build container image unless explicitly requested, as
