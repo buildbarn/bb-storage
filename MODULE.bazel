@@ -3,9 +3,11 @@ module(name = "com_github_buildbarn_bb_storage")
 bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
 bazel_dep(name = "aspect_rules_js", version = "2.9.2")
 bazel_dep(name = "bazel_remote_apis", version = "0")
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "gazelle", version = "0.47.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20260109-6145b5ff")
 bazel_dep(name = "grpc", version = "1.76.0.bcr.1")
+bazel_dep(name = "hermetic_cc_toolchain", version = "4.1.0")
 bazel_dep(name = "jsonnet_go", version = "0.21.0")
 bazel_dep(name = "opentelemetry-proto", version = "1.8.0")
 bazel_dep(name = "platforms", version = "1.0.0")
@@ -16,6 +18,8 @@ bazel_dep(name = "rules_go", version = "0.59.0")
 bazel_dep(name = "rules_img", version = "0.3.3")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.7.3")
+bazel_dep(name = "rules_oci", version = "2.2.7")
+bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "rules_shell", version = "0.6.1")
 bazel_dep(name = "toolchains_llvm", version = "1.6.0")
@@ -24,6 +28,13 @@ git_override(
     module_name = "bazel_remote_apis",
     commit = "b02e15a6d354e2fb553216132ccec79f3f5b39cb",
     remote = "https://github.com/bazelbuild/remote-apis.git",
+)
+
+# TODO: remove when https://github.com/bazel-contrib/rules_oci/pull/886 lands
+git_override(
+    module_name = "rules_oci",
+    commit = "2df143255d8e25c09a53707a7ff4fd768021d796",
+    remote = "https://github.com/bazel-contrib/rules_oci.git",
 )
 
 single_version_override(
@@ -162,4 +173,39 @@ pull(
     digest = "sha256:3f2b64ef97bd285e36132c684e6b2ae8f2723293d09aae046196cca64251acac",
     registry = "gcr.io",
     repository = "distroless/static",
+)
+
+pull(
+    name = "nanoserver",
+    digest = "sha256:4bfc3ec32a8b9bb5e7a182440c517b0706267d88fda77b54acddf819920400ad",
+    registry = "mcr.microsoft.com",
+    repository = "windows/nanoserver",
+)
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "distroless_static_oci",
+    digest = "sha256:7e5c6a2a4ae854242874d36171b31d26e0539c98fc6080f942f16b03e82851ab",
+    image = "gcr.io/distroless/static",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64/v8",
+    ],
+)
+use_repo(oci, "distroless_static_oci")
+
+oci.pull(
+    name = "nanoserver_oci",
+    digest = "sha256:723a61e89a2c8c88ceeb92986ab1d895c9ae5278789417a2c768f61d6a70f2c7",
+    image = "mcr.microsoft.com/windows/nanoserver",
+)
+use_repo(oci, "nanoserver_oci")
+
+toolchains = use_extension("@hermetic_cc_toolchain//toolchain:ext.bzl", "toolchains")
+use_repo(toolchains, "zig_sdk")
+register_toolchains(
+    "@zig_sdk//libc_aware/toolchain:linux_amd64_gnu.2.31",
+    "@zig_sdk//libc_aware/toolchain:linux_arm64_gnu.2.31",
+    "@zig_sdk//toolchain:windows_amd64",
+    "@zig_sdk//toolchain:windows_arm64",
 )
