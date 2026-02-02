@@ -12,30 +12,34 @@ def multiarch_go_image(name, binary):
 
     tar_target = "_{}.tar".format(name)
     image_target = "_{}.image".format(name)
-    unix_binary_entrypoint = ["/app/{}".format(native.package_relative_label(binary).name)]
-    windows_binary_entrypoint = ["C:\\app\\{}".format(native.package_relative_label(binary).name)]
+    binary_name = native.package_relative_label(binary).name
 
     image_layer(
         name = tar_target,
-        srcs = {"app/{}".format(native.package_relative_label(binary).name): binary},
-        # Don't build un-transitioned images, as the default target architecture might be unsupported
-        # For example when building on linux-i386.
+        srcs = select({
+            "@rules_go//go/platform:linux": {"app/" + binary_name: binary},
+            "@rules_go//go/platform:windows": {"app/{}.exe".format(binary_name): binary},
+        }),
+        # Don't build un-transitioned images, as the default target
+        # architecture might be unsupported For example when building on
+        # linux-i386.
         tags = ["manual"],
     )
 
     image_manifest(
         name = image_target,
         base = select({
-           "@rules_go//go/platform:linux": Label("@distroless_static"),
-           "@rules_go//go/platform:windows": Label("@nanoserver"),
+            "@rules_go//go/platform:linux": Label("@distroless_static"),
+            "@rules_go//go/platform:windows": Label("@nanoserver"),
         }),
         entrypoint = select({
-            "@rules_go//go/platform:linux": unix_binary_entrypoint,
-            "@rules_go//go/platform:windows": windows_binary_entrypoint,
+            "@rules_go//go/platform:linux": ["/app/" + binary_name],
+            "@rules_go//go/platform:windows": ["C:\\app\\{}.exe".format(binary_name)],
         }),
         layers = [tar_target],
-        # Don't build un-transitioned images, as the default target architecture might be unsupported
-        # For example when building on linux-i386.
+        # Don't build un-transitioned images, as the default target
+        # architecture might be unsupported For example when building on
+        # linux-i386.
         tags = ["manual"],
     )
 
