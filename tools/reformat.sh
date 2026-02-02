@@ -70,7 +70,7 @@ if git grep -q '^[[:space:]]*//go:embed '; then
   git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |\1/|' | while read o; do
     if [ -e "bazel-bin/$o" ]; then
       rm -rf "$o"
-      cp -r "bazel-bin/$o" "$o"
+      cp -RL "bazel-bin/$o" "$o"
       find "$o" -type f -exec chmod -x {} +
     fi
   done
