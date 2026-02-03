@@ -2,12 +2,14 @@ package grpc_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +30,46 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 	// Common definitions used by the tests below.
 	span := mock.NewMockSpan(ctrl)
 	ctxWithSpan := trace.ContextWithSpan(ctx, span)
+
+	t.Run("BytesAndUnsigned", func(t *testing.T) {
+		fullMethod := "/buildbarn.fsac.FileSystemAccessCache/GetFileSystemAccessProfile"
+		request := &fsac.GetFileSystemAccessProfileRequest{
+			InstanceName:   "default-scheduler",
+			DigestFunction: remoteexecution.DigestFunction_SHA256,
+			ReducedActionDigest: &remoteexecution.Digest{
+				Hash:      "abcd",
+				SizeBytes: 123,
+			},
+		}
+		response := &fsac.FileSystemAccessProfile{
+			BloomFilter:              []byte{0x01, 0x02, 0x03},
+			BloomFilterHashFunctions: 7,
+		}
+
+		extractor := bb_grpc.NewProtoTraceAttributesExtractor(map[string]*configuration.TracingMethodConfiguration{
+			fullMethod: {
+				AttributesFromFirstResponseMessage: []string{
+					"bloom_filter",
+					"bloom_filter_hash_functions",
+				},
+			},
+		}, mock.NewMockErrorLogger(ctrl))
+
+		handler := mock.NewMockUnaryHandler(ctrl)
+		span.EXPECT().IsRecording().Return(true)
+		handler.EXPECT().Call(ctxWithSpan, request).Return(response, nil)
+		span.EXPECT().SetAttributes([]attribute.KeyValue{
+			attribute.String("response.bloom_filter", base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03})),
+			attribute.Int64("response.bloom_filter_hash_functions", 7),
+		})
+
+		observedResponse, err := extractor.InterceptUnaryServer(ctxWithSpan, request, &grpc.UnaryServerInfo{
+			FullMethod: fullMethod,
+		}, handler.Call)
+		require.NoError(t, err)
+		testutil.RequireEqualProto(t, response, observedResponse.(proto.Message))
+	})
+
 	exampleUnaryFullMethod := "/build.bazel.remote.execution.v2.Capabilities/GetCapabilities"
 	exampleUnaryRequest := &remoteexecution.GetCapabilitiesRequest{
 		InstanceName: "default-scheduler",
@@ -133,7 +175,7 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// any configuration errors to be reported.
 			span.EXPECT().IsRecording().Return(true)
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"request\": Attribute name does not contain any fields")))
-			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.cache_capabilities\": Field \"cache_capabilities\" does not have a boolean, enumeration, floating point, signed integer or string type")))
+			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.cache_capabilities\": Field \"cache_capabilities\" does not have a boolean, enumeration, floating point, integer, bytes or string type")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.nonexistent\": Field \"nonexistent\" does not exist")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.execution_capabilities.execution_priority_capabilities.priorities.min_priority\": Field \"priorities\" does not refer to a singular message")))
 			span.EXPECT().SetAttributes([]attribute.KeyValue{
