@@ -20,6 +20,14 @@ def multiarch_go_image(name, binary):
             "@rules_go//go/platform:linux": {"app/" + binary_name: binary},
             "@rules_go//go/platform:windows": {"app/{}.exe".format(binary_name): binary},
         }),
+        # Creating parent directories is not recommended
+        # as the directory creation during layer extraction shadows layers
+        # from parent directories instead of merging their contents.
+        # On Windows, the extraction routine requires parent directories to exist.
+        create_parent_directories = select({
+            "@rules_go//go/platform:linux": "disabled",
+            "@rules_go//go/platform:windows": "enabled",
+        }),
         # Don't build un-transitioned images, as the default target
         # architecture might be unsupported For example when building on
         # linux-i386.
