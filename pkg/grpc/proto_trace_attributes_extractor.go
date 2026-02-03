@@ -486,7 +486,7 @@ func (cs *attributeExtractingServerStream) SendMsg(m interface{}) error {
 	return err
 }
 
-func (me *methodTraceAttributesExtractor) applyAttributes(span trace.Span, attributes []attribute.KeyValue) {
+func (methodTraceAttributesExtractor) applyAttributes(span trace.Span, attributes []attribute.KeyValue) {
 	if span == nil || !span.IsRecording() || len(attributes) == 0 {
 		return
 	}
