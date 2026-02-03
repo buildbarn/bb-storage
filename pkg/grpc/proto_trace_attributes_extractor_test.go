@@ -133,7 +133,7 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// any configuration errors to be reported.
 			span.EXPECT().IsRecording().Return(true)
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"request\": Attribute name does not contain any fields")))
-			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.cache_capabilities\": Field \"cache_capabilities\" does not have a boolean, enumeration, floating point, signed integer or string type")))
+			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.cache_capabilities\": Field \"cache_capabilities\" does not have a boolean, enumeration, floating point, integer (signed/unsigned), bytes or string type")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.nonexistent\": Field \"nonexistent\" does not exist")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.execution_capabilities.execution_priority_capabilities.priorities.min_priority\": Field \"priorities\" does not refer to a singular message")))
 			span.EXPECT().SetAttributes([]attribute.KeyValue{
