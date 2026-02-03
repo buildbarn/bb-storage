@@ -2,12 +2,14 @@ package grpc_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
@@ -21,6 +23,49 @@ import (
 
 	"go.uber.org/mock/gomock"
 )
+
+func TestProtoTraceAttributesExtractor_BytesAndUnsigned(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	span := mock.NewMockSpan(ctrl)
+	ctxWithSpan := trace.ContextWithSpan(ctx, span)
+	fullMethod := "/buildbarn.fsac.FileSystemAccessCache/GetFileSystemAccessProfile"
+	request := &fsac.GetFileSystemAccessProfileRequest{
+		InstanceName:   "default-scheduler",
+		DigestFunction: remoteexecution.DigestFunction_SHA256,
+		ReducedActionDigest: &remoteexecution.Digest{
+			Hash:      "abcd",
+			SizeBytes: 123,
+		},
+	}
+	response := &fsac.FileSystemAccessProfile{
+		BloomFilter:              []byte{0x01, 0x02, 0x03},
+		BloomFilterHashFunctions: 7,
+	}
+
+	extractor := bb_grpc.NewProtoTraceAttributesExtractor(map[string]*configuration.TracingMethodConfiguration{
+		fullMethod: {
+			AttributesFromFirstResponseMessage: []string{
+				"bloom_filter",
+				"bloom_filter_hash_functions",
+			},
+		},
+	}, mock.NewMockErrorLogger(ctrl))
+
+	handler := mock.NewMockUnaryHandler(ctrl)
+	span.EXPECT().IsRecording().Return(true).AnyTimes()
+	handler.EXPECT().Call(ctxWithSpan, request).Return(response, nil)
+	span.EXPECT().SetAttributes([]attribute.KeyValue{
+		attribute.String("response.bloom_filter", base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03})),
+		attribute.Int64("response.bloom_filter_hash_functions", 7),
+	})
+
+	observedResponse, err := extractor.InterceptUnaryServer(ctxWithSpan, request, &grpc.UnaryServerInfo{
+		FullMethod: fullMethod,
+	}, handler.Call)
+	require.NoError(t, err)
+	testutil.RequireEqualProto(t, response, observedResponse.(proto.Message))
+}
 
 func TestProtoTraceAttributesExtractor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
