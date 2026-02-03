@@ -333,12 +333,12 @@ func newAttributeExtractor(descriptor protoreflect.MessageDescriptor, remainingF
 		}, nil
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		// Unsigned integer or repeated unsigned integer field.
-		convertUnsignedToInt64 := func(value protoreflect.Value) (int64, bool) {
+		convertUnsignedToInt64 := func(value protoreflect.Value) int64 {
 			unsigned := value.Uint()
 			if unsigned > uint64(math.MaxInt64) {
-				return 0, false
+				return math.MaxInt64
 			}
-			return int64(unsigned), true
+			return int64(unsigned)
 		}
 		if fieldDescriptor.IsList() {
 			return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
@@ -346,18 +346,13 @@ func newAttributeExtractor(descriptor protoreflect.MessageDescriptor, remainingF
 				length := list.Len()
 				elements := make([]int64, 0, length)
 				for i := 0; i < length; i++ {
-					if converted, ok := convertUnsignedToInt64(list.Get(i)); ok {
-						elements = append(elements, converted)
-					}
+					elements = append(elements, convertUnsignedToInt64(list.Get(i)))
 				}
 				return append(attributes, attribute.Int64Slice(fullAttributeName, elements))
 			}, nil
 		}
 		return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
-			if converted, ok := convertUnsignedToInt64(m.Get(fieldDescriptor)); ok {
-				return append(attributes, attribute.Int64(fullAttributeName, converted))
-			}
-			return attributes
+			return append(attributes, attribute.Int64(fullAttributeName, convertUnsignedToInt64(m.Get(fieldDescriptor))))
 		}, nil
 	case protoreflect.BytesKind:
 		// Bytes or repeated bytes field.
@@ -392,7 +387,7 @@ func newAttributeExtractor(descriptor protoreflect.MessageDescriptor, remainingF
 			return append(attributes, attribute.String(fullAttributeName, m.Get(fieldDescriptor).String()))
 		}, nil
 	default:
-		return nil, status.Errorf(codes.InvalidArgument, "Field %#v does not have a boolean, enumeration, floating point, integer (signed/unsigned), bytes or string type", fieldName)
+		return nil, status.Errorf(codes.InvalidArgument, "Field %#v does not have a boolean, enumeration, floating point, integer, bytes or string type", fieldName)
 	}
 }
 
