@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"encoding/base64"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -329,6 +331,50 @@ func newAttributeExtractor(descriptor protoreflect.MessageDescriptor, remainingF
 		return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
 			return append(attributes, attribute.Int64(fullAttributeName, m.Get(fieldDescriptor).Int()))
 		}, nil
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		// Unsigned integer or repeated unsigned integer field.
+		convertUnsignedToInt64 := func(value protoreflect.Value) (int64, bool) {
+			unsigned := value.Uint()
+			if unsigned > uint64(math.MaxInt64) {
+				return 0, false
+			}
+			return int64(unsigned), true
+		}
+		if fieldDescriptor.IsList() {
+			return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
+				list := m.Get(fieldDescriptor).List()
+				length := list.Len()
+				elements := make([]int64, 0, length)
+				for i := 0; i < length; i++ {
+					if converted, ok := convertUnsignedToInt64(list.Get(i)); ok {
+						elements = append(elements, converted)
+					}
+				}
+				return append(attributes, attribute.Int64Slice(fullAttributeName, elements))
+			}, nil
+		}
+		return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
+			if converted, ok := convertUnsignedToInt64(m.Get(fieldDescriptor)); ok {
+				return append(attributes, attribute.Int64(fullAttributeName, converted))
+			}
+			return attributes
+		}, nil
+	case protoreflect.BytesKind:
+		// Bytes or repeated bytes field.
+		if fieldDescriptor.IsList() {
+			return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
+				list := m.Get(fieldDescriptor).List()
+				length := list.Len()
+				elements := make([]string, 0, length)
+				for i := 0; i < length; i++ {
+					elements = append(elements, base64.StdEncoding.EncodeToString(list.Get(i).Bytes()))
+				}
+				return append(attributes, attribute.StringSlice(fullAttributeName, elements))
+			}, nil
+		}
+		return func(m protoreflect.Message, attributes []attribute.KeyValue) []attribute.KeyValue {
+			return append(attributes, attribute.String(fullAttributeName, base64.StdEncoding.EncodeToString(m.Get(fieldDescriptor).Bytes())))
+		}, nil
 	case protoreflect.StringKind:
 		// String or repeated string field.
 		if fieldDescriptor.IsList() {
@@ -346,7 +392,7 @@ func newAttributeExtractor(descriptor protoreflect.MessageDescriptor, remainingF
 			return append(attributes, attribute.String(fullAttributeName, m.Get(fieldDescriptor).String()))
 		}, nil
 	default:
-		return nil, status.Errorf(codes.InvalidArgument, "Field %#v does not have a boolean, enumeration, floating point, signed integer or string type", fieldName)
+		return nil, status.Errorf(codes.InvalidArgument, "Field %#v does not have a boolean, enumeration, floating point, integer (signed/unsigned), bytes or string type", fieldName)
 	}
 }
 
