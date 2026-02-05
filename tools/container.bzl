@@ -58,12 +58,12 @@ def multiarch_go_image(name, binary):
         tags = ["manual"],
     )
 
-def container_push_official(name, image, component):
+def container_push_official(name, image, component, registry="ghcr.io", repository="buildbarn"):
     image_push(
         name = name,
         image = image,
-        registry = "ghcr.io",
-        repository = "buildbarn/" + component,
+        registry = registry,
+        repository = repository + "/" + component,
         tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
         # Don't build container image unless explicitly requested, as
         # building all variants can be time-consuming.
