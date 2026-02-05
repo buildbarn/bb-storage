@@ -648,6 +648,37 @@
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
             }
          ]
+      },
+      "publish": {
+         "name": "publish",
+         "needs": [
+            "build_and_test"
+         ],
+         "runs-on": "ubuntu-latest",
+         "steps": [
+            {
+               "name": "Download release artifacts",
+               "uses": "actions/download-artifact@v4",
+               "with": {
+                  "merge-multiple": true
+               }
+            },
+            {
+               "name": "Calculate shasum",
+               "run": "shasum -a 256 assets/* > sha256"
+            },
+            {
+               "name": "Create GitHub release and upload artifacts",
+               "uses": "softprops/action-gh-release@v2",
+               "with": {
+                  "files": [
+                     "assets/*",
+                     "sha256"
+                  ],
+                  "make_latest": true
+               }
+            }
+         ]
       }
    },
    "name": "main",
