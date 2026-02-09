@@ -671,10 +671,7 @@
                "name": "Create GitHub release and upload artifacts",
                "uses": "softprops/action-gh-release@v2",
                "with": {
-                  "files": [
-                     "assets/*",
-                     "sha256"
-                  ],
+                  "files": "assets/*\nsha256\n",
                   "make_latest": true
                }
             }

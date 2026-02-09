@@ -169,7 +169,10 @@
           uses: 'softprops/action-gh-release@v2',
           with: {
             make_latest: true,
-            files: ['assets/*', 'sha256'],
+            files: |||
+              assets/*
+              sha256
+            |||,
           },
         },
       ],
