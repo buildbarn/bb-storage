@@ -148,6 +148,32 @@
         else []
       ),
     },
+    [if doUpload then 'publish']: {
+      'runs-on': 'ubuntu-latest',
+      name: 'publish',
+      needs: ['build_and_test'],
+      steps: [
+        {
+          name: 'Download release artifacts',
+          uses: 'actions/download-artifact@v4',
+          with: {
+            'merge-multiple': true,
+          },
+        },
+        {
+          name: 'Calculate shasum',
+          run: 'shasum -a 256 assets/* > sha256',
+        },
+        {
+          name: 'Create GitHub release and upload artifacts',
+          uses: 'softprops/action-gh-release@v2',
+          with: {
+            make_latest: true,
+            files: ['assets/*', 'sha256'],
+          },
+        },
+      ],
+    },
     lint: {
       'runs-on': 'ubuntu-latest',
       name: 'lint',
