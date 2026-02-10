@@ -158,6 +158,7 @@
           uses: 'actions/download-artifact@v4',
           with: {
             'merge-multiple': true,
+            path: 'assets',
           },
         },
         {

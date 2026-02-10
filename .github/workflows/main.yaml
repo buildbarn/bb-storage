@@ -660,7 +660,8 @@
                "name": "Download release artifacts",
                "uses": "actions/download-artifact@v4",
                "with": {
-                  "merge-multiple": true
+                  "merge-multiple": true,
+                  "path": "assets"
                }
             },
             {
