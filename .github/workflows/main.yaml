@@ -679,7 +679,7 @@
             {
                "id": "create_tag",
                "name": "Generate tag",
-               "run": "BUILD_SCM_REVISION=$(git rev-parse --short HEAD)\nBUILD_SCM_TIMESTAMP=$(TZ=UTC date --date \"@$(git show -s --format=%ct HEAD)\" +%Y%m%dT%H%M%SZ)\nRELEASE_TAG=\"${BUILD_SCM_TIMESTAMP}-${BUILD_SCM_REVISION}}\"\ngit tag -a $RELEASE_TAG\ngit push --follow-tags\necho \"release_tag=$RELEASE_TAG\" >> $GITHUB_OUTPUT\n"
+               "run": "BUILD_SCM_REVISION=$(git rev-parse --short HEAD)\nBUILD_SCM_TIMESTAMP=$(TZ=UTC date --date \"@$(git show -s --format=%ct HEAD)\" +%Y%m%dT%H%M%SZ)\nRELEASE_TAG=\"${BUILD_SCM_TIMESTAMP}-${BUILD_SCM_REVISION}}\"\ngit tag $RELEASE_TAG\ngit push --follow-tags\necho \"release_tag=$RELEASE_TAG\" >> $GITHUB_OUTPUT\n"
             },
             {
                "name": "Create GitHub release and upload artifacts",
