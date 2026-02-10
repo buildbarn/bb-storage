@@ -183,7 +183,7 @@
             BUILD_SCM_REVISION=$(git rev-parse --short HEAD)
             BUILD_SCM_TIMESTAMP=$(TZ=UTC date --date "@$(git show -s --format=%ct HEAD)" +%Y%m%dT%H%M%SZ)
             RELEASE_TAG="${BUILD_SCM_TIMESTAMP}-${BUILD_SCM_REVISION}}"
-            git tag -a $RELEASE_TAG
+            git tag $RELEASE_TAG
             git push --follow-tags
             echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           |||,
