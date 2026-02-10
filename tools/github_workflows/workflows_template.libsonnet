@@ -166,10 +166,23 @@
           run: 'shasum -a 256 assets/* > sha256',
         },
         {
+          name: 'Generate tag',
+          id: 'create_tag',
+          run: |||
+            BUILD_SCM_REVISION=$(git rev-parse --short HEAD)
+            BUILD_SCM_TIMESTAMP=$(TZ=UTC date --date "@$(git show -s --format=%ct HEAD)" +%Y%m%dT%H%M%SZ)
+            RELEASE_TAG="${BUILD_SCM_TIMESTAMP}-${BUILD_SCM_REVISION}}"
+            git tag -a $RELEASE_TAG
+            git push --follow-tags
+            echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          |||,
+        },
+        {
           name: 'Create GitHub release and upload artifacts',
           uses: 'softprops/action-gh-release@v2',
           with: {
             make_latest: true,
+            tag_name: '${{ steps.create_tag.outputs.release_tag }}',
             files: |||
               assets/*
               sha256
