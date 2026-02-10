@@ -673,6 +673,10 @@
                "run": "shasum -a 256 assets/* > sha256"
             },
             {
+               "name": "Set release Git user",
+               "run": "git config --global user.email \"41898282+github-actions[bot]@users.noreply.github.com\"\ngit config --global user.name \"github-actions[bot]\"\n"
+            },
+            {
                "id": "create_tag",
                "name": "Generate tag",
                "run": "BUILD_SCM_REVISION=$(git rev-parse --short HEAD)\nBUILD_SCM_TIMESTAMP=$(TZ=UTC date --date \"@$(git show -s --format=%ct HEAD)\" +%Y%m%dT%H%M%SZ)\nRELEASE_TAG=\"${BUILD_SCM_TIMESTAMP}-${BUILD_SCM_REVISION}}\"\ngit tag -a $RELEASE_TAG\ngit push --follow-tags\necho \"release_tag=$RELEASE_TAG\" >> $GITHUB_OUTPUT\n"
