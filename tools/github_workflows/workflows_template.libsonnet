@@ -154,6 +154,10 @@
       needs: ['build_and_test'],
       steps: [
         {
+          name: 'Checkout the repository',
+          uses: 'actions/checkout@v4 ',
+        },
+        {
           name: 'Download release artifacts',
           uses: 'actions/download-artifact@v4',
           with: {
