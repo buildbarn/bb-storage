@@ -170,6 +170,13 @@
           run: 'shasum -a 256 assets/* > sha256',
         },
         {
+          name: 'Set release Git user',
+          run: |||
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
+          |||,
+        },
+        {
           name: 'Generate tag',
           id: 'create_tag',
           run: |||
