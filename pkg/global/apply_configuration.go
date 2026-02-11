@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -289,7 +288,7 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 		)
 		otel.SetTextMapPropagator(propagator)
 
-		grpcDialOptions = append(grpcDialOptions, grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
+		grpcDialOptions = append(grpcDialOptions, grpc.WithStatsHandler(bb_otel.NewGRPCClientStatsHandler()))
 	}
 
 	// Enable mutex profiling.
