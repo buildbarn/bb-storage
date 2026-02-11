@@ -66,10 +66,10 @@ func (pe *ProtoTraceAttributesExtractor) InterceptUnaryClient(ctx context.Contex
 	if span == nil {
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
-	me.processRequest(span, req)
+	me.applyAttributes(span, me.requestAttributesFor(req))
 	err := invoker(ctx, method, req, reply, cc, opts...)
 	if err == nil {
-		me.processResponse(span, reply)
+		me.applyAttributes(span, me.responseAttributesFor(reply))
 	}
 	return err
 }
@@ -113,10 +113,10 @@ func (pe *ProtoTraceAttributesExtractor) InterceptUnaryServer(ctx context.Contex
 	if span == nil {
 		return handler(ctx, req)
 	}
-	me.processRequest(span, req)
+	me.applyAttributes(span, me.requestAttributesFor(req))
 	resp, err := handler(ctx, req)
 	if err == nil {
-		me.processResponse(span, resp)
+		me.applyAttributes(span, me.responseAttributesFor(resp))
 	}
 	return resp, err
 }
@@ -158,22 +158,22 @@ type methodTraceAttributesExtractor struct {
 	responseExtractor  directionTraceAttributesExtractor
 }
 
-func (me *methodTraceAttributesExtractor) processRequest(span trace.Span, req interface{}) {
+func (me *methodTraceAttributesExtractor) requestAttributesFor(req interface{}) []attribute.KeyValue {
 	me.requestOnce.Do(func() {
 		// First time we see an RPC message going from the
 		// client to the server.
 		me.requestExtractor.initialize("request", me.requestAttributes, req, me.errorLogger)
 	})
-	me.requestExtractor.gatherAttributes(span, req)
+	return me.requestExtractor.extractAttributes(req)
 }
 
-func (me *methodTraceAttributesExtractor) processResponse(span trace.Span, resp interface{}) {
+func (me *methodTraceAttributesExtractor) responseAttributesFor(resp interface{}) []attribute.KeyValue {
 	me.responseOnce.Do(func() {
 		// First time we see an RPC message going from the
 		// server to the client.
 		me.responseExtractor.initialize("response", me.responseAttributes, resp, me.errorLogger)
 	})
-	me.responseExtractor.gatherAttributes(span, resp)
+	return me.responseExtractor.extractAttributes(resp)
 }
 
 // methodTraceAttributesExtractor is the bookkeeping that needs to be
@@ -199,15 +199,16 @@ func (de *directionTraceAttributesExtractor) initialize(attributePrefix string, 
 	}
 }
 
-func (de *directionTraceAttributesExtractor) gatherAttributes(span trace.Span, m interface{}) {
-	if len(de.attributeExtractors) > 0 {
-		mProtoReflect := m.(proto.Message).ProtoReflect()
-		attributes := make([]attribute.KeyValue, 0, len(de.attributeExtractors))
-		for _, attributeExtractor := range de.attributeExtractors {
-			attributes = attributeExtractor(mProtoReflect, attributes)
-		}
-		span.SetAttributes(attributes...)
+func (de *directionTraceAttributesExtractor) extractAttributes(m interface{}) []attribute.KeyValue {
+	if len(de.attributeExtractors) == 0 {
+		return nil
 	}
+	mProtoReflect := m.(proto.Message).ProtoReflect()
+	attributes := make([]attribute.KeyValue, 0, len(de.attributeExtractors))
+	for _, attributeExtractor := range de.attributeExtractors {
+		attributes = attributeExtractor(mProtoReflect, attributes)
+	}
+	return attributes
 }
 
 // attributeExtractor is a function type that is capable of extracting a
@@ -400,14 +401,22 @@ type attributeExtractingClientStream struct {
 	span             trace.Span
 	gotFirstRequest  bool
 	gotFirstResponse bool
+	requestIndex     uint64
+	responseIndex    uint64
 }
 
 func (cs *attributeExtractingClientStream) SendMsg(m interface{}) error {
+	attributes := cs.method.requestAttributesFor(m)
 	if !cs.gotFirstRequest {
 		cs.gotFirstRequest = true
-		cs.method.processRequest(cs.span, m)
+		cs.method.applyAttributes(cs.span, attributes)
 	}
-	return cs.ClientStream.SendMsg(m)
+	err := cs.ClientStream.SendMsg(m)
+	if err == nil {
+		cs.requestIndex++
+		addMessageEvent(cs.span, "out", cs.requestIndex, attributes)
+	}
+	return err
 }
 
 func (cs *attributeExtractingClientStream) RecvMsg(m interface{}) error {
@@ -416,10 +425,18 @@ func (cs *attributeExtractingClientStream) RecvMsg(m interface{}) error {
 			return err
 		}
 		cs.gotFirstResponse = true
-		cs.method.processResponse(cs.span, m)
+		attributes := cs.method.responseAttributesFor(m)
+		cs.method.applyAttributes(cs.span, attributes)
+		cs.responseIndex++
+		addMessageEvent(cs.span, "in", cs.responseIndex, attributes)
 		return nil
 	}
-	return cs.ClientStream.RecvMsg(m)
+	if err := cs.ClientStream.RecvMsg(m); err != nil {
+		return err
+	}
+	cs.responseIndex++
+	addMessageEvent(cs.span, "in", cs.responseIndex, cs.method.responseAttributesFor(m))
+	return nil
 }
 
 // attributeExtractingServerStream is a decorator for grpc.ServerStream
@@ -431,6 +448,8 @@ type attributeExtractingServerStream struct {
 	span             trace.Span
 	gotFirstRequest  bool
 	gotFirstResponse bool
+	requestIndex     uint64
+	responseIndex    uint64
 }
 
 func (cs *attributeExtractingServerStream) RecvMsg(m interface{}) error {
@@ -439,16 +458,48 @@ func (cs *attributeExtractingServerStream) RecvMsg(m interface{}) error {
 			return err
 		}
 		cs.gotFirstRequest = true
-		cs.method.processRequest(cs.span, m)
+		attributes := cs.method.requestAttributesFor(m)
+		cs.method.applyAttributes(cs.span, attributes)
+		cs.requestIndex++
+		addMessageEvent(cs.span, "in", cs.requestIndex, attributes)
 		return nil
 	}
-	return cs.ServerStream.RecvMsg(m)
+	if err := cs.ServerStream.RecvMsg(m); err != nil {
+		return err
+	}
+	cs.requestIndex++
+	addMessageEvent(cs.span, "in", cs.requestIndex, cs.method.requestAttributesFor(m))
+	return nil
 }
 
 func (cs *attributeExtractingServerStream) SendMsg(m interface{}) error {
+	attributes := cs.method.responseAttributesFor(m)
 	if !cs.gotFirstResponse {
 		cs.gotFirstResponse = true
-		cs.method.processResponse(cs.span, m)
+		cs.method.applyAttributes(cs.span, attributes)
 	}
-	return cs.ServerStream.SendMsg(m)
+	err := cs.ServerStream.SendMsg(m)
+	if err == nil {
+		cs.responseIndex++
+		addMessageEvent(cs.span, "out", cs.responseIndex, attributes)
+	}
+	return err
+}
+
+func (methodTraceAttributesExtractor) applyAttributes(span trace.Span, attributes []attribute.KeyValue) {
+	if span == nil || !span.IsRecording() || len(attributes) == 0 {
+		return
+	}
+	span.SetAttributes(attributes...)
+}
+
+func addMessageEvent(span trace.Span, direction string, index uint64, attributes []attribute.KeyValue) {
+	if span == nil || !span.IsRecording() {
+		return
+	}
+	attributes = append(attributes,
+		attribute.String("grpc.message.direction", direction),
+		attribute.Int64("grpc.message.index", int64(index)),
+	)
+	span.AddEvent("grpc.message", trace.WithAttributes(attributes...))
 }
