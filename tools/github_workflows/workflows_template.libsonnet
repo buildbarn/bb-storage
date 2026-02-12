@@ -95,7 +95,7 @@
             [
               {
                 name: '%s: copy %s' % [platform.name, binary],
-                local executable = binary + platform.extension,
+                local executable = '%s.%s' % [binary, platform.name + platform.extension],
                 run: 'rm -f %s && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:%s //cmd/%s $(pwd)/%s' % [
                   executable,
                   platform.name + if enableCgo then '_cgo' else '',
@@ -109,7 +109,7 @@
                 uses: 'actions/upload-artifact@v4',
                 with: {
                   name: '%s.%s' % [binary, platform.name],
-                  path: binary + platform.extension,
+                  path: '%s.%s' % [binary, platform.name + platform.extension],
                 },
                 'if': 'matrix.host.upload',
               },
