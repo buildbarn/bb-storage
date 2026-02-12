@@ -89,14 +89,14 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 65536),
+			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, backend.Grpc.EnableCompression),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:

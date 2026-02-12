@@ -32,7 +32,7 @@ message BlobAccessConfiguration {
 
     // Read objects from/write objects to a GRPC service that
     // implements the remote execution protocol.
-    buildbarn.configuration.grpc.ClientConfiguration grpc = 7;
+    GrpcBlobAccessConfiguration grpc = 7;
 
     // Always fail with a fixed error response.
     google.rpc.Status error = 8;
@@ -925,4 +925,15 @@ message DeadlineEnforcingBlobAccess {
 
   // The backend to which all operations are delegated.
   BlobAccessConfiguration backend = 2;
+}
+
+message GrpcBlobAccessConfiguration {
+  // Base gRPC client configuration.
+  buildbarn.configuration.grpc.ClientConfiguration client = 1;
+
+  // Enable ZSTD compression for ByteStream operations in the Content
+  // Addressable Storage (CAS). When enabled, ZSTD compression will be
+  // used if the server supports it. Has no effect for other storage
+  // types (AC, ICAS, etc.).
+  bool enable_compression = 2;
 }
