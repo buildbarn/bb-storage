@@ -224,7 +224,7 @@ func main() {
 						capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 							DeprecatedApiVersion: &semver.SemVer{Major: 2, Minor: 0},
 							LowApiVersion:        &semver.SemVer{Major: 2, Minor: 0},
-							HighApiVersion:       &semver.SemVer{Major: 2, Minor: 11},
+							HighApiVersion:       &semver.SemVer{Major: 2, Minor: 12},
 						}),
 					)
 					remoteexecution.RegisterCapabilitiesServer(
