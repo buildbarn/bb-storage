@@ -106,7 +106,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc, terminationGroup)
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
