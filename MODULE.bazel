@@ -1,7 +1,7 @@
 module(name = "com_github_buildbarn_bb_storage")
 
 bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
-bazel_dep(name = "aspect_rules_js", version = "2.9.2")
+bazel_dep(name = "aspect_rules_js", version = "3.0.1")
 bazel_dep(name = "bazel_remote_apis", version = "0")
 bazel_dep(name = "gazelle", version = "0.47.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20260109-6145b5ff")
@@ -150,7 +150,6 @@ llvm_dev.toolchain(
 npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
 npm.npm_translate_lock(
     name = "com_github_buildbarn_bb_storage_npm",
-    link_workspace = "com_github_buildbarn_bb_storage",
     pnpm_lock = "//:pnpm-lock.yaml",
 )
 use_repo(npm, "com_github_buildbarn_bb_storage_npm")
