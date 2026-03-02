@@ -502,5 +502,4 @@ func TestCASBlobAccessGetWithCompression(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedData, data)
 	})
-
 }
