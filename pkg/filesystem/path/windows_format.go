@@ -60,24 +60,28 @@ type windowsParser struct {
 }
 
 func (p windowsParser) ParseScope(scopeWalker ScopeWalker) (next ComponentWalker, remainder RelativeParser, err error) {
-	// Handle extended-length paths starting with \\?\.
 	path := p.path
+	hasPrefix := false
 	if len(p.path) >= 4 && p.path[0] == '\\' && p.path[1] == '\\' && p.path[2] == '?' && p.path[3] == '\\' {
+		// Extended-length paths starting with \\?\.
 		path = p.path[4:]
-		// Handle \\?\UNC\.
-		if len(path) >= 4 && strings.EqualFold(path[:4], "UNC\\") {
-			return parseUNCPath(path[4:], scopeWalker)
-		}
+		hasPrefix = true
+	} else if len(p.path) >= 4 && p.path[0] == '\\' && p.path[1] == '?' && p.path[2] == '?' && p.path[3] == '\\' {
+		// NT object namespace paths starting with \??\.
+		// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-even/c1550f98-a1ce-426a-9991-7509e7c3787c
+		path = p.path[4:]
+		hasPrefix = true
+	} else if len(p.path) >= 4 && p.path[0] == '\\' && p.path[1] == '\\' && p.path[2] == '.' && p.path[3] == '\\' {
+		// Win32 device namespace paths starting with \\.\.
+		// https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#win32-device-namespaces
+		path = p.path[4:]
+		hasPrefix = true
 	}
 
-	// Handle NT object namespace paths starting with \??\.
-	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-even/c1550f98-a1ce-426a-9991-7509e7c3787c
-	if len(p.path) >= 4 && p.path[0] == '\\' && p.path[1] == '?' && p.path[2] == '?' && p.path[3] == '\\' {
-		path = p.path[4:]
-		// Handle \??\UNC\
-		if len(path) >= 4 && strings.EqualFold(path[:4], "UNC\\") {
-			return parseUNCPath(path[4:], scopeWalker)
-		}
+	// Handle UNC paths following a namespace prefix
+	// (e.g. \\?\UNC\server\share or \??\UNC\server\share).
+	if hasPrefix && len(path) >= 4 && strings.EqualFold(path[:4], "UNC\\") {
+		return parseUNCPath(path[4:], scopeWalker)
 	}
 
 	if len(path) >= 2 {

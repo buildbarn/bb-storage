@@ -63,14 +63,14 @@ func TestBuilder(t *testing.T) {
 		for _, data := range [][]string{
 			{".", "."},
 			{"..", ".."},
-			{"/", "\\"},
+			{"/", "\\."},
 			{"hello", "hello"},
-			{"hello/", "hello\\"},
+			{"hello/", "hello\\."},
 			{"hello/..", "hello\\.."},
-			{"/hello/", "\\hello\\"},
+			{"/hello/", "\\hello\\."},
 			{"/hello/..", "\\hello\\.."},
 			{"/hello/../world", "\\hello\\..\\world"},
-			{"/hello/../world/", "\\hello\\..\\world\\"},
+			{"/hello/../world/", "\\hello\\..\\world\\."},
 			{"/hello/../world/foo", "\\hello\\..\\world\\foo"},
 		} {
 			p := data[0]
@@ -92,16 +92,16 @@ func TestBuilder(t *testing.T) {
 
 	t.Run("WindowsIdentity", func(t *testing.T) {
 		for _, p := range []string{
-			"C:\\",
-			"C:\\hello\\",
+			"C:\\.",
+			"C:\\hello\\.",
 			"C:\\hello\\..",
 			"C:\\hello\\..\\world",
-			"C:\\hello\\..\\world\\",
+			"C:\\hello\\..\\world\\.",
 			"C:\\hello\\..\\world\\foo",
 			"C:\\hello\\..\\world\\foo",
-			"\\\\server\\share\\hello\\",
+			"\\\\server\\share\\hello\\.",
 			"\\\\server\\share\\hello\\..\\world",
-			"\\\\server\\share\\hello\\..\\world\\",
+			"\\\\server\\share\\hello\\..\\world\\.",
 			"\\\\server\\share\\hello\\..\\world\\foo",
 		} {
 			t.Run(p, func(t *testing.T) {
@@ -146,19 +146,19 @@ func TestBuilder(t *testing.T) {
 	t.Run("WindowsParseCasing", func(t *testing.T) {
 		for _, data := range [][]string{
 			{"./bar", "bar"},
-			{"./bar\\", "bar\\"},
-			{"c:", "C:\\"},
-			{"c:.", "C:\\"},
+			{"./bar\\", "bar\\."},
+			{"c:", "C:\\."},
+			{"c:.", "C:\\."},
 			{"c:Hello", "C:\\Hello"},
-			{"c:\\", "C:\\"},
-			{"c:\\.", "C:\\"},
-			{"c:\\Hello\\", "C:\\Hello\\"},
-			{"c:\\Hello\\.", "C:\\Hello\\"},
+			{"c:\\", "C:\\."},
+			{"c:\\.", "C:\\."},
+			{"c:\\Hello\\", "C:\\Hello\\."},
+			{"c:\\Hello\\.", "C:\\Hello\\."},
 			{"c:\\Hello\\..", "C:\\Hello\\.."},
 			{"c:\\Hello\\.\\world", "C:\\Hello\\world"},
 			{"c:\\Hello\\..\\world", "C:\\Hello\\..\\world"},
 			{"c:\\Hello\\..\\world", "C:\\Hello\\..\\world"},
-			{"c:\\Hello\\..\\world\\", "C:\\Hello\\..\\world\\"},
+			{"c:\\Hello\\..\\world\\", "C:\\Hello\\..\\world\\."},
 			{"c:\\Hello\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
 			{"c:\\\\Hello\\\\..\\world\\foo", "C:\\Hello\\..\\world\\foo"},
 			{"\\\\Server\\Share\\Hello\\\\..\\world\\foo", "\\\\Server\\Share\\Hello\\..\\world\\foo"},
@@ -213,25 +213,27 @@ func TestBuilder(t *testing.T) {
 			"./.":                                 ".",
 			"../":                                 "..",
 			"../.":                                "..",
-			"/.":                                  "\\",
-			"/./":                                 "\\",
-			"/..":                                 "\\",
-			"/../":                                "\\",
-			"/hello/.":                            "\\hello\\",
+			"/.":                                  "\\.",
+			"/./":                                 "\\.",
+			"/..":                                 "\\.",
+			"/../":                                "\\.",
+			"/hello/.":                            "\\hello\\.",
 			"/hello/../.":                         "\\hello\\..",
 			"//Server/Share/hello":                "\\\\Server\\Share\\hello",
-			"//Server/Share/.":                    "\\\\Server\\Share\\",
-			"//Server/Share/./":                   "\\\\Server\\Share\\",
-			"//Server/Share/..":                   "\\\\Server\\Share\\",
-			"//Server/Share/../":                  "\\\\Server\\Share\\",
-			"//Server/Share/hello/.":              "\\\\Server\\Share\\hello\\",
+			"//Server/Share/.":                    "\\\\Server\\Share\\.",
+			"//Server/Share/./":                   "\\\\Server\\Share\\.",
+			"//Server/Share/..":                   "\\\\Server\\Share\\.",
+			"//Server/Share/../":                  "\\\\Server\\Share\\.",
+			"//Server/Share/hello/.":              "\\\\Server\\Share\\hello\\.",
 			"//Server/Share/hello/../.":           "\\\\Server\\Share\\hello\\..",
 			"/\\Server\\Share/hello/../.":         "\\\\Server\\Share\\hello\\..",
-			"\\\\?\\C:\\hello\\.":                 "C:\\hello\\",
-			"\\\\?\\UNC\\Server\\Share\\hello\\.": "\\\\Server\\Share\\hello\\",
-			"\\??\\C:\\hello\\.":                  "C:\\hello\\",
+			"\\\\?\\C:\\hello\\.":                 "C:\\hello\\.",
+			"\\\\?\\UNC\\Server\\Share\\hello\\.": "\\\\Server\\Share\\hello\\.",
+			"\\??\\C:\\hello\\.":                  "C:\\hello\\.",
 			"\\??\\Z:\\file0":                     "Z:\\file0",
-			"\\??\\UNC\\Server\\Share\\hello\\.":  "\\\\Server\\Share\\hello\\",
+			"\\??\\UNC\\Server\\Share\\hello\\.":  "\\\\Server\\Share\\hello\\.",
+			"\\\\.\\C:\\hello\\.":                 "C:\\hello\\.",
+			"\\\\.\\UNC\\Server\\Share\\hello\\.": "\\\\Server\\Share\\hello\\.",
 		} {
 			t.Run(from, func(t *testing.T) {
 				builder1, scopeWalker1 := path.EmptyBuilder.Join(path.VoidScopeWalker)
@@ -443,6 +445,28 @@ func TestBuilder(t *testing.T) {
 		builder, s := path.EmptyBuilder.Join(scopeWalker)
 		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser("\\??\\UNC\\myserver\\myshare\\data.txt"), s))
 		require.Equal(t, "\\\\myserver\\myshare\\data.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("DeviceNamespaceDrivePath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnDriveLetter('C').Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(`\\.\C:\file.txt`), s))
+		require.Equal(t, "C:\\file.txt", mustGetWindowsString(builder))
+	})
+
+	t.Run("DeviceNamespaceUNCPath", func(t *testing.T) {
+		scopeWalker := mock.NewMockScopeWalker(ctrl)
+		componentWalker := mock.NewMockComponentWalker(ctrl)
+		scopeWalker.EXPECT().OnShare("server", "share").Return(componentWalker, nil)
+		componentWalker.EXPECT().OnTerminal(path.MustNewComponent("file.txt"))
+
+		builder, s := path.EmptyBuilder.Join(scopeWalker)
+		require.NoError(t, path.Resolve(path.WindowsFormat.NewParser(`\\.\UNC\server\share\file.txt`), s))
+		require.Equal(t, "\\\\server\\share\\file.txt", mustGetWindowsString(builder))
 	})
 
 	t.Run("RelativeDrivePaths", func(t *testing.T) {

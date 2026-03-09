@@ -109,14 +109,23 @@ func (b *Builder) GetWindowsString(format WindowsPathFormat) (string, error) {
 		prefix = "\\"
 	}
 
-	// Emit trailing slash in case the path refers to a directory,
-	// or a dot or slash if the path is empty. The suffix is been
-	// constructed by platform-independent code that uses forward
-	// slashes. To construct a Windows path we must use a
+	// If the path refers to a directory we should emit a trailing slash,
+	// and since the suffix has been constructed by platform-independent code
+	// that uses forward slashes we need to convert the path to use a
 	// backslash.
+	//
+	// Unfortunately, a trailing backslash is not a valid pathname component:
+	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/ffb795f3-027d-4a3c-997d-3085f2332f6f
+	// Instead we emit `\.` and rely on win32 path normalization. However,
+	// for WindowsPathFormatDevicePath we cannot do this as device paths
+	// bypass win32 path normalization so have to just emit a backlash.
 	suffix := b.suffix
 	if suffix == "/" {
-		suffix = "\\"
+		if format == WindowsPathFormatDevicePath {
+			suffix = "\\"
+		} else {
+			suffix = "\\."
+		}
 	}
 	out.WriteString(suffix)
 	return out.String(), nil
