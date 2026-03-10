@@ -10,6 +10,7 @@ import (
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -21,6 +22,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -42,6 +44,32 @@ func main() {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
+		// Create a process-wide ZSTD compression pool if configured.
+		var zstdPool *grpcclients.BoundedZstdPool
+		if zc := configuration.ZstdCompression; zc != nil {
+			encoderOptions := []zstd.EOption{
+				zstd.WithEncoderConcurrency(1),
+			}
+			if zc.EncoderWindowSizeBytes != 0 {
+				encoderOptions = append(encoderOptions, zstd.WithWindowSize(int(zc.EncoderWindowSizeBytes)))
+			}
+			if zc.EncoderLevel != 0 {
+				encoderOptions = append(encoderOptions, zstd.WithEncoderLevel(zstd.EncoderLevel(zc.EncoderLevel)))
+			}
+			decoderOptions := []zstd.DOption{
+				zstd.WithDecoderConcurrency(1),
+			}
+			if zc.DecoderMaxWindowSizeBytes != 0 {
+				decoderOptions = append(decoderOptions, zstd.WithDecoderMaxWindow(uint64(zc.DecoderMaxWindowSizeBytes)))
+			}
+			zstdPool = grpcclients.NewBoundedZstdPool(
+				zc.MaximumEncoders,
+				zc.MaximumDecoders,
+				encoderOptions,
+				decoderOptions,
+			)
+		}
+
 		// Providers for data returned by ServerCapabilities.cache_capabilities
 		// as part of the GetCapabilities() call. We permit these calls
 		// if the client is permitted to at least one method against one
@@ -58,7 +86,8 @@ func main() {
 				configuration.ContentAddressableStorage,
 				blobstore_configuration.NewCASBlobAccessCreator(
 					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes)),
+					int(configuration.MaximumMessageSizeBytes),
+					zstdPool),
 				grpcClientFactory)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
@@ -185,7 +214,8 @@ func main() {
 						s,
 						grpcservers.NewByteStreamServer(
 							contentAddressableStorage,
-							1<<16))
+							1<<16,
+							zstdPool))
 				}
 				if actionCache != nil {
 					remoteexecution.RegisterActionCacheServer(

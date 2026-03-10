@@ -15,6 +15,7 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/grpcclients",
         "//pkg/digest",
         "//pkg/proto/fsac",
         "//pkg/proto/icas",

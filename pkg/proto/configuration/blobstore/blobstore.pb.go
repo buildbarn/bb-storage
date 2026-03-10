@@ -1675,11 +1675,11 @@ func (x *DeadlineEnforcingBlobAccess) GetBackend() *BlobAccessConfiguration {
 }
 
 type GrpcBlobAccessConfiguration struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Client        *grpc.ClientConfiguration     `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
-	Zstd          *ZstdCompressionConfiguration `protobuf:"bytes,3,opt,name=zstd,proto3" json:"zstd,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState    `protogen:"open.v1"`
+	Client                *grpc.ClientConfiguration `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
+	EnableZstdCompression bool                      `protobuf:"varint,4,opt,name=enable_zstd_compression,json=enableZstdCompression,proto3" json:"enable_zstd_compression,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GrpcBlobAccessConfiguration) Reset() {
@@ -1719,17 +1719,17 @@ func (x *GrpcBlobAccessConfiguration) GetClient() *grpc.ClientConfiguration {
 	return nil
 }
 
-func (x *GrpcBlobAccessConfiguration) GetZstd() *ZstdCompressionConfiguration {
+func (x *GrpcBlobAccessConfiguration) GetEnableZstdCompression() bool {
 	if x != nil {
-		return x.Zstd
+		return x.EnableZstdCompression
 	}
-	return nil
+	return false
 }
 
 type ZstdCompressionConfiguration struct {
 	state                     protoimpl.MessageState `protogen:"open.v1"`
-	MaxEncoders               int64                  `protobuf:"varint,1,opt,name=max_encoders,json=maxEncoders,proto3" json:"max_encoders,omitempty"`
-	MaxDecoders               int64                  `protobuf:"varint,2,opt,name=max_decoders,json=maxDecoders,proto3" json:"max_decoders,omitempty"`
+	MaximumEncoders           int64                  `protobuf:"varint,1,opt,name=maximum_encoders,json=maximumEncoders,proto3" json:"maximum_encoders,omitempty"`
+	MaximumDecoders           int64                  `protobuf:"varint,2,opt,name=maximum_decoders,json=maximumDecoders,proto3" json:"maximum_decoders,omitempty"`
 	EncoderWindowSizeBytes    int32                  `protobuf:"varint,3,opt,name=encoder_window_size_bytes,json=encoderWindowSizeBytes,proto3" json:"encoder_window_size_bytes,omitempty"`
 	DecoderMaxWindowSizeBytes int32                  `protobuf:"varint,4,opt,name=decoder_max_window_size_bytes,json=decoderMaxWindowSizeBytes,proto3" json:"decoder_max_window_size_bytes,omitempty"`
 	EncoderLevel              int32                  `protobuf:"varint,5,opt,name=encoder_level,json=encoderLevel,proto3" json:"encoder_level,omitempty"`
@@ -1767,16 +1767,16 @@ func (*ZstdCompressionConfiguration) Descriptor() ([]byte, []int) {
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *ZstdCompressionConfiguration) GetMaxEncoders() int64 {
+func (x *ZstdCompressionConfiguration) GetMaximumEncoders() int64 {
 	if x != nil {
-		return x.MaxEncoders
+		return x.MaximumEncoders
 	}
 	return 0
 }
 
-func (x *ZstdCompressionConfiguration) GetMaxDecoders() int64 {
+func (x *ZstdCompressionConfiguration) GetMaximumDecoders() int64 {
 	if x != nil {
-		return x.MaxDecoders
+		return x.MaximumDecoders
 	}
 	return 0
 }
@@ -2200,13 +2200,13 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\x05value\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x05value:\x028\x01\"\xa8\x01\n" +
 	"\x1bDeadlineEnforcingBlobAccess\x123\n" +
 	"\atimeout\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12T\n" +
-	"\abackend\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\"\xc3\x01\n" +
+	"\abackend\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\"\xac\x01\n" +
 	"\x1bGrpcBlobAccessConfiguration\x12I\n" +
-	"\x06client\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\x06client\x12S\n" +
-	"\x04zstd\x18\x03 \x01(\v2?.buildbarn.configuration.blobstore.ZstdCompressionConfigurationR\x04zstdJ\x04\b\x02\x10\x03\"\x86\x02\n" +
-	"\x1cZstdCompressionConfiguration\x12!\n" +
-	"\fmax_encoders\x18\x01 \x01(\x03R\vmaxEncoders\x12!\n" +
-	"\fmax_decoders\x18\x02 \x01(\x03R\vmaxDecoders\x129\n" +
+	"\x06client\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\x06client\x126\n" +
+	"\x17enable_zstd_compression\x18\x04 \x01(\bR\x15enableZstdCompressionJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04\"\x96\x02\n" +
+	"\x1cZstdCompressionConfiguration\x12)\n" +
+	"\x10maximum_encoders\x18\x01 \x01(\x03R\x0fmaximumEncoders\x12)\n" +
+	"\x10maximum_decoders\x18\x02 \x01(\x03R\x0fmaximumDecoders\x129\n" +
 	"\x19encoder_window_size_bytes\x18\x03 \x01(\x05R\x16encoderWindowSizeBytes\x12@\n" +
 	"\x1ddecoder_max_window_size_bytes\x18\x04 \x01(\x05R\x19decoderMaxWindowSizeBytes\x12#\n" +
 	"\rencoder_level\x18\x05 \x01(\x05R\fencoderLevelBCZAgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstoreb\x06proto3"
@@ -2335,19 +2335,18 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 	38, // 65: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.timeout:type_name -> google.protobuf.Duration
 	1,  // 66: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	37, // 67: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration.client:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	21, // 68: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration.zstd:type_name -> buildbarn.configuration.blobstore.ZstdCompressionConfiguration
-	1,  // 69: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	22, // 70: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry.value:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
-	31, // 71: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.source:type_name -> buildbarn.configuration.blockdevice.Configuration
-	32, // 72: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
-	38, // 73: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent.minimum_epoch_interval:type_name -> google.protobuf.Duration
-	14, // 74: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry.value:type_name -> buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
-	1,  // 75: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry.value:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	76, // [76:76] is the sub-list for method output_type
-	76, // [76:76] is the sub-list for method input_type
-	76, // [76:76] is the sub-list for extension type_name
-	76, // [76:76] is the sub-list for extension extendee
-	0,  // [0:76] is the sub-list for field type_name
+	1,  // 68: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	22, // 69: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry.value:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
+	31, // 70: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.source:type_name -> buildbarn.configuration.blockdevice.Configuration
+	32, // 71: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	38, // 72: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent.minimum_epoch_interval:type_name -> google.protobuf.Duration
+	14, // 73: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry.value:type_name -> buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
+	1,  // 74: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry.value:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	75, // [75:75] is the sub-list for method output_type
+	75, // [75:75] is the sub-list for method input_type
+	75, // [75:75] is the sub-list for extension type_name
+	75, // [75:75] is the sub-list for extension extendee
+	0,  // [0:75] is the sub-list for field type_name
 }
 
 func init() {

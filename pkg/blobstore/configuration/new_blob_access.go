@@ -606,7 +606,7 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes))
+		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, nil))
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}

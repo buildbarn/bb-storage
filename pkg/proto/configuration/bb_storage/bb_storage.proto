@@ -102,6 +102,14 @@ message ApplicationConfiguration {
   // Support for IDENTITY (i.e., no compression) is implied.
   repeated build.bazel.remote.execution.v2.Compressor.Value
       supported_compressors = 20;
+
+  // ZSTD compression pool configuration. When set, creates a process-
+  // wide pool of ZSTD encoders and decoders shared by all gRPC CAS
+  // clients (those with enable_zstd_compression set) and the ByteStream
+  // server. This ensures bounded, predictable memory usage regardless
+  // of the number of backends or concurrent operations.
+  buildbarn.configuration.blobstore.ZstdCompressionConfiguration
+      zstd_compression = 21;
 }
 
 // Storage configuration for backends which don't allow batch digest

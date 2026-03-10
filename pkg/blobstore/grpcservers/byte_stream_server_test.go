@@ -33,7 +33,7 @@ func TestByteStreamServer(t *testing.T) {
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10))
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10, nil))
 	go func() {
 		require.NoError(t, server.Serve(l))
 	}()

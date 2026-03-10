@@ -931,41 +931,41 @@ message GrpcBlobAccessConfiguration {
   // Base gRPC client configuration.
   buildbarn.configuration.grpc.ClientConfiguration client = 1;
 
-  // Optional ZSTD compression configuration for ByteStream operations
-  // in the Content Addressable Storage (CAS). When set, ZSTD
-  // compression will be used if the server supports it. Has no effect
-  // for other storage types (AC, ICAS, etc.).
-  //
-  // If not set, compression is disabled and no encoder/decoder pools
-  // are allocated.
-  ZstdCompressionConfiguration zstd = 3;
+  // Was 'enable_compression'. Use 'zstd_compression' in
+  // ApplicationConfiguration instead.
+  // Was 'zstd'. Moved to top-level ZstdCompressionConfiguration.
+  reserved 2, 3;
 
-  reserved 2;
+  // Enable ZSTD compression for ByteStream operations in the Content
+  // Addressable Storage (CAS). Requires zstd_compression to be
+  // configured at the application level. Has no effect for other
+  // storage types (AC, ICAS, etc.).
+  bool enable_zstd_compression = 4;
 }
 
 message ZstdCompressionConfiguration {
   // Maximum number of concurrent ZSTD encoding operations. Each
   // encoder allocates memory proportional to the configured window
-  // size. When all encoder slots are in use, new Put operations will
+  // size. When all encoder slots are in use, new operations will
   // block until a slot becomes available, providing backpressure.
-  int64 max_encoders = 1;
+  int64 maximum_encoders = 1;
 
   // Maximum number of concurrent ZSTD decoding operations. Each
   // decoder allocates memory proportional to the configured maximum
-  // window size. When all decoder slots are in use, new Get operations
+  // window size. When all decoder slots are in use, new operations
   // will block until a slot becomes available, providing backpressure.
-  int64 max_decoders = 2;
+  int64 maximum_decoders = 2;
 
   // Window size used by ZSTD encoders, in bytes. Larger windows
   // improve compression ratio at the cost of memory per encoder.
   // Total encoder memory budget is approximately
-  // max_encoders * encoder_window_size_bytes.
+  // maximum_encoders * encoder_window_size_bytes.
   int32 encoder_window_size_bytes = 3;
 
   // Maximum window size accepted by ZSTD decoders, in bytes. Streams
   // compressed with a larger window than this will be rejected. Total
   // decoder memory budget is approximately
-  // max_decoders * decoder_max_window_size_bytes.
+  // maximum_decoders * decoder_max_window_size_bytes.
   int32 decoder_max_window_size_bytes = 4;
 
   // Compression level for ZSTD encoders. If not set, the default

@@ -34,7 +34,8 @@ func main() {
 
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 			grpcClientFactory,
-			int(configuration.MaximumMessageSizeBytes))
+			int(configuration.MaximumMessageSizeBytes),
+			nil)
 		source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			dependenciesGroup,
 			configuration.Source,

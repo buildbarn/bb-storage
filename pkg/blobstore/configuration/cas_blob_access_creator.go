@@ -20,7 +20,6 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/google/uuid"
-	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,18 +38,20 @@ type casBlobAccessCreator struct {
 	casBlobReplicatorCreator
 
 	maximumMessageSizeBytes int
+	zstdPool                *grpcclients.BoundedZstdPool
 }
 
 // NewCASBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Content Addressable
 // Storage.
-func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool *grpcclients.BoundedZstdPool) BlobAccessCreator {
 	return &casBlobAccessCreator{
 		casBlobReplicatorCreator: casBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,
 		},
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		zstdPool:                zstdPool,
 	}
 }
 
@@ -94,31 +95,10 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
-		enableCompression := false
-		var zstdPool *grpcclients.BoundedZstdPool
-		if zstdConfig := backend.Grpc.Zstd; zstdConfig != nil {
-			enableCompression = true
-			encoderOptions := []zstd.EOption{
-				zstd.WithEncoderConcurrency(1),
-				zstd.WithWindowSize(int(zstdConfig.EncoderWindowSizeBytes)),
-			}
-			if zstdConfig.EncoderLevel != 0 {
-				encoderOptions = append(encoderOptions, zstd.WithEncoderLevel(zstd.EncoderLevel(zstdConfig.EncoderLevel)))
-			}
-			zstdPool = grpcclients.NewBoundedZstdPool(
-				zstdConfig.MaxEncoders,
-				zstdConfig.MaxDecoders,
-				encoderOptions,
-				[]zstd.DOption{
-					zstd.WithDecoderConcurrency(1),
-					zstd.WithDecoderMaxWindow(uint64(zstdConfig.DecoderMaxWindowSizeBytes)),
-				},
-			)
-		}
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, enableCompression, zstdPool),
+			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, backend.Grpc.EnableZstdCompression, bac.zstdPool),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:
