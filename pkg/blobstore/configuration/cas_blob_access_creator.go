@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
@@ -38,14 +39,14 @@ type casBlobAccessCreator struct {
 	casBlobReplicatorCreator
 
 	maximumMessageSizeBytes int
-	zstdPool                *grpcclients.BoundedZstdPool
+	zstdPool                bb_zstd.Pool
 }
 
 // NewCASBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Content Addressable
 // Storage.
-func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool *grpcclients.BoundedZstdPool) BlobAccessCreator {
+func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator {
 	return &casBlobAccessCreator{
 		casBlobReplicatorCreator: casBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,

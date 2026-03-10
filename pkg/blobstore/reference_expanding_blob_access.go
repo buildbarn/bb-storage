@@ -18,6 +18,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/grpc/codes"
@@ -158,7 +159,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		// GOMAXPROCS. We should just use a single thread,
 		// because many BlobAccess operations may run in
 		// parallel.
-		decoder, err := util.NewZstdReadCloser(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
+		decoder, err := bb_zstd.NewReadCloser(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
 		if err != nil {
 			r.Close()
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))

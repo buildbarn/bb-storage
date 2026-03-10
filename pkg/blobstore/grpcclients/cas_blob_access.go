@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/google/uuid"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -31,7 +32,7 @@ type casBlobAccess struct {
 	readChunkSize                   int
 	enableZSTDCompression           bool
 	supportedCompressors            atomic.Pointer[[]remoteexecution.Compressor_Value]
-	zstdPool                        *BoundedZstdPool
+	zstdPool                        bb_zstd.Pool
 }
 
 // NewCASBlobAccess creates a BlobAccess handle that relays any requests
@@ -43,7 +44,7 @@ type casBlobAccess struct {
 // If enableZSTDCompression is true, the client will use ZSTD compression
 // for ByteStream operations if the server supports it. In that case,
 // zstdPool must be provided for pooling encoders/decoders.
-func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, enableZSTDCompression bool, zstdPool *BoundedZstdPool) blobstore.BlobAccess {
+func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, enableZSTDCompression bool, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
 	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
@@ -81,8 +82,8 @@ func (r *byteStreamChunkReader) Close() {
 type zstdByteStreamChunkReader struct {
 	client        bytestream.ByteStream_ReadClient
 	cancel        context.CancelFunc
-	pool          *BoundedZstdPool
-	decoder       *DecoderWrapper
+	pool          bb_zstd.Pool
+	decoder       bb_zstd.Decoder
 	pipeReader    *io.PipeReader
 	pipeWriter    *io.PipeWriter
 	readChunkSize int
@@ -115,8 +116,8 @@ func (r *zstdByteStreamChunkReader) init(ctx context.Context) error {
 			}
 		}()
 
-		// Acquire decoder from pool (blocking if at capacity)
-		r.decoder, r.initErr = r.pool.AcquireDecoder(ctx, r.pipeReader)
+		// Acquire decoder from pool (blocking if at capacity).
+		r.decoder, r.initErr = r.pool.NewDecoder(ctx, r.pipeReader)
 		if r.initErr != nil {
 			r.pipeReader.CloseWithError(r.initErr)
 		}
@@ -146,9 +147,9 @@ func (r *zstdByteStreamChunkReader) Read() ([]byte, error) {
 }
 
 func (r *zstdByteStreamChunkReader) Close() {
-	// Release decoder back to pool
+	// Close releases decoder back to pool.
 	if r.decoder != nil {
-		r.pool.ReleaseDecoder(r.decoder)
+		r.decoder.Close()
 		r.decoder = nil
 	}
 
@@ -298,8 +299,8 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 			cancel:       cancel,
 		}
 
-		// Acquire encoder from pool (blocks if at capacity - provides backpressure)
-		encoder, err := ba.zstdPool.AcquireEncoder(ctx, byteStreamWriter)
+		// Acquire encoder from pool (blocks if at capacity — provides backpressure).
+		encoder, err := ba.zstdPool.NewEncoder(ctx, byteStreamWriter)
 		if err != nil {
 			cancel()
 			b.Discard()
@@ -309,10 +310,7 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
 		}
 
-		// Ensure encoder is returned to pool
-		defer ba.zstdPool.ReleaseEncoder(encoder)
-
-		if err := b.IntoWriter(encoder.Encoder); err != nil {
+		if err := b.IntoWriter(encoder); err != nil {
 			if zstdCloseErr := encoder.Close(); zstdCloseErr != nil {
 				err = errors.Join(err, zstdCloseErr)
 			}

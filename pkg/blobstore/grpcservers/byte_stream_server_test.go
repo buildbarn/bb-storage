@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
@@ -33,7 +34,10 @@ func TestByteStreamServer(t *testing.T) {
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10, nil))
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10, bb_zstd.NewUnboundedPool(
+		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
+		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
+	)))
 	go func() {
 		require.NoError(t, server.Serve(l))
 	}()

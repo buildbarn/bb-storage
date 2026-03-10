@@ -15,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/google/uuid"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
@@ -28,8 +29,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func newTestZstdPool(maxEncoders, maxDecoders int64) *grpcclients.BoundedZstdPool {
-	return grpcclients.NewBoundedZstdPool(
+func newTestZstdPool(maxEncoders, maxDecoders int64) bb_zstd.Pool {
+	return bb_zstd.NewBoundedPool(
 		maxEncoders, maxDecoders,
 		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
@@ -501,7 +502,7 @@ func TestCASBlobAccessGetWithCompression(t *testing.T) {
 
 func TestCASBlobAccessPutPoolExhaustion(t *testing.T) {
 	// Create a pool with only 1 concurrent encoder to test backpressure.
-	pool := grpcclients.NewBoundedZstdPool(1, 1, nil, nil)
+	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
 
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)
@@ -581,7 +582,7 @@ func TestCASBlobAccessPutPoolExhaustion(t *testing.T) {
 func TestCASBlobAccessPutPoolReleasesEncoder(t *testing.T) {
 	// Pool with 1 encoder: if encoder isn't released after the first Put,
 	// the second Put would deadlock.
-	pool := grpcclients.NewBoundedZstdPool(1, 1, nil, nil)
+	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
 
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)
@@ -621,7 +622,7 @@ func TestCASBlobAccessPutPoolReleasesEncoder(t *testing.T) {
 func TestCASBlobAccessGetPoolReleasesDecoder(t *testing.T) {
 	// Pool with 1 decoder: if decoder isn't released after the first Get,
 	// the second Get would deadlock.
-	pool := grpcclients.NewBoundedZstdPool(1, 1, nil, nil)
+	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
 
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)

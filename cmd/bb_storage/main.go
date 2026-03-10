@@ -10,7 +10,6 @@ import (
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -22,6 +21,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
@@ -45,7 +45,7 @@ func main() {
 		}
 
 		// Create a process-wide ZSTD compression pool if configured.
-		var zstdPool *grpcclients.BoundedZstdPool
+		var zstdPool bb_zstd.Pool
 		if zc := configuration.ZstdCompression; zc != nil {
 			encoderOptions := []zstd.EOption{
 				zstd.WithEncoderConcurrency(1),
@@ -62,7 +62,7 @@ func main() {
 			if zc.DecoderMaxWindowSizeBytes != 0 {
 				decoderOptions = append(decoderOptions, zstd.WithDecoderMaxWindow(uint64(zc.DecoderMaxWindowSizeBytes)))
 			}
-			zstdPool = grpcclients.NewBoundedZstdPool(
+			zstdPool = bb_zstd.NewBoundedPool(
 				zc.MaximumEncoders,
 				zc.MaximumDecoders,
 				encoderOptions,

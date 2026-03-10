@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "zstd",
+    srcs = [
+        "bounded_pool.go",
+        "pool.go",
+        "read_closer.go",
+        "unbounded_pool.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/zstd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_klauspost_compress//zstd",
+        "@org_golang_x_sync//semaphore",
+    ],
+)
+
+go_test(
+    name = "zstd_test",
+    srcs = ["bounded_pool_test.go"],
+    deps = [
+        ":zstd",
+        "@com_github_klauspost_compress//zstd:go_default_library",
+        "@com_github_stretchr_testify//require",
+    ],
+)

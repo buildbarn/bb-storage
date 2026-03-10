@@ -8,10 +8,8 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/klauspost/compress/zstd"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc/codes"
@@ -21,17 +19,13 @@ import (
 type byteStreamServer struct {
 	blobAccess    blobstore.BlobAccess
 	readChunkSize int
-	zstdPool      *grpcclients.BoundedZstdPool
+	zstdPool      bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to a BlobAccess. It is used by Bazel to access the
 // Content Addressable Storage (CAS).
-//
-// If zstdPool is non-nil, it is used for pooling ZSTD encoders and
-// decoders for compressed ByteStream operations. If nil, encoders and
-// decoders are created on demand for each request.
-func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int, zstdPool *grpcclients.BoundedZstdPool) bytestream.ByteStreamServer {
+func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		blobAccess:    blobAccess,
 		readChunkSize: readChunkSize,
@@ -67,26 +61,13 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 
 	case remoteexecution.Compressor_ZSTD:
 		b := s.blobAccess.Get(out.Context(), digest)
-		if s.zstdPool != nil {
-			encoder, err := s.zstdPool.AcquireEncoder(out.Context(), &readStreamWriter{out: out})
-			if err != nil {
-				b.Discard()
-				return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
-			}
-			defer s.zstdPool.ReleaseEncoder(encoder)
-			if err := b.IntoWriter(encoder); err != nil {
-				encoder.Close()
-				return err
-			}
-			return encoder.Close()
-		}
-		zstdWriter, err := zstd.NewWriter(&readStreamWriter{out: out}, zstd.WithEncoderConcurrency(1))
+		encoder, err := s.zstdPool.NewEncoder(out.Context(), &readStreamWriter{out: out})
 		if err != nil {
 			b.Discard()
-			return status.Errorf(codes.Internal, "Failed to create zstd writer: %v", err)
+			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
 		}
-		defer zstdWriter.Close()
-		return b.IntoWriter(zstdWriter)
+		defer encoder.Close()
+		return b.IntoWriter(encoder)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support downloading compression type: %s", compressor)
 	}
@@ -235,47 +216,21 @@ func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, r
 		pendingData: request.Data,
 	}
 
-	var zstdReader io.ReadCloser
-	if s.zstdPool != nil {
-		decoder, err := s.zstdPool.AcquireDecoder(stream.Context(), streamReader)
-		if err != nil {
-			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD decoder: %v", err)
-		}
-		zstdReader = &pooledDecoderReadCloser{
-			DecoderWrapper: decoder,
-			pool:           s.zstdPool,
-		}
-	} else {
-		var err error
-		zstdReader, err = util.NewZstdReadCloser(streamReader, zstd.WithDecoderConcurrency(1))
-		if err != nil {
-			return err
-		}
+	decoder, err := s.zstdPool.NewDecoder(stream.Context(), streamReader)
+	if err != nil {
+		return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD decoder: %v", err)
 	}
-	defer zstdReader.Close()
+	defer decoder.Close()
 
 	if err := s.blobAccess.Put(
 		stream.Context(),
 		digest,
-		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided)); err != nil {
+		buffer.NewCASBufferFromReader(digest, decoder, buffer.UserProvided)); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
 		CommittedSize: streamReader.nextOffset,
 	})
-}
-
-// pooledDecoderReadCloser wraps a DecoderWrapper to release it back to
-// the pool on Close().
-type pooledDecoderReadCloser struct {
-	*grpcclients.DecoderWrapper
-	pool *grpcclients.BoundedZstdPool
-}
-
-func (r *pooledDecoderReadCloser) Close() error {
-	r.pool.ReleaseDecoder(r.DecoderWrapper)
-	r.DecoderWrapper = nil
-	return nil
 }
 
 func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {
