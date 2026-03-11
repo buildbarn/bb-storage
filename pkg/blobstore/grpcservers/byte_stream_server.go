@@ -225,12 +225,23 @@ func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, r
 	if err := s.blobAccess.Put(
 		stream.Context(),
 		digest,
-		buffer.NewCASBufferFromReader(digest, decoder, buffer.UserProvided)); err != nil {
+		buffer.NewCASBufferFromReader(digest, &decoderReadCloser{decoder}, buffer.UserProvided)); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
 		CommittedSize: streamReader.nextOffset,
 	})
+}
+
+// decoderReadCloser adapts a zstd.Decoder (whose Close() has no error
+// return) to io.ReadCloser.
+type decoderReadCloser struct {
+	bb_zstd.Decoder
+}
+
+func (d *decoderReadCloser) Close() error {
+	d.Decoder.Close()
+	return nil
 }
 
 func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {

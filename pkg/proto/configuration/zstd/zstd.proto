@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package buildbarn.configuration.zstd;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/zstd";
+
+message PoolConfiguration {
+  // Maximum number of concurrent ZSTD encoding operations. Each
+  // encoder allocates memory proportional to the configured window
+  // size. When all encoder slots are in use, new operations will
+  // block until a slot becomes available, providing backpressure.
+  int64 maximum_encoders = 1;
+
+  // Maximum number of concurrent ZSTD decoding operations. Each
+  // decoder allocates memory proportional to the configured window
+  // size. When all decoder slots are in use, new operations will
+  // block until a slot becomes available, providing backpressure.
+  int64 maximum_decoders = 2;
+
+  // Window size used by ZSTD encoders, in bytes. Larger windows
+  // improve compression ratio at the cost of memory per encoder.
+  // Total encoder memory budget is approximately
+  // maximum_encoders * encoder_window_size_bytes.
+  int32 encoder_window_size_bytes = 3;
+
+  // Window size for ZSTD decoders, in bytes. Streams compressed with
+  // a larger window than this will be rejected. Total decoder memory
+  // budget is approximately
+  // maximum_decoders * decoder_window_size_bytes.
+  int32 decoder_window_size_bytes = 4;
+
+  // Compression level for ZSTD encoders. If not set, the default
+  // level from the zstd library is used.
+  //
+  // Higher levels achieve better compression ratios at the cost of
+  // CPU time. The zstd library supports levels from 1 (fastest) to
+  // 19 (best compression), with a default of 3.
+  int32 encoder_level = 5;
+}

@@ -1,29 +1,32 @@
 package zstd
 
 import (
+	"context"
 	"io"
-
-	"github.com/klauspost/compress/zstd"
 )
 
-// NewReadCloser creates a new io.ReadCloser that wraps an underlying
-// reader and decompresses the data using Zstandard. The reader will
-// close both the decoder and the underlying reader when it is closed.
-func NewReadCloser(underlyingReader io.ReadCloser, options ...zstd.DOption) (io.ReadCloser, error) {
-	decoder, err := zstd.NewReader(underlyingReader, options...)
+// NewReadCloser creates a new io.ReadCloser that decompresses data
+// using a decoder from the provided Pool. Closing the returned reader
+// releases the decoder back to the pool and closes the underlying
+// reader.
+func NewReadCloser(pool Pool, underlyingReader io.ReadCloser) (io.ReadCloser, error) {
+	decoder, err := pool.NewDecoder(context.Background(), underlyingReader)
 	if err != nil {
 		return nil, err
 	}
-	return &readCloser{Decoder: decoder, underlyingReader: underlyingReader}, nil
+	return &readCloser{decoder: decoder, underlyingReader: underlyingReader}, nil
 }
 
 type readCloser struct {
-	*zstd.Decoder
-
+	decoder          Decoder
 	underlyingReader io.ReadCloser
 }
 
+func (r *readCloser) Read(p []byte) (int, error) {
+	return r.decoder.Read(p)
+}
+
 func (r *readCloser) Close() error {
-	r.Decoder.Close()
+	r.decoder.Close()
 	return r.underlyingReader.Close()
 }

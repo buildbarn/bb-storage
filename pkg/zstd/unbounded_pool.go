@@ -34,13 +34,7 @@ func (p *unboundedPool) NewDecoder(_ context.Context, r io.Reader) (Decoder, err
 }
 
 // unboundedDecoder wraps *zstd.Decoder to implement the Decoder
-// interface. zstd.Decoder.Close() does not return an error, so this
-// adapter adds the error return.
+// interface.
 type unboundedDecoder struct {
 	*zstd.Decoder
-}
-
-func (d *unboundedDecoder) Close() error {
-	d.Decoder.Close()
-	return nil
 }

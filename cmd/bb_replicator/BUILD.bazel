@@ -15,6 +15,7 @@ go_library(
         "//pkg/proto/configuration/bb_replicator",
         "//pkg/proto/replicator",
         "//pkg/util",
+        "//pkg/zstd",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

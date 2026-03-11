@@ -19,7 +19,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
-	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,6 +31,7 @@ type referenceExpandingBlobAccess struct {
 	s3Client                          cloud_aws.S3Client
 	gcsClient                         cloud_gcp.StorageClient
 	maximumMessageSizeBytes           int
+	zstdPool                          bb_zstd.Pool
 }
 
 // getHTTPRangeHeader creates a HTTP Range header based on the offset
@@ -48,13 +48,14 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage, contentAddressableStorage BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int) BlobAccess {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage, contentAddressableStorage BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccess {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		contentAddressableStorage:         contentAddressableStorage,
 		httpClient:                        httpClient,
 		s3Client:                          s3Client,
 		gcsClient:                         gcsClient,
+		zstdPool:                          zstdPool,
 		maximumMessageSizeBytes:           maximumMessageSizeBytes,
 	}
 }
@@ -159,7 +160,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		// GOMAXPROCS. We should just use a single thread,
 		// because many BlobAccess operations may run in
 		// parallel.
-		decoder, err := bb_zstd.NewReadCloser(r, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
+		decoder, err := bb_zstd.NewReadCloser(ba.zstdPool, r)
 		if err != nil {
 			r.Close()
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))

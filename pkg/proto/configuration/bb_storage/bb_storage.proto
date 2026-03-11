@@ -8,6 +8,7 @@ import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobst
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage";
 
@@ -108,8 +109,7 @@ message ApplicationConfiguration {
   // clients (those with enable_zstd_compression set) and the ByteStream
   // server. This ensures bounded, predictable memory usage regardless
   // of the number of backends or concurrent operations.
-  buildbarn.configuration.blobstore.ZstdCompressionConfiguration
-      zstd_compression = 21;
+  buildbarn.configuration.zstd.PoolConfiguration zstd_compression = 21;
 }
 
 // Storage configuration for backends which don't allow batch digest

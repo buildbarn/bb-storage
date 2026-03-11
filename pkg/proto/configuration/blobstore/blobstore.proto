@@ -933,46 +933,11 @@ message GrpcBlobAccessConfiguration {
 
   // Was 'enable_compression'. Use 'zstd_compression' in
   // ApplicationConfiguration instead.
-  // Was 'zstd'. Moved to top-level ZstdCompressionConfiguration.
-  reserved 2, 3;
+  reserved 2;
 
   // Enable ZSTD compression for ByteStream operations in the Content
   // Addressable Storage (CAS). Requires zstd_compression to be
   // configured at the application level. Has no effect for other
   // storage types (AC, ICAS, etc.).
   bool enable_zstd_compression = 4;
-}
-
-message ZstdCompressionConfiguration {
-  // Maximum number of concurrent ZSTD encoding operations. Each
-  // encoder allocates memory proportional to the configured window
-  // size. When all encoder slots are in use, new operations will
-  // block until a slot becomes available, providing backpressure.
-  int64 maximum_encoders = 1;
-
-  // Maximum number of concurrent ZSTD decoding operations. Each
-  // decoder allocates memory proportional to the configured maximum
-  // window size. When all decoder slots are in use, new operations
-  // will block until a slot becomes available, providing backpressure.
-  int64 maximum_decoders = 2;
-
-  // Window size used by ZSTD encoders, in bytes. Larger windows
-  // improve compression ratio at the cost of memory per encoder.
-  // Total encoder memory budget is approximately
-  // maximum_encoders * encoder_window_size_bytes.
-  int32 encoder_window_size_bytes = 3;
-
-  // Maximum window size accepted by ZSTD decoders, in bytes. Streams
-  // compressed with a larger window than this will be rejected. Total
-  // decoder memory budget is approximately
-  // maximum_decoders * decoder_max_window_size_bytes.
-  int32 decoder_max_window_size_bytes = 4;
-
-  // Compression level for ZSTD encoders. If not set, the default
-  // level from the zstd library is used.
-  //
-  // Higher levels achieve better compression ratios at the cost of
-  // CPU time. The zstd library supports levels from 1 (fastest) to
-  // 19 (best compression), with a default of 3.
-  int32 encoder_level = 5;
 }

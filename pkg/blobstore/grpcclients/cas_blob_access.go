@@ -2,7 +2,6 @@ package grpcclients
 
 import (
 	"context"
-	"errors"
 	"io"
 	"slices"
 	"sync"
@@ -311,19 +310,13 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 		}
 
 		if err := b.IntoWriter(encoder); err != nil {
-			if zstdCloseErr := encoder.Close(); zstdCloseErr != nil {
-				err = errors.Join(err, zstdCloseErr)
-			}
-			if closeErr := byteStreamWriter.Close(); closeErr != nil {
-				err = errors.Join(err, closeErr)
-			}
+			encoder.Close()
+			byteStreamWriter.Close()
 			return err
 		}
 
 		if err := encoder.Close(); err != nil {
-			if closeErr := byteStreamWriter.Close(); closeErr != nil {
-				err = errors.Join(err, closeErr)
-			}
+			byteStreamWriter.Close()
 			return err
 		}
 

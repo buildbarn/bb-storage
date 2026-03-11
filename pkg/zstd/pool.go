@@ -18,7 +18,7 @@ type Encoder interface {
 // the decoder to the pool.
 type Decoder interface {
 	io.Reader
-	Close() error
+	Close()
 }
 
 // Pool manages the lifecycle of ZSTD encoders and decoders. Callers

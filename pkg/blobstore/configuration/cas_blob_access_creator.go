@@ -161,7 +161,8 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 				},
 				s3.NewFromConfig(awsConfig),
 				gcsClient,
-				bac.maximumMessageSizeBytes),
+				bac.maximumMessageSizeBytes,
+				bac.zstdPool),
 			DigestKeyFormat: indirectContentAddressableStorage.DigestKeyFormat,
 		}, "reference_expanding", nil
 	default:

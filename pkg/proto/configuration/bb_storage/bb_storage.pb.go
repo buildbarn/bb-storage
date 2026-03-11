@@ -13,6 +13,7 @@ import (
 	builder "github.com/buildbarn/bb-storage/pkg/proto/configuration/builder"
 	global "github.com/buildbarn/bb-storage/pkg/proto/configuration/global"
 	grpc "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc"
+	zstd "github.com/buildbarn/bb-storage/pkg/proto/configuration/zstd"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -40,7 +41,7 @@ type ApplicationConfiguration struct {
 	FileSystemAccessCache             *NonScannableBlobAccessConfiguration       `protobuf:"bytes,19,opt,name=file_system_access_cache,json=fileSystemAccessCache,proto3" json:"file_system_access_cache,omitempty"`
 	ExecuteAuthorizer                 *auth.AuthorizerConfiguration              `protobuf:"bytes,16,opt,name=execute_authorizer,json=executeAuthorizer,proto3" json:"execute_authorizer,omitempty"`
 	SupportedCompressors              []v2.Compressor_Value                      `protobuf:"varint,20,rep,packed,name=supported_compressors,json=supportedCompressors,proto3,enum=build.bazel.remote.execution.v2.Compressor_Value" json:"supported_compressors,omitempty"`
-	ZstdCompression                   *blobstore.ZstdCompressionConfiguration    `protobuf:"bytes,21,opt,name=zstd_compression,json=zstdCompression,proto3" json:"zstd_compression,omitempty"`
+	ZstdCompression                   *zstd.PoolConfiguration                    `protobuf:"bytes,21,opt,name=zstd_compression,json=zstdCompression,proto3" json:"zstd_compression,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -152,7 +153,7 @@ func (x *ApplicationConfiguration) GetSupportedCompressors() []v2.Compressor_Val
 	return nil
 }
 
-func (x *ApplicationConfiguration) GetZstdCompression() *blobstore.ZstdCompressionConfiguration {
+func (x *ApplicationConfiguration) GetZstdCompression() *zstd.PoolConfiguration {
 	if x != nil {
 		return x.ZstdCompression
 	}
@@ -291,7 +292,7 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_s
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc = "" +
 	"\n" +
-	"Sgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x1aMgithub.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\"\xdb\v\n" +
+	"Sgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x1aMgithub.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto\"\xcb\v\n" +
 	"\x18ApplicationConfiguration\x12T\n" +
 	"\fgrpc_servers\x18\x04 \x03(\v21.buildbarn.configuration.grpc.ServerConfigurationR\vgrpcServers\x12l\n" +
 	"\n" +
@@ -306,8 +307,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb
 	"\x18initial_size_class_cache\x18\v \x01(\v2G.buildbarn.configuration.bb_storage.NonScannableBlobAccessConfigurationR\x15initialSizeClassCache\x12\x80\x01\n" +
 	"\x18file_system_access_cache\x18\x13 \x01(\v2G.buildbarn.configuration.bb_storage.NonScannableBlobAccessConfigurationR\x15fileSystemAccessCache\x12d\n" +
 	"\x12execute_authorizer\x18\x10 \x01(\v25.buildbarn.configuration.auth.AuthorizerConfigurationR\x11executeAuthorizer\x12f\n" +
-	"\x15supported_compressors\x18\x14 \x03(\x0e21.build.bazel.remote.execution.v2.Compressor.ValueR\x14supportedCompressors\x12j\n" +
-	"\x10zstd_compression\x18\x15 \x01(\v2?.buildbarn.configuration.blobstore.ZstdCompressionConfigurationR\x0fzstdCompression\x1av\n" +
+	"\x15supported_compressors\x18\x14 \x03(\x0e21.build.bazel.remote.execution.v2.Compressor.ValueR\x14supportedCompressors\x12Z\n" +
+	"\x10zstd_compression\x18\x15 \x01(\v2/.buildbarn.configuration.zstd.PoolConfigurationR\x0fzstdCompression\x1av\n" +
 	"\x0fSchedulersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12M\n" +
 	"\x05value\x18\x02 \x01(\v27.buildbarn.configuration.builder.SchedulerConfigurationR\x05value:\x028\x01J\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x0e\x10\x0fJ\x04\b\x0f\x10\x10\"\xb7\x02\n" +
@@ -335,17 +336,17 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_
 
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_goTypes = []any{
-	(*ApplicationConfiguration)(nil),               // 0: buildbarn.configuration.bb_storage.ApplicationConfiguration
-	(*NonScannableBlobAccessConfiguration)(nil),    // 1: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
-	(*ScannableBlobAccessConfiguration)(nil),       // 2: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
-	nil,                                            // 3: buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry
-	(*grpc.ServerConfiguration)(nil),               // 4: buildbarn.configuration.grpc.ServerConfiguration
-	(*global.Configuration)(nil),                   // 5: buildbarn.configuration.global.Configuration
-	(*auth.AuthorizerConfiguration)(nil),           // 6: buildbarn.configuration.auth.AuthorizerConfiguration
-	(v2.Compressor_Value)(0),                       // 7: build.bazel.remote.execution.v2.Compressor.Value
-	(*blobstore.ZstdCompressionConfiguration)(nil), // 8: buildbarn.configuration.blobstore.ZstdCompressionConfiguration
-	(*blobstore.BlobAccessConfiguration)(nil),      // 9: buildbarn.configuration.blobstore.BlobAccessConfiguration
-	(*builder.SchedulerConfiguration)(nil),         // 10: buildbarn.configuration.builder.SchedulerConfiguration
+	(*ApplicationConfiguration)(nil),            // 0: buildbarn.configuration.bb_storage.ApplicationConfiguration
+	(*NonScannableBlobAccessConfiguration)(nil), // 1: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
+	(*ScannableBlobAccessConfiguration)(nil),    // 2: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
+	nil,                                         // 3: buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry
+	(*grpc.ServerConfiguration)(nil),            // 4: buildbarn.configuration.grpc.ServerConfiguration
+	(*global.Configuration)(nil),                // 5: buildbarn.configuration.global.Configuration
+	(*auth.AuthorizerConfiguration)(nil),        // 6: buildbarn.configuration.auth.AuthorizerConfiguration
+	(v2.Compressor_Value)(0),                    // 7: build.bazel.remote.execution.v2.Compressor.Value
+	(*zstd.PoolConfiguration)(nil),              // 8: buildbarn.configuration.zstd.PoolConfiguration
+	(*blobstore.BlobAccessConfiguration)(nil),   // 9: buildbarn.configuration.blobstore.BlobAccessConfiguration
+	(*builder.SchedulerConfiguration)(nil),      // 10: buildbarn.configuration.builder.SchedulerConfiguration
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_depIdxs = []int32{
 	4,  // 0: buildbarn.configuration.bb_storage.ApplicationConfiguration.grpc_servers:type_name -> buildbarn.configuration.grpc.ServerConfiguration
@@ -358,7 +359,7 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_s
 	1,  // 7: buildbarn.configuration.bb_storage.ApplicationConfiguration.file_system_access_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
 	6,  // 8: buildbarn.configuration.bb_storage.ApplicationConfiguration.execute_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
 	7,  // 9: buildbarn.configuration.bb_storage.ApplicationConfiguration.supported_compressors:type_name -> build.bazel.remote.execution.v2.Compressor.Value
-	8,  // 10: buildbarn.configuration.bb_storage.ApplicationConfiguration.zstd_compression:type_name -> buildbarn.configuration.blobstore.ZstdCompressionConfiguration
+	8,  // 10: buildbarn.configuration.bb_storage.ApplicationConfiguration.zstd_compression:type_name -> buildbarn.configuration.zstd.PoolConfiguration
 	9,  // 11: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	6,  // 12: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.get_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
 	6,  // 13: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.put_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration

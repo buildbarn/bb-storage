@@ -22,7 +22,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
-	"github.com/klauspost/compress/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
@@ -44,31 +43,8 @@ func main() {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
-		// Create a process-wide ZSTD compression pool if configured.
-		var zstdPool bb_zstd.Pool
-		if zc := configuration.ZstdCompression; zc != nil {
-			encoderOptions := []zstd.EOption{
-				zstd.WithEncoderConcurrency(1),
-			}
-			if zc.EncoderWindowSizeBytes != 0 {
-				encoderOptions = append(encoderOptions, zstd.WithWindowSize(int(zc.EncoderWindowSizeBytes)))
-			}
-			if zc.EncoderLevel != 0 {
-				encoderOptions = append(encoderOptions, zstd.WithEncoderLevel(zstd.EncoderLevel(zc.EncoderLevel)))
-			}
-			decoderOptions := []zstd.DOption{
-				zstd.WithDecoderConcurrency(1),
-			}
-			if zc.DecoderMaxWindowSizeBytes != 0 {
-				decoderOptions = append(decoderOptions, zstd.WithDecoderMaxWindow(uint64(zc.DecoderMaxWindowSizeBytes)))
-			}
-			zstdPool = bb_zstd.NewBoundedPool(
-				zc.MaximumEncoders,
-				zc.MaximumDecoders,
-				encoderOptions,
-				decoderOptions,
-			)
-		}
+		// Create a process-wide ZSTD compression pool.
+		zstdPool := bb_zstd.NewPoolFromConfiguration(configuration.ZstdCompression)
 
 		// Providers for data returned by ServerCapabilities.cache_capabilities
 		// as part of the GetCapabilities() call. We permit these calls
