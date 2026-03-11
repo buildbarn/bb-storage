@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "bounded_pool.go",
         "configuration.go",
+        "metrics_pool.go",
         "pool.go",
         "read_closer.go",
         "unbounded_pool.go",
@@ -12,9 +13,11 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/zstd",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/clock",
         "//pkg/proto/configuration/zstd",
         "//pkg/util",
         "@com_github_klauspost_compress//zstd",
+        "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_x_sync//semaphore",
     ],
 )
