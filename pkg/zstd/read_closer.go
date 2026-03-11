@@ -9,8 +9,8 @@ import (
 // using a decoder from the provided Pool. Closing the returned reader
 // releases the decoder back to the pool and closes the underlying
 // reader.
-func NewReadCloser(pool Pool, underlyingReader io.ReadCloser) (io.ReadCloser, error) {
-	decoder, err := pool.NewDecoder(context.Background(), underlyingReader)
+func NewReadCloser(ctx context.Context, pool Pool, underlyingReader io.ReadCloser) (io.ReadCloser, error) {
+	decoder, err := pool.NewDecoder(ctx, underlyingReader)
 	if err != nil {
 		return nil, err
 	}

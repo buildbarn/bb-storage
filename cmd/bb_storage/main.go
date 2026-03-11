@@ -44,7 +44,7 @@ func main() {
 		}
 
 		// Create a process-wide ZSTD compression pool.
-		zstdPool := bb_zstd.NewPoolFromConfiguration(configuration.ZstdCompression)
+		zstdPool := bb_zstd.NewPoolFromConfiguration(configuration.ZstdPool)
 
 		// Providers for data returned by ServerCapabilities.cache_capabilities
 		// as part of the GetCapabilities() call. We permit these calls

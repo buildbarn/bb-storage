@@ -12,14 +12,32 @@ import (
 var (
 	poolMetricsPrometheusMetrics sync.Once
 
-	poolOperationsTotal = prometheus.NewCounterVec(
+	poolAcquisitionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
 			Subsystem: "zstd",
-			Name:      "pool_operations_total",
-			Help:      "Total number of encoder/decoder pool operations.",
+			Name:      "pool_acquisitions_total",
+			Help:      "Total number of successful encoder/decoder acquisitions from the pool.",
 		},
-		[]string{"name", "operation"})
+		[]string{"name", "object_type"})
+
+	poolReleasesTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "buildbarn",
+			Subsystem: "zstd",
+			Name:      "pool_releases_total",
+			Help:      "Total number of encoder/decoder releases back to the pool.",
+		},
+		[]string{"name", "object_type"})
+
+	poolRejectionsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "buildbarn",
+			Subsystem: "zstd",
+			Name:      "pool_rejections_total",
+			Help:      "Total number of encoder/decoder acquisitions rejected due to context cancellation or pool exhaustion.",
+		},
+		[]string{"name", "object_type"})
 
 	poolWaitDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -29,21 +47,21 @@ var (
 			Help:      "Time spent waiting to acquire an encoder or decoder from the pool, in seconds.",
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2.0, 16),
 		},
-		[]string{"name", "operation"})
+		[]string{"name", "object_type"})
 )
 
 type metricsPool struct {
 	base Pool
 
-	encoderAcquisitions    prometheus.Counter
-	encoderReleases        prometheus.Counter
-	encoderRejections      prometheus.Counter
-	encoderWaitDuration    prometheus.Observer
-	decoderAcquisitions    prometheus.Counter
-	decoderReleases        prometheus.Counter
-	decoderRejections      prometheus.Counter
-	decoderWaitDuration    prometheus.Observer
-	clock                  clock.Clock
+	encoderAcquisitions prometheus.Counter
+	encoderReleases     prometheus.Counter
+	encoderRejections   prometheus.Counter
+	encoderWaitDuration prometheus.Observer
+	decoderAcquisitions prometheus.Counter
+	decoderReleases     prometheus.Counter
+	decoderRejections   prometheus.Counter
+	decoderWaitDuration prometheus.Observer
+	clock               clock.Clock
 }
 
 // NewMetricsPool creates a decorator for Pool that exposes Prometheus
@@ -51,21 +69,23 @@ type metricsPool struct {
 // duration.
 func NewMetricsPool(base Pool, clock clock.Clock, name string) Pool {
 	poolMetricsPrometheusMetrics.Do(func() {
-		prometheus.MustRegister(poolOperationsTotal)
+		prometheus.MustRegister(poolAcquisitionsTotal)
+		prometheus.MustRegister(poolReleasesTotal)
+		prometheus.MustRegister(poolRejectionsTotal)
 		prometheus.MustRegister(poolWaitDurationSeconds)
 	})
 
 	return &metricsPool{
 		base: base,
 
-		encoderAcquisitions: poolOperationsTotal.WithLabelValues(name, "EncoderAcquire"),
-		encoderReleases:     poolOperationsTotal.WithLabelValues(name, "EncoderRelease"),
-		encoderRejections:   poolOperationsTotal.WithLabelValues(name, "EncoderReject"),
-		encoderWaitDuration: poolWaitDurationSeconds.WithLabelValues(name, "EncoderAcquire"),
-		decoderAcquisitions: poolOperationsTotal.WithLabelValues(name, "DecoderAcquire"),
-		decoderReleases:     poolOperationsTotal.WithLabelValues(name, "DecoderRelease"),
-		decoderRejections:   poolOperationsTotal.WithLabelValues(name, "DecoderReject"),
-		decoderWaitDuration: poolWaitDurationSeconds.WithLabelValues(name, "DecoderAcquire"),
+		encoderAcquisitions: poolAcquisitionsTotal.WithLabelValues(name, "Encoder"),
+		encoderReleases:     poolReleasesTotal.WithLabelValues(name, "Encoder"),
+		encoderRejections:   poolRejectionsTotal.WithLabelValues(name, "Encoder"),
+		encoderWaitDuration: poolWaitDurationSeconds.WithLabelValues(name, "Encoder"),
+		decoderAcquisitions: poolAcquisitionsTotal.WithLabelValues(name, "Decoder"),
+		decoderReleases:     poolReleasesTotal.WithLabelValues(name, "Decoder"),
+		decoderRejections:   poolRejectionsTotal.WithLabelValues(name, "Decoder"),
+		decoderWaitDuration: poolWaitDurationSeconds.WithLabelValues(name, "Decoder"),
 		clock:               clock,
 	}
 }
@@ -120,6 +140,3 @@ func (d *metricsDecoder) Close() {
 	d.Decoder.Close()
 	d.releases.Inc()
 }
-
-// Ensure metricsPool implements Pool at compile time.
-var _ Pool = (*metricsPool)(nil)

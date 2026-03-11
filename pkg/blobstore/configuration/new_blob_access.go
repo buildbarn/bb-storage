@@ -603,11 +603,11 @@ func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuratio
 // create BlobAccess objects for both the Content Addressable Storage
 // and Action Cache. Most Buildbarn components tend to require access to
 // both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
+func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, bb_zstd.NewPoolFromConfiguration(nil)))
+		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool))
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}

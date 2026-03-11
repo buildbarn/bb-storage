@@ -104,12 +104,11 @@ message ApplicationConfiguration {
   repeated build.bazel.remote.execution.v2.Compressor.Value
       supported_compressors = 20;
 
-  // ZSTD compression pool configuration. When set, creates a process-
-  // wide pool of ZSTD encoders and decoders shared by all gRPC CAS
-  // clients (those with enable_zstd_compression set) and the ByteStream
-  // server. This ensures bounded, predictable memory usage regardless
-  // of the number of backends or concurrent operations.
-  buildbarn.configuration.zstd.PoolConfiguration zstd_compression = 21;
+  // ZSTD encoder/decoder pool configuration. When set, creates a
+  // process-wide pool shared by all gRPC CAS clients and the
+  // ByteStream server, and enables ZSTD compression for ByteStream
+  // operations where the server supports it.
+  buildbarn.configuration.zstd.PoolConfiguration zstd_pool = 21;
 }
 
 // Storage configuration for backends which don't allow batch digest

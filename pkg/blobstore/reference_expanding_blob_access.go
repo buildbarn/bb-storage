@@ -160,7 +160,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		// GOMAXPROCS. We should just use a single thread,
 		// because many BlobAccess operations may run in
 		// parallel.
-		decoder, err := bb_zstd.NewReadCloser(ba.zstdPool, r)
+		decoder, err := bb_zstd.NewReadCloser(ctx, ba.zstdPool, r)
 		if err != nil {
 			r.Close()
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder"))

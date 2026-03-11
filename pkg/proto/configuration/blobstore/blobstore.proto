@@ -931,13 +931,9 @@ message GrpcBlobAccessConfiguration {
   // Base gRPC client configuration.
   buildbarn.configuration.grpc.ClientConfiguration client = 1;
 
-  // Was 'enable_compression'. Use 'zstd_compression' in
-  // ApplicationConfiguration instead.
-  reserved 2;
-
   // Enable ZSTD compression for ByteStream operations in the Content
-  // Addressable Storage (CAS). Requires zstd_compression to be
-  // configured at the application level. Has no effect for other
-  // storage types (AC, ICAS, etc.).
-  bool enable_zstd_compression = 4;
+  // Addressable Storage (CAS). When enabled, ZSTD compression will be
+  // used if the server supports it. Has no effect for other storage
+  // types (AC, ICAS, etc.).
+  bool enable_compression = 2;
 }

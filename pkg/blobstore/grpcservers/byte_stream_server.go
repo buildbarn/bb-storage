@@ -41,9 +41,10 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if err != nil {
 		return err
 	}
+	ctx := out.Context()
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		r := s.blobAccess.Get(out.Context(), digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
+		r := s.blobAccess.Get(ctx, digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
 		defer r.Close()
 
 		for {
@@ -60,8 +61,8 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		}
 
 	case remoteexecution.Compressor_ZSTD:
-		b := s.blobAccess.Get(out.Context(), digest)
-		encoder, err := s.zstdPool.NewEncoder(out.Context(), &readStreamWriter{out: out})
+		b := s.blobAccess.Get(ctx, digest)
+		encoder, err := s.zstdPool.NewEncoder(ctx, &readStreamWriter{out: out})
 		if err != nil {
 			b.Discard()
 			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
@@ -209,6 +210,7 @@ func (zstdWriteStreamReader) Close() error {
 }
 
 func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, request *bytestream.WriteRequest, digest digest.Digest) error {
+	ctx := stream.Context()
 	streamReader := &zstdWriteStreamReader{
 		stream:      stream,
 		nextOffset:  int64(len(request.Data)),
@@ -216,32 +218,21 @@ func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, r
 		pendingData: request.Data,
 	}
 
-	decoder, err := s.zstdPool.NewDecoder(stream.Context(), streamReader)
+	zstdReader, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, streamReader)
 	if err != nil {
 		return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD decoder: %v", err)
 	}
-	defer decoder.Close()
+	defer zstdReader.Close()
 
 	if err := s.blobAccess.Put(
-		stream.Context(),
+		ctx,
 		digest,
-		buffer.NewCASBufferFromReader(digest, &decoderReadCloser{decoder}, buffer.UserProvided)); err != nil {
+		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided)); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
 		CommittedSize: streamReader.nextOffset,
 	})
-}
-
-// decoderReadCloser adapts a zstd.Decoder (whose Close() has no error
-// return) to io.ReadCloser.
-type decoderReadCloser struct {
-	bb_zstd.Decoder
-}
-
-func (d *decoderReadCloser) Close() error {
-	d.Decoder.Close()
-	return nil
 }
 
 func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {

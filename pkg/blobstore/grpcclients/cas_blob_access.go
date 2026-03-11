@@ -29,7 +29,6 @@ type casBlobAccess struct {
 	capabilitiesClient              remoteexecution.CapabilitiesClient
 	uuidGenerator                   util.UUIDGenerator
 	readChunkSize                   int
-	enableZSTDCompression           bool
 	supportedCompressors            atomic.Pointer[[]remoteexecution.Compressor_Value]
 	zstdPool                        bb_zstd.Pool
 }
@@ -40,17 +39,15 @@ type casBlobAccess struct {
 // services that Bazel uses to access blobs stored in the Content
 // Addressable Storage.
 //
-// If enableZSTDCompression is true, the client will use ZSTD compression
-// for ByteStream operations if the server supports it. In that case,
-// zstdPool must be provided for pooling encoders/decoders.
-func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, enableZSTDCompression bool, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
+// If zstdPool is non-nil, the client will use ZSTD compression for
+// ByteStream operations if the server supports it.
+func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
 	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
 		capabilitiesClient:              remoteexecution.NewCapabilitiesClient(client),
 		uuidGenerator:                   uuidGenerator,
 		readChunkSize:                   readChunkSize,
-		enableZSTDCompression:           enableZSTDCompression,
 		zstdPool:                        zstdPool,
 	}
 }
@@ -77,63 +74,18 @@ func (r *byteStreamChunkReader) Close() {
 	}
 }
 
-// zstdByteStreamChunkReader reads compressed data from gRPC stream and decompresses using pooled decoder.
+// zstdByteStreamChunkReader reads compressed data from a gRPC stream
+// and decompresses it using a pooled decoder.
 type zstdByteStreamChunkReader struct {
 	client        bytestream.ByteStream_ReadClient
 	cancel        context.CancelFunc
-	pool          bb_zstd.Pool
 	decoder       bb_zstd.Decoder
 	pipeReader    *io.PipeReader
-	pipeWriter    *io.PipeWriter
 	readChunkSize int
 	wg            sync.WaitGroup
-	initOnce      sync.Once
-	initErr       error
-}
-
-func (r *zstdByteStreamChunkReader) init(ctx context.Context) error {
-	r.initOnce.Do(func() {
-		r.pipeReader, r.pipeWriter = io.Pipe()
-
-		// Start goroutine to read from gRPC and write to pipe
-		r.wg.Add(1)
-		go func() {
-			defer r.wg.Done()
-			defer r.pipeWriter.Close()
-			for {
-				chunk, err := r.client.Recv()
-				if err != nil {
-					if err != io.EOF {
-						r.pipeWriter.CloseWithError(err)
-					}
-					return
-				}
-				if _, writeErr := r.pipeWriter.Write(chunk.Data); writeErr != nil {
-					r.pipeWriter.CloseWithError(writeErr)
-					return
-				}
-			}
-		}()
-
-		// Acquire decoder from pool (blocking if at capacity).
-		r.decoder, r.initErr = r.pool.NewDecoder(ctx, r.pipeReader)
-		if r.initErr != nil {
-			r.pipeReader.CloseWithError(r.initErr)
-		}
-	})
-	return r.initErr
 }
 
 func (r *zstdByteStreamChunkReader) Read() ([]byte, error) {
-	// Lazy initialization on first read. We use context.Background() here
-	// because the buffer.ChunkReader interface does not propagate a context.
-	// This means decoder pool acquisition on the read path cannot be
-	// cancelled by the original request context. The pool's semaphore will
-	// still bound concurrency; the caller can cancel by closing the reader.
-	if err := r.init(context.Background()); err != nil {
-		return nil, err
-	}
-
 	buf := make([]byte, r.readChunkSize)
 	n, err := r.decoder.Read(buf)
 	if n > 0 {
@@ -146,19 +98,12 @@ func (r *zstdByteStreamChunkReader) Read() ([]byte, error) {
 }
 
 func (r *zstdByteStreamChunkReader) Close() {
-	// Close releases decoder back to pool.
-	if r.decoder != nil {
-		r.decoder.Close()
-		r.decoder = nil
-	}
+	r.decoder.Close()
 
-	if r.pipeReader != nil {
-		r.pipeReader.Close()
-	}
-
+	r.pipeReader.Close()
 	r.cancel()
 
-	// Drain the gRPC stream
+	// Drain the gRPC stream.
 	for {
 		if _, err := r.client.Recv(); err != nil {
 			break
@@ -207,7 +152,7 @@ const resourceNameHeader = "build.bazel.remote.execution.v2.resource-name"
 // shouldUseZSTDCompression checks if ZSTD compression should be used.
 // It ensures GetCapabilities has been called to negotiate compression support.
 func (ba *casBlobAccess) shouldUseZSTDCompression(ctx context.Context, digest digest.Digest) (bool, error) {
-	if !ba.enableZSTDCompression {
+	if ba.zstdPool == nil {
 		return false, nil
 	}
 
@@ -248,12 +193,43 @@ func (ba *casBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.B
 	}
 
 	if useCompression {
-		return buffer.NewCASBufferFromChunkReader(digest, &zstdByteStreamChunkReader{
+		pipeReader, pipeWriter := io.Pipe()
+
+		r := &zstdByteStreamChunkReader{
 			client:        client,
 			cancel:        cancel,
-			pool:          ba.zstdPool,
+			pipeReader:    pipeReader,
 			readChunkSize: ba.readChunkSize,
-		}, buffer.BackendProvided(buffer.Irreparable(digest)))
+		}
+
+		// Start goroutine to read from gRPC and write to pipe.
+		r.wg.Add(1)
+		go func() {
+			defer r.wg.Done()
+			defer pipeWriter.Close()
+			for {
+				chunk, err := client.Recv()
+				if err != nil {
+					if err != io.EOF {
+						pipeWriter.CloseWithError(err)
+					}
+					return
+				}
+				if _, writeErr := pipeWriter.Write(chunk.Data); writeErr != nil {
+					return
+				}
+			}
+		}()
+
+		decoder, err := ba.zstdPool.NewDecoder(ctx, pipeReader)
+		if err != nil {
+			pipeReader.CloseWithError(err)
+			cancel()
+			return buffer.NewBufferFromError(err)
+		}
+		r.decoder = decoder
+
+		return buffer.NewCASBufferFromChunkReader(digest, r, buffer.BackendProvided(buffer.Irreparable(digest)))
 	}
 
 	return buffer.NewCASBufferFromChunkReader(digest, &byteStreamChunkReader{

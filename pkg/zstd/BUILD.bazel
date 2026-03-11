@@ -27,7 +27,7 @@ go_test(
     srcs = ["bounded_pool_test.go"],
     deps = [
         ":zstd",
-        "@com_github_klauspost_compress//zstd:go_default_library",
+        "@com_github_klauspost_compress//zstd",
         "@com_github_stretchr_testify//require",
     ],
 )

@@ -1675,11 +1675,11 @@ func (x *DeadlineEnforcingBlobAccess) GetBackend() *BlobAccessConfiguration {
 }
 
 type GrpcBlobAccessConfiguration struct {
-	state                 protoimpl.MessageState    `protogen:"open.v1"`
-	Client                *grpc.ClientConfiguration `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
-	EnableZstdCompression bool                      `protobuf:"varint,4,opt,name=enable_zstd_compression,json=enableZstdCompression,proto3" json:"enable_zstd_compression,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state             protoimpl.MessageState    `protogen:"open.v1"`
+	Client            *grpc.ClientConfiguration `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
+	EnableCompression bool                      `protobuf:"varint,2,opt,name=enable_compression,json=enableCompression,proto3" json:"enable_compression,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GrpcBlobAccessConfiguration) Reset() {
@@ -1719,9 +1719,9 @@ func (x *GrpcBlobAccessConfiguration) GetClient() *grpc.ClientConfiguration {
 	return nil
 }
 
-func (x *GrpcBlobAccessConfiguration) GetEnableZstdCompression() bool {
+func (x *GrpcBlobAccessConfiguration) GetEnableCompression() bool {
 	if x != nil {
-		return x.EnableZstdCompression
+		return x.EnableCompression
 	}
 	return false
 }
@@ -2124,10 +2124,10 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\x05value\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x05value:\x028\x01\"\xa8\x01\n" +
 	"\x1bDeadlineEnforcingBlobAccess\x123\n" +
 	"\atimeout\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12T\n" +
-	"\abackend\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\"\xa6\x01\n" +
+	"\abackend\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\"\x97\x01\n" +
 	"\x1bGrpcBlobAccessConfiguration\x12I\n" +
-	"\x06client\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\x06client\x126\n" +
-	"\x17enable_zstd_compression\x18\x04 \x01(\bR\x15enableZstdCompressionJ\x04\b\x02\x10\x03BCZAgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstoreb\x06proto3"
+	"\x06client\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\x06client\x12-\n" +
+	"\x12enable_compression\x18\x02 \x01(\bR\x11enableCompressionBCZAgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstoreb\x06proto3"
 
 var (
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescOnce sync.Once
