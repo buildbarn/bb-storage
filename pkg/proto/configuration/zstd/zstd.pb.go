@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.4
-// source: pkg/proto/configuration/zstd/zstd.proto
+// source: github.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto
 
 package zstd
 
@@ -34,7 +34,7 @@ type PoolConfiguration struct {
 
 func (x *PoolConfiguration) Reset() {
 	*x = PoolConfiguration{}
-	mi := &file_pkg_proto_configuration_zstd_zstd_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *PoolConfiguration) String() string {
 func (*PoolConfiguration) ProtoMessage() {}
 
 func (x *PoolConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_configuration_zstd_zstd_proto_msgTypes[0]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *PoolConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PoolConfiguration.ProtoReflect.Descriptor instead.
 func (*PoolConfiguration) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_configuration_zstd_zstd_proto_rawDescGZIP(), []int{0}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PoolConfiguration) GetMaximumEncoders() int64 {
@@ -97,11 +97,11 @@ func (x *PoolConfiguration) GetEncoderLevel() int32 {
 	return 0
 }
 
-var File_pkg_proto_configuration_zstd_zstd_proto protoreflect.FileDescriptor
+var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto protoreflect.FileDescriptor
 
-const file_pkg_proto_configuration_zstd_zstd_proto_rawDesc = "" +
+const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDesc = "" +
 	"\n" +
-	"'pkg/proto/configuration/zstd/zstd.proto\x12\x1cbuildbarn.configuration.zstd\"\x84\x02\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto\x12\x1cbuildbarn.configuration.zstd\"\x84\x02\n" +
 	"\x11PoolConfiguration\x12)\n" +
 	"\x10maximum_encoders\x18\x01 \x01(\x03R\x0fmaximumEncoders\x12)\n" +
 	"\x10maximum_decoders\x18\x02 \x01(\x03R\x0fmaximumDecoders\x129\n" +
@@ -110,22 +110,22 @@ const file_pkg_proto_configuration_zstd_zstd_proto_rawDesc = "" +
 	"\rencoder_level\x18\x05 \x01(\x05R\fencoderLevelB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/zstdb\x06proto3"
 
 var (
-	file_pkg_proto_configuration_zstd_zstd_proto_rawDescOnce sync.Once
-	file_pkg_proto_configuration_zstd_zstd_proto_rawDescData []byte
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescOnce sync.Once
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescData []byte
 )
 
-func file_pkg_proto_configuration_zstd_zstd_proto_rawDescGZIP() []byte {
-	file_pkg_proto_configuration_zstd_zstd_proto_rawDescOnce.Do(func() {
-		file_pkg_proto_configuration_zstd_zstd_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_zstd_zstd_proto_rawDesc), len(file_pkg_proto_configuration_zstd_zstd_proto_rawDesc)))
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescGZIP() []byte {
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescOnce.Do(func() {
+		file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDesc)))
 	})
-	return file_pkg_proto_configuration_zstd_zstd_proto_rawDescData
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDescData
 }
 
-var file_pkg_proto_configuration_zstd_zstd_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_pkg_proto_configuration_zstd_zstd_proto_goTypes = []any{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_goTypes = []any{
 	(*PoolConfiguration)(nil), // 0: buildbarn.configuration.zstd.PoolConfiguration
 }
-var file_pkg_proto_configuration_zstd_zstd_proto_depIdxs = []int32{
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -133,26 +133,26 @@ var file_pkg_proto_configuration_zstd_zstd_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_pkg_proto_configuration_zstd_zstd_proto_init() }
-func file_pkg_proto_configuration_zstd_zstd_proto_init() {
-	if File_pkg_proto_configuration_zstd_zstd_proto != nil {
+func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_init() }
+func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_init() {
+	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_configuration_zstd_zstd_proto_rawDesc), len(file_pkg_proto_configuration_zstd_zstd_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_pkg_proto_configuration_zstd_zstd_proto_goTypes,
-		DependencyIndexes: file_pkg_proto_configuration_zstd_zstd_proto_depIdxs,
-		MessageInfos:      file_pkg_proto_configuration_zstd_zstd_proto_msgTypes,
+		GoTypes:           file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_goTypes,
+		DependencyIndexes: file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_depIdxs,
+		MessageInfos:      file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_msgTypes,
 	}.Build()
-	File_pkg_proto_configuration_zstd_zstd_proto = out.File
-	file_pkg_proto_configuration_zstd_zstd_proto_goTypes = nil
-	file_pkg_proto_configuration_zstd_zstd_proto_depIdxs = nil
+	File_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto = out.File
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_goTypes = nil
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_zstd_zstd_proto_depIdxs = nil
 }
