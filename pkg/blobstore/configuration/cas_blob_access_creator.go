@@ -96,10 +96,14 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
+		var zstdPool bb_zstd.Pool
+		if backend.Grpc.EnableCompression {
+			zstdPool = bac.zstdPool
+		}
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, bac.zstdPool),
+			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, zstdPool),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:
