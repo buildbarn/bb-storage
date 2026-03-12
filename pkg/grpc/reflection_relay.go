@@ -44,7 +44,10 @@ func registerReflectionServer(backendCtx context.Context, s *grpc.Server, server
 	}
 
 	// Make a combined descriptor and extension resolver.
-	reflectionBackends := []protoresolve.Resolver{}
+	reflectionBackends := []protoresolve.Resolver{
+		// First serve our own services.
+		protoresolve.GlobalDescriptors,
+	}
 	for _, relay := range serverRelayConfigurations {
 		resolver := grpcreflect.NewClientAuto(backendCtx, relay.grpcClient).AsResolver()
 		reflectionBackends = append(reflectionBackends, resolver)
