@@ -38,6 +38,18 @@ func relaunchIfPID1(currentPID int) {
 			log.Fatal("Failed to relaunch current process: ", err)
 		}
 
+		// Forward incoming termination signals to child process.
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, terminationSignals...)
+		go func() {
+			for {
+				receivedSignal := <-signalChan
+				if err := syscall.Kill(childPID, receivedSignal.(syscall.Signal)); err != nil {
+					log.Printf("Failed to forward signal %#v to child process: %s", receivedSignal.String(), err)
+				}
+			}
+		}()
+
 		for {
 			var status syscall.WaitStatus
 			waitedPID, err := syscall.Wait4(-1, &status, 0, nil)
