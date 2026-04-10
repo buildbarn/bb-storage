@@ -1,11 +1,8 @@
-//go:build freebsd
-// +build freebsd
+//go:build linux || freebsd
 
 package blockdevice
 
 import (
-	"unsafe"
-
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sys/unix"
@@ -21,28 +18,22 @@ import (
 //
 // Writes may only occur at sector boundaries, as unaligned writes would
 // cause unnecessary read operations against underlying storage.
-func NewBlockDeviceFromDevice(path string) (BlockDevice, int, int64, error) {
+func NewBlockDeviceFromDevice(path string, useMmap, syncAfterWrite bool) (BlockDevice, int, int64, error) {
 	fd, err := unix.Open(path, unix.O_RDWR, 0)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to open device node %#v", path)
 	}
 
-	// Obtain the size of the device and its individual sectors.
-	var sectorSizeBytes int32
-	if _, _, err := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), unix.DIOCGSECTORSIZE, uintptr(unsafe.Pointer(&sectorSizeBytes))); err != 0 {
+	sectorSizeBytes, deviceSizeBytes, err := getBlockDeviceInfo(fd)
+	if err != nil {
 		unix.Close(fd)
-		return nil, 0, 0, util.StatusWrapf(err, "Failed to obtain sector size of device node %#v", path)
-	}
-	var deviceSizeBytes int64
-	if _, _, err := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), unix.DIOCGMEDIASIZE, uintptr(unsafe.Pointer(&deviceSizeBytes))); err != 0 {
-		unix.Close(fd)
-		return nil, 0, 0, util.StatusWrapf(err, "Failed to obtain media size of device node %#v", path)
+		return nil, 0, 0, util.StatusWrapf(err, "Failed to obtain device geometry for %#v", path)
 	}
 
-	bd, err := newMemoryMappedBlockDevice(fd, int(deviceSizeBytes))
+	bd, err := newFDBlockDevice(fd, int(deviceSizeBytes), useMmap, syncAfterWrite)
 	if err != nil {
 		unix.Close(fd)
 		return nil, 0, 0, err
 	}
-	return bd, int(sectorSizeBytes), deviceSizeBytes / int64(sectorSizeBytes), nil
+	return bd, sectorSizeBytes, deviceSizeBytes / int64(sectorSizeBytes), nil
 }

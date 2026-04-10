@@ -24,7 +24,7 @@ var (
 
 // NewBlockDeviceFromFile creates a BlockDevice that is backed by a
 // regular file stored in a file system.
-func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bool) (BlockDevice, int, int64, error) {
+func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize, preallocate, useMmap, syncAfterWrite bool) (BlockDevice, int, int64, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to get absolute path for %#v", path)

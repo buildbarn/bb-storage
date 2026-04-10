@@ -11,6 +11,15 @@ message FileConfiguration {
   // The desired size of the regular file. The provided size is rounded
   // up according to the block size of the file system.
   int64 size_bytes = 2;
+
+  // When set to true (or left unset), use fallocate() to preallocate
+  // disk space for the file at creation time. This ensures that no
+  // out-of-space errors occur later during writes, and may reduce file
+  // fragmentation.
+  //
+  // This option is only supported on Linux and FreeBSD. On other platforms
+  // it is silently ignored.
+  optional bool preallocate = 3;
 }
 
 message Configuration {
@@ -39,4 +48,20 @@ message Configuration {
   // this process to crash, due to the Go runtime being unable to create
   // any more threads.
   int64 write_concurrency_limit = 3;
+
+  // When set to true (or left unset), use a memory map (mmap) for
+  // reads. When set to false, use pread() system calls instead. Using
+  // pread avoids page fault overhead and provides more predictable I/O
+  // behavior.
+  optional bool mmap = 4;
+
+  // When set to true, call sync_file_range() after each pwrite() to
+  // initiate writeback of the written data range. This reduces the
+  // amount of dirty data that accumulates in the page cache and can
+  // prevent latency spikes caused by the kernel flushing large amounts
+  // of dirty data at once.
+  //
+  // This option is only supported on Linux. On other platforms it is
+  // silently ignored.
+  bool sync_after_write = 5;
 }

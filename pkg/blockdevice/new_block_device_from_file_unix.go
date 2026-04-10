@@ -16,7 +16,7 @@ import (
 // using NewBlockDeviceFromDevice, but is often easier to set up in
 // environments where spare disks (or the privileges needed to access
 // those) aren't readily available.
-func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bool) (BlockDevice, int, int64, error) {
+func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize, preallocate, useMmap, syncAfterWrite bool) (BlockDevice, int, int64, error) {
 	flags := unix.O_CREAT | unix.O_RDWR
 	if zeroInitialize {
 		flags |= unix.O_TRUNC
@@ -41,7 +41,14 @@ func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bo
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to truncate file %#v to %d bytes", path, sizeBytes)
 	}
 
-	bd, err := newMemoryMappedBlockDevice(fd, int(sizeBytes))
+	if preallocate {
+		if err := allocateFile(fd, sizeBytes); err != nil {
+			unix.Close(fd)
+			return nil, 0, 0, util.StatusWrapf(err, "Failed to preallocate disk space for file %#v", path)
+		}
+	}
+
+	bd, err := newFDBlockDevice(fd, int(sizeBytes), useMmap, syncAfterWrite)
 	if err != nil {
 		unix.Close(fd)
 		return nil, 0, 0, err

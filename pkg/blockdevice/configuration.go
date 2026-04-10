@@ -18,16 +18,19 @@ func NewBlockDeviceFromConfiguration(configuration *pb.Configuration, mayZeroIni
 	var blockDevice BlockDevice
 	var sectorSizeBytes int
 	var sectorCount int64
+	useMmap := configuration.Mmap == nil || *configuration.Mmap
+	syncAfterWrite := configuration.SyncAfterWrite
 	switch source := configuration.Source.(type) {
 	case *pb.Configuration_DevicePath:
 		var err error
-		blockDevice, sectorSizeBytes, sectorCount, err = NewBlockDeviceFromDevice(source.DevicePath)
+		blockDevice, sectorSizeBytes, sectorCount, err = NewBlockDeviceFromDevice(source.DevicePath, useMmap, syncAfterWrite)
 		if err != nil {
 			return nil, 0, 0, err
 		}
 	case *pb.Configuration_File:
 		var err error
-		blockDevice, sectorSizeBytes, sectorCount, err = NewBlockDeviceFromFile(source.File.Path, int(source.File.SizeBytes), mayZeroInitialize)
+		preallocate := source.File.Preallocate == nil || *source.File.Preallocate
+		blockDevice, sectorSizeBytes, sectorCount, err = NewBlockDeviceFromFile(source.File.Path, int(source.File.SizeBytes), mayZeroInitialize, preallocate, useMmap, syncAfterWrite)
 		if err != nil {
 			return nil, 0, 0, err
 		}

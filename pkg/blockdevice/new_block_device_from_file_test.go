@@ -15,9 +15,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	zeroInitialize = true
+	preallocate    = true
+	useMmap        = true
+	syncAfterWrite = true
+)
+
 func TestNewBlockDeviceFromFile(t *testing.T) {
 	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
-	blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 123456, true)
+	blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 123456, zeroInitialize, preallocate, useMmap, syncAfterWrite)
 	require.NoError(t, err)
 
 	// The sector size should be a power of two, and the number of
@@ -87,7 +94,7 @@ func TestNewBlockDeviceFromFileNoZeroInitialize(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
-	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, false)
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, !zeroInitialize, preallocate, useMmap, syncAfterWrite)
 	require.NoError(t, err)
 
 	var b [5]byte
@@ -111,7 +118,7 @@ func TestNewBlockDeviceFromFileZeroInitialize(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
-	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, true)
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 5, zeroInitialize, preallocate, useMmap, syncAfterWrite)
 	require.NoError(t, err)
 
 	var b [5]byte
@@ -132,7 +139,7 @@ func TestNewBlockDeviceFromFileRelativePath(t *testing.T) {
 	require.NoError(t, os.Chdir(tempDir))
 
 	blockDevicePath := "bd_relative"
-	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 8, false)
+	blockDevice, _, _, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 8, !zeroInitialize, preallocate, useMmap, syncAfterWrite)
 	require.NoError(t, err)
 	require.NoError(t, blockDevice.Close())
 
@@ -140,4 +147,37 @@ func TestNewBlockDeviceFromFileRelativePath(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, os.Chdir(originalWd))
+}
+
+func TestNewBlockDeviceFromFilePread(t *testing.T) {
+	blockDevicePath := filepath.Join(t.TempDir(), "blockdevice")
+	blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromFile(blockDevicePath, 123456, zeroInitialize, preallocate, !useMmap, syncAfterWrite)
+	require.NoError(t, err)
+
+	// The sector size should be a power of two, and the number of
+	// sectors should be sufficient to hold the required space.
+	require.LessOrEqual(t, 512, sectorSizeBytes)
+	require.Equal(t, 0, sectorSizeBytes&(sectorSizeBytes-1))
+	require.Equal(t, int64((123456+sectorSizeBytes-1)/sectorSizeBytes), sectorCount)
+
+	// The file on disk should have a size that corresponds to the
+	// sector size and count.
+	fileInfo, err := os.Stat(blockDevicePath)
+	require.NoError(t, err)
+	require.Equal(t, int64(sectorSizeBytes)*sectorCount, fileInfo.Size())
+
+	// Test read, write and sync operations.
+	n, err := blockDevice.WriteAt([]byte("Hello"), 12345)
+	require.Equal(t, 5, n)
+	require.NoError(t, err)
+
+	var b [16]byte
+	n, err = blockDevice.ReadAt(b[:], 12340)
+	require.Equal(t, 16, n)
+	require.NoError(t, err)
+	require.Equal(t, []byte("\x00\x00\x00\x00\x00Hello\x00\x00\x00\x00\x00\x00"), b[:])
+
+	require.NoError(t, blockDevice.Sync())
+
+	require.NoError(t, blockDevice.Close())
 }

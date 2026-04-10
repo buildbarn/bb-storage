@@ -25,6 +25,7 @@ type FileConfiguration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	SizeBytes     int64                  `protobuf:"varint,2,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	Preallocate   *bool                  `protobuf:"varint,3,opt,name=preallocate,proto3,oneof" json:"preallocate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,6 +74,13 @@ func (x *FileConfiguration) GetSizeBytes() int64 {
 	return 0
 }
 
+func (x *FileConfiguration) GetPreallocate() bool {
+	if x != nil && x.Preallocate != nil {
+		return *x.Preallocate
+	}
+	return false
+}
+
 type Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Source:
@@ -81,6 +89,8 @@ type Configuration struct {
 	//	*Configuration_File
 	Source                isConfiguration_Source `protobuf_oneof:"source"`
 	WriteConcurrencyLimit int64                  `protobuf:"varint,3,opt,name=write_concurrency_limit,json=writeConcurrencyLimit,proto3" json:"write_concurrency_limit,omitempty"`
+	Mmap                  *bool                  `protobuf:"varint,4,opt,name=mmap,proto3,oneof" json:"mmap,omitempty"`
+	SyncAfterWrite        bool                   `protobuf:"varint,5,opt,name=sync_after_write,json=syncAfterWrite,proto3" json:"sync_after_write,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -147,6 +157,20 @@ func (x *Configuration) GetWriteConcurrencyLimit() int64 {
 	return 0
 }
 
+func (x *Configuration) GetMmap() bool {
+	if x != nil && x.Mmap != nil {
+		return *x.Mmap
+	}
+	return false
+}
+
+func (x *Configuration) GetSyncAfterWrite() bool {
+	if x != nil {
+		return x.SyncAfterWrite
+	}
+	return false
+}
+
 type isConfiguration_Source interface {
 	isConfiguration_Source()
 }
@@ -167,17 +191,22 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blo
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blockdevice_proto_rawDesc = "" +
 	"\n" +
-	"Ugithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x12#buildbarn.configuration.blockdevice\"F\n" +
+	"Ugithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x12#buildbarn.configuration.blockdevice\"}\n" +
 	"\x11FileConfiguration\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\"\xc2\x01\n" +
+	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\x12%\n" +
+	"\vpreallocate\x18\x03 \x01(\bH\x00R\vpreallocate\x88\x01\x01B\x0e\n" +
+	"\f_preallocate\"\x8e\x02\n" +
 	"\rConfiguration\x12!\n" +
 	"\vdevice_path\x18\x01 \x01(\tH\x00R\n" +
 	"devicePath\x12L\n" +
 	"\x04file\x18\x02 \x01(\v26.buildbarn.configuration.blockdevice.FileConfigurationH\x00R\x04file\x126\n" +
-	"\x17write_concurrency_limit\x18\x03 \x01(\x03R\x15writeConcurrencyLimitB\b\n" +
-	"\x06sourceBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdeviceb\x06proto3"
+	"\x17write_concurrency_limit\x18\x03 \x01(\x03R\x15writeConcurrencyLimit\x12\x17\n" +
+	"\x04mmap\x18\x04 \x01(\bH\x01R\x04mmap\x88\x01\x01\x12(\n" +
+	"\x10sync_after_write\x18\x05 \x01(\bR\x0esyncAfterWriteB\b\n" +
+	"\x06sourceB\a\n" +
+	"\x05_mmapBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdeviceb\x06proto3"
 
 var (
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blockdevice_proto_rawDescOnce sync.Once
@@ -212,6 +241,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_bl
 	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blockdevice_proto != nil {
 		return
 	}
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blockdevice_proto_msgTypes[0].OneofWrappers = []any{}
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blockdevice_blockdevice_proto_msgTypes[1].OneofWrappers = []any{
 		(*Configuration_DevicePath)(nil),
 		(*Configuration_File)(nil),

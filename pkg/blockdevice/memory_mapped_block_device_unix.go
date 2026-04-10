@@ -15,54 +15,77 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type memoryMappedBlockDevice struct {
-	fd   int
-	data []byte
+type fdBlockDevice struct {
+	fd             int
+	sizeBytes      int64
+	data           []byte // non-nil when mmap is enabled
+	syncAfterWrite bool
 }
 
-// newMemoryMappedBlockDevice creates a BlockDevice from a file
-// descriptor referring either to a regular file or UNIX device node. To
-// speed up reads, a memory map is used.
-func newMemoryMappedBlockDevice(fd, sizeBytes int) (BlockDevice, error) {
-	data, err := unix.Mmap(fd, 0, sizeBytes, syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to memory map block device")
+// newFDBlockDevice creates a BlockDevice from a file descriptor
+// referring either to a regular file or UNIX device node. When useMmap
+// is true, a read-only memory map is created to speed up reads.
+// Otherwise, pread() is used for reads.
+func newFDBlockDevice(fd, sizeBytes int, useMmap, syncAfterWrite bool) (BlockDevice, error) {
+	bd := &fdBlockDevice{
+		fd:             fd,
+		sizeBytes:      int64(sizeBytes),
+		syncAfterWrite: syncAfterWrite,
 	}
-	return &memoryMappedBlockDevice{
-		fd:   fd,
-		data: data,
-	}, nil
+	if useMmap {
+		data, err := unix.Mmap(fd, 0, sizeBytes, syscall.PROT_READ, syscall.MAP_SHARED)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to memory map block device")
+		}
+		bd.data = data
+	}
+	return bd, nil
 }
 
-func (bd *memoryMappedBlockDevice) ReadAt(p []byte, off int64) (n int, err error) {
-	// Let read actions go through the memory map to prevent system
-	// call overhead for commonly requested objects.
+func (bd *fdBlockDevice) ReadAt(p []byte, off int64) (n int, err error) {
 	if off < 0 {
 		return 0, syscall.EINVAL
 	}
-	if off > int64(len(bd.data)) {
+	if off >= bd.sizeBytes {
 		return 0, io.EOF
 	}
 
-	// Install a page fault handler, so that I/O errors against the
-	// memory map (e.g., due to disk failure) don't cause us to
-	// crash.
-	old := debug.SetPanicOnFault(true)
-	defer func() {
-		debug.SetPanicOnFault(old)
-		if recover() != nil {
-			err = status.Error(codes.Internal, "Page fault occurred while reading from memory map")
-		}
-	}()
+	if bd.data != nil {
+		// Install a page fault handler, so that I/O errors against the
+		// memory map (e.g., due to disk failure) don't cause us to
+		// crash.
+		old := debug.SetPanicOnFault(true)
+		defer func() {
+			debug.SetPanicOnFault(old)
+			if recover() != nil {
+				err = status.Error(codes.Internal, "Page fault occurred while reading from memory map")
+			}
+		}()
 
-	n = copy(p, bd.data[off:])
-	if n < len(p) {
-		err = io.EOF
+		n = copy(p, bd.data[off:])
+		if n < len(p) {
+			err = io.EOF
+		}
+		return n, err
 	}
-	return n, err
+
+	nTotal := 0
+	for len(p) > 0 {
+		n, err := unix.Pread(bd.fd, p, off)
+		nTotal += n
+		if err != nil {
+			return nTotal, err
+		}
+		if n == 0 {
+			return nTotal, io.EOF
+		}
+		p = p[n:]
+		off += int64(n)
+	}
+	return nTotal, nil
 }
 
-func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
+func (bd *fdBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 	// Let write actions go through the file descriptor. Doing so
 	// yields better performance, as writes through a memory map
 	// would trigger a page fault that causes data to be read.
@@ -75,6 +98,8 @@ func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 	//
 	// TODO: Maybe it makes sense to let unaligned writes that would
 	// trigger reads anyway to go through the memory map?
+
+	startOff := off
 	nTotal := 0
 	for len(p) > 0 {
 		n, err := unix.Pwrite(bd.fd, p, off)
@@ -85,18 +110,25 @@ func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 		p = p[n:]
 		off += int64(n)
 	}
+	if bd.syncAfterWrite {
+		if err := syncDataRange(bd.fd, startOff, int64(nTotal)); err != nil {
+			return nTotal, util.StatusWrap(err, "Failed to sync data range after write")
+		}
+	}
 	return nTotal, nil
 }
 
-func (bd *memoryMappedBlockDevice) Sync() error {
+func (bd *fdBlockDevice) Sync() error {
 	return unix.Fsync(bd.fd)
 }
 
-func (bd *memoryMappedBlockDevice) Close() error {
+func (bd *fdBlockDevice) Close() error {
 	var errors []error
 
-	if err := unix.Munmap(bd.data); err != nil {
-		errors = append(errors, util.StatusWrap(err, "Failed to unmap memory region"))
+	if bd.data != nil {
+		if err := unix.Munmap(bd.data); err != nil {
+			errors = append(errors, util.StatusWrap(err, "Failed to unmap memory region"))
+		}
 	}
 
 	if err := unix.Close(bd.fd); err != nil {
