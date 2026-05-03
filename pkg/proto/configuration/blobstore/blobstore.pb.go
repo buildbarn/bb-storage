@@ -96,6 +96,7 @@ type BlobAccessConfiguration struct {
 	//	*BlobAccessConfiguration_ExistenceCaching
 	//	*BlobAccessConfiguration_CompletenessChecking
 	//	*BlobAccessConfiguration_ReadFallback
+	//	*BlobAccessConfiguration_Fallback
 	//	*BlobAccessConfiguration_ReferenceExpanding
 	//	*BlobAccessConfiguration_Demultiplexing
 	//	*BlobAccessConfiguration_HierarchicalInstanceNames
@@ -224,6 +225,15 @@ func (x *BlobAccessConfiguration) GetReadFallback() *ReadFallbackBlobAccessConfi
 	if x != nil {
 		if x, ok := x.Backend.(*BlobAccessConfiguration_ReadFallback); ok {
 			return x.ReadFallback
+		}
+	}
+	return nil
+}
+
+func (x *BlobAccessConfiguration) GetFallback() *FallbackBlobAccessConfiguration {
+	if x != nil {
+		if x, ok := x.Backend.(*BlobAccessConfiguration_Fallback); ok {
+			return x.Fallback
 		}
 	}
 	return nil
@@ -359,6 +369,10 @@ type BlobAccessConfiguration_ReadFallback struct {
 	ReadFallback *ReadFallbackBlobAccessConfiguration `protobuf:"bytes,18,opt,name=read_fallback,json=readFallback,proto3,oneof"`
 }
 
+type BlobAccessConfiguration_Fallback struct {
+	Fallback *FallbackBlobAccessConfiguration `protobuf:"bytes,29,opt,name=fallback,proto3,oneof"`
+}
+
 type BlobAccessConfiguration_ReferenceExpanding struct {
 	ReferenceExpanding *ReferenceExpandingBlobAccessConfiguration `protobuf:"bytes,19,opt,name=reference_expanding,json=referenceExpanding,proto3,oneof"`
 }
@@ -416,6 +430,8 @@ func (*BlobAccessConfiguration_ExistenceCaching) isBlobAccessConfiguration_Backe
 func (*BlobAccessConfiguration_CompletenessChecking) isBlobAccessConfiguration_Backend() {}
 
 func (*BlobAccessConfiguration_ReadFallback) isBlobAccessConfiguration_Backend() {}
+
+func (*BlobAccessConfiguration_Fallback) isBlobAccessConfiguration_Backend() {}
 
 func (*BlobAccessConfiguration_ReferenceExpanding) isBlobAccessConfiguration_Backend() {}
 
@@ -960,6 +976,58 @@ func (x *ReadFallbackBlobAccessConfiguration) GetReplicator() *BlobReplicatorCon
 	return nil
 }
 
+type FallbackBlobAccessConfiguration struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Primary       *BlobAccessConfiguration `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
+	Secondary     *BlobAccessConfiguration `protobuf:"bytes,2,opt,name=secondary,proto3" json:"secondary,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FallbackBlobAccessConfiguration) Reset() {
+	*x = FallbackBlobAccessConfiguration{}
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FallbackBlobAccessConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FallbackBlobAccessConfiguration) ProtoMessage() {}
+
+func (x *FallbackBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FallbackBlobAccessConfiguration.ProtoReflect.Descriptor instead.
+func (*FallbackBlobAccessConfiguration) Descriptor() ([]byte, []int) {
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *FallbackBlobAccessConfiguration) GetPrimary() *BlobAccessConfiguration {
+	if x != nil {
+		return x.Primary
+	}
+	return nil
+}
+
+func (x *FallbackBlobAccessConfiguration) GetSecondary() *BlobAccessConfiguration {
+	if x != nil {
+		return x.Secondary
+	}
+	return nil
+}
+
 type ReferenceExpandingBlobAccessConfiguration struct {
 	state                             protoimpl.MessageState          `protogen:"open.v1"`
 	IndirectContentAddressableStorage *BlobAccessConfiguration        `protobuf:"bytes,1,opt,name=indirect_content_addressable_storage,json=indirectContentAddressableStorage,proto3" json:"indirect_content_addressable_storage,omitempty"`
@@ -973,7 +1041,7 @@ type ReferenceExpandingBlobAccessConfiguration struct {
 
 func (x *ReferenceExpandingBlobAccessConfiguration) Reset() {
 	*x = ReferenceExpandingBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -985,7 +1053,7 @@ func (x *ReferenceExpandingBlobAccessConfiguration) String() string {
 func (*ReferenceExpandingBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *ReferenceExpandingBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -998,7 +1066,7 @@ func (x *ReferenceExpandingBlobAccessConfiguration) ProtoReflect() protoreflect.
 
 // Deprecated: Use ReferenceExpandingBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*ReferenceExpandingBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{9}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReferenceExpandingBlobAccessConfiguration) GetIndirectContentAddressableStorage() *BlobAccessConfiguration {
@@ -1053,7 +1121,7 @@ type BlobReplicatorConfiguration struct {
 
 func (x *BlobReplicatorConfiguration) Reset() {
 	*x = BlobReplicatorConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1133,7 @@ func (x *BlobReplicatorConfiguration) String() string {
 func (*BlobReplicatorConfiguration) ProtoMessage() {}
 
 func (x *BlobReplicatorConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1146,7 @@ func (x *BlobReplicatorConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlobReplicatorConfiguration.ProtoReflect.Descriptor instead.
 func (*BlobReplicatorConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{10}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *BlobReplicatorConfiguration) GetMode() isBlobReplicatorConfiguration_Mode {
@@ -1192,7 +1260,7 @@ type QueuedBlobReplicatorConfiguration struct {
 
 func (x *QueuedBlobReplicatorConfiguration) Reset() {
 	*x = QueuedBlobReplicatorConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1204,7 +1272,7 @@ func (x *QueuedBlobReplicatorConfiguration) String() string {
 func (*QueuedBlobReplicatorConfiguration) ProtoMessage() {}
 
 func (x *QueuedBlobReplicatorConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1217,7 +1285,7 @@ func (x *QueuedBlobReplicatorConfiguration) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use QueuedBlobReplicatorConfiguration.ProtoReflect.Descriptor instead.
 func (*QueuedBlobReplicatorConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{11}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueuedBlobReplicatorConfiguration) GetBase() *BlobReplicatorConfiguration {
@@ -1244,7 +1312,7 @@ type ConcurrencyLimitingBlobReplicatorConfiguration struct {
 
 func (x *ConcurrencyLimitingBlobReplicatorConfiguration) Reset() {
 	*x = ConcurrencyLimitingBlobReplicatorConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1256,7 +1324,7 @@ func (x *ConcurrencyLimitingBlobReplicatorConfiguration) String() string {
 func (*ConcurrencyLimitingBlobReplicatorConfiguration) ProtoMessage() {}
 
 func (x *ConcurrencyLimitingBlobReplicatorConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1269,7 +1337,7 @@ func (x *ConcurrencyLimitingBlobReplicatorConfiguration) ProtoReflect() protoref
 
 // Deprecated: Use ConcurrencyLimitingBlobReplicatorConfiguration.ProtoReflect.Descriptor instead.
 func (*ConcurrencyLimitingBlobReplicatorConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{12}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ConcurrencyLimitingBlobReplicatorConfiguration) GetBase() *BlobReplicatorConfiguration {
@@ -1295,7 +1363,7 @@ type DemultiplexingBlobAccessConfiguration struct {
 
 func (x *DemultiplexingBlobAccessConfiguration) Reset() {
 	*x = DemultiplexingBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[13]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1307,7 +1375,7 @@ func (x *DemultiplexingBlobAccessConfiguration) String() string {
 func (*DemultiplexingBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *DemultiplexingBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[13]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1320,7 +1388,7 @@ func (x *DemultiplexingBlobAccessConfiguration) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use DemultiplexingBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*DemultiplexingBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{13}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DemultiplexingBlobAccessConfiguration) GetInstanceNamePrefixes() map[string]*DemultiplexedBlobAccessConfiguration {
@@ -1340,7 +1408,7 @@ type DemultiplexedBlobAccessConfiguration struct {
 
 func (x *DemultiplexedBlobAccessConfiguration) Reset() {
 	*x = DemultiplexedBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[14]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1352,7 +1420,7 @@ func (x *DemultiplexedBlobAccessConfiguration) String() string {
 func (*DemultiplexedBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *DemultiplexedBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[14]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1365,7 +1433,7 @@ func (x *DemultiplexedBlobAccessConfiguration) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use DemultiplexedBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*DemultiplexedBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{14}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DemultiplexedBlobAccessConfiguration) GetBackend() *BlobAccessConfiguration {
@@ -1394,7 +1462,7 @@ type ActionResultExpiringBlobAccessConfiguration struct {
 
 func (x *ActionResultExpiringBlobAccessConfiguration) Reset() {
 	*x = ActionResultExpiringBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[15]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1406,7 +1474,7 @@ func (x *ActionResultExpiringBlobAccessConfiguration) String() string {
 func (*ActionResultExpiringBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *ActionResultExpiringBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[15]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1419,7 +1487,7 @@ func (x *ActionResultExpiringBlobAccessConfiguration) ProtoReflect() protoreflec
 
 // Deprecated: Use ActionResultExpiringBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*ActionResultExpiringBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{15}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ActionResultExpiringBlobAccessConfiguration) GetBackend() *BlobAccessConfiguration {
@@ -1462,7 +1530,7 @@ type ReadCanaryingBlobAccessConfiguration struct {
 
 func (x *ReadCanaryingBlobAccessConfiguration) Reset() {
 	*x = ReadCanaryingBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[16]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1474,7 +1542,7 @@ func (x *ReadCanaryingBlobAccessConfiguration) String() string {
 func (*ReadCanaryingBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *ReadCanaryingBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[16]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1487,7 +1555,7 @@ func (x *ReadCanaryingBlobAccessConfiguration) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ReadCanaryingBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*ReadCanaryingBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{16}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReadCanaryingBlobAccessConfiguration) GetSource() *BlobAccessConfiguration {
@@ -1528,7 +1596,7 @@ type ZIPBlobAccessConfiguration struct {
 
 func (x *ZIPBlobAccessConfiguration) Reset() {
 	*x = ZIPBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[17]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1608,7 @@ func (x *ZIPBlobAccessConfiguration) String() string {
 func (*ZIPBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *ZIPBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[17]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1621,7 @@ func (x *ZIPBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ZIPBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*ZIPBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{17}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ZIPBlobAccessConfiguration) GetPath() string {
@@ -1580,7 +1648,7 @@ type WithLabelsBlobAccessConfiguration struct {
 
 func (x *WithLabelsBlobAccessConfiguration) Reset() {
 	*x = WithLabelsBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[18]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1592,7 +1660,7 @@ func (x *WithLabelsBlobAccessConfiguration) String() string {
 func (*WithLabelsBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *WithLabelsBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[18]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1605,7 +1673,7 @@ func (x *WithLabelsBlobAccessConfiguration) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use WithLabelsBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*WithLabelsBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{18}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *WithLabelsBlobAccessConfiguration) GetBackend() *BlobAccessConfiguration {
@@ -1632,7 +1700,7 @@ type DeadlineEnforcingBlobAccess struct {
 
 func (x *DeadlineEnforcingBlobAccess) Reset() {
 	*x = DeadlineEnforcingBlobAccess{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[19]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1644,7 +1712,7 @@ func (x *DeadlineEnforcingBlobAccess) String() string {
 func (*DeadlineEnforcingBlobAccess) ProtoMessage() {}
 
 func (x *DeadlineEnforcingBlobAccess) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[19]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1657,7 +1725,7 @@ func (x *DeadlineEnforcingBlobAccess) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeadlineEnforcingBlobAccess.ProtoReflect.Descriptor instead.
 func (*DeadlineEnforcingBlobAccess) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{19}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeadlineEnforcingBlobAccess) GetTimeout() *durationpb.Duration {
@@ -1684,7 +1752,7 @@ type GrpcBlobAccessConfiguration struct {
 
 func (x *GrpcBlobAccessConfiguration) Reset() {
 	*x = GrpcBlobAccessConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[20]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1696,7 +1764,7 @@ func (x *GrpcBlobAccessConfiguration) String() string {
 func (*GrpcBlobAccessConfiguration) ProtoMessage() {}
 
 func (x *GrpcBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[20]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1709,7 +1777,7 @@ func (x *GrpcBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcBlobAccessConfiguration.ProtoReflect.Descriptor instead.
 func (*GrpcBlobAccessConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{20}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GrpcBlobAccessConfiguration) GetClient() *grpc.ClientConfiguration {
@@ -1736,7 +1804,7 @@ type ShardingBlobAccessConfiguration_Shard struct {
 
 func (x *ShardingBlobAccessConfiguration_Shard) Reset() {
 	*x = ShardingBlobAccessConfiguration_Shard{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[21]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1748,7 +1816,7 @@ func (x *ShardingBlobAccessConfiguration_Shard) String() string {
 func (*ShardingBlobAccessConfiguration_Shard) ProtoMessage() {}
 
 func (x *ShardingBlobAccessConfiguration_Shard) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[21]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1787,7 +1855,7 @@ type LocalBlobAccessConfiguration_KeyLocationMapInMemory struct {
 
 func (x *LocalBlobAccessConfiguration_KeyLocationMapInMemory) Reset() {
 	*x = LocalBlobAccessConfiguration_KeyLocationMapInMemory{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[23]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1799,7 +1867,7 @@ func (x *LocalBlobAccessConfiguration_KeyLocationMapInMemory) String() string {
 func (*LocalBlobAccessConfiguration_KeyLocationMapInMemory) ProtoMessage() {}
 
 func (x *LocalBlobAccessConfiguration_KeyLocationMapInMemory) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[23]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1831,7 +1899,7 @@ type LocalBlobAccessConfiguration_BlocksInMemory struct {
 
 func (x *LocalBlobAccessConfiguration_BlocksInMemory) Reset() {
 	*x = LocalBlobAccessConfiguration_BlocksInMemory{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[24]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1843,7 +1911,7 @@ func (x *LocalBlobAccessConfiguration_BlocksInMemory) String() string {
 func (*LocalBlobAccessConfiguration_BlocksInMemory) ProtoMessage() {}
 
 func (x *LocalBlobAccessConfiguration_BlocksInMemory) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[24]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1877,7 +1945,7 @@ type LocalBlobAccessConfiguration_BlocksOnBlockDevice struct {
 
 func (x *LocalBlobAccessConfiguration_BlocksOnBlockDevice) Reset() {
 	*x = LocalBlobAccessConfiguration_BlocksOnBlockDevice{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[25]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1889,7 +1957,7 @@ func (x *LocalBlobAccessConfiguration_BlocksOnBlockDevice) String() string {
 func (*LocalBlobAccessConfiguration_BlocksOnBlockDevice) ProtoMessage() {}
 
 func (x *LocalBlobAccessConfiguration_BlocksOnBlockDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[25]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1936,7 +2004,7 @@ type LocalBlobAccessConfiguration_Persistent struct {
 
 func (x *LocalBlobAccessConfiguration_Persistent) Reset() {
 	*x = LocalBlobAccessConfiguration_Persistent{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[26]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1948,7 +2016,7 @@ func (x *LocalBlobAccessConfiguration_Persistent) String() string {
 func (*LocalBlobAccessConfiguration_Persistent) ProtoMessage() {}
 
 func (x *LocalBlobAccessConfiguration_Persistent) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[26]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,7 +2053,7 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"Qgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xf3\x01\n" +
 	"\x16BlobstoreConfiguration\x12z\n" +
 	"\x1bcontent_addressable_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x19contentAddressableStorage\x12]\n" +
-	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xe3\x0f\n" +
+	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xc5\x10\n" +
 	"\x17BlobAccessConfiguration\x12j\n" +
 	"\fread_caching\x18\x04 \x01(\v2E.buildbarn.configuration.blobstore.ReadCachingBlobAccessConfigurationH\x00R\vreadCaching\x12T\n" +
 	"\x04grpc\x18\a \x01(\v2>.buildbarn.configuration.blobstore.GrpcBlobAccessConfigurationH\x00R\x04grpc\x12*\n" +
@@ -1995,7 +2063,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\x05local\x18\x0f \x01(\v2?.buildbarn.configuration.blobstore.LocalBlobAccessConfigurationH\x00R\x05local\x12y\n" +
 	"\x11existence_caching\x18\x10 \x01(\v2J.buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfigurationH\x00R\x10existenceCaching\x12\x85\x01\n" +
 	"\x15completeness_checking\x18\x11 \x01(\v2N.buildbarn.configuration.blobstore.CompletenessCheckingBlobAccessConfigurationH\x00R\x14completenessChecking\x12m\n" +
-	"\rread_fallback\x18\x12 \x01(\v2F.buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfigurationH\x00R\freadFallback\x12\x7f\n" +
+	"\rread_fallback\x18\x12 \x01(\v2F.buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfigurationH\x00R\freadFallback\x12`\n" +
+	"\bfallback\x18\x1d \x01(\v2B.buildbarn.configuration.blobstore.FallbackBlobAccessConfigurationH\x00R\bfallback\x12\x7f\n" +
 	"\x13reference_expanding\x18\x13 \x01(\v2L.buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfigurationH\x00R\x12referenceExpanding\x12r\n" +
 	"\x0edemultiplexing\x18\x14 \x01(\v2H.buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfigurationH\x00R\x0edemultiplexing\x12|\n" +
 	"\x1bhierarchical_instance_names\x18\x15 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationH\x00R\x19hierarchicalInstanceNames\x12\x86\x01\n" +
@@ -2072,7 +2141,10 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\tsecondary\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\tsecondary\x12^\n" +
 	"\n" +
 	"replicator\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\n" +
-	"replicator\"\xd1\x04\n" +
+	"replicator\"\xd1\x01\n" +
+	"\x1fFallbackBlobAccessConfiguration\x12T\n" +
+	"\aprimary\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\aprimary\x12X\n" +
+	"\tsecondary\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\tsecondary\"\xd1\x04\n" +
 	")ReferenceExpandingBlobAccessConfiguration\x12\x8b\x01\n" +
 	"$indirect_content_addressable_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR!indirectContentAddressableStorage\x12X\n" +
 	"\vaws_session\x18\x02 \x01(\v27.buildbarn.configuration.cloud.aws.SessionConfigurationR\n" +
@@ -2141,7 +2213,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blob
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescData
 }
 
-var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_goTypes = []any{
 	(*BlobstoreConfiguration)(nil),                         // 0: buildbarn.configuration.blobstore.BlobstoreConfiguration
 	(*BlobAccessConfiguration)(nil),                        // 1: buildbarn.configuration.blobstore.BlobAccessConfiguration
@@ -2152,118 +2224,122 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 	(*ExistenceCachingBlobAccessConfiguration)(nil),        // 6: buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration
 	(*CompletenessCheckingBlobAccessConfiguration)(nil),    // 7: buildbarn.configuration.blobstore.CompletenessCheckingBlobAccessConfiguration
 	(*ReadFallbackBlobAccessConfiguration)(nil),            // 8: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration
-	(*ReferenceExpandingBlobAccessConfiguration)(nil),      // 9: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration
-	(*BlobReplicatorConfiguration)(nil),                    // 10: buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	(*QueuedBlobReplicatorConfiguration)(nil),              // 11: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration
-	(*ConcurrencyLimitingBlobReplicatorConfiguration)(nil), // 12: buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration
-	(*DemultiplexingBlobAccessConfiguration)(nil),          // 13: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration
-	(*DemultiplexedBlobAccessConfiguration)(nil),           // 14: buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
-	(*ActionResultExpiringBlobAccessConfiguration)(nil),    // 15: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration
-	(*ReadCanaryingBlobAccessConfiguration)(nil),           // 16: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration
-	(*ZIPBlobAccessConfiguration)(nil),                     // 17: buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
-	(*WithLabelsBlobAccessConfiguration)(nil),              // 18: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
-	(*DeadlineEnforcingBlobAccess)(nil),                    // 19: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
-	(*GrpcBlobAccessConfiguration)(nil),                    // 20: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration
-	(*ShardingBlobAccessConfiguration_Shard)(nil),          // 21: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
-	nil, // 22: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry
-	(*LocalBlobAccessConfiguration_KeyLocationMapInMemory)(nil), // 23: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.KeyLocationMapInMemory
-	(*LocalBlobAccessConfiguration_BlocksInMemory)(nil),         // 24: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksInMemory
-	(*LocalBlobAccessConfiguration_BlocksOnBlockDevice)(nil),    // 25: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice
-	(*LocalBlobAccessConfiguration_Persistent)(nil),             // 26: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent
-	nil,                               // 27: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry
-	nil,                               // 28: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry
-	(*status.Status)(nil),             // 29: google.rpc.Status
-	(*blockdevice.Configuration)(nil), // 30: buildbarn.configuration.blockdevice.Configuration
-	(*digest.ExistenceCacheConfiguration)(nil), // 31: buildbarn.configuration.digest.ExistenceCacheConfiguration
-	(*aws.SessionConfiguration)(nil),           // 32: buildbarn.configuration.cloud.aws.SessionConfiguration
-	(*client.Configuration)(nil),               // 33: buildbarn.configuration.http.client.Configuration
-	(*gcp.ClientOptionsConfiguration)(nil),     // 34: buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
-	(*emptypb.Empty)(nil),                      // 35: google.protobuf.Empty
-	(*grpc.ClientConfiguration)(nil),           // 36: buildbarn.configuration.grpc.ClientConfiguration
-	(*durationpb.Duration)(nil),                // 37: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),              // 38: google.protobuf.Timestamp
+	(*FallbackBlobAccessConfiguration)(nil),                // 9: buildbarn.configuration.blobstore.FallbackBlobAccessConfiguration
+	(*ReferenceExpandingBlobAccessConfiguration)(nil),      // 10: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration
+	(*BlobReplicatorConfiguration)(nil),                    // 11: buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	(*QueuedBlobReplicatorConfiguration)(nil),              // 12: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration
+	(*ConcurrencyLimitingBlobReplicatorConfiguration)(nil), // 13: buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration
+	(*DemultiplexingBlobAccessConfiguration)(nil),          // 14: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration
+	(*DemultiplexedBlobAccessConfiguration)(nil),           // 15: buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
+	(*ActionResultExpiringBlobAccessConfiguration)(nil),    // 16: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration
+	(*ReadCanaryingBlobAccessConfiguration)(nil),           // 17: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration
+	(*ZIPBlobAccessConfiguration)(nil),                     // 18: buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
+	(*WithLabelsBlobAccessConfiguration)(nil),              // 19: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
+	(*DeadlineEnforcingBlobAccess)(nil),                    // 20: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
+	(*GrpcBlobAccessConfiguration)(nil),                    // 21: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration
+	(*ShardingBlobAccessConfiguration_Shard)(nil),          // 22: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
+	nil, // 23: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry
+	(*LocalBlobAccessConfiguration_KeyLocationMapInMemory)(nil), // 24: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.KeyLocationMapInMemory
+	(*LocalBlobAccessConfiguration_BlocksInMemory)(nil),         // 25: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksInMemory
+	(*LocalBlobAccessConfiguration_BlocksOnBlockDevice)(nil),    // 26: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice
+	(*LocalBlobAccessConfiguration_Persistent)(nil),             // 27: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent
+	nil,                               // 28: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry
+	nil,                               // 29: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry
+	(*status.Status)(nil),             // 30: google.rpc.Status
+	(*blockdevice.Configuration)(nil), // 31: buildbarn.configuration.blockdevice.Configuration
+	(*digest.ExistenceCacheConfiguration)(nil), // 32: buildbarn.configuration.digest.ExistenceCacheConfiguration
+	(*aws.SessionConfiguration)(nil),           // 33: buildbarn.configuration.cloud.aws.SessionConfiguration
+	(*client.Configuration)(nil),               // 34: buildbarn.configuration.http.client.Configuration
+	(*gcp.ClientOptionsConfiguration)(nil),     // 35: buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
+	(*emptypb.Empty)(nil),                      // 36: google.protobuf.Empty
+	(*grpc.ClientConfiguration)(nil),           // 37: buildbarn.configuration.grpc.ClientConfiguration
+	(*durationpb.Duration)(nil),                // 38: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil),              // 39: google.protobuf.Timestamp
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_depIdxs = []int32{
 	1,  // 0: buildbarn.configuration.blobstore.BlobstoreConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	1,  // 1: buildbarn.configuration.blobstore.BlobstoreConfiguration.action_cache:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	2,  // 2: buildbarn.configuration.blobstore.BlobAccessConfiguration.read_caching:type_name -> buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration
-	20, // 3: buildbarn.configuration.blobstore.BlobAccessConfiguration.grpc:type_name -> buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration
-	29, // 4: buildbarn.configuration.blobstore.BlobAccessConfiguration.error:type_name -> google.rpc.Status
+	21, // 3: buildbarn.configuration.blobstore.BlobAccessConfiguration.grpc:type_name -> buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration
+	30, // 4: buildbarn.configuration.blobstore.BlobAccessConfiguration.error:type_name -> google.rpc.Status
 	3,  // 5: buildbarn.configuration.blobstore.BlobAccessConfiguration.sharding:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration
 	4,  // 6: buildbarn.configuration.blobstore.BlobAccessConfiguration.mirrored:type_name -> buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration
 	5,  // 7: buildbarn.configuration.blobstore.BlobAccessConfiguration.local:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration
 	6,  // 8: buildbarn.configuration.blobstore.BlobAccessConfiguration.existence_caching:type_name -> buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration
 	7,  // 9: buildbarn.configuration.blobstore.BlobAccessConfiguration.completeness_checking:type_name -> buildbarn.configuration.blobstore.CompletenessCheckingBlobAccessConfiguration
 	8,  // 10: buildbarn.configuration.blobstore.BlobAccessConfiguration.read_fallback:type_name -> buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration
-	9,  // 11: buildbarn.configuration.blobstore.BlobAccessConfiguration.reference_expanding:type_name -> buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration
-	13, // 12: buildbarn.configuration.blobstore.BlobAccessConfiguration.demultiplexing:type_name -> buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration
-	1,  // 13: buildbarn.configuration.blobstore.BlobAccessConfiguration.hierarchical_instance_names:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	15, // 14: buildbarn.configuration.blobstore.BlobAccessConfiguration.action_result_expiring:type_name -> buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration
-	16, // 15: buildbarn.configuration.blobstore.BlobAccessConfiguration.read_canarying:type_name -> buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration
-	17, // 16: buildbarn.configuration.blobstore.BlobAccessConfiguration.zip_reading:type_name -> buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
-	17, // 17: buildbarn.configuration.blobstore.BlobAccessConfiguration.zip_writing:type_name -> buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
-	18, // 18: buildbarn.configuration.blobstore.BlobAccessConfiguration.with_labels:type_name -> buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
-	19, // 19: buildbarn.configuration.blobstore.BlobAccessConfiguration.deadline_enforcing:type_name -> buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
-	1,  // 20: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.slow:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 21: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.fast:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	10, // 22: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	22, // 23: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.shards:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry
-	1,  // 24: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.backend_a:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 25: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.backend_b:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	10, // 26: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.replicator_a_to_b:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	10, // 27: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.replicator_b_to_a:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	23, // 28: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.key_location_map_in_memory:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.KeyLocationMapInMemory
-	30, // 29: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.key_location_map_on_block_device:type_name -> buildbarn.configuration.blockdevice.Configuration
-	24, // 30: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.blocks_in_memory:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksInMemory
-	25, // 31: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.blocks_on_block_device:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice
-	26, // 32: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.persistent:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent
-	1,  // 33: buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	31, // 34: buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration.existence_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
-	1,  // 35: buildbarn.configuration.blobstore.CompletenessCheckingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 36: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.primary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 37: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.secondary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	10, // 38: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	1,  // 39: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.indirect_content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	32, // 40: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.aws_session:type_name -> buildbarn.configuration.cloud.aws.SessionConfiguration
-	33, // 41: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
-	34, // 42: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.gcp_client_options:type_name -> buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
-	1,  // 43: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	35, // 44: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.local:type_name -> google.protobuf.Empty
-	36, // 45: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.remote:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	11, // 46: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.queued:type_name -> buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration
-	35, // 47: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.noop:type_name -> google.protobuf.Empty
-	10, // 48: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.deduplicating:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	12, // 49: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.concurrency_limiting:type_name -> buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration
-	10, // 50: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration.base:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	31, // 51: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration.existence_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
-	10, // 52: buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration.base:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	27, // 53: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.instance_name_prefixes:type_name -> buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry
-	1,  // 54: buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 55: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	37, // 56: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.minimum_validity:type_name -> google.protobuf.Duration
-	37, // 57: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.maximum_validity_jitter:type_name -> google.protobuf.Duration
-	38, // 58: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.minimum_timestamp:type_name -> google.protobuf.Timestamp
-	1,  // 59: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.source:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1,  // 60: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.replica:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	37, // 61: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.maximum_cache_duration:type_name -> google.protobuf.Duration
-	31, // 62: buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
-	1,  // 63: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	28, // 64: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.labels:type_name -> buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry
-	37, // 65: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.timeout:type_name -> google.protobuf.Duration
-	1,  // 66: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	36, // 67: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration.client:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	1,  // 68: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	21, // 69: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry.value:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
-	30, // 70: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.source:type_name -> buildbarn.configuration.blockdevice.Configuration
-	31, // 71: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
-	37, // 72: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent.minimum_epoch_interval:type_name -> google.protobuf.Duration
-	14, // 73: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry.value:type_name -> buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
-	1,  // 74: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry.value:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	75, // [75:75] is the sub-list for method output_type
-	75, // [75:75] is the sub-list for method input_type
-	75, // [75:75] is the sub-list for extension type_name
-	75, // [75:75] is the sub-list for extension extendee
-	0,  // [0:75] is the sub-list for field type_name
+	9,  // 11: buildbarn.configuration.blobstore.BlobAccessConfiguration.fallback:type_name -> buildbarn.configuration.blobstore.FallbackBlobAccessConfiguration
+	10, // 12: buildbarn.configuration.blobstore.BlobAccessConfiguration.reference_expanding:type_name -> buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration
+	14, // 13: buildbarn.configuration.blobstore.BlobAccessConfiguration.demultiplexing:type_name -> buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration
+	1,  // 14: buildbarn.configuration.blobstore.BlobAccessConfiguration.hierarchical_instance_names:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	16, // 15: buildbarn.configuration.blobstore.BlobAccessConfiguration.action_result_expiring:type_name -> buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration
+	17, // 16: buildbarn.configuration.blobstore.BlobAccessConfiguration.read_canarying:type_name -> buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration
+	18, // 17: buildbarn.configuration.blobstore.BlobAccessConfiguration.zip_reading:type_name -> buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
+	18, // 18: buildbarn.configuration.blobstore.BlobAccessConfiguration.zip_writing:type_name -> buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
+	19, // 19: buildbarn.configuration.blobstore.BlobAccessConfiguration.with_labels:type_name -> buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
+	20, // 20: buildbarn.configuration.blobstore.BlobAccessConfiguration.deadline_enforcing:type_name -> buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
+	1,  // 21: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.slow:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 22: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.fast:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	11, // 23: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	23, // 24: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.shards:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry
+	1,  // 25: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.backend_a:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 26: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.backend_b:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	11, // 27: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.replicator_a_to_b:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	11, // 28: buildbarn.configuration.blobstore.MirroredBlobAccessConfiguration.replicator_b_to_a:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	24, // 29: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.key_location_map_in_memory:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.KeyLocationMapInMemory
+	31, // 30: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.key_location_map_on_block_device:type_name -> buildbarn.configuration.blockdevice.Configuration
+	25, // 31: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.blocks_in_memory:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksInMemory
+	26, // 32: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.blocks_on_block_device:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice
+	27, // 33: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.persistent:type_name -> buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent
+	1,  // 34: buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	32, // 35: buildbarn.configuration.blobstore.ExistenceCachingBlobAccessConfiguration.existence_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	1,  // 36: buildbarn.configuration.blobstore.CompletenessCheckingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 37: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.primary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 38: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.secondary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	11, // 39: buildbarn.configuration.blobstore.ReadFallbackBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	1,  // 40: buildbarn.configuration.blobstore.FallbackBlobAccessConfiguration.primary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 41: buildbarn.configuration.blobstore.FallbackBlobAccessConfiguration.secondary:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 42: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.indirect_content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	33, // 43: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.aws_session:type_name -> buildbarn.configuration.cloud.aws.SessionConfiguration
+	34, // 44: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.http_client:type_name -> buildbarn.configuration.http.client.Configuration
+	35, // 45: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.gcp_client_options:type_name -> buildbarn.configuration.cloud.gcp.ClientOptionsConfiguration
+	1,  // 46: buildbarn.configuration.blobstore.ReferenceExpandingBlobAccessConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	36, // 47: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.local:type_name -> google.protobuf.Empty
+	37, // 48: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.remote:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	12, // 49: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.queued:type_name -> buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration
+	36, // 50: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.noop:type_name -> google.protobuf.Empty
+	11, // 51: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.deduplicating:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	13, // 52: buildbarn.configuration.blobstore.BlobReplicatorConfiguration.concurrency_limiting:type_name -> buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration
+	11, // 53: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration.base:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	32, // 54: buildbarn.configuration.blobstore.QueuedBlobReplicatorConfiguration.existence_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	11, // 55: buildbarn.configuration.blobstore.ConcurrencyLimitingBlobReplicatorConfiguration.base:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
+	28, // 56: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.instance_name_prefixes:type_name -> buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry
+	1,  // 57: buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 58: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	38, // 59: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.minimum_validity:type_name -> google.protobuf.Duration
+	38, // 60: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.maximum_validity_jitter:type_name -> google.protobuf.Duration
+	39, // 61: buildbarn.configuration.blobstore.ActionResultExpiringBlobAccessConfiguration.minimum_timestamp:type_name -> google.protobuf.Timestamp
+	1,  // 62: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.source:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	1,  // 63: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.replica:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	38, // 64: buildbarn.configuration.blobstore.ReadCanaryingBlobAccessConfiguration.maximum_cache_duration:type_name -> google.protobuf.Duration
+	32, // 65: buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	1,  // 66: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	29, // 67: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.labels:type_name -> buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry
+	38, // 68: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.timeout:type_name -> google.protobuf.Duration
+	1,  // 69: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	37, // 70: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration.client:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	1,  // 71: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	22, // 72: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry.value:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
+	31, // 73: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.source:type_name -> buildbarn.configuration.blockdevice.Configuration
+	32, // 74: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.data_integrity_validation_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	38, // 75: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.Persistent.minimum_epoch_interval:type_name -> google.protobuf.Duration
+	15, // 76: buildbarn.configuration.blobstore.DemultiplexingBlobAccessConfiguration.InstanceNamePrefixesEntry.value:type_name -> buildbarn.configuration.blobstore.DemultiplexedBlobAccessConfiguration
+	1,  // 77: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration.LabelsEntry.value:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	78, // [78:78] is the sub-list for method output_type
+	78, // [78:78] is the sub-list for method input_type
+	78, // [78:78] is the sub-list for extension type_name
+	78, // [78:78] is the sub-list for extension extendee
+	0,  // [0:78] is the sub-list for field type_name
 }
 
 func init() {
@@ -2283,6 +2359,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blob
 		(*BlobAccessConfiguration_ExistenceCaching)(nil),
 		(*BlobAccessConfiguration_CompletenessChecking)(nil),
 		(*BlobAccessConfiguration_ReadFallback)(nil),
+		(*BlobAccessConfiguration_Fallback)(nil),
 		(*BlobAccessConfiguration_ReferenceExpanding)(nil),
 		(*BlobAccessConfiguration_Demultiplexing)(nil),
 		(*BlobAccessConfiguration_HierarchicalInstanceNames)(nil),
@@ -2300,7 +2377,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blob
 		(*LocalBlobAccessConfiguration_BlocksInMemory_)(nil),
 		(*LocalBlobAccessConfiguration_BlocksOnBlockDevice_)(nil),
 	}
-	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[10].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[11].OneofWrappers = []any{
 		(*BlobReplicatorConfiguration_Local)(nil),
 		(*BlobReplicatorConfiguration_Remote)(nil),
 		(*BlobReplicatorConfiguration_Queued)(nil),
@@ -2314,7 +2391,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blob
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

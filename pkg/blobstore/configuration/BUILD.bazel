@@ -22,6 +22,7 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/completenesschecking",
+        "//pkg/blobstore/fallback",
         "//pkg/blobstore/grpcclients",
         "//pkg/blobstore/local",
         "//pkg/blobstore/mirrored",

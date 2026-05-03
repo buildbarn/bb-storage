@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/fallback"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -379,6 +380,19 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			BlobAccess:      readfallback.NewReadFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess, replicator),
 			DigestKeyFormat: primary.DigestKeyFormat.Combine(secondary.DigestKeyFormat),
 		}, "read_fallback", nil
+	case *pb.BlobAccessConfiguration_Fallback:
+		primary, err := nc.NewNestedBlobAccess(backend.Fallback.Primary, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		secondary, err := nc.NewNestedBlobAccess(backend.Fallback.Secondary, creator)
+		if err != nil {
+			return BlobAccessInfo{}, "", err
+		}
+		return BlobAccessInfo{
+			BlobAccess:      fallback.NewFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess),
+			DigestKeyFormat: primary.DigestKeyFormat.Combine(secondary.DigestKeyFormat),
+		}, "fallback", nil
 	case *pb.BlobAccessConfiguration_Demultiplexing:
 		// Construct a trie for each of the backends specified
 		// in the configuration indexed by instance name prefix.

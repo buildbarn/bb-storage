@@ -90,6 +90,22 @@ message BlobAccessConfiguration {
     // system, e.g. by combining it with reference_expanding.
     ReadFallbackBlobAccessConfiguration read_fallback = 18;
 
+    // Use a primary backend by default, but fall back to a secondary backend
+    // when the primary is unavailable. This is used to make storage more
+    // available when the primary goes down. It does not guarantee consistency
+    // between the primary and secondary.
+    //
+    // When the primary backend is available:
+    //   - We read from the primary.
+    //   - We write to the primary, and asynchronously write to the secondary as
+    //     best-effort replication.
+    //
+    // WHen the primary backend is unavailable:
+    //   - We read from the secondary.
+    //   - We write to the secondary. These writes are not replicated back to
+    //     the primary.
+    FallbackBlobAccessConfiguration fallback = 29;
+
     // Load Reference messages from an Indirect Content Addressable
     // Storage (ICAS). Expand them by fetching the object from the
     // location stored in the Reference message. This backend is only
@@ -684,6 +700,16 @@ message ReadFallbackBlobAccessConfiguration {
   // the secondary backend to the primary backend. If unset, objects
   // will not be copied.
   BlobReplicatorConfiguration replicator = 3;
+}
+
+message FallbackBlobAccessConfiguration {
+  // Backend from which data is attempted to be read and written to first.
+  // Successful writes will be best-effort asynchronously replicated to the
+  // secondary backend.
+  BlobAccessConfiguration primary = 1;
+
+  // Backend from which data is attempted to be read and written to last.
+  BlobAccessConfiguration secondary = 2;
 }
 
 message ReferenceExpandingBlobAccessConfiguration {
