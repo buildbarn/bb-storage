@@ -33,15 +33,6 @@ func (sv *rsaSHASignatureValidator) ValidateSignature(algorithm string, keyID *s
 	var hasher hash.Hash
 	var pssOpts *rsa.PSSOptions
 	switch algorithm {
-	case "RS256":
-		hashType = crypto.SHA256
-		hasher = sha256.New()
-	case "RS384":
-		hashType = crypto.SHA384
-		hasher = sha512.New384()
-	case "RS512":
-		hashType = crypto.SHA512
-		hasher = sha512.New()
 	case "PS256":
 		hashType = crypto.SHA256
 		hasher = sha256.New()
@@ -54,6 +45,15 @@ func (sv *rsaSHASignatureValidator) ValidateSignature(algorithm string, keyID *s
 		hashType = crypto.SHA512
 		hasher = sha512.New()
 		pssOpts = &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA512}
+	case "RS256":
+		hashType = crypto.SHA256
+		hasher = sha256.New()
+	case "RS384":
+		hashType = crypto.SHA384
+		hasher = sha512.New384()
+	case "RS512":
+		hashType = crypto.SHA512
+		hasher = sha512.New()
 	default:
 		return false
 	}
