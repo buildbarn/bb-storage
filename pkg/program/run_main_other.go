@@ -2,4 +2,4 @@
 
 package program
 
-func relaunchIfPID1(currentPID int) {}
+func relaunchIfPID1(currentPID int, daemon bool) {}

@@ -247,7 +247,7 @@ func main() {
 
 		lifecycleState.MarkReadyAndWait(siblingsGroup)
 		return nil
-	})
+	}, program.WithDaemonExit())
 }
 
 func newNonScannableBlobAccess(dependenciesGroup program.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator, grpcClientFactory bb_grpc.ClientFactory) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {

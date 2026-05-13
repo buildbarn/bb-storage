@@ -22,7 +22,7 @@ import (
 // to terminate, we need to run multiple processes.
 //
 // More details: https://github.com/golang/go/pull/61261
-func relaunchIfPID1(currentPID int) {
+func relaunchIfPID1(currentPID int, daemon bool) {
 	if currentPID == 1 {
 		executable, err := os.Executable()
 		if err != nil {
@@ -62,7 +62,7 @@ func relaunchIfPID1(currentPID int) {
 
 			if waitedPID == childPID {
 				if status.Signaled() {
-					terminateWithSignal(currentPID, status.Signal())
+					terminateWithSignal(currentPID, status.Signal(), daemon)
 				}
 				os.Exit(status.ExitStatus())
 			}
