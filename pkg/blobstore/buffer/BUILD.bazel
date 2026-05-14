@@ -11,6 +11,7 @@ go_library(
         "cas_reader_buffer.go",
         "cas_validating_chunk_reader.go",
         "cas_validating_reader.go",
+        "chunk_buffer_pool.go",
         "chunk_reader.go",
         "chunk_reader_backed_reader.go",
         "common_conversions.go",
@@ -56,6 +57,7 @@ go_test(
         "new_validated_buffer_from_byte_slice_test.go",
         "new_validated_buffer_from_reader_at_test.go",
         "reader_backed_chunk_reader_bench_test.go",
+        "reader_backed_chunk_reader_test.go",
         "with_error_handler_test.go",
     ],
     deps = [

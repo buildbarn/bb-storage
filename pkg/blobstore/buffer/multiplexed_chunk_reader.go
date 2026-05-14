@@ -32,6 +32,15 @@ func newMultiplexedChunkReader(r ChunkReader, additionalConsumers int) ChunkRead
 }
 
 func (r *multiplexedChunkReader) readAndShareWithOthers(currentConsumerContinues int) ([]byte, error) {
+	// All waiting consumers receive the exact same slice returned by
+	// the underlying ChunkReader.Read(). This is safe with respect
+	// to the "valid until next Read()/Close()" contract because the
+	// pendingConsumers counter ensures every consumer must call
+	// Read() (or Close()) again before another underlying Read()
+	// can be issued. By the time the next underlying Read()
+	// executes, every consumer has therefore released its reference
+	// to the previously returned slice, so the underlying reader is
+	// free to reuse the backing storage.
 	data, err := r.r.Read()
 	for _, c := range r.waitingConsumers {
 		c <- readResult{data: data, err: err}
