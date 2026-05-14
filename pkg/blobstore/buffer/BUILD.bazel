@@ -55,6 +55,7 @@ go_test(
         "new_proto_buffer_from_proto_test.go",
         "new_validated_buffer_from_byte_slice_test.go",
         "new_validated_buffer_from_reader_at_test.go",
+        "reader_backed_chunk_reader_bench_test.go",
         "with_error_handler_test.go",
     ],
     deps = [
