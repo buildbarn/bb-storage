@@ -93,7 +93,7 @@ func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Ke
 			return Key{}, Location{}, err
 		}
 	}
-	return Key{}, Location{}, status.Error(codes.NotFound, "Object not found")
+	return Key{}, Location{}, errKeyLocationMapNotFound
 }
 
 // syncFromCanonicalEntry attempts to synchronize a lookup entry in the
