@@ -1,7 +1,8 @@
 package digest
 
 import (
-	"sort"
+	"slices"
+	"strings"
 )
 
 // SetBuilder is a builder for Set objects.
@@ -9,10 +10,15 @@ type SetBuilder struct {
 	digests map[Digest]struct{}
 }
 
-// NewSetBuilder creates a SetBuilder that contains no initial elements.
-func NewSetBuilder() SetBuilder {
+// NewSetBuilder creates a SetBuilder that contains no initial
+// elements. The capacity argument pre-sizes the underlying map so that
+// adding up to that many elements does not require rehashing. Callers
+// should provide a sensible estimate based on the context in which the
+// set is built (e.g., the number of digests in an incoming request).
+// Pass zero when no estimate is available.
+func NewSetBuilder(capacity int) SetBuilder {
 	return SetBuilder{
-		digests: map[Digest]struct{}{},
+		digests: make(map[Digest]struct{}, capacity),
 	}
 }
 
@@ -37,29 +43,17 @@ func (sb SetBuilder) Build() Set {
 	}
 
 	// Store all digests in a list.
-	digests := make(digestList, 0, len(sb.digests))
+	digests := make([]Digest, 0, len(sb.digests))
 	for digest := range sb.digests {
 		digests = append(digests, digest)
 	}
 
 	// Sort the list for determinism and to allow linear time
 	// implementations of GetDifferenceAndIntersection() and
-	// GetUnion().
-	sort.Sort(digests)
+	// GetUnion(). slices.SortFunc avoids the per-comparison
+	// interface dispatch of sort.Sort.
+	slices.SortFunc(digests, func(a, b Digest) int {
+		return strings.Compare(a.value, b.value)
+	})
 	return Set{digests: digests}
-}
-
-// digestList implements a list of digests that is sortable.
-type digestList []Digest
-
-func (l digestList) Len() int {
-	return len(l)
-}
-
-func (l digestList) Less(i, j int) bool {
-	return l[i].String() < l[j].String()
-}
-
-func (l digestList) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
 }

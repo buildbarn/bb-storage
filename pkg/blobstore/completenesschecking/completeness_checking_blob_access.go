@@ -52,7 +52,7 @@ func (q *findMissingQueue) add(blobDigest *remoteexecution.Digest) error {
 			if err := q.finalize(); err != nil {
 				return err
 			}
-			q.pending = digest.NewSetBuilder()
+			q.pending = digest.NewSetBuilder(q.batchSize)
 		}
 		q.pending.Add(derivedDigest)
 	}
@@ -109,7 +109,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		digestFunction:            digestFunction,
 		contentAddressableStorage: ba.contentAddressableStorage,
 		batchSize:                 ba.batchSize,
-		pending:                   digest.NewSetBuilder(),
+		pending:                   digest.NewSetBuilder(ba.batchSize),
 	}
 
 	// Iterate over all remoteexecution.Digest fields contained

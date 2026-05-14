@@ -172,7 +172,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(20001, 0))
 		replicaBackend.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "22222222222222222222222222222222", 2)).
 				Build(),
@@ -180,7 +180,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(20001, 100000000)).Times(2)
 		replicaBackend.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "44444444444444444444444444444444", 4)).
 				Build(),
@@ -188,7 +188,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		clock.EXPECT().Now().Return(time.Unix(20001, 100000000)).Times(2)
 		sourceBackend.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "66666666666666666666666666666666", 6)).
 				Build(),
@@ -196,7 +196,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 		missing, err = blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "22222222222222222222222222222222", 2)).
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
@@ -207,7 +207,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(
 			t,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("find-missing/1", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1)).
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).

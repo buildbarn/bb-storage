@@ -79,7 +79,7 @@ func (ba *icasBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 		perFunctionDigests[digestFunction] = append(perFunctionDigests[digestFunction], digest.GetProto())
 	}
 
-	missingDigests := digest.NewSetBuilder()
+	missingDigests := digest.NewSetBuilder(0)
 	for digestFunction, blobDigests := range perFunctionDigests {
 		// Call FindMissingReferences() for each digest function.
 		request := remoteexecution.FindMissingBlobsRequest{

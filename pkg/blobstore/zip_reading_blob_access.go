@@ -84,7 +84,7 @@ func (zipReadingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buf
 }
 
 func (ba *zipReadingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	missing := digest.NewSetBuilder()
+	missing := digest.NewSetBuilder(0)
 	for _, fileDigest := range digests.Items() {
 		if _, ok := ba.files[fileDigest.GetKey(ba.digestKeyFormat)]; !ok {
 			missing.Add(fileDigest)

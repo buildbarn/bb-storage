@@ -354,7 +354,7 @@ func findMissingBlobsInternal(ctx context.Context, digests digest.Set, cas remot
 		perFunctionDigests[digestFunction] = append(perFunctionDigests[digestFunction], digest.GetProto())
 	}
 
-	missingDigests := digest.NewSetBuilder()
+	missingDigests := digest.NewSetBuilder(0)
 	for digestFunction, blobDigests := range perFunctionDigests {
 		// Call FindMissingBlobs() for each digest function.
 		request := remoteexecution.FindMissingBlobsRequest{

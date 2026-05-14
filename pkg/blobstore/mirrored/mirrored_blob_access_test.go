@@ -190,11 +190,11 @@ func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	digestA := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
 	digestB := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2", 9)
 	digestBoth := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "9c6079651d4062b6811f93061cb6a768a60e51d714bddffee99b1173c6580580", 5)
-	allDigests := digest.NewSetBuilder().Add(digestNone).Add(digestA).Add(digestB).Add(digestBoth).Build()
+	allDigests := digest.NewSetBuilder(0).Add(digestNone).Add(digestA).Add(digestB).Add(digestBoth).Build()
 	onlyOnA := digestA.ToSingletonSet()
 	onlyOnB := digestB.ToSingletonSet()
-	missingFromA := digest.NewSetBuilder().Add(digestNone).Add(digestB).Build()
-	missingFromB := digest.NewSetBuilder().Add(digestNone).Add(digestA).Build()
+	missingFromA := digest.NewSetBuilder(0).Add(digestNone).Add(digestB).Build()
+	missingFromB := digest.NewSetBuilder(0).Add(digestNone).Add(digestA).Build()
 	blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 
 	t.Run("Success", func(t *testing.T) {

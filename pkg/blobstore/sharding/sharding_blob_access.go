@@ -71,7 +71,7 @@ func (ba *shardingBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 	// Partition all digests by shard.
 	digestsPerBackend := make([]digest.SetBuilder, 0, len(ba.backends))
 	for range ba.backends {
-		digestsPerBackend = append(digestsPerBackend, digest.NewSetBuilder())
+		digestsPerBackend = append(digestsPerBackend, digest.NewSetBuilder(digests.Length()/len(ba.backends)+1))
 	}
 	for _, blobDigest := range digests.Items() {
 		digestsPerBackend[ba.getBackendIndexByDigest(blobDigest)].Add(blobDigest)

@@ -267,7 +267,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			nil)
 		baseBlobAccess.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
@@ -275,7 +275,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build())
@@ -320,28 +320,28 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			nil)
 		baseBlobAccessA.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
 				nil)
 		baseBlobAccessB.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
 			Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
@@ -349,7 +349,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("a/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
@@ -362,7 +362,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(
 			t,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("a/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).

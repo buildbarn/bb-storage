@@ -43,7 +43,7 @@ func NewExistenceCache(clock clock.Clock, keyFormat KeyFormat, cacheSize int, ca
 func (ec *ExistenceCache) RemoveExisting(digests Set) Set {
 	now := ec.clock.Now()
 	minimumInsertionTime := now.Add(-ec.cacheDuration)
-	missing := NewSetBuilder()
+	missing := NewSetBuilder(0)
 	ec.lock.Lock()
 	for _, d := range digests.Items() {
 		key := d.GetKey(ec.keyFormat)

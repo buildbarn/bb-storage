@@ -135,7 +135,7 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 	t.Run("InitialFailure", func(t *testing.T) {
 		// Errors that occur both during the initial call to
 		// FindMissing() and successive ones should be propagated.
-		digests := digest.NewSetBuilder().
+		digests := digest.NewSetBuilder(0).
 			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
 			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 			Add(digest.MustNewDigest("c", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000003", 3)).
@@ -148,20 +148,20 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 	})
 
 	t.Run("SuccessiveFailure", func(t *testing.T) {
-		digests := digest.NewSetBuilder().
+		digests := digest.NewSetBuilder(0).
 			Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
 			Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 			Add(digest.MustNewDigest("c", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000003", 3)).
 			Build()
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().FindMissing(ctx, digests).Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
 			).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire")))
@@ -181,7 +181,7 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 		// requesting far more objects than necessary and will
 		// also cause objects to be touched, regardless of
 		// whether they are going to be accessed.
-		digests := digest.NewSetBuilder().
+		digests := digest.NewSetBuilder(0).
 			// Empty instance name.
 			Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
 			Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
@@ -198,7 +198,7 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 			Build()
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().FindMissing(ctx, digests).Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
 					Add(digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
 					Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
@@ -208,20 +208,20 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
 					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build()).Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
 				nil),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build()).Return(
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
 				nil))
@@ -230,7 +230,7 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(
 			t,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 1)).
 				Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 				Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).

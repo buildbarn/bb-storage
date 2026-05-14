@@ -43,7 +43,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 		// Errors returned by the backend should be forwarded.
 		blobAccess.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).
@@ -69,7 +69,7 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 	t.Run("Success", func(t *testing.T) {
 		blobAccess.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build()).

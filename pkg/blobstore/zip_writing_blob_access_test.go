@@ -187,7 +187,7 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 	t.Run("FindMissing", func(t *testing.T) {
 		missing, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5479092d62cdb7c8e8eedef4a5eb2164", 720)).

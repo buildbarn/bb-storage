@@ -115,7 +115,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 			t,
 			replicator.ReplicateMultiple(
 				ctx,
-				digest.NewSetBuilder().
+				digest.NewSetBuilder(0).
 					Add(helloDigest).
 					Add(worldDigest).
 					Build()))

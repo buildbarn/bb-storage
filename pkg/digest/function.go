@@ -2,8 +2,8 @@ package digest
 
 import (
 	"encoding/hex"
-	"fmt"
 	"hash"
+	"strconv"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
@@ -85,10 +85,25 @@ func (f Function) NewDigest(hash string, sizeBytes int64) (Digest, error) {
 
 // newDigestUnchecked constructs a Digest object from a digest function,
 // hash and object size without validating its contents.
+//
+// This function is on the hot path of every digest constructed from a
+// proto (FindMissingBlobs, BatchReadBlobs, BatchUpdateBlobs, ActionCache
+// lookups, ByteStream path parsing). It is implemented with a single
+// pre-sized []byte builder rather than fmt.Sprintf to avoid argument
+// boxing, format-string parsing and reflection.
 func (f Function) newDigestUnchecked(hash string, sizeBytes int64) Digest {
-	return Digest{
-		value: fmt.Sprintf("%d-%s-%d-%s", int(f.bareFunction.enumValue), hash, sizeBytes, f.instanceName.value),
-	}
+	// Buffer is sized to fit the worst case: a two-digit digest
+	// function enum, the hash, a 19-digit int64 size, the instance
+	// name and three '-' separators.
+	buf := make([]byte, 0, 2+1+len(hash)+1+19+1+len(f.instanceName.value))
+	buf = strconv.AppendInt(buf, int64(f.bareFunction.enumValue), 10)
+	buf = append(buf, '-')
+	buf = append(buf, hash...)
+	buf = append(buf, '-')
+	buf = strconv.AppendInt(buf, sizeBytes, 10)
+	buf = append(buf, '-')
+	buf = append(buf, f.instanceName.value...)
+	return Digest{value: string(buf)}
 }
 
 // NewDigestFromProto constructs a Digest object from a digest function

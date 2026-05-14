@@ -132,7 +132,7 @@ func TestShardingBlobAccess(t *testing.T) {
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().Add(digest1).Add(digest2).Build(),
+			digest.NewSetBuilder(0).Add(digest1).Add(digest2).Build(),
 		)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Shard shard0: Server offline"), err)
 	})
@@ -144,21 +144,21 @@ func TestShardingBlobAccess(t *testing.T) {
 		shardSelector.EXPECT().GetShard(uint64(0xf8f3da00ff286208)).Return(1)
 		shard0.EXPECT().FindMissing(
 			gomock.Any(),
-			digest.NewSetBuilder().Add(digest1).Add(digest2).Build(),
+			digest.NewSetBuilder(0).Add(digest1).Add(digest2).Build(),
 		).Return(digest1.ToSingletonSet(), nil)
 		shard1.EXPECT().FindMissing(
 			gomock.Any(),
-			digest.NewSetBuilder().Add(digest3).Add(digest4).Build(),
+			digest.NewSetBuilder(0).Add(digest3).Add(digest4).Build(),
 		).Return(digest3.ToSingletonSet(), nil)
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest1).Add(digest2).
 				Add(digest3).Add(digest4).
 				Build(),
 		)
 		require.NoError(t, err)
-		require.Equal(t, digest.NewSetBuilder().Add(digest1).Add(digest3).Build(), missing)
+		require.Equal(t, digest.NewSetBuilder(0).Add(digest1).Add(digest3).Build(), missing)
 	})
 }

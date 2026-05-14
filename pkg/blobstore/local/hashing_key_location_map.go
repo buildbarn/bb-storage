@@ -47,6 +47,15 @@ var (
 			Help:      "Number of times Put() discarded an entry, because it took the maximum number of iterations, which may indicate the hash table is too small",
 		},
 		[]string{"storage_type"})
+
+	// errKeyLocationMapNotFound is returned by Get() for every key
+	// that is not present in the map. As Get() runs once per digest
+	// in FindMissing() and once per blob in Get(), constructing a
+	// fresh status object on every miss is one of the largest
+	// allocation sources on the FindMissingBlobs hot path. Callers
+	// only inspect the status code, never the message or instance
+	// identity, so a shared sentinel is safe.
+	errKeyLocationMapNotFound = status.Error(codes.NotFound, "Object not found")
 )
 
 type hashingKeyLocationMap struct {
@@ -134,7 +143,7 @@ func (klm *hashingKeyLocationMap) Get(key Key) (Location, error) {
 			// searching, as everything we find after this
 			// point is even older.
 			klm.getNotFound.Observe(float64(recordKey.Attempt + 1))
-			return Location{}, status.Error(codes.NotFound, "Object not found")
+			return Location{}, errKeyLocationMapNotFound
 		} else if err != nil {
 			return Location{}, err
 		}
@@ -145,7 +154,7 @@ func (klm *hashingKeyLocationMap) Get(key Key) (Location, error) {
 		recordKey.Attempt++
 		if recordKey.Attempt >= klm.maximumGetAttempts {
 			klm.getTooManyAttempts.Inc()
-			return Location{}, status.Error(codes.NotFound, "Object not found")
+			return Location{}, errKeyLocationMapNotFound
 		}
 	}
 }

@@ -67,7 +67,14 @@ func (b *validatedReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error
 	if b.sizeBytes > int64(maximumSizeBytes) {
 		return nil, status.Errorf(codes.InvalidArgument, "Buffer is %d bytes in size, while a maximum of %d bytes is permitted", b.sizeBytes, maximumSizeBytes)
 	}
-	return io.ReadAll(io.NewSectionReader(b.r, 0, b.sizeBytes))
+	// Allocate the result buffer up front, as the size is already
+	// known. This avoids the repeated reallocation and redundant
+	// memcpy that io.ReadAll() would perform.
+	data := make([]byte, b.sizeBytes)
+	if _, err := io.ReadFull(io.NewSectionReader(b.r, 0, b.sizeBytes), data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func (b *validatedReaderBuffer) ToChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

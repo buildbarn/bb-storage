@@ -93,7 +93,7 @@ func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Ke
 			return Key{}, Location{}, err
 		}
 	}
-	return Key{}, Location{}, status.Error(codes.NotFound, "Object not found")
+	return Key{}, Location{}, errKeyLocationMapNotFound
 }
 
 // syncFromCanonicalEntry attempts to synchronize a lookup entry in the
@@ -303,7 +303,7 @@ func (ba *hierarchicalCASBlobAccess) FindMissing(ctx context.Context, digests di
 		lookupKeys []Key
 	}
 	var blobsToRefresh []blobToRefresh
-	missing := digest.NewSetBuilder()
+	missing := digest.NewSetBuilder(0)
 	ba.lock.RLock()
 	for i, blobDigest := range digests.Items() {
 		lookupKeys := allLookupKeys[i]

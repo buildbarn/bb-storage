@@ -360,7 +360,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 		key    Key
 	}
 	var blobsToRefresh []blobToRefresh
-	missing := digest.NewSetBuilder()
+	missing := digest.NewSetBuilder(0)
 	ba.lock.RLock()
 	for i, blobDigest := range digests.Items() {
 		key := keys[i]

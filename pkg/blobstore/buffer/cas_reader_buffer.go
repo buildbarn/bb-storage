@@ -80,7 +80,24 @@ func (b *casReaderBuffer) ToByteSlice(maximumSizeBytes int) ([]byte, error) {
 	if expectedSizeBytes > int64(maximumSizeBytes) {
 		return nil, status.Errorf(codes.InvalidArgument, "Buffer is %d bytes in size, while a maximum of %d bytes is permitted", expectedSizeBytes, maximumSizeBytes)
 	}
-	return io.ReadAll(r)
+	// Allocate the result buffer up front, as the size is already
+	// known. This avoids the repeated reallocation and redundant
+	// memcpy that io.ReadAll() would perform.
+	data := make([]byte, expectedSizeBytes)
+	if expectedSizeBytes > 0 {
+		if _, err := io.ReadFull(r, data); err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	// io.ReadFull() returns immediately for a zero-length buffer
+	// without invoking the underlying reader. Issue a single Read()
+	// so that the validating reader still gets a chance to check
+	// the size and checksum of empty blobs.
+	if _, err := r.Read(nil); err != nil && err != io.EOF {
+		return nil, err
+	}
+	return data, nil
 }
 
 func (b *casReaderBuffer) ToChunkReader(off int64, maximumChunkSizeBytes int) ChunkReader {

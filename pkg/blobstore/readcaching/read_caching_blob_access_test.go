@@ -117,7 +117,7 @@ func TestReadCachingBlobAccessFindMissing(t *testing.T) {
 	fastBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobReplicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
-	digests := digest.NewSetBuilder().
+	digests := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)).
 		Add(digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9", 7)).
 		Build()
