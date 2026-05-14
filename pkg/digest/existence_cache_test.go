@@ -24,7 +24,7 @@ func TestExistenceCache(t *testing.T) {
 		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
 		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9),
 	}
-	allDigests := digest.NewSetBuilder().
+	allDigests := digest.NewSetBuilder(0).
 		Add(digests[0]).
 		Add(digests[1]).
 		Add(digests[2]).
@@ -49,7 +49,7 @@ func TestExistenceCache(t *testing.T) {
 	// Mark the first two elements as existing. RemoveExisting()
 	// should now start pruning them from the input set.
 	clock.EXPECT().Now().Return(time.Unix(1003, 0))
-	existenceCache.Add(digest.NewSetBuilder().
+	existenceCache.Add(digest.NewSetBuilder(0).
 		Add(digests[0]).
 		Add(digests[1]).
 		Build())
@@ -65,11 +65,11 @@ func TestExistenceCache(t *testing.T) {
 	require.Equal(
 		t,
 		digest.EmptySet,
-		existenceCache.RemoveExisting(digest.NewSetBuilder().
+		existenceCache.RemoveExisting(digest.NewSetBuilder(0).
 			Add(digests[1]).
 			Build()))
 	clock.EXPECT().Now().Return(time.Unix(1006, 0))
-	existenceCache.Add(digest.NewSetBuilder().
+	existenceCache.Add(digest.NewSetBuilder(0).
 		Add(digests[2]).
 		Build())
 	clock.EXPECT().Now().Return(time.Unix(1007, 0))
@@ -83,14 +83,14 @@ func TestExistenceCache(t *testing.T) {
 	clock.EXPECT().Now().Return(time.Unix(1063, 0))
 	require.Equal(
 		t,
-		digest.NewSetBuilder().
+		digest.NewSetBuilder(0).
 			Add(digests[0]).
 			Build(),
 		existenceCache.RemoveExisting(allDigests))
 	clock.EXPECT().Now().Return(time.Unix(1063, 1))
 	require.Equal(
 		t,
-		digest.NewSetBuilder().
+		digest.NewSetBuilder(0).
 			Add(digests[0]).
 			Add(digests[1]).
 			Build(),
@@ -101,7 +101,7 @@ func TestExistenceCache(t *testing.T) {
 	clock.EXPECT().Now().Return(time.Unix(1066, 0))
 	require.Equal(
 		t,
-		digest.NewSetBuilder().
+		digest.NewSetBuilder(0).
 			Add(digests[0]).
 			Add(digests[1]).
 			Build(),

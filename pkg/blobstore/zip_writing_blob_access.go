@@ -207,7 +207,7 @@ func (ba *ZIPWritingBlobAccess) FindMissing(ctx context.Context, digests digest.
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
 
-	missing := digest.NewSetBuilder()
+	missing := digest.NewSetBuilder(0)
 	for _, fileDigest := range digests.Items() {
 		if _, ok := ba.filesAccess[fileDigest.GetKey(ba.digestKeyFormat)]; !ok {
 			missing.Add(fileDigest)

@@ -177,12 +177,12 @@ func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
-	unfilteredInputSet := digest.NewSetBuilder().
+	unfilteredInputSet := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).
 		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 		Build()
-	filteredInputSet := digest.NewSetBuilder().
+	filteredInputSet := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 		Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 		Build()

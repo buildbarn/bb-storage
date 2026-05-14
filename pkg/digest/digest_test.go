@@ -545,7 +545,7 @@ func TestDigestToSingletonSet(t *testing.T) {
 	d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
 	require.Equal(
 		t,
-		digest.NewSetBuilder().Add(d).Build(),
+		digest.NewSetBuilder(0).Add(d).Build(),
 		d.ToSingletonSet())
 }
 

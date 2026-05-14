@@ -92,7 +92,7 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 			if !ok {
 				// This backend hasn't been observed before.
 				partition = &partitionInfo{
-					digests: digest.NewSetBuilder(),
+					digests: digest.NewSetBuilder(0),
 					backend: backend,
 					patcher: patcher,
 				}
@@ -111,7 +111,7 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 	// Right now we don't really see calls with multiple instance
 	// names, meaning it wouldn't help. This may change in the
 	// future.
-	allMissing := digest.NewSetBuilder()
+	allMissing := digest.NewSetBuilder(0)
 	for backendName, partition := range perBackendPartitions {
 		partitionMissing, err := partition.backend.FindMissing(ctx, partition.digests.Build())
 		if err != nil {

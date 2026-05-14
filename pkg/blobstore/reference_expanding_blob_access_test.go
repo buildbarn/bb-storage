@@ -534,7 +534,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		100,
 		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}))
 
-	digests := digest.NewSetBuilder().
+	digests := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)).
 		Build()

@@ -163,12 +163,12 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 
-	allDigests := digest.NewSetBuilder().
+	allDigests := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 102)).
 		Build()
-	missingFromPrimary := digest.NewSetBuilder().
+	missingFromPrimary := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)).
 		Build()

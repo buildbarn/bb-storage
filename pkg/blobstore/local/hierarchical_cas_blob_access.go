@@ -303,7 +303,7 @@ func (ba *hierarchicalCASBlobAccess) FindMissing(ctx context.Context, digests di
 		lookupKeys []Key
 	}
 	var blobsToRefresh []blobToRefresh
-	missing := digest.NewSetBuilder()
+	missing := digest.NewSetBuilder(0)
 	ba.lock.RLock()
 	for i, blobDigest := range digests.Items() {
 		lookupKeys := allLookupKeys[i]

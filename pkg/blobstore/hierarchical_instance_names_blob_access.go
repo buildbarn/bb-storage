@@ -74,7 +74,7 @@ func (ba *hierarchicalInstanceNamesBlobAccess) FindMissing(ctx context.Context, 
 		parentDigests  []digest.Digest
 	}
 	digestsWithParents := make([]digestWithParents, 0, len(initiallyMissingItems))
-	finallyMissing := digest.NewSetBuilder()
+	finallyMissing := digest.NewSetBuilder(0)
 	for _, originalDigest := range initiallyMissingItems {
 		if parentDigests := originalDigest.GetDigestsWithParentInstanceNames(); len(parentDigests) > 1 {
 			digestsWithParents = append(digestsWithParents, digestWithParents{
@@ -91,7 +91,7 @@ func (ba *hierarchicalInstanceNamesBlobAccess) FindMissing(ctx context.Context, 
 		// digests checked during the previous iteration.
 		// Convert the results to a set, so that we can
 		// efficiently check membership.
-		directParentDigests := digest.NewSetBuilder()
+		directParentDigests := digest.NewSetBuilder(len(digestsWithParents))
 		for _, digestWithParents := range digestsWithParents {
 			directParentDigests.Add(digestWithParents.parentDigests[len(digestWithParents.parentDigests)-1])
 		}

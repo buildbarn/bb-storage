@@ -16,5 +16,5 @@ func TestSetBuilderEmpty(t *testing.T) {
 	// fairly common for BlobAccess.FindMissing() to return empty
 	// sets. Letting those use an additional allocation would be
 	// wasteful.
-	require.Equal(t, digest.EmptySet, digest.NewSetBuilder().Build())
+	require.Equal(t, digest.EmptySet, digest.NewSetBuilder(0).Build())
 }

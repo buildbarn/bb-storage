@@ -87,7 +87,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				buffer.BackendProvided(dataIntegrityCallback.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Build(),
@@ -253,7 +253,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			buffer.NewCASBufferFromReader(treeDigest, treeReader, buffer.BackendProvided(dataIntegrityCallback2.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(treeDigest).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "024ced29f1fdef2f644f34a071ade5be", 1)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b3b146b1c4df062a2dc35168cbf4ce6", 2)).
@@ -369,7 +369,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		}, buffer.BackendProvided(dataIntegrityCallback2.Call)))
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "38837949e2518a6e8a912ffb29942788", 10)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 200)).
@@ -379,7 +379,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		).Return(digest.EmptySet, nil)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
-			digest.NewSetBuilder().
+			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "41d7247285b686496aa91b56b4c48395", 11)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "eda14e187a768b38eda999457c9cca1e", 6)).
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "bdcfcea2c9e3d753463abd000dab2495", 40)).

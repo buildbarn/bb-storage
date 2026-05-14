@@ -117,7 +117,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 			nr.EnqueueDirectory(childDigest)
 		}
 
-		childFileDigests := digest.NewSetBuilder()
+		childFileDigests := digest.NewSetBuilder(len(directory.Files))
 		for i, childFile := range directory.Files {
 			childFileDigest, err := digestFunction.NewDigestFromProto(childFile.Digest)
 			if err != nil {
@@ -141,7 +141,7 @@ func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 		defer r.Close()
 
 		// Gather digests of files contained in the directories.
-		childFileDigests := digest.NewSetBuilder()
+		childFileDigests := digest.NewSetBuilder(0)
 		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
 			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
 				directoryMessage, err := buffer.NewProtoBufferFromReader(

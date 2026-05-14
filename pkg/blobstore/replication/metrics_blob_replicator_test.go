@@ -63,7 +63,7 @@ func TestMetricsBlobReplicatorLabelCardinality(t *testing.T) {
 	b.Discard()
 
 	// Test ReplicateMultiple
-	digests := digest.NewSetBuilder().Add(d).Build()
+	digests := digest.NewSetBuilder(0).Add(d).Build()
 	mockReplicator.EXPECT().
 		ReplicateMultiple(gomock.Any(), digests).
 		Return(status.Error(codes.Internal, "internal error"))

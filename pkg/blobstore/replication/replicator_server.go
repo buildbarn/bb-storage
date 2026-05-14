@@ -32,7 +32,7 @@ func (rs replicatorServer) ReplicateBlobs(ctx context.Context, request *replicat
 		return nil, err
 	}
 
-	digests := digest.NewSetBuilder()
+	digests := digest.NewSetBuilder(len(request.BlobDigests))
 	for i, blobDigest := range request.BlobDigests {
 		d, err := digestFunction.NewDigestFromProto(blobDigest)
 		if err != nil {

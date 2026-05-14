@@ -186,7 +186,7 @@ func TestDeduplicatingBlobReplicatorReplicateMultiple(t *testing.T) {
 	helloDigestSet := helloDigest.ToSingletonSet()
 	worldDigest := digest.MustNewDigest("world", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 	worldDigestSet := worldDigest.ToSingletonSet()
-	allDigests := digest.NewSetBuilder().Add(helloDigest).Add(worldDigest).Build()
+	allDigests := digest.NewSetBuilder(0).Add(helloDigest).Add(worldDigest).Build()
 
 	// Only a single test for the success case is provided, as the
 	// tests for ReplicateSingle() provide enough coverage.

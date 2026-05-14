@@ -40,7 +40,7 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 		return nil, err
 	}
 
-	inDigests := digest.NewSetBuilder()
+	inDigests := digest.NewSetBuilder(len(in.BlobDigests))
 	for _, partialDigest := range in.BlobDigests {
 		digest, err := digestFunction.NewDigestFromProto(partialDigest)
 		if err != nil {
