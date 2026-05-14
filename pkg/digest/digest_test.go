@@ -1,6 +1,7 @@
 package digest_test
 
 import (
+	"math"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -526,6 +527,45 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"8-5d8242df5726318bec51ccc6166a284ce40850cb7e9f4b041ce3df8a7fa61dc4-123-hello",
+			d.GetKey(digest.KeyWithInstance))
+	})
+
+	// Edge cases for the size and instance name components, which
+	// exercise the boundaries of the digest string encoding in
+	// Function.newDigestUnchecked().
+	t.Run("ZeroSize", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-0",
+			d.GetKey(digest.KeyWithoutInstance))
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-0-hello",
+			d.GetKey(digest.KeyWithInstance))
+	})
+
+	t.Run("MaximumSize", func(t *testing.T) {
+		d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", math.MaxInt64)
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-9223372036854775807",
+			d.GetKey(digest.KeyWithoutInstance))
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-9223372036854775807-hello",
+			d.GetKey(digest.KeyWithInstance))
+	})
+
+	t.Run("EmptyInstanceName", func(t *testing.T) {
+		d := digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 123)
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123",
+			d.GetKey(digest.KeyWithoutInstance))
+		require.Equal(
+			t,
+			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123-",
 			d.GetKey(digest.KeyWithInstance))
 	})
 }
