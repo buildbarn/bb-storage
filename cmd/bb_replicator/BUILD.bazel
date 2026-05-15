@@ -1,5 +1,6 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("//tools:container.bzl", "container_push_official", "multiarch_go_image")
+load("//tools:container.bzl", "multiarch_go_image")
+load("//tools:container_fork.bzl", "container_push_fork")
 
 go_library(
     name = "bb_replicator_lib",
@@ -34,7 +35,7 @@ multiarch_go_image(
     binary = ":bb_replicator",
 )
 
-container_push_official(
+container_push_fork(
     name = "bb_replicator_container_push",
     component = "bb-replicator",
     image = ":bb_replicator_container",

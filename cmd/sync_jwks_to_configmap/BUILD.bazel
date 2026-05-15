@@ -1,5 +1,6 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("//tools:container.bzl", "container_push_official", "multiarch_go_image")
+load("//tools:container.bzl", "multiarch_go_image")
+load("//tools:container_fork.bzl", "container_push_fork")
 
 go_library(
     name = "sync_jwks_to_configmap_lib",
@@ -32,7 +33,7 @@ multiarch_go_image(
     binary = ":sync_jwks_to_configmap",
 )
 
-container_push_official(
+container_push_fork(
     name = "sync_jwks_to_configmap_container_push",
     component = "sync-jwks-to-configmap",
     image = ":sync_jwks_to_configmap_container",

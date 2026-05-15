@@ -700,5 +700,9 @@
             "main"
          ]
       }
+   },
+   "permissions": {
+      "contents": "write",
+      "packages": "write"
    }
 }
