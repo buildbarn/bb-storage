@@ -500,6 +500,155 @@ func TestCASBlobAccessGetWithCompression(t *testing.T) {
 	})
 }
 
+func TestCASBlobAccessPutCompressedServerEarlyClose(t *testing.T) {
+	// When the remote server (e.g., bazel-remote) detects that the
+	// blob already exists, it sends a successful WriteResponse and
+	// closes the stream before the client has finished sending all
+	// frames. The client's next Send returns io.EOF, which
+	// propagates through the ZSTD encoder and IntoWriter. The
+	// client must call CloseAndRecv to retrieve the successful
+	// response instead of returning the io.EOF as a failure.
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
+	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, newTestZstdPool(16, 16))
+
+	expectGetCapabilitiesWithZSTD(client)
+
+	largeData := make([]byte, 1000)
+	for i := range largeData {
+		largeData[i] = byte('A' + (i % 26))
+	}
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "1411ffd5854fa029dc4d231aa89311eb", 1000)
+	testUUID := uuid.Must(uuid.Parse("7d659e5f-0e4b-48f0-ad9f-3489db6e103b"))
+
+	clientStream := mock.NewMockClientStream(ctrl)
+	uuidGenerator.EXPECT().Call().Return(testUUID, nil)
+	client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
+		Return(clientStream, nil)
+	r := mock.NewMockFileReader(ctrl)
+	r.EXPECT().ReadAt(gomock.Len(1000), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
+		copy(p, largeData)
+		return 1000, nil
+	})
+	r.EXPECT().Close()
+
+	// The first SendMsg succeeds (server receives the first chunk),
+	// but the server already has the blob and closes the stream.
+	// The second SendMsg returns io.EOF.
+	clientStream.EXPECT().SendMsg(gomock.Any()).Return(nil)
+	clientStream.EXPECT().SendMsg(gomock.Any()).Return(io.EOF).AnyTimes()
+
+	// CloseAndRecv returns the successful WriteResponse — the
+	// server committed the blob (it already existed).
+	clientStream.EXPECT().CloseSend().Return(nil)
+	clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
+		resp := m.(*bytestream.WriteResponse)
+		resp.CommittedSize = 42 // The server's committed size
+		return nil
+	})
+
+	err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 1000))
+	require.NoError(t, err, "Put should succeed when the server responds with WriteResponse before all frames are sent")
+}
+
+func TestCASBlobAccessPutCompressedServerEarlyCloseLargeBlob(t *testing.T) {
+	// When the blob is large enough that the ZSTD encoder flushes
+	// multiple times during IntoWriter, a mid-stream Send failure
+	// (io.EOF from server early close) propagates up through
+	// IntoWriter. The client must detect that the Send failed and
+	// retrieve the server's actual response via CloseAndRecv
+	// instead of returning the raw io.EOF.
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
+	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, newTestZstdPool(16, 16))
+
+	expectGetCapabilitiesWithZSTD(client)
+
+	// 100KB blob — large enough that ZSTD produces multiple
+	// output writes, causing Send to be called during IntoWriter
+	// (not only during encoder.Close or byteStreamWriter.Close).
+	largeData := make([]byte, 100000)
+	for i := range largeData {
+		largeData[i] = byte(i % 256)
+	}
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "1411ffd5854fa029dc4d231aa89311eb", 100000)
+	testUUID := uuid.Must(uuid.Parse("7d659e5f-0e4b-48f0-ad9f-3489db6e103b"))
+
+	clientStream := mock.NewMockClientStream(ctrl)
+	uuidGenerator.EXPECT().Call().Return(testUUID, nil)
+	client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
+		Return(clientStream, nil)
+	r := mock.NewMockFileReader(ctrl)
+	r.EXPECT().ReadAt(gomock.Any(), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
+		n := copy(p, largeData)
+		return n, nil
+	})
+	r.EXPECT().Close()
+
+	// First Send succeeds (server receives enough to detect the
+	// duplicate), then the server closes the stream.
+	sendCount := 0
+	clientStream.EXPECT().SendMsg(gomock.Any()).DoAndReturn(func(msg interface{}) error {
+		sendCount++
+		if sendCount <= 1 {
+			return nil
+		}
+		return io.EOF
+	}).AnyTimes()
+
+	// CloseAndRecv returns the successful WriteResponse.
+	clientStream.EXPECT().CloseSend().Return(nil)
+	clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
+		resp := m.(*bytestream.WriteResponse)
+		resp.CommittedSize = 100000
+		return nil
+	})
+
+	err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 100000))
+	require.NoError(t, err, "Put should succeed when the server responds early for a large blob")
+}
+
+func TestCASBlobAccessPutNonCompressedServerEarlyClose(t *testing.T) {
+	// Same scenario but for the non-compressed (identity) path.
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
+	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, nil)
+
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	testUUID := uuid.Must(uuid.Parse("7d659e5f-0e4b-48f0-ad9f-3489db6e103b"))
+
+	clientStream := mock.NewMockClientStream(ctrl)
+	uuidGenerator.EXPECT().Call().Return(testUUID, nil)
+	client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
+		Return(clientStream, nil)
+	r := mock.NewMockFileReader(ctrl)
+	r.EXPECT().ReadAt(gomock.Len(5), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
+		copy(p, "Hello")
+		return 5, nil
+	})
+	r.EXPECT().Close()
+
+	// Server closes stream after receiving partial data.
+	clientStream.EXPECT().SendMsg(gomock.Any()).Return(io.EOF)
+
+	// CloseAndRecv returns success — the server already had the blob.
+	clientStream.EXPECT().CloseSend().Return(nil)
+	clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
+		resp := m.(*bytestream.WriteResponse)
+		resp.CommittedSize = 5
+		return nil
+	})
+
+	err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 5))
+	require.NoError(t, err, "Put should succeed when the server already has the blob")
+}
+
 func TestCASBlobAccessPutPoolExhaustion(t *testing.T) {
 	// Create a pool with only 1 concurrent encoder to test backpressure.
 	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)

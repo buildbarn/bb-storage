@@ -628,6 +628,143 @@ func TestByteStreamServer(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
 	})
 
+	t.Run("WriteIdentityPutDiscardsBuffer", func(t *testing.T) {
+		// When Put returns success without consuming the buffer
+		// (e.g., a remote shard that detected the blob already
+		// exists and discarded the data), the server must still
+		// drain the remaining stream frames and return a valid
+		// WriteResponse. Without draining, the client receives
+		// EOF because its in-flight Write frames arrive after the
+		// server half-closes the stream.
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			// Simulate a shard backend that short-circuits
+			// on duplicate blob detection: discard the buffer
+			// without reading it and return success.
+			b.Discard()
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/blobs/581c1053f832a1c719fb6528a588ccfd/14",
+			Data:         []byte("Laputan"),
+		}))
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			Data:        []byte("Machine"),
+			WriteOffset: 7,
+			FinishWrite: true,
+		}))
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(14), response.CommittedSize)
+	})
+
+	t.Run("WriteZSTDPutDiscardsBuffer", func(t *testing.T) {
+		// Same scenario for the ZSTD compressed write path.
+		// A multi-chunk compressed write where Put returns
+		// success without consuming the buffer must still result
+		// in a valid WriteResponse, not EOF.
+		originalData := make([]byte, 50000)
+		for i := range originalData {
+			originalData[i] = byte(i % 256)
+		}
+
+		encoder, err := zstd.NewWriter(nil)
+		require.NoError(t, err)
+		compressedData := encoder.EncodeAll(originalData, nil)
+		encoder.Close()
+
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		generator.Write(originalData)
+		actualDigest := generator.Sum()
+
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			actualDigest,
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			b.Discard()
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+
+		chunkSize := 1000
+		currentOffset := 0
+		for currentOffset < len(compressedData) {
+			endOffset := currentOffset + chunkSize
+			if endOffset > len(compressedData) {
+				endOffset = len(compressedData)
+			}
+
+			chunk := compressedData[currentOffset:endOffset]
+			isLast := endOffset == len(compressedData)
+
+			var req *bytestream.WriteRequest
+			if currentOffset == 0 {
+				req = &bytestream.WriteRequest{
+					ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/compressed-blobs/zstd/" + actualDigest.GetHashString() + "/" + fmt.Sprintf("%d", len(originalData)),
+					Data:         chunk,
+					WriteOffset:  int64(currentOffset),
+					FinishWrite:  isLast,
+				}
+			} else {
+				req = &bytestream.WriteRequest{
+					Data:        chunk,
+					WriteOffset: int64(currentOffset),
+					FinishWrite: isLast,
+				}
+			}
+
+			require.NoError(t, stream.Send(req))
+			currentOffset = endOffset
+		}
+
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(len(compressedData)), response.CommittedSize)
+	})
+
+	t.Run("WriteIdentityPutPartiallyConsumesBuffer", func(t *testing.T) {
+		// Put reads some data (enough to compute the digest for
+		// dedup) but then stops and returns success, leaving
+		// unread frames on the stream.
+		blobAccess.EXPECT().Put(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+			// Read only the first chunk via the chunk reader,
+			// then close without reading the rest.
+			r := b.ToChunkReader(0, 100)
+			_, _ = r.Read()
+			r.Close()
+			return nil
+		})
+
+		stream, err := client.Write(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			ResourceName: "uploads/7de747e0-ab6b-4d83-90cb-11989f84c473/blobs/581c1053f832a1c719fb6528a588ccfd/14",
+			Data:         []byte("Laputan"),
+		}))
+		require.NoError(t, stream.Send(&bytestream.WriteRequest{
+			Data:        []byte("Machine"),
+			WriteOffset: 7,
+			FinishWrite: true,
+		}))
+		response, err := stream.CloseAndRecv()
+		require.NoError(t, err)
+		require.Equal(t, int64(14), response.CommittedSize)
+	})
+
 	t.Run("QueryWriteStatus", func(t *testing.T) {
 		_, err := client.QueryWriteStatus(ctx, &bytestream.QueryWriteStatusRequest{
 			ResourceName: "windows10/uploads/d834d9c2-f3c9-4f30-a698-75fd4be9470d/blobs/68e109f0f40ca72a15e05cc22786f8e6/10",

@@ -117,6 +117,7 @@ type zstdByteStreamWriter struct {
 	resourceName string
 	writeOffset  int64
 	cancel       context.CancelFunc
+	sendFailed   bool
 }
 
 func (w *zstdByteStreamWriter) Write(p []byte) (int, error) {
@@ -125,11 +126,23 @@ func (w *zstdByteStreamWriter) Write(p []byte) (int, error) {
 		WriteOffset:  w.writeOffset,
 		Data:         p,
 	}); err != nil {
+		w.sendFailed = true
 		return 0, err
 	}
 	w.writeOffset += int64(len(p))
 	w.resourceName = ""
 	return len(p), nil
+}
+
+// recvServerResponse retrieves the server's response after a Send
+// failure. When Send returns io.EOF, the server has already sent a
+// response and closed its end of the stream (e.g., the blob already
+// exists). CloseAndRecv retrieves that response. If the server
+// response is successful, nil is returned.
+func (w *zstdByteStreamWriter) recvServerResponse() error {
+	w.cancel()
+	_, err := w.client.CloseAndRecv()
+	return err
 }
 
 func (w *zstdByteStreamWriter) Close() error {
@@ -138,9 +151,8 @@ func (w *zstdByteStreamWriter) Close() error {
 		WriteOffset:  w.writeOffset,
 		FinishWrite:  true,
 	}); err != nil {
-		w.cancel()
-		w.client.CloseAndRecv()
-		return err
+		w.sendFailed = true
+		return w.recvServerResponse()
 	}
 	_, err := w.client.CloseAndRecv()
 	w.cancel()
@@ -287,11 +299,17 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 
 		if err := b.IntoWriter(encoder); err != nil {
 			encoder.Close()
+			if byteStreamWriter.sendFailed {
+				return byteStreamWriter.recvServerResponse()
+			}
 			byteStreamWriter.Close()
 			return err
 		}
 
 		if err := encoder.Close(); err != nil {
+			if byteStreamWriter.sendFailed {
+				return byteStreamWriter.recvServerResponse()
+			}
 			byteStreamWriter.Close()
 			return err
 		}
