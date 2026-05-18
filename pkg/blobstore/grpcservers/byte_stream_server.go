@@ -13,6 +13,7 @@ import (
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -56,7 +57,18 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			if readErr != nil {
 				return readErr
 			}
-			if writeErr := out.Send(&bytestream.ReadResponse{Data: readBuf}); writeErr != nil {
+			// A ChunkReader may reuse the slice returned by
+			// Read() across calls. Encoding into a grpc.PreparedMsg
+			// copies the wire-format bytes synchronously, so the
+			// underlying buffer is no longer referenced by gRPC after
+			// SendMsg returns. This is the only contract-safe way to
+			// hand a reusable buffer to grpc.SendMsg; see
+			// google.golang.org/grpc issues #5857 and #8186.
+			var prepared grpc.PreparedMsg
+			if err := prepared.Encode(out, &bytestream.ReadResponse{Data: readBuf}); err != nil {
+				return err
+			}
+			if writeErr := out.SendMsg(&prepared); writeErr != nil {
 				return writeErr
 			}
 		}
@@ -81,7 +93,14 @@ type readStreamWriter struct {
 }
 
 func (w *readStreamWriter) Write(p []byte) (int, error) {
-	if err := w.out.Send(&bytestream.ReadResponse{Data: p}); err != nil {
+	// Each Write encodes the chunk into a grpc.PreparedMsg before sending,
+	// so the caller's buffer is no longer referenced by gRPC after Write
+	// returns. See the IDENTITY path above for rationale.
+	var prepared grpc.PreparedMsg
+	if err := prepared.Encode(w.out, &bytestream.ReadResponse{Data: p}); err != nil {
+		return 0, err
+	}
+	if err := w.out.SendMsg(&prepared); err != nil {
 		return 0, err
 	}
 	return len(p), nil
