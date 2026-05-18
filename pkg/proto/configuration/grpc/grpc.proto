@@ -131,6 +131,23 @@ message ClientConfiguration {
   //
   // More details: https://grpc.io/docs/guides/service-config/
   google.protobuf.Struct default_service_config = 13;
+
+  // Number of independent gRPC client connections to maintain to this
+  // backend. The factory dials this many times and round-robins each
+  // Invoke / NewStream call across the resulting connections.
+  //
+  // A value of 0 or 1 preserves the historical one-connection
+  // behaviour and skips the round-robin overhead.
+  //
+  // Increase this when concurrent streams to a single backend address
+  // need to exceed what one HTTP/2 connection's flow-control window
+  // and per-stream scheduling can serve without head-of-line blocking
+  // — most commonly when many parallel ByteStream.Read calls of large
+  // blobs all land on the same backend via deterministic sharding.
+  //
+  // A reasonable starting point is the expected peak number of
+  // concurrent in-flight streams per (frontend pod, backend) pair.
+  int32 connection_pool_size = 14;
 }
 
 message ClientKeepaliveConfiguration {

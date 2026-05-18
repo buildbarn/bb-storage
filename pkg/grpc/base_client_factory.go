@@ -218,5 +218,27 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...))
-	return cf.dialer(context.Background(), config.Address, dialOptions...)
+
+	// Optional: connection pool. When ConnectionPoolSize > 1, dial the
+	// same target N times and wrap the resulting connections with
+	// NewRoundRobinClientConn so concurrent RPCs distribute across
+	// independent HTTP/2 sessions instead of all multiplexing on one.
+	// See round_robin_client_conn.go for the motivation.
+	//
+	// Combined with NewLazyClientDialer below, each conn is dialed
+	// lazily on its first RPC, so a pool of size N pays no startup
+	// cost up front; the first N RPCs each open one connection.
+	poolSize := int(config.ConnectionPoolSize)
+	if poolSize < 1 {
+		poolSize = 1
+	}
+	conns := make([]grpc.ClientConnInterface, poolSize)
+	for i := 0; i < poolSize; i++ {
+		c, err := cf.dialer(context.Background(), config.Address, dialOptions...)
+		if err != nil {
+			return nil, err
+		}
+		conns[i] = c
+	}
+	return NewRoundRobinClientConn(conns), nil
 }

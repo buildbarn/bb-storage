@@ -44,6 +44,7 @@ type ClientConfiguration struct {
 	ProxyUrl                      string                                 `protobuf:"bytes,10,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
 	Tracing                       map[string]*TracingMethodConfiguration `protobuf:"bytes,11,rep,name=tracing,proto3" json:"tracing,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	DefaultServiceConfig          *structpb.Struct                       `protobuf:"bytes,13,opt,name=default_service_config,json=defaultServiceConfig,proto3" json:"default_service_config,omitempty"`
+	ConnectionPoolSize            int32                                  `protobuf:"varint,14,opt,name=connection_pool_size,json=connectionPoolSize,proto3" json:"connection_pool_size,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }
@@ -153,6 +154,13 @@ func (x *ClientConfiguration) GetDefaultServiceConfig() *structpb.Struct {
 		return x.DefaultServiceConfig
 	}
 	return nil
+}
+
+func (x *ClientConfiguration) GetConnectionPoolSize() int32 {
+	if x != nil {
+		return x.ConnectionPoolSize
+	}
+	return 0
 }
 
 type ClientKeepaliveConfiguration struct {
@@ -1083,7 +1091,7 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\n" +
-	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x80\b\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xb2\b\n" +
 	"\x13ClientConfiguration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12B\n" +
 	"\x03tls\x18\x02 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12X\n" +
@@ -1096,7 +1104,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_pro
 	"\tproxy_url\x18\n" +
 	" \x01(\tR\bproxyUrl\x12X\n" +
 	"\atracing\x18\v \x03(\v2>.buildbarn.configuration.grpc.ClientConfiguration.TracingEntryR\atracing\x12M\n" +
-	"\x16default_service_config\x18\r \x01(\v2\x17.google.protobuf.StructR\x14defaultServiceConfig\x1a>\n" +
+	"\x16default_service_config\x18\r \x01(\v2\x17.google.protobuf.StructR\x14defaultServiceConfig\x120\n" +
+	"\x14connection_pool_size\x18\x0e \x01(\x05R\x12connectionPoolSize\x1a>\n" +
 	"\fHeaderValues\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\tR\x06header\x12\x16\n" +
 	"\x06values\x18\x02 \x03(\tR\x06values\x1at\n" +
