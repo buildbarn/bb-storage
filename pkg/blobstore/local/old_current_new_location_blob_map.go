@@ -332,21 +332,29 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 			lbm.currentBlocks++
 			lbm.newBlocks--
 		} else {
-			// The initialization phase is way behind us.
-			// Create a new block, thereby causing one block
-			// to be moved from "new" to "current", and one
-			// block to be moved from "current" to "old".
+			// The initialization phase of "new" blocks is way behind
+			// us. Create a new block, thereby causing one block to be
+			// moved from "new" to "current".
 			if err := lbm.blockList.PushBack(); err != nil {
 				return 0, err
 			}
 
-			lbm.oldBlocks = append(lbm.oldBlocks, oldBlockState{
-				insertionTime: unixTime(),
-			})
-			if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
-				lbm.popFront()
-				lbm.removeOldestOldBlock()
-				lbm.increaseTotalBlocksToBeReleased(lbm.totalBlocksReleased)
+			if lbm.blockListGrowthPolicy.ShouldGrowCurrentBlocks(lbm.currentBlocks) {
+				// The "current" blocks are still in their
+				// initialization phase.
+				lbm.currentBlocks++
+			} else {
+				// Because one block has moved from "new" to "current",
+				// one block also has to be moved from "current" to
+				// "old".
+				lbm.oldBlocks = append(lbm.oldBlocks, oldBlockState{
+					insertionTime: unixTime(),
+				})
+				if len(lbm.oldBlocks) > lbm.desiredOldBlocksCount {
+					lbm.popFront()
+					lbm.removeOldestOldBlock()
+					lbm.increaseTotalBlocksToBeReleased(lbm.totalBlocksReleased)
+				}
 			}
 		}
 		lbm.resetAllocationBlockIndex()

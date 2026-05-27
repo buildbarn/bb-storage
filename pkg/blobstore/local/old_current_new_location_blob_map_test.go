@@ -78,6 +78,160 @@ func TestOldCurrentNewLocationBlobMapAllocationPattern(t *testing.T) {
 	}
 }
 
+func TestOldCurrentNewLocationBlobMapGrowsMutableBlockList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	blockList := mock.NewMockBlockList(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
+	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
+		blockList,
+		local.NewMutableBlockListGrowthPolicy(
+			/* currentBlocksCount = */ 4),
+		errorLogger,
+		"ac",
+		/* blockSizeBytes = */ 16,
+		/* oldBlocksCount = */ 3,
+		/* newBlocksCount = */ 1,
+		/* initialBlocksCount = */ 2)
+
+	// After starting up, the "new", "current" and "old" block lists
+	// should grow up to the requested capacity.
+	putBlob := func() {
+		blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+		blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
+		blockList.EXPECT().Put(gomock.Any(), int64(5)).Return(blockListPutWriter.Call)
+		blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
+		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
+			func(b buffer.Buffer) local.BlockListPutFinalizer {
+				return blockListPutFinalizer.Call
+			})
+		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
+
+		// Perform the Put() operation.
+		locationBlobPutWriter, err := locationBlobMap.Put(5)
+		require.NoError(t, err)
+		_, err = locationBlobPutWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		require.NoError(t, err)
+	}
+	locationInOldestBlock := local.Location{
+		BlockIndex:  0,
+		OffsetBytes: 10,
+		SizeBytes:   5,
+	}
+
+	// Starting state is old=0, current=1, new=1. Add 3 more "current".
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false).Times(3)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack().Times(3)
+	putBlob()
+	_, needsRefresh := locationBlobMap.Get(locationInOldestBlock)
+	// blockIndex 0 is not in "old".
+	require.False(t, needsRefresh)
+
+	// State is old=0, current=4, new=1. Move 1 block to "old".
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack()
+	putBlob()
+	_, needsRefresh = locationBlobMap.Get(locationInOldestBlock)
+	// blockIndex 0 is in "old", needs refresh.
+	require.True(t, needsRefresh)
+
+	// State is old=1, current=4, new=1. Create another 2 "old" blocks.
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false).Times(2)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack().Times(2)
+	putBlob()
+
+	// State is old=3, current=4, new=1. Rotate.
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack()
+	blockList.EXPECT().PopFront()
+	putBlob()
+}
+
+func TestOldCurrentNewLocationBlobMapGrowsImmutableBlockList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	blockList := mock.NewMockBlockList(ctrl)
+	errorLogger := mock.NewMockErrorLogger(ctrl)
+	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
+		blockList,
+		local.NewImmutableBlockListGrowthPolicy(
+			/* currentBlocksCount = */ 4,
+			/* newBlocksCount = */ 2),
+		errorLogger,
+		"cas",
+		/* blockSizeBytes = */ 16,
+		/* oldBlocksCount = */ 3,
+		/* newBlocksCount = */ 2,
+		/* initialBlocksCount = */ 1)
+
+	// After starting up, the "new", "current" and "old" block lists
+	// should grow up to the requested capacity.
+	putBlob := func() {
+		blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+		blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
+		blockList.EXPECT().Put(gomock.Any(), int64(5)).Return(blockListPutWriter.Call)
+		blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
+		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
+			func(b buffer.Buffer) local.BlockListPutFinalizer {
+				return blockListPutFinalizer.Call
+			})
+		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
+
+		// Perform the Put() operation.
+		locationBlobPutWriter, err := locationBlobMap.Put(5)
+		require.NoError(t, err)
+		_, err = locationBlobPutWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		require.NoError(t, err)
+	}
+	locationInOldestBlock := local.Location{
+		BlockIndex:  0,
+		OffsetBytes: 10,
+		SizeBytes:   5,
+	}
+
+	// Starting state is old=0, current=0, new=1. Expand when starting to write.
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack().Times(5)
+	putBlob()
+	_, needsRefresh := locationBlobMap.Get(locationInOldestBlock)
+	// blockIndex 0 is not in "old".
+	require.False(t, needsRefresh)
+
+	// State is old=0, current=0 new=6. Move 4 of the new blocks to "current".
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false).Times(4)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	putBlob()
+	_, needsRefresh = locationBlobMap.Get(locationInOldestBlock)
+	// blockIndex 0 is not in "old".
+	require.False(t, needsRefresh)
+
+	// State is old=0, current=4, new=2. Move 1 block to "old".
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack()
+	putBlob()
+	_, needsRefresh = locationBlobMap.Get(locationInOldestBlock)
+	// blockIndex 0 is in "old", needs refresh.
+	require.True(t, needsRefresh)
+
+	// State is old=1, current=4, new=2. Create another 2 "old" blocks.
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false).Times(2)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack().Times(2)
+	putBlob()
+
+	// State is old=3, current=4, new=2. Rotate.
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(false)
+	blockList.EXPECT().HasSpace(gomock.Any(), int64(5)).Return(true)
+	blockList.EXPECT().PushBack()
+	blockList.EXPECT().PopFront()
+	putBlob()
+}
+
 func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
