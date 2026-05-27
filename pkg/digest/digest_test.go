@@ -219,7 +219,9 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_BLAKE3,
 					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
-					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("GITSHA1", func(t *testing.T) {
@@ -230,7 +232,9 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_GITSHA1,
 					"56a69bf74dc325e10e19ab2c69c13d1360aea147",
-					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("MD5", func(t *testing.T) {
@@ -241,7 +245,9 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_MD5,
 					"8b1a9953c4611296a827abf8c47804d7",
-					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("SHA256TREE", func(t *testing.T) {
@@ -252,7 +258,9 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_SHA256TREE,
 					"23cba29b38d57014880a2963abda1c7e32b567ab83c64b998adbd3928c5f2e40",
-					123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+			)
 		})
 	})
 
@@ -264,7 +272,9 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_MD5,
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+				123,
+			).GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+		)
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
@@ -272,20 +282,24 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 			"hello/world",
 			remoteexecution.DigestFunction_MD5,
 			"8b1a9953c4611296a827abf8c47804d7",
-			123)
+			123,
+		)
 
 		require.Equal(
 			t,
 			"hello/world/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY))
+			d.GetByteStreamReadPath(remoteexecution.Compressor_IDENTITY),
+		)
 		require.Equal(
 			t,
 			"hello/world/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamReadPath(remoteexecution.Compressor_ZSTD))
+			d.GetByteStreamReadPath(remoteexecution.Compressor_ZSTD),
+		)
 		require.Equal(
 			t,
 			"hello/world/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamReadPath(remoteexecution.Compressor_DEFLATE))
+			d.GetByteStreamReadPath(remoteexecution.Compressor_DEFLATE),
+		)
 	})
 }
 
@@ -301,7 +315,9 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_BLAKE3,
 					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
-					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("GITSHA1", func(t *testing.T) {
@@ -312,7 +328,9 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_GITSHA1,
 					"42e4b92e68ca9224a420f93ed0a73786515d75a8",
-					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("MD5", func(t *testing.T) {
@@ -323,7 +341,9 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_MD5,
 					"8b1a9953c4611296a827abf8c47804d7",
-					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+			)
 		})
 
 		t.Run("SHA256TREE", func(t *testing.T) {
@@ -334,7 +354,9 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 					"",
 					remoteexecution.DigestFunction_SHA256TREE,
 					"e58ef976160845c07f7be8dedf6f36194acb958f84cd2bbff74161e07ba5fcca",
-					123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+					123,
+				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+			)
 		})
 	})
 
@@ -346,7 +368,9 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_MD5,
 				"8b1a9953c4611296a827abf8c47804d7",
-				123).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+				123,
+			).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+		)
 	})
 
 	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
@@ -354,20 +378,24 @@ func TestDigestGetByteStreamWritePath(t *testing.T) {
 			"hello/world",
 			remoteexecution.DigestFunction_MD5,
 			"8b1a9953c4611296a827abf8c47804d7",
-			123)
+			123,
+		)
 
 		require.Equal(
 			t,
 			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY))
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
+		)
 		require.Equal(
 			t,
 			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_ZSTD))
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_ZSTD),
+		)
 		require.Equal(
 			t,
 			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_DEFLATE))
+			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_DEFLATE),
+		)
 	})
 }
 
@@ -383,7 +411,9 @@ func TestDigestGetProto(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256,
 				"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-				123).GetProto())
+				123,
+			).GetProto(),
+		)
 	})
 
 	t.Run("SHA256TREE", func(t *testing.T) {
@@ -397,7 +427,9 @@ func TestDigestGetProto(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256TREE,
 				"53f1472ebcd5c796407a98de5714a5fd39cb354dfe67a187a5b026fedd610e60",
-				123).GetProto())
+				123,
+			).GetProto(),
+		)
 	})
 }
 
@@ -409,7 +441,9 @@ func TestDigestGetInstanceName(t *testing.T) {
 			"hello",
 			remoteexecution.DigestFunction_SHA256,
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			123).GetInstanceName())
+			123,
+		).GetInstanceName(),
+	)
 }
 
 func TestDigestGetHashBytes(t *testing.T) {
@@ -426,7 +460,9 @@ func TestDigestGetHashBytes(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256,
 				"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-				123).GetHashBytes())
+				123,
+			).GetHashBytes(),
+		)
 	})
 
 	t.Run("SHA256TREE", func(t *testing.T) {
@@ -442,7 +478,9 @@ func TestDigestGetHashBytes(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256TREE,
 				"a4ed989bce5e10afae02d1b4e2a4fbf435cc148509ed4db7dc354548830c45a7",
-				123).GetHashBytes())
+				123,
+			).GetHashBytes(),
+		)
 	})
 }
 
@@ -455,7 +493,9 @@ func TestDigestGetHashString(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256,
 				"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-				123).GetHashString())
+				123,
+			).GetHashString(),
+		)
 	})
 
 	t.Run("SHA256TREE", func(t *testing.T) {
@@ -466,7 +506,9 @@ func TestDigestGetHashString(t *testing.T) {
 				"hello",
 				remoteexecution.DigestFunction_SHA256TREE,
 				"a042003b39e5d153ba6bce431effe7d2155adfadc46af9f30ac631f970d570e2",
-				123).GetHashString())
+				123,
+			).GetHashString(),
+		)
 	})
 }
 
@@ -478,7 +520,9 @@ func TestDigestGetSizeBytes(t *testing.T) {
 			"hello",
 			remoteexecution.DigestFunction_SHA256,
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			123).GetSizeBytes())
+			123,
+		).GetSizeBytes(),
+	)
 }
 
 func TestDigestGetKey(t *testing.T) {
@@ -487,11 +531,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"9-af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262-123",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"9-af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262-123-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	t.Run("GITSHA1", func(t *testing.T) {
@@ -499,11 +545,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"10-5fa582666e141fbb1e625792c9790eb9f5942c02-123",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"10-5fa582666e141fbb1e625792c9790eb9f5942c02-123-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	t.Run("SHA256", func(t *testing.T) {
@@ -511,11 +559,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	t.Run("SHA256TREE", func(t *testing.T) {
@@ -523,11 +573,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"8-5d8242df5726318bec51ccc6166a284ce40850cb7e9f4b041ce3df8a7fa61dc4-123",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"8-5d8242df5726318bec51ccc6166a284ce40850cb7e9f4b041ce3df8a7fa61dc4-123-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	// Edge cases for the size and instance name components, which
@@ -538,11 +590,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-0",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-0-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	t.Run("MaximumSize", func(t *testing.T) {
@@ -550,11 +604,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-9223372036854775807",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-9223372036854775807-hello",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 
 	t.Run("EmptyInstanceName", func(t *testing.T) {
@@ -562,11 +618,13 @@ func TestDigestGetKey(t *testing.T) {
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123",
-			d.GetKey(digest.KeyWithoutInstance))
+			d.GetKey(digest.KeyWithoutInstance),
+		)
 		require.Equal(
 			t,
 			"1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-123-",
-			d.GetKey(digest.KeyWithInstance))
+			d.GetKey(digest.KeyWithInstance),
+		)
 	})
 }
 
@@ -578,7 +636,9 @@ func TestDigestString(t *testing.T) {
 			"hello",
 			remoteexecution.DigestFunction_SHA256,
 			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			123).String())
+			123,
+		).String(),
+	)
 }
 
 func TestDigestToSingletonSet(t *testing.T) {
@@ -586,7 +646,8 @@ func TestDigestToSingletonSet(t *testing.T) {
 	require.Equal(
 		t,
 		digest.NewSetBuilder(0).Add(d).Build(),
-		d.ToSingletonSet())
+		d.ToSingletonSet(),
+	)
 }
 
 func TestKeyFormatCombine(t *testing.T) {
@@ -605,7 +666,8 @@ func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
 		[]digest.Digest{
 			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 		},
-		digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+		digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames(),
+	)
 
 	require.Equal(
 		t,
@@ -613,7 +675,8 @@ func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
 			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 		},
-		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+		digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames(),
+	)
 
 	require.Equal(
 		t,
@@ -622,7 +685,8 @@ func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 		},
-		digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+		digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames(),
+	)
 
 	require.Equal(
 		t,
@@ -632,7 +696,8 @@ func TestDigestGetDigestsWithParentInstanceNames(t *testing.T) {
 			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 			digest.MustNewDigest("hello/world/cup", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123),
 		},
-		digest.MustNewDigest("hello/world/cup", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames())
+		digest.MustNewDigest("hello/world/cup", remoteexecution.DigestFunction_MD5, "3d6b0f4e4ba25243c43e045dfe23845a", 123).GetDigestsWithParentInstanceNames(),
+	)
 }
 
 func TestRemoveUnsupportedDigestFunctions(t *testing.T) {
@@ -651,7 +716,8 @@ func TestRemoveUnsupportedDigestFunctions(t *testing.T) {
 			remoteexecution.DigestFunction_SHA1,
 			remoteexecution.DigestFunction_SHA256,
 			remoteexecution.DigestFunction_VSO,
-		}))
+		}),
+	)
 }
 
 func TestDigestGetCompactBinary(t *testing.T) {
@@ -670,7 +736,8 @@ func TestDigestGetCompactBinary(t *testing.T) {
 				// Size.
 				0xf6, 0xd1, 0x98, 0x77,
 			},
-			d.GetCompactBinary())
+			d.GetCompactBinary(),
+		)
 	})
 
 	t.Run("GITSHA1", func(t *testing.T) {
@@ -687,7 +754,8 @@ func TestDigestGetCompactBinary(t *testing.T) {
 				// Size.
 				0xf6, 0xd1, 0x98, 0x77,
 			},
-			d.GetCompactBinary())
+			d.GetCompactBinary(),
+		)
 	})
 
 	t.Run("SHA256", func(t *testing.T) {
@@ -705,7 +773,8 @@ func TestDigestGetCompactBinary(t *testing.T) {
 				// Size.
 				0xf6, 0xd1, 0x98, 0x77,
 			},
-			d.GetCompactBinary())
+			d.GetCompactBinary(),
+		)
 	})
 
 	t.Run("SHA256TREE", func(t *testing.T) {
@@ -723,6 +792,7 @@ func TestDigestGetCompactBinary(t *testing.T) {
 				// Size.
 				0xf6, 0xd1, 0x98, 0x77,
 			},
-			d.GetCompactBinary())
+			d.GetCompactBinary(),
+		)
 	})
 }

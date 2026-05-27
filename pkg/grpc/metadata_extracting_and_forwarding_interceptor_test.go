@@ -57,9 +57,11 @@ func TestMetadataExtractingAndForwardingUnaryClientInterceptor(t *testing.T) {
 					metadata.New(map[string]string{
 						"header": "value",
 					}),
-					md)
+					md,
+				)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(t, interceptor(modifiedCtx, "SomeMethod", req, resp, nil, invoker.Call))
 	})
@@ -107,9 +109,11 @@ func TestMetadataExtractingAndForwardingStreamClientInterceptor(t *testing.T) {
 					metadata.New(map[string]string{
 						"header": "value",
 					}),
-					md)
+					md,
+				)
 				return clientStream, nil
-			})
+			},
+		)
 
 		actualClientStream, err := interceptor(modifiedCtx, &streamDesc, nil, "SomeMethod", streamer.Call)
 		require.NoError(t, err)

@@ -20,7 +20,8 @@ var (
 			Help:      "Amount of time spent per HTTP request, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"name", "code", "method"})
+		[]string{"name", "code", "method"},
+	)
 )
 
 // NewMetricsHandler creates an adapter for http.Handler that adds basic
@@ -32,5 +33,6 @@ func NewMetricsHandler(base http.Handler, name string) http.Handler {
 
 	return promhttp.InstrumentHandlerDuration(
 		handlerRequestsDurationSeconds.MustCurryWith(prometheus.Labels{"name": name}),
-		base)
+		base,
+	)
 }

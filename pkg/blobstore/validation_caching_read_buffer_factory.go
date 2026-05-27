@@ -48,7 +48,8 @@ func (f *validationCachingReadBufferFactory) NewBufferFromByteSlice(blobDigest d
 		func(dataIsValid bool) {
 			f.maybeAddToCache(blobDigest, dataIsValid)
 			dataIntegrityCallback(dataIsValid)
-		})
+		},
+	)
 }
 
 func (f *validationCachingReadBufferFactory) NewBufferFromReader(blobDigest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
@@ -70,5 +71,6 @@ func (f *validationCachingReadBufferFactory) NewBufferFromReaderAt(blobDigest di
 		func(dataIsValid bool) {
 			f.maybeAddToCache(blobDigest, dataIsValid)
 			dataIntegrityCallback(dataIsValid)
-		})
+		},
+	)
 }

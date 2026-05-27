@@ -36,7 +36,8 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))))
+				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))),
+		)
 
 		_, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Instance name \"a\": Disk on fire"), err)
@@ -51,7 +52,8 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest3).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))))
+				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+		)
 
 		_, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
@@ -62,7 +64,8 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+				Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 
 		data, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
 		require.NoError(t, err)
@@ -92,7 +95,8 @@ func TestHierarchicalInstanceNamesBlobAccessGetFromComposite(t *testing.T) {
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))))
+				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))),
+		)
 
 		_, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Instance name \"a\": Disk on fire"), err)
@@ -107,7 +111,8 @@ func TestHierarchicalInstanceNamesBlobAccessGetFromComposite(t *testing.T) {
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest3, ellDigest3, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))))
+				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+		)
 
 		_, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
@@ -118,7 +123,8 @@ func TestHierarchicalInstanceNamesBlobAccessGetFromComposite(t *testing.T) {
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).
 				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
 			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
-				Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell"))))
+				Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell"))),
+		)
 
 		data, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
 		require.NoError(t, err)
@@ -158,13 +164,15 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
-				nil),
+				nil,
+			),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000002", 2)).
 					Build(),
-			).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire")))
+			).Return(digest.EmptySet, status.Error(codes.Internal, "Server on fire")),
+		)
 
 		_, err := blobAccess.FindMissing(ctx, digests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
@@ -205,26 +213,32 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 					Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
-				nil),
+				nil,
+			),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "10000000000000000000000000000001", 3)).
 					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
-					Build()).Return(
+					Build(),
+			).Return(
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("x", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
-				nil),
+				nil,
+			),
 			baseBlobAccess.EXPECT().FindMissing(
 				ctx,
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
-					Build()).Return(
+					Build(),
+			).Return(
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 					Build(),
-				nil))
+				nil,
+			),
+		)
 
 		missing, err := blobAccess.FindMissing(ctx, digests)
 		require.NoError(t, err)
@@ -235,6 +249,7 @@ func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("x/y", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 				Add(digest.MustNewDigest("x/z", remoteexecution.DigestFunction_MD5, "30000000000000000000000000000001", 3)).
 				Build(),
-			missing)
+			missing,
+		)
 	})
 }

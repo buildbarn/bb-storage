@@ -48,7 +48,8 @@ func TestRemoteAuthorizerFailure(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.PermissionDenied, "Remote authorization failed: Server offline"),
-			errs[0])
+			errs[0],
+		)
 	})
 
 	t.Run("InvalidVerdict", func(t *testing.T) {
@@ -72,7 +73,8 @@ func TestRemoteAuthorizerFailure(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.PermissionDenied, "Invalid authorize verdict"),
-			errs[0])
+			errs[0],
+		)
 	})
 }
 
@@ -116,7 +118,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.PermissionDenied, instanceName),
-			errs[0])
+			errs[0],
+		)
 	}
 
 	t.Run("Success", func(t *testing.T) {
@@ -167,7 +170,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.PermissionDenied, "deny-success"),
-			errs[0])
+			errs[0],
+		)
 		require.NoError(t, errs[1])
 	})
 
@@ -300,7 +304,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.PermissionDenied, "Invalid authorize verdict"),
-				errs[0])
+				errs[0],
+			)
 		}
 		authRelease["name1"] = make(chan struct{})
 		authRelease["name2"] = make(chan struct{})
@@ -320,7 +325,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.Canceled, "context canceled"),
-				errs[0])
+				errs[0],
+			)
 			close(done1c)
 		}()
 		// Nothing done yet.
@@ -398,7 +404,8 @@ func TestRemoteAuthorizerSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.PermissionDenied, verdict),
-				errs[0])
+				errs[0],
+			)
 		}
 
 		authRelease["token1"] = make(chan struct{})

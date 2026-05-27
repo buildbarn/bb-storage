@@ -387,7 +387,8 @@ func TestPersistentBlockListPushBackAfterFinalSync(t *testing.T) {
 	require.Equal(
 		t,
 		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
-		blockList.PushBack())
+		blockList.PushBack(),
+	)
 }
 
 func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
@@ -426,7 +427,8 @@ func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
 	require.Equal(
 		t,
 		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
-		err)
+		err,
+	)
 
 	// When closed for writing, the epoch ID should not change.
 	verifyEpochIDStaysAtZero(t, blockList)
@@ -481,7 +483,8 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	require.Equal(
 		t,
 		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
-		err)
+		err,
+	)
 
 	// When closed for writing, the epoch ID should not change.
 	verifyEpochIDStaysAtZero(t, blockList)
@@ -535,7 +538,8 @@ func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	require.Equal(
 		t,
 		status.Error(codes.Unavailable, "Cannot write object to storage, as storage is shutting down"),
-		err)
+		err,
+	)
 
 	// When closed for writing, the epoch ID should not change.
 	verifyEpochIDStaysAtZero(t, blockList)

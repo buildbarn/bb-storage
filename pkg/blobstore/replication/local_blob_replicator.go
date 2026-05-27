@@ -52,7 +52,8 @@ func (br *localBlobReplicator) ReplicateComposite(ctx context.Context, parentDig
 	}
 	return buffer.WithErrorHandler(
 		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		notFoundToInternalErrorHandler{})
+		notFoundToInternalErrorHandler{},
+	)
 }
 
 func (br *localBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

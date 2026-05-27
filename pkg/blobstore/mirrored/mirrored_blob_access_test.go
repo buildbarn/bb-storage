@@ -130,14 +130,16 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
-			})
+			},
+		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(100)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(t, blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
 	})
@@ -147,17 +149,20 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "Server on fire")
-			})
+			},
+		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return nil
-			})
+			},
+		)
 
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend A: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
+			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))),
+		)
 	})
 
 	t.Run("ErrorBackendB", func(t *testing.T) {
@@ -165,17 +170,20 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return nil
-			})
+			},
+		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "Server on fire")
-			})
+			},
+		)
 
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend B: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))))
+			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello world"))),
+		)
 	})
 }
 

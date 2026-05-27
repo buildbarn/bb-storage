@@ -137,5 +137,6 @@ func (dg *Generator) Write(p []byte) (int, error) {
 func (dg *Generator) Sum() Digest {
 	return dg.digestFunction.newDigestUnchecked(
 		hex.EncodeToString(dg.partialHash.Sum(nil)),
-		dg.sizeBytes)
+		dg.sizeBytes,
+	)
 }

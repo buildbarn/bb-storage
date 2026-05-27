@@ -35,7 +35,8 @@ func DecimalExponentialBuckets(lowestPowerOf10, powersOf10, stepsInBetween int) 
 	for i := 0; i <= stepsInBetween; i++ {
 		boundaries = append(
 			boundaries,
-			fmt.Sprintf("%f", math.Pow(10.0, float64(i)/float64(stepsInBetween+1)))[:6])
+			fmt.Sprintf("%f", math.Pow(10.0, float64(i)/float64(stepsInBetween+1)))[:6],
+		)
 	}
 
 	// Extend to all powers of 10 that are requested.

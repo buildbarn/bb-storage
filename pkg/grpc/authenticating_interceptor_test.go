@@ -42,7 +42,8 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 					"public": "You're totally who you say you are",
 				}, auth.AuthenticationMetadataFromContext(ctx).GetRaw())
 				return resp, nil
-			})
+			},
+		)
 
 		gotResp, err := interceptor(ctx, req, nil, handler.Call)
 		require.NoError(t, err)
@@ -69,7 +70,8 @@ func TestAuthenticatingUnaryInterceptor(t *testing.T) {
 		handler.EXPECT().Call(gomock.Any(), req).DoAndReturn(
 			func(ctx context.Context, req interface{}) (interface{}, error) {
 				return resp, nil
-			})
+			},
+		)
 
 		gotResp, err := interceptor(ctxWithSpan, req, nil, handler.Call)
 		require.NoError(t, err)
@@ -97,7 +99,8 @@ func TestAuthenticatingStreamInterceptor(t *testing.T) {
 					"public": "You're totally who you say you are",
 				}, auth.AuthenticationMetadataFromContext(stream.Context()).GetRaw())
 				return nil
-			})
+			},
+		)
 
 		require.NoError(t, interceptor(nil, serverStream, nil, handler.Call))
 	})
@@ -122,7 +125,8 @@ func TestAuthenticatingStreamInterceptor(t *testing.T) {
 		handler.EXPECT().Call(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(srv interface{}, stream grpc.ServerStream) error {
 				return nil
-			})
+			},
+		)
 		span.EXPECT().SetAttributes(attribute.String("auth.username", "john_doe"))
 
 		require.NoError(t, interceptor(nil, serverStream, nil, handler.Call))

@@ -45,18 +45,21 @@ func main() {
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 			grpcClientFactory,
 			int(configuration.MaximumMessageSizeBytes),
-			bb_zstd.NewPoolFromConfiguration(nil))
+			bb_zstd.NewPoolFromConfiguration(nil),
+		)
 		source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			dependenciesGroup,
 			configuration.Source,
-			blobAccessCreator)
+			blobAccessCreator,
+		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create source")
 		}
 		sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			dependenciesGroup,
 			configuration.Sink,
-			blobAccessCreator)
+			blobAccessCreator,
+		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
@@ -73,7 +76,8 @@ func main() {
 		nestedReplicator := replication.NewNestedBlobReplicator(
 			replicator,
 			sink.DigestKeyFormat,
-			int(configuration.MaximumMessageSizeBytes))
+			int(configuration.MaximumMessageSizeBytes),
+		)
 
 		instanceName, err := digest.NewInstanceName(configuration.InstanceName)
 		if err != nil {

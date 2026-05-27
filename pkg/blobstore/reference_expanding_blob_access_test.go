@@ -43,7 +43,8 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}))
+		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
+	)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("BackendError", func(t *testing.T) {
@@ -61,7 +62,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		indirectContentAddressableStorage.EXPECT().Get(ctx, helloDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&icas.Reference{},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "Reference uses an unsupported medium"), err)
@@ -79,7 +82,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Failed to create HTTP request: parse \"\\x00\": net/url: invalid control character in URL"), err)
@@ -96,7 +101,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(nil, errors.New("dial tcp 1.2.3.4:80: connect: connection refused"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
@@ -115,7 +122,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "404 Not Found",
@@ -140,7 +149,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
 			Status:     "206 Partial Content",
@@ -168,7 +179,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes: 100,
 					SizeBytes:   5,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(
 			func(req *http.Request) (*http.Response, error) {
@@ -180,7 +193,8 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					StatusCode: 206,
 					Body:       body,
 				}, nil
-			})
+			},
+		)
 		body.EXPECT().Read(gomock.Any()).DoAndReturn(func(p []byte) (int, error) {
 			copy(p, "Hello")
 			return 5, io.EOF
@@ -207,7 +221,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
@@ -234,7 +250,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
 			Key:    aws.String("mykey"),
@@ -259,7 +277,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
@@ -290,7 +310,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    11,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
@@ -323,7 +345,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					OffsetBytes:  100,
 					Decompressor: remoteexecution.Compressor_DEFLATE,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
@@ -361,7 +385,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    21,
 					Decompressor: remoteexecution.Compressor_ZSTD,
 				},
-				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
+				buffer.BackendProvided(buffer.Irreparable(aaaDigest)),
+			),
+		)
 		body := mock.NewMockReadCloser(ctrl)
 		s3Client.EXPECT().GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String("mybucket"),
@@ -401,7 +427,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					SizeBytes:    0,
 					Decompressor: remoteexecution.Compressor_IDENTITY,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		bucketHandle := mock.NewMockStorageBucketHandle(ctrl)
 		gcsClient.EXPECT().Bucket("mybucket").Return(bucketHandle)
 		objectHandle := mock.NewMockStorageObjectHandle(ctrl)
@@ -436,7 +464,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					},
 					Decompressor: remoteexecution.Compressor_IDENTITY,
 				},
-				buffer.BackendProvided(buffer.Irreparable(helloDigest))))
+				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
+			),
+		)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5),
@@ -464,7 +494,9 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 					},
 					Decompressor: remoteexecution.Compressor_ZSTD,
 				},
-				buffer.BackendProvided(buffer.Irreparable(aaaDigest))))
+				buffer.BackendProvided(buffer.Irreparable(aaaDigest)),
+			),
+		)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA1, "a6cf72f4c7f42afde230ac461d5c7b9e25838530", 21),
@@ -497,7 +529,8 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}))
+		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
+	)
 
 	t.Run("Failure", func(t *testing.T) {
 		// It is not possible to write objects using
@@ -512,8 +545,11 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 					"instance",
 					remoteexecution.DigestFunction_MD5,
 					"8b1a9953c4611296a827abf8c47804d7",
-					5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+					5,
+				),
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+			),
+		)
 	})
 }
 
@@ -532,7 +568,8 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}))
+		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
+	)
 
 	digests := digest.NewSetBuilder(0).
 		Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).

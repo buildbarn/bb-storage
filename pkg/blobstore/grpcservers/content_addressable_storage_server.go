@@ -87,7 +87,8 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 				codes.InvalidArgument,
 				"Attempted to read a total of at least %d bytes, while a maximum of %d bytes is permitted",
 				uint64(s.maximumMessageSizeBytes-bytesRemaining)+uint64(sizeBytes),
-				s.maximumMessageSizeBytes)
+				s.maximumMessageSizeBytes,
+			)
 		}
 		bytesRemaining -= sizeBytes
 		digests = append(digests, digest)
@@ -99,7 +100,8 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 	for i, reqDigest := range in.Digests {
 		data, err := s.contentAddressableStorage.Get(
 			ctx,
-			digests[i]).ToByteSlice(int(digests[i].GetSizeBytes()))
+			digests[i],
+		).ToByteSlice(int(digests[i].GetSizeBytes()))
 		response.Responses = append(response.Responses, &remoteexecution.BatchReadBlobsResponse_Response{
 			Digest: reqDigest,
 			Data:   data,
@@ -132,7 +134,8 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 			err = s.contentAddressableStorage.Put(
 				ctx,
 				digest,
-				buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided))
+				buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided),
+			)
 		}
 		response.Responses = append(response.Responses,
 			&remoteexecution.BatchUpdateBlobsResponse_Response{

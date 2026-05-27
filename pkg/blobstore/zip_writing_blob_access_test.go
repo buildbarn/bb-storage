@@ -31,7 +31,8 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 		capabilitiesProvider,
 		readBufferFactory,
 		digest.KeyWithoutInstance,
-		capturingReadWriter)
+		capturingReadWriter,
+	)
 
 	// Multiplex all WriteAt() calls below into a buffer, so that we
 	// can also do tests against the fully generated ZIP file.
@@ -105,7 +106,9 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 				blobAccess.Put(
 					ctx,
 					digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5),
-					buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+					buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+				),
+			)
 		})
 
 		t.Run("Successive", func(t *testing.T) {
@@ -154,7 +157,9 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 				blobAccess.Put(
 					ctx,
 					digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9),
-					buffer.NewValidatedBufferFromByteSlice([]byte("Buildbarn"))))
+					buffer.NewValidatedBufferFromByteSlice([]byte("Buildbarn")),
+				),
+			)
 		})
 	})
 
@@ -191,7 +196,8 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5479092d62cdb7c8e8eedef4a5eb2164", 720)).
-				Build())
+				Build(),
+		)
 		require.NoError(t, err)
 		require.Equal(t, digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5479092d62cdb7c8e8eedef4a5eb2164", 720).ToSingletonSet(), missing)
 	})
@@ -399,6 +405,8 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "848c3b8d79097873c69534c194bd666a", 3000),
-				buffer.NewValidatedBufferFromReaderAt(reader, 3000)))
+				buffer.NewValidatedBufferFromReaderAt(reader, 3000),
+			),
+		)
 	})
 }

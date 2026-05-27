@@ -38,7 +38,8 @@ func (ba *hierarchicalInstanceNamesBlobAccess) Get(ctx context.Context, digest d
 			blobAccess: ba.BlobAccess,
 			context:    ctx,
 			digests:    digests,
-		})
+		},
+	)
 }
 
 func (ba *hierarchicalInstanceNamesBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -52,7 +53,8 @@ func (ba *hierarchicalInstanceNamesBlobAccess) GetFromComposite(ctx context.Cont
 			parentDigests: parentDigests,
 			childDigests:  childDigests,
 			slicer:        slicer,
-		})
+		},
+	)
 }
 
 func (ba *hierarchicalInstanceNamesBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

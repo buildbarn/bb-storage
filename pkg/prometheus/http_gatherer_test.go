@@ -26,7 +26,8 @@ func TestHTTPGatherer(t *testing.T) {
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	gatherer := prometheus.NewHTTPGatherer(
 		&http.Client{Transport: roundTripper},
-		"http://localhost:9100/metrics")
+		"http://localhost:9100/metrics",
+	)
 
 	t.Run("NotFound", func(t *testing.T) {
 		roundTripper.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {

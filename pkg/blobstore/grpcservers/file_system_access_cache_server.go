@@ -45,7 +45,8 @@ func (s *fileSystemAccessCacheServer) GetFileSystemAccessProfile(ctx context.Con
 	}
 	previousExecutionStats, err := s.blobAccess.Get(ctx, digest).ToProto(
 		&fsac.FileSystemAccessProfile{},
-		s.maximumMessageSizeBytes)
+		s.maximumMessageSizeBytes,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -69,5 +70,6 @@ func (s *fileSystemAccessCacheServer) UpdateFileSystemAccessProfile(ctx context.
 	return &emptypb.Empty{}, s.blobAccess.Put(
 		ctx,
 		digest,
-		buffer.NewProtoBufferFromProto(in.FileSystemAccessProfile, buffer.UserProvided))
+		buffer.NewProtoBufferFromProto(in.FileSystemAccessProfile, buffer.UserProvided),
+	)
 }

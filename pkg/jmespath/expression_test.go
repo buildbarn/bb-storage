@@ -39,7 +39,8 @@ func TestNewJMESPathExpression(t *testing.T) {
 				Expression: "name",
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 
 		result, err := expr.Search(map[string]any{"name": "test"})
@@ -53,7 +54,8 @@ func TestNewJMESPathExpression(t *testing.T) {
 				Expression: "users[?age > `20`].name",
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 
 		result, err := expr.Search(map[string]any{
@@ -85,7 +87,8 @@ func TestNewJMESPathExpression(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 	})
 }
@@ -114,7 +117,8 @@ func TestExpressionWithFiles(t *testing.T) {
 					},
 				},
 				dependenciesGroup,
-				clock)
+				clock,
+			)
 			require.NoError(t, err)
 
 			result, err := expr.Search(map[string]any{})
@@ -142,7 +146,8 @@ func TestExpressionWithFiles(t *testing.T) {
 					},
 				},
 				dependenciesGroup,
-				clock)
+				clock,
+			)
 			require.NoError(t, err)
 
 			// Check the file's contents are correct initially.
@@ -187,7 +192,8 @@ func TestExpressionWithFiles(t *testing.T) {
 					},
 				},
 				dependenciesGroup,
-				clock)
+				clock,
+			)
 			testutil.RequirePrefixedStatus(t, status.Error(codes.Unknown, `Failed to read "/nonexistent/file.txt"`), err)
 			return nil
 		})
@@ -211,7 +217,8 @@ func TestExpressionWithTestVectors(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "contains file contents, but no files were provided")
 	})
@@ -237,7 +244,8 @@ func TestExpressionWithTestVectors(t *testing.T) {
 					},
 				},
 				dependenciesGroup,
-				clock.SystemClock)
+				clock.SystemClock,
+			)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Test vector input is missing \"files\" key")
 			return nil
@@ -269,7 +277,8 @@ func TestExpressionWithTestVectors(t *testing.T) {
 					},
 				},
 				dependenciesGroup,
-				clock.SystemClock)
+				clock.SystemClock,
+			)
 			require.NoError(t, err)
 			return nil
 		})
@@ -293,7 +302,8 @@ func TestExpressionTestVectorBooleanComparison(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 	})
 
@@ -313,7 +323,8 @@ func TestExpressionTestVectorBooleanComparison(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 	})
 
@@ -333,7 +344,8 @@ func TestExpressionTestVectorBooleanComparison(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 	})
 
@@ -353,7 +365,8 @@ func TestExpressionTestVectorBooleanComparison(t *testing.T) {
 				},
 			},
 			nil,
-			nil)
+			nil,
+		)
 		require.NoError(t, err)
 	})
 }

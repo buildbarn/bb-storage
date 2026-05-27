@@ -45,7 +45,8 @@ func (ba *demultiplexingBlobAccess) Get(ctx context.Context, digest digest.Diges
 	}
 	return buffer.WithErrorHandler(
 		backend.Get(ctx, patcher.PatchDigest(digest)),
-		backendNamePrefixingErrorHandler{backendName: backendName})
+		backendNamePrefixingErrorHandler{backendName: backendName},
+	)
 }
 
 func (ba *demultiplexingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -55,7 +56,8 @@ func (ba *demultiplexingBlobAccess) GetFromComposite(ctx context.Context, parent
 	}
 	return buffer.WithErrorHandler(
 		backend.GetFromComposite(ctx, patcher.PatchDigest(parentDigest), patcher.PatchDigest(childDigest), slicer),
-		backendNamePrefixingErrorHandler{backendName: backendName})
+		backendNamePrefixingErrorHandler{backendName: backendName},
+	)
 }
 
 func (ba *demultiplexingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

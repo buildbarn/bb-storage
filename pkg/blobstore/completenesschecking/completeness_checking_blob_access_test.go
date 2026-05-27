@@ -30,7 +30,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		contentAddressableStorage,
 		/* batchSize = */ 5,
 		/* maximumMessageSizeBytes = */ 1000,
-		/* maximumTotalTreeSizeBytes = */ 10000)
+		/* maximumTotalTreeSizeBytes = */ 10000,
+	)
 
 	actionDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 123)
 
@@ -58,7 +59,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 12,
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call),
+			),
+		)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result contained malformed digest: Hash has length 24, while 32 characters were expected"), err)
@@ -84,7 +87,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 7,
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call),
+			),
+		)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder(0).
@@ -93,7 +98,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Build(),
 		).Return(
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
-			nil)
+			nil,
+		)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object 3-8b1a9953c4611296a827abf8c47804d7-5-hello referenced by the action result is not present in the Content Addressable Storage"), err)
@@ -111,7 +117,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						SizeBytes: 7,
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call),
+			),
+		)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7).ToSingletonSet(),
@@ -138,7 +146,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						},
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call),
+			),
+		)
 		contentAddressableStorage.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
@@ -167,7 +177,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						},
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call)))
+				buffer.BackendProvided(dataIntegrityCallback.Call),
+			),
+		)
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Combined size of all output directories exceeds maximum limit of 10000 bytes"), err)
@@ -197,7 +209,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 						},
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback1.Call)))
+				buffer.BackendProvided(dataIntegrityCallback1.Call),
+			),
+		)
 
 		treeReader := mock.NewMockReadCloser(ctrl)
 		treeReader.EXPECT().Read(gomock.Any()).
@@ -250,7 +264,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		dataIntegrityCallback2.EXPECT().Call(false)
 		treeDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8f0450aa5f4602d93968daba6f2e7611", 4000)
 		contentAddressableStorage.EXPECT().Get(ctx, treeDigest).Return(
-			buffer.NewCASBufferFromReader(treeDigest, treeReader, buffer.BackendProvided(dataIntegrityCallback2.Call)))
+			buffer.NewCASBufferFromReader(treeDigest, treeReader, buffer.BackendProvided(dataIntegrityCallback2.Call)),
+		)
 		contentAddressableStorage.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder(0).
@@ -317,7 +332,9 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		actionCache.EXPECT().Get(ctx, actionDigest).Return(
 			buffer.NewProtoBufferFromProto(
 				&actionResult,
-				buffer.BackendProvided(dataIntegrityCallback1.Call)))
+				buffer.BackendProvided(dataIntegrityCallback1.Call),
+			),
+		)
 		dataIntegrityCallback2 := mock.NewMockDataIntegrityCallback(ctrl)
 		dataIntegrityCallback2.EXPECT().Call(true)
 		contentAddressableStorage.EXPECT().Get(

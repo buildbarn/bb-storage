@@ -46,7 +46,8 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 		err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).IntoWriter(writer)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), writer.Bytes())
 	})
@@ -61,7 +62,8 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 		err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).IntoWriter(writer)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
 
@@ -76,7 +78,8 @@ func TestNewCASBufferFromReaderIntoWriter(t *testing.T) {
 		err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).IntoWriter(writer)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).IntoWriter(writer)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
 	})
 }
@@ -95,7 +98,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 1)
 		require.Equal(t, 3, n)
 		require.NoError(t, err)
 		require.Equal(t, []byte("ell"), p[:])
@@ -110,7 +114,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
@@ -124,7 +129,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 6)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 6)
 		require.Equal(t, 0, n)
 		require.Equal(t, io.EOF, err)
 	})
@@ -138,7 +144,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 2)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 2)
 		require.Equal(t, 3, n)
 		require.Equal(t, io.EOF, err)
 		require.Equal(t, []byte("llo"), p[:3])
@@ -153,7 +160,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 5 bytes were expected"), err)
 	})
@@ -167,7 +175,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is at least 6 bytes in size, while 5 bytes were expected"), err)
 	})
@@ -181,7 +190,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 56f2d4d0b97e43f94505299dc45942a1, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 	})
@@ -196,7 +206,8 @@ func TestNewCASBufferFromReaderReadAt(t *testing.T) {
 		n, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 1)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 1)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
@@ -213,7 +224,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		actionResult, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)+1)
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
@@ -227,7 +239,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		actionResult, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
@@ -241,7 +254,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes)-1)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 134 bytes in size, while a maximum of 133 bytes is permitted"), err)
 	})
@@ -254,7 +268,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 3 bytes in size, while 134 bytes were expected"), err)
 	})
@@ -272,7 +287,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"), err)
 	})
@@ -286,7 +302,8 @@ func TestNewCASBufferFromReaderToProto(t *testing.T) {
 		_, err := buffer.NewCASBufferFromReader(
 			exampleActionResultDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).
 			ToProto(&remoteexecution.ActionResult{}, len(exampleActionResultBytes))
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 	})
@@ -306,7 +323,8 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 		data, err := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
 	})
@@ -320,7 +338,8 @@ func TestNewCASBufferFromReaderToByteSlice(t *testing.T) {
 		data, err := buffer.NewCASBufferFromReader(
 			emptyDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToByteSlice(10)
 		require.NoError(t, err)
 		require.Empty(t, data)
 	})
@@ -333,7 +352,8 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		"foo",
 		remoteexecution.DigestFunction_MD5,
 		"3e25960a79dbc69b674cd4ec67a72c62",
-		11)
+		11,
+	)
 
 	t.Run("Success", func(t *testing.T) {
 		reader := io.NopCloser(bytes.NewBufferString("Hello world"))
@@ -346,9 +366,11 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToChunkReader(
 			/* offset = */ 3,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("lo"), chunk)
@@ -378,9 +400,11 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToChunkReader(
 			/* offset = */ 11,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		require.Equal(t, io.EOF, err)
 		r.Close()
@@ -394,9 +418,11 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToChunkReader(
 			/* offset = */ -1,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
 		r.Close()
@@ -410,9 +436,11 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToChunkReader(
 			/* offset = */ 12,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
 		r.Close()
@@ -428,9 +456,11 @@ func TestNewCASBufferFromReaderToChunkReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToChunkReader(
 			/* offset = */ 0,
-			/* chunk size = */ 10)
+			/* chunk size = */ 10,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello worl"), chunk)
@@ -455,7 +485,8 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToReader()
 		var p [3]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 3, n)
@@ -489,7 +520,8 @@ func TestNewCASBufferFromReaderToReader(t *testing.T) {
 		r := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToReader()
 		var p [20]byte
 		n, err := r.Read(p[:])
 		require.Equal(t, 0, n)
@@ -508,7 +540,8 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		"foo",
 		remoteexecution.DigestFunction_MD5,
 		"8b1a9953c4611296a827abf8c47804d7",
-		5)
+		5,
+	)
 
 	t.Run("Success", func(t *testing.T) {
 		reader := io.NopCloser(bytes.NewBufferString("Hello"))
@@ -518,7 +551,8 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		b1, b2 := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).CloneCopy(10)
 
 		data1, err := b1.ToByteSlice(10)
 		require.NoError(t, err)
@@ -538,7 +572,8 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		b1, b2 := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
@@ -557,7 +592,8 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		b1, b2 := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(10)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).CloneCopy(10)
 
 		_, err := b1.ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 0 bytes in size, while 5 bytes were expected"), err)
@@ -574,7 +610,8 @@ func TestNewCASBufferFromReaderCloneCopy(t *testing.T) {
 		b1, b2 := buffer.NewCASBufferFromReader(
 			helloDigest,
 			reader,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(4)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).CloneCopy(4)
 
 		_, err := b1.ToByteSlice(10)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 5 bytes in size, while a maximum of 4 bytes is permitted"), err)

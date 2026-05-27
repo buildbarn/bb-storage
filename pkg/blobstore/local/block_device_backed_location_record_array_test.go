@@ -135,7 +135,8 @@ func TestBlockDeviceBackedLocationRecordArrayPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "Disk failure"),
-			lra.Put(100, exampleBlockDeviceBackedLocationRecord))
+			lra.Put(100, exampleBlockDeviceBackedLocationRecord),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -145,6 +146,7 @@ func TestBlockDeviceBackedLocationRecordArrayPut(t *testing.T) {
 
 		require.NoError(
 			t,
-			lra.Put(100, exampleBlockDeviceBackedLocationRecord))
+			lra.Put(100, exampleBlockDeviceBackedLocationRecord),
+		)
 	})
 }

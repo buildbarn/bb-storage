@@ -30,7 +30,8 @@ func NewBlobReplicatorFromConfiguration(terminationGroup program.Group, configur
 		configuredBlobReplicator = replication.NewConcurrencyLimitingBlobReplicator(
 			base,
 			sink.BlobAccess,
-			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency))
+			semaphore.NewWeighted(mode.ConcurrencyLimiting.MaximumConcurrency),
+		)
 	case *pb.BlobReplicatorConfiguration_Local:
 		configuredBlobReplicator = replication.NewLocalBlobReplicator(source, sink.BlobAccess)
 	case *pb.BlobReplicatorConfiguration_Noop:

@@ -13,15 +13,18 @@ func testPatcher(t *testing.T, ip digest.InstanceNamePatcher, oldInstanceName, n
 	require.Equal(
 		t,
 		util.Must(digest.NewInstanceName(newInstanceName)),
-		ip.PatchInstanceName(util.Must(digest.NewInstanceName(oldInstanceName))))
+		ip.PatchInstanceName(util.Must(digest.NewInstanceName(oldInstanceName))),
+	)
 	require.Equal(
 		t,
 		digest.MustNewDigest(newInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		ip.PatchDigest(digest.MustNewDigest(oldInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)))
+		ip.PatchDigest(digest.MustNewDigest(oldInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)),
+	)
 	require.Equal(
 		t,
 		digest.MustNewDigest(oldInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		ip.UnpatchDigest(digest.MustNewDigest(newInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)))
+		ip.UnpatchDigest(digest.MustNewDigest(newInstanceName, remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)),
+	)
 }
 
 func TestInstanceNamePatcher(t *testing.T) {

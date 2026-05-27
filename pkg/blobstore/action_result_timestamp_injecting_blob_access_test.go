@@ -45,7 +45,8 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 					ExitCode: 123,
 				}, actionResult)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
@@ -56,7 +57,10 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 					&remoteexecution.ActionResult{
 						ExitCode: 123,
 					},
-					buffer.UserProvided)))
+					buffer.UserProvided,
+				),
+			),
+		)
 	})
 
 	t.Run("MetadataWithoutWorkerCompletedTimestamp", func(t *testing.T) {
@@ -75,7 +79,8 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 					},
 				}, actionResult)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
@@ -88,7 +93,10 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 							WorkerStartTimestamp: &timestamppb.Timestamp{Seconds: 1300},
 						},
 					},
-					buffer.UserProvided)))
+					buffer.UserProvided,
+				),
+			),
+		)
 	})
 
 	t.Run("MetadataWithWorkerCompletedTimestamp", func(t *testing.T) {
@@ -106,7 +114,8 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 					},
 				}, actionResult)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
@@ -120,6 +129,9 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 							WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 2100},
 						},
 					},
-					buffer.UserProvided)))
+					buffer.UserProvided,
+				),
+			),
+		)
 	})
 }

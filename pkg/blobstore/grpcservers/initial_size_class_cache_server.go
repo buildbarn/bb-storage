@@ -46,7 +46,8 @@ func (s *initialSizeClassCacheServer) GetPreviousExecutionStats(ctx context.Cont
 	}
 	previousExecutionStats, err := s.blobAccess.Get(ctx, digest).ToProto(
 		&iscc.PreviousExecutionStats{},
-		s.maximumMessageSizeBytes)
+		s.maximumMessageSizeBytes,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -70,5 +71,6 @@ func (s *initialSizeClassCacheServer) UpdatePreviousExecutionStats(ctx context.C
 	return &emptypb.Empty{}, s.blobAccess.Put(
 		ctx,
 		digest,
-		buffer.NewProtoBufferFromProto(in.PreviousExecutionStats, buffer.UserProvided))
+		buffer.NewProtoBufferFromProto(in.PreviousExecutionStats, buffer.UserProvided),
+	)
 }

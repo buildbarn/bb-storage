@@ -122,7 +122,8 @@ func main() {
 				metav1.ApplyOptions{
 					FieldManager: "sync_jwks_to_configmap",
 					Force:        true,
-				}); err != nil {
+				},
+			); err != nil {
 			return util.StatusWrap(err, "Failed to apply changes to ConfigMap")
 		}
 		return nil

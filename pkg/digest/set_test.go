@@ -14,7 +14,8 @@ func TestSetEmpty(t *testing.T) {
 		t,
 		digest.NewSetBuilder(0).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 123)).
-			Build().Empty())
+			Build().Empty(),
+	)
 }
 
 func TestSetFirst(t *testing.T) {
@@ -35,14 +36,16 @@ func TestSetLength(t *testing.T) {
 		1,
 		digest.NewSetBuilder(0).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 123)).
-			Build().Length())
+			Build().Length(),
+	)
 	require.Equal(
 		t,
 		2,
 		digest.NewSetBuilder(0).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 123)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 123)).
-			Build().Length())
+			Build().Length(),
+	)
 }
 
 func TestSetRemoveEmptyBlob(t *testing.T) {
@@ -57,7 +60,8 @@ func TestSetRemoveEmptyBlob(t *testing.T) {
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_SHA1, "da39a3ee5e6b4b0d3255bfef95601890afd80709", 0)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 0)).
 			Build().
-			RemoveEmptyBlob())
+			RemoveEmptyBlob(),
+	)
 
 	// Set consisting entirely of non-empty blobs.
 	require.Equal(
@@ -70,7 +74,8 @@ func TestSetRemoveEmptyBlob(t *testing.T) {
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d80d8a581e9e2b78fd2f5d990d0f0e21", 13)).
 			Build().
-			RemoveEmptyBlob())
+			RemoveEmptyBlob(),
+	)
 
 	// Set consisting of both empty and non-empty blobs.
 	require.Equal(
@@ -84,7 +89,8 @@ func TestSetRemoveEmptyBlob(t *testing.T) {
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d80d8a581e9e2b78fd2f5d990d0f0e21", 13)).
 			Build().
-			RemoveEmptyBlob())
+			RemoveEmptyBlob(),
+	)
 }
 
 func TestPartitionByInstanceName(t *testing.T) {
@@ -127,7 +133,8 @@ func TestPartitionByInstanceName(t *testing.T) {
 			Add(digest.MustNewDigest("d", remoteexecution.DigestFunction_MD5, "77777777777777777777777777777777", 7)).
 			Add(digest.MustNewDigest("d", remoteexecution.DigestFunction_MD5, "88888888888888888888888888888888", 8)).
 			Build().
-			PartitionByInstanceName())
+			PartitionByInstanceName(),
+	)
 }
 
 func TestGetDifferenceAndIntersection(t *testing.T) {
@@ -143,7 +150,8 @@ func TestGetDifferenceAndIntersection(t *testing.T) {
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 456)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "0fffffffffffffffffffffffffffffff", 789)).
 			Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "1fffffffffffffffffffffffffffffff", 789)).
-			Build())
+			Build(),
+	)
 
 	// Ensure that the resulting sets both have the right contents,
 	// while maintaining the correct sorting order.
@@ -153,21 +161,24 @@ func TestGetDifferenceAndIntersection(t *testing.T) {
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 123),
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 123),
 		},
-		onlyA.Items())
+		onlyA.Items(),
+	)
 	require.Equal(
 		t,
 		[]digest.Digest{
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "0fffffffffffffffffffffffffffffff", 789),
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "1fffffffffffffffffffffffffffffff", 789),
 		},
-		both.Items())
+		both.Items(),
+	)
 	require.Equal(
 		t,
 		[]digest.Digest{
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 456),
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 456),
 		},
-		onlyB.Items())
+		onlyB.Items(),
+	)
 }
 
 func TestGetUnion(t *testing.T) {
@@ -189,7 +200,8 @@ func TestGetUnion(t *testing.T) {
 					Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 1)).
 					Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 1)).
 					Build(),
-			}).Items())
+			}).Items(),
+		)
 	})
 
 	t.Run("Complex", func(t *testing.T) {
@@ -224,6 +236,7 @@ func TestGetUnion(t *testing.T) {
 					Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc", 2)).
 					Add(digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "abcabcabcabcabcabcabcabcabcabcab", 3)).
 					Build(),
-			}).Items())
+			}).Items(),
+		)
 	})
 }

@@ -161,7 +161,8 @@ func (ps *PeriodicSyncer) ProcessBlockPut(ctx context.Context) bool {
 		_, t = ps.clock.NewTimer(
 			ps.lastSynchronizationTime.
 				Add(ps.minimumEpochInterval).
-				Sub(ps.clock.Now()))
+				Sub(ps.clock.Now()),
+		)
 	default:
 		// The system was idle for some time. Wait a bit, so
 		// that the current epoch gets a meaningful amount of

@@ -48,7 +48,8 @@ func TestVolatileBlockList(t *testing.T) {
 	require.Equal(
 		t,
 		status.Error(codes.Internal, "No blocks available"),
-		blockList.PushBack())
+		blockList.PushBack(),
+	)
 
 	block1 := mock.NewMockBlock(ctrl)
 	blockAllocator.EXPECT().NewBlock().Return(block1, nil, nil)

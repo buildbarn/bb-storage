@@ -24,7 +24,8 @@ var (
 			Name:      "old_current_new_location_blob_map_last_removed_old_block_insertion_time_seconds",
 			Help:      "Time at which the last removed block was inserted into the \"old\" queue, which is an indicator for the worst-case blob retention time",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 )
 
 type oldBlockState struct {
@@ -290,7 +291,8 @@ func (lbm *OldCurrentNewLocationBlobMap) findBlockWithSpace(sizeBytes int64) (in
 			codes.InvalidArgument,
 			"Blob is %d bytes in size, while this backend is only capable of storing blobs of up to %d bytes in size",
 			sizeBytes,
-			lbm.blockSizeBytes)
+			lbm.blockSizeBytes,
+		)
 	}
 
 	// Remove blocks from our bookkeeping in which data corruption

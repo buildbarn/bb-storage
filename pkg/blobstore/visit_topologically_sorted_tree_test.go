@@ -35,7 +35,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("MissingRootDirectory", func(t *testing.T) {
@@ -63,7 +65,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("MalformedRootDirectory", func(t *testing.T) {
@@ -80,7 +84,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("InvalidChildDigest", func(t *testing.T) {
@@ -117,7 +123,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("VisitorFailure", func(t *testing.T) {
@@ -148,7 +156,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("UnexpectedChildDirectory", func(t *testing.T) {
@@ -188,7 +198,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("hello", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("MissingChildDirectory", func(t *testing.T) {
@@ -229,7 +241,9 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 				digest.MustNewFunction("hello", remoteexecution.DigestFunction_SHA256),
 				/* maximumDirectorySizeBytes = */ 10000,
 				&rootArgument,
-				visitor.Call))
+				visitor.Call,
+			),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -307,6 +321,7 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 			digest.MustNewFunction("hello", remoteexecution.DigestFunction_SHA256),
 			/* maximumDirectorySizeBytes = */ 10000,
 			&rootArgument,
-			visitor.Call))
+			visitor.Call,
+		))
 	})
 }

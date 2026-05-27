@@ -26,7 +26,8 @@ func TestErrorHandlerProtoErrorRewriting(t *testing.T) {
 
 	_, err := buffer.WithErrorHandler(
 		buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")),
-		errorHandler).ToByteSlice(123)
+		errorHandler,
+	).ToByteSlice(123)
 	testutil.RequireEqualStatus(t, status.Error(codes.FailedPrecondition, "Blob not found"), err)
 }
 
@@ -45,7 +46,8 @@ func TestErrorHandlerProtoRetryingSuccess(t *testing.T) {
 
 	actionResult, err := buffer.WithErrorHandler(
 		buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")),
-		errorHandler).ToProto(&remoteexecution.ActionResult{}, 100)
+		errorHandler,
+	).ToProto(&remoteexecution.ActionResult{}, 100)
 	require.NoError(t, err)
 	testutil.RequireEqualProto(t, &remoteexecution.ActionResult{}, actionResult)
 }
@@ -66,7 +68,8 @@ func TestErrorHandlerProtoRetryingFailure(t *testing.T) {
 	var p [10]byte
 	n, err := buffer.WithErrorHandler(
 		buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")),
-		errorHandler).ReadAt(p[:], 123)
+		errorHandler,
+	).ReadAt(p[:], 123)
 	require.Equal(t, 0, n)
 	testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Maximum number of retries reached"), err)
 }
@@ -81,7 +84,8 @@ func TestErrorHandlerValidatedByteSlice(t *testing.T) {
 
 	data, err := buffer.WithErrorHandler(
 		buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
-		errorHandler).ToByteSlice(123)
+		errorHandler,
+	).ToByteSlice(123)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
 }

@@ -35,7 +35,8 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		eviction.NewLRUSet[string](),
 		100,
 		5*time.Minute,
-		replicaErrorLogger)
+		replicaErrorLogger,
+	)
 
 	t.Run("Put", func(t *testing.T) {
 		// Writes should always go to the source backend. There
@@ -48,7 +49,8 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(t, blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})
@@ -157,7 +159,8 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
-			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet())
+			digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "11111111111111111111111111111111", 1).ToSingletonSet(),
+		)
 		require.NoError(t, err)
 		require.Equal(t, digest.EmptySet, missing)
 
@@ -203,7 +206,8 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "44444444444444444444444444444444", 4)).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "66666666666666666666666666666666", 6)).
-				Build())
+				Build(),
+		)
 		require.NoError(t, err)
 		require.Equal(
 			t,
@@ -212,6 +216,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("find-missing/2", remoteexecution.DigestFunction_MD5, "33333333333333333333333333333333", 3)).
 				Add(digest.MustNewDigest("find-missing/down", remoteexecution.DigestFunction_MD5, "55555555555555555555555555555555", 5)).
 				Build(),
-			missing)
+			missing,
+		)
 	})
 }

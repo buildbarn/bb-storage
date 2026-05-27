@@ -24,7 +24,8 @@ func TestAuthorizationHeaderParser(t *testing.T) {
 		jmespath.MustCompile("payload.forbiddenField == null"),
 		jmespath.MustCompile("{\"private\": @.payload}"),
 		1000,
-		eviction.NewLRUSet[string]())
+		eviction.NewLRUSet[string](),
+	)
 
 	exampleKeyID := "MyKeyID"
 

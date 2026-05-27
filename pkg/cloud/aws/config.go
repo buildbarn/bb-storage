@@ -44,7 +44,9 @@ func NewConfigFromConfiguration(configuration *aws_pb.SessionConfiguration, name
 					credentials.NewStaticCredentialsProvider(
 						staticCredentials.AccessKeyId,
 						staticCredentials.SecretAccessKey,
-						"")))
+						"",
+					),
+				))
 		case *aws_pb.SessionConfiguration_WebIdentityRoleCredentials:
 			// Use web identity role credentials. This
 			// provider depends on an STS client, so we
@@ -60,7 +62,9 @@ func NewConfigFromConfiguration(configuration *aws_pb.SessionConfiguration, name
 					stscreds.NewWebIdentityRoleProvider(
 						sts.NewFromConfig(configWithoutCredentials),
 						webIdentityRoleCredentials.RoleArn,
-						stscreds.IdentityTokenFile(webIdentityRoleCredentials.TokenFile))))
+						stscreds.IdentityTokenFile(webIdentityRoleCredentials.TokenFile),
+					),
+				))
 		default:
 			return aws.Config{}, status.Error(codes.InvalidArgument, "Unknown credentials options type provided")
 		}

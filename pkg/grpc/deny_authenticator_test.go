@@ -17,5 +17,6 @@ func TestDenyAuthenticator(t *testing.T) {
 	testutil.RequireEqualStatus(
 		t,
 		status.Error(codes.Unauthenticated, "This service has been disabled"),
-		err)
+		err,
+	)
 }

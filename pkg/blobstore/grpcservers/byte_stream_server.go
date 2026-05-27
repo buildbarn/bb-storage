@@ -160,7 +160,8 @@ func (s *byteStreamServer) writeIdentity(stream bytestream.ByteStream_WriteServe
 	if err := s.blobAccess.Put(
 		stream.Context(),
 		digest,
-		buffer.NewCASBufferFromChunkReader(digest, r, buffer.UserProvided)); err != nil {
+		buffer.NewCASBufferFromChunkReader(digest, r, buffer.UserProvided),
+	); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
@@ -227,7 +228,8 @@ func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, r
 	if err := s.blobAccess.Put(
 		ctx,
 		digest,
-		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided)); err != nil {
+		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided),
+	); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{

@@ -41,7 +41,8 @@ func TestLazyClientDialer(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to create client connection: Some error occurred"),
-			clientConnection.Invoke(ctx, "method", nil, nil))
+			clientConnection.Invoke(ctx, "method", nil, nil),
+		)
 
 		// The next time an RPC is called, we should retry
 		// creating the client connection.
@@ -52,7 +53,8 @@ func TestLazyClientDialer(t *testing.T) {
 
 		require.NoError(
 			t,
-			clientConnection.Invoke(ctx, "method", nil, nil))
+			clientConnection.Invoke(ctx, "method", nil, nil),
+		)
 
 		// Future calls should no longer create client
 		// connections, as the previous one can be reused.
@@ -60,6 +62,7 @@ func TestLazyClientDialer(t *testing.T) {
 
 		require.NoError(
 			t,
-			clientConnection.Invoke(ctx, "method", nil, nil))
+			clientConnection.Invoke(ctx, "method", nil, nil),
+		)
 	})
 }

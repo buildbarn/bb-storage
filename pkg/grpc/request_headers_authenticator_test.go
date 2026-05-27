@@ -74,6 +74,7 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unavailable, "Server offline"),
-			err)
+			err,
+		)
 	})
 }

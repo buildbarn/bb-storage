@@ -26,7 +26,8 @@ func GetWithBlobReplicator(ctx context.Context, digest digest.Digest, initialBac
 			selector: successiveBackends,
 			context:  ctx,
 			digest:   digest,
-		})
+		},
+	)
 }
 
 type getReplicatingErrorHandler struct {
@@ -57,7 +58,8 @@ func GetFromCompositeWithBlobReplicator(ctx context.Context, parentDigest, child
 			parentDigest: parentDigest,
 			childDigest:  childDigest,
 			slicer:       slicer,
-		})
+		},
+	)
 }
 
 type getFromCompositeReplicatingErrorHandler struct {

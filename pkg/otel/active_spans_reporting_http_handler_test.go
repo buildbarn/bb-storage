@@ -53,7 +53,8 @@ func requireEqualBody(t *testing.T, expectedBody string, hh http.Handler) {
 	require.Equal(
 		t,
 		strings.Join(strings.Fields(fullBody), "\n"),
-		strings.Join(strings.Fields(string(data)), "\n"))
+		strings.Join(strings.Fields(string(data)), "\n"),
+	)
 }
 
 func TestActiveSpansReportingHTTPHandler(t *testing.T) {
@@ -92,7 +93,8 @@ func TestActiveSpansReportingHTTPHandler(t *testing.T) {
 		_, span := tracer.Start(
 			ctx,
 			"buildbarn.remoteworker.OperationQueue/Synchronize",
-			trace.WithAttributes(attribute.String("string", "hello")))
+			trace.WithAttributes(attribute.String("string", "hello")),
+		)
 
 		requireEqualBody(t, `
 			<div class="card my-3">
@@ -142,27 +144,35 @@ func TestActiveSpansReportingHTTPHandler(t *testing.T) {
 			"SomeEvent",
 			trace.WithAttributes(
 				attribute.Int64Slice("array", []int64{1, 2, 3, 4}),
-				attribute.Bool("bool", true)),
-			trace.WithTimestamp(time.Unix(1628497200, 100000000)))
+				attribute.Bool("bool", true),
+			),
+			trace.WithTimestamp(time.Unix(1628497200, 100000000)),
+		)
 		span.AddEvent(
 			"SomeEvent",
 			trace.WithAttributes(
 				attribute.Int64Slice("array", []int64{1, 2, 3, 4}),
-				attribute.Bool("bool", true)),
-			trace.WithTimestamp(time.Unix(1628497200, 100000000)))
+				attribute.Bool("bool", true),
+			),
+			trace.WithTimestamp(time.Unix(1628497200, 100000000)),
+		)
 
 		baseSpan.EXPECT().RecordError(
 			errors.New("Some error message"),
 			trace.WithAttributes(
 				attribute.Float64("float64", 1.5),
-				attribute.Int("int", 42)),
-			trace.WithTimestamp(time.Unix(1628497200, 200000000)))
+				attribute.Int("int", 42),
+			),
+			trace.WithTimestamp(time.Unix(1628497200, 200000000)),
+		)
 		span.RecordError(
 			errors.New("Some error message"),
 			trace.WithAttributes(
 				attribute.Float64("float64", 1.5),
-				attribute.Int("int", 42)),
-			trace.WithTimestamp(time.Unix(1628497200, 200000000)))
+				attribute.Int("int", 42),
+			),
+			trace.WithTimestamp(time.Unix(1628497200, 200000000)),
+		)
 
 		baseSpan.EXPECT().SetStatus(codes.Error, "Some status message")
 		span.SetStatus(codes.Error, "Some status message")
@@ -172,10 +182,12 @@ func TestActiveSpansReportingHTTPHandler(t *testing.T) {
 
 		baseSpan.EXPECT().SetAttributes(
 			attribute.Int64("int64", 123),
-			attribute.String("string", "world"))
+			attribute.String("string", "world"),
+		)
 		span.SetAttributes(
 			attribute.Int64("int64", 123),
-			attribute.String("string", "world"))
+			attribute.String("string", "world"),
+		)
 
 		requireEqualBody(t, `
 			<div class="card my-3">

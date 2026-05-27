@@ -49,7 +49,8 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 		ctx,
 		digest,
 		ba.fast,
-		ba.getBlobReplicatorSelector())
+		ba.getBlobReplicatorSelector(),
+	)
 }
 
 func (ba *readCachingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -59,5 +60,6 @@ func (ba *readCachingBlobAccess) GetFromComposite(ctx context.Context, parentDig
 		childDigest,
 		slicer,
 		ba.fast,
-		ba.getBlobReplicatorSelector())
+		ba.getBlobReplicatorSelector(),
+	)
 }

@@ -26,7 +26,8 @@ func TestAnyAuthenticatorZero(t *testing.T) {
 	testutil.RequireEqualStatus(
 		t,
 		status.Error(codes.Unauthenticated, "No authenticators configured"),
-		err)
+		err,
+	)
 }
 
 func TestAnyAuthenticatorMultiple(t *testing.T) {
@@ -63,7 +64,8 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "No TLS used, No token present, Not an internal IP range"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("AllUnauthenticatedIdentical", func(t *testing.T) {
@@ -89,7 +91,8 @@ func TestAnyAuthenticatorMultiple(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Failed to contact OAuth2 server"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("InternalErrorIgnoredUponSuccess", func(t *testing.T) {

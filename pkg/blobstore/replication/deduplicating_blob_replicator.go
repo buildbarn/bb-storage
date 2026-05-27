@@ -60,7 +60,8 @@ func (br *deduplicatingBlobReplicator) ReplicateSingle(ctx context.Context, blob
 	}
 	return buffer.WithErrorHandler(
 		br.sink.Get(ctx, blobDigest),
-		notFoundToInternalErrorHandler{})
+		notFoundToInternalErrorHandler{},
+	)
 }
 
 func (br *deduplicatingBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -69,7 +70,8 @@ func (br *deduplicatingBlobReplicator) ReplicateComposite(ctx context.Context, p
 	}
 	return buffer.WithErrorHandler(
 		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		notFoundToInternalErrorHandler{})
+		notFoundToInternalErrorHandler{},
+	)
 }
 
 func (br *deduplicatingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {

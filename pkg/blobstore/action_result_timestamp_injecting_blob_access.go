@@ -24,7 +24,8 @@ var (
 			Name:      "action_result_timestamp_injecting_blob_access_put_operations_total",
 			Help:      "Number of Put() operations performed against the Action Cache, and how many of those had execution_metadata.worker_completed_timestamp set.",
 		},
-		[]string{"worker_completed_timestamp"})
+		[]string{"worker_completed_timestamp"},
+	)
 	actionResultTimestampInjectingBlobAccessPutOperationsPresent = actionResultTimestampInjectingBlobAccessPutOperations.WithLabelValues("present")
 	actionResultTimestampInjectingBlobAccessPutOperationsAbsent  = actionResultTimestampInjectingBlobAccessPutOperations.WithLabelValues("absent")
 )

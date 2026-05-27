@@ -31,7 +31,8 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
-			status.Error(codes.NotFound, "Backend not found"))
+			status.Error(codes.NotFound, "Backend not found"),
+		)
 
 		_, err := demultiplexingBuildQueue.GetCapabilities(ctx, util.Must(digest.NewInstanceName("Nonexistent backend")))
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Failed to obtain backend for instance name \"Nonexistent backend\": Backend not found"), err)
@@ -43,7 +44,8 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			buildQueue,
 			digest.EmptyInstanceName,
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("rhel7"))).
 			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
@@ -57,7 +59,8 @@ func TestDemultiplexingBuildQueueGetCapabilities(t *testing.T) {
 			buildQueue,
 			digest.EmptyInstanceName,
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("rhel7"))).
 			Return(&remoteexecution.ServerCapabilities{
 				CacheCapabilities: &remoteexecution.CacheCapabilities{
@@ -105,7 +108,8 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
-			status.Error(codes.NotFound, "Backend not found"))
+			status.Error(codes.NotFound, "Backend not found"),
+		)
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
 		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 
@@ -125,7 +129,8 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			buildQueue,
 			digest.EmptyInstanceName,
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
 			ActionDigest: &remoteexecution.Digest{
@@ -152,7 +157,8 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 			buildQueue,
 			util.Must(digest.NewInstanceName("foo")),
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().Execute(testutil.EqProto(t, &remoteexecution.ExecuteRequest{
 			InstanceName: "rhel7",
 			ActionDigest: &remoteexecution.Digest{
@@ -166,7 +172,8 @@ func TestDemultiplexingBuildQueueExecute(t *testing.T) {
 					Done: true,
 				}))
 				return nil
-			})
+			},
+		)
 		executeServer := mock.NewMockExecution_ExecuteServer(ctrl)
 		executeServer.EXPECT().Context().Return(ctx).AnyTimes()
 		executeServer.EXPECT().Send(testutil.EqProto(t, &longrunningpb.Operation{
@@ -210,7 +217,8 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			nil,
 			digest.EmptyInstanceName,
 			digest.EmptyInstanceName,
-			status.Error(codes.NotFound, "Backend not found"))
+			status.Error(codes.NotFound, "Backend not found"),
+		)
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
 		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 
@@ -226,7 +234,8 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			buildQueue,
 			util.Must(digest.NewInstanceName("ubuntu1804")),
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}), gomock.Any()).Return(status.Error(codes.Unavailable, "Server not reachable"))
@@ -245,7 +254,8 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 			buildQueue,
 			util.Must(digest.NewInstanceName("ubuntu1804")),
 			util.Must(digest.NewInstanceName("rhel7")),
-			nil)
+			nil,
+		)
 		buildQueue.EXPECT().WaitExecution(testutil.EqProto(t, &remoteexecution.WaitExecutionRequest{
 			Name: "df4ab561-4e81-48c7-a387-edc7d899a76f",
 		}), gomock.Any()).DoAndReturn(
@@ -255,7 +265,8 @@ func TestDemultiplexingBuildQueueWaitExecution(t *testing.T) {
 					Done: true,
 				}))
 				return nil
-			})
+			},
+		)
 		waitExecutionServer := mock.NewMockExecution_WaitExecutionServer(ctrl)
 		waitExecutionServer.EXPECT().Context().Return(ctx).AnyTimes()
 		waitExecutionServer.EXPECT().Send(testutil.EqProto(t, &longrunningpb.Operation{

@@ -27,7 +27,8 @@ var (
 			Help:      "Amount of time spent per operation on blob replicator, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"storage_type", "operation", "grpc_code"})
+		[]string{"storage_type", "operation", "grpc_code"},
+	)
 
 	blobReplicatorOperationsBlobSizeBytes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -37,7 +38,8 @@ var (
 			Help:      "Size of blobs being replicated, in bytes.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation"},
+	)
 
 	blobReplicatorOperationsBatchSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -47,7 +49,8 @@ var (
 			Help:      "Number of blobs in batch replication requests.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation"},
+	)
 )
 
 type metricsBlobReplicator struct {
@@ -109,7 +112,8 @@ func (r *metricsBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest 
 			timeStart:       timeStart,
 			errorCode:       codes.OK,
 			durationSeconds: r.singleDurationSeconds,
-		})
+		},
+	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		r.singleBlobSizeBytes.Observe(float64(sizeBytes))
 	}
@@ -125,7 +129,8 @@ func (r *metricsBlobReplicator) ReplicateComposite(ctx context.Context, parentDi
 			timeStart:       timeStart,
 			errorCode:       codes.OK,
 			durationSeconds: r.compositeDurationSeconds,
-		})
+		},
+	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		r.compositeBlobSizeBytes.Observe(float64(sizeBytes))
 	}

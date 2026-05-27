@@ -20,7 +20,8 @@ var (
 			Help:      "Number of attempts it took for Get()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 6),
 		},
-		[]string{"storage_type", "outcome"})
+		[]string{"storage_type", "outcome"},
+	)
 	hashingKeyLocationMapGetTooManyAttempts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -28,7 +29,8 @@ var (
 			Name:      "hashing_key_location_map_get_too_many_attempts_total",
 			Help:      "Number of times Get() took the maximum number of attempts and still did not find the entry, which may indicate the hash table is too small",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 
 	hashingKeyLocationMapPutIterations = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -38,7 +40,8 @@ var (
 			Help:      "Number of iterations it took for Put()",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 8),
 		},
-		[]string{"storage_type", "outcome"})
+		[]string{"storage_type", "outcome"},
+	)
 	hashingKeyLocationMapPutTooManyIterations = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -46,7 +49,8 @@ var (
 			Name:      "hashing_key_location_map_put_too_many_iterations_total",
 			Help:      "Number of times Put() discarded an entry, because it took the maximum number of iterations, which may indicate the hash table is too small",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 
 	// errKeyLocationMapNotFound is returned by Get() for every key
 	// that is not present in the map. As Get() runs once per digest

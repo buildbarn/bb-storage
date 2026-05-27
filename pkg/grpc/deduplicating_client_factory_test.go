@@ -40,20 +40,24 @@ func TestDeduplicatingClientFactory(t *testing.T) {
 				t,
 				&configuration.ClientConfiguration{
 					Address: "example.com:123456",
-				}),
-			nil).Return(nil, status.Error(codes.InvalidArgument, "Invalid port number: 123456")).Times(2)
+				},
+			),
+			nil,
+		).Return(nil, status.Error(codes.InvalidArgument, "Invalid port number: 123456")).Times(2)
 
 		_, err := clientFactory.NewClientFromConfiguration(
 			&configuration.ClientConfiguration{
 				Address: "example.com:123456",
 			},
-			nil)
+			nil,
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid port number: 123456"), err)
 		_, err = clientFactory.NewClientFromConfiguration(
 			&configuration.ClientConfiguration{
 				Address: "example.com:123456",
 			},
-			nil)
+			nil,
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid port number: 123456"), err)
 	})
 
@@ -66,8 +70,10 @@ func TestDeduplicatingClientFactory(t *testing.T) {
 				t,
 				&configuration.ClientConfiguration{
 					Address: "example.com:1",
-				}),
-			nil).Return(client1, nil)
+				},
+			),
+			nil,
+		).Return(client1, nil)
 
 		client2 := mock.NewMockClientConnInterface(ctrl)
 		baseClientFactory.EXPECT().NewClientFromConfiguration(
@@ -75,8 +81,10 @@ func TestDeduplicatingClientFactory(t *testing.T) {
 				t,
 				&configuration.ClientConfiguration{
 					Address: "example.com:2",
-				}),
-			nil).Return(client2, nil)
+				},
+			),
+			nil,
+		).Return(client2, nil)
 
 		for i := 0; i < 10; i++ {
 			client, err := clientFactory.NewClientFromConfiguration(&configuration.ClientConfiguration{

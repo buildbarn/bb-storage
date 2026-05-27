@@ -131,11 +131,13 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 	})
 
 	t.Run("Failure", func(t *testing.T) {
@@ -146,12 +148,14 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "I/O error")
-			})
+			},
+		)
 
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "I/O error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 	})
 }
 

@@ -32,11 +32,13 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 				require.True(t, ok)
 				require.Equal(t, metadata.New(expectedMD), actualMD)
 				return err
-			})
+			},
+		)
 		require.Equal(
 			t,
 			err,
-			interceptor.InterceptUnaryClient(ctx, "SomeMethod", req, resp, nil, invoker.Call))
+			interceptor.InterceptUnaryClient(ctx, "SomeMethod", req, resp, nil, invoker.Call),
+		)
 	}
 
 	// No headers should be added in the initial case.
@@ -47,9 +49,11 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"hello": "world"})),
+			metadata.New(map[string]string{"hello": "world"}),
+		),
 		map[string]string{},
-		nil)
+		nil,
+	)
 	testUnaryClientCall(ctx, map[string]string{}, nil)
 
 	// Matching headers should be forwarded. Because the call to the
@@ -57,9 +61,11 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"a": "aardvark"})),
+			metadata.New(map[string]string{"a": "aardvark"}),
+		),
 		map[string]string{"a": "aardvark"},
-		status.Error(codes.Internal, "Backend failure"))
+		status.Error(codes.Internal, "Backend failure"),
+	)
 	testUnaryClientCall(ctx, map[string]string{}, nil)
 
 	// Backend the call to the backend succeeds, the header value is
@@ -67,9 +73,11 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"a": "aardvark"})),
+			metadata.New(map[string]string{"a": "aardvark"}),
+		),
 		map[string]string{"a": "aardvark"},
-		nil)
+		nil,
+	)
 	testUnaryClientCall(ctx, map[string]string{"a": "aardvark"}, nil)
 
 	// Each of the provided headers should be managed independently.
@@ -77,9 +85,11 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"b": "buffalo"})),
+			metadata.New(map[string]string{"b": "buffalo"}),
+		),
 		map[string]string{"a": "aardvark", "b": "buffalo"},
-		nil)
+		nil,
+	)
 	testUnaryClientCall(ctx, map[string]string{"a": "aardvark", "b": "buffalo"}, nil)
 
 	// The existing value should be retained in case of backend
@@ -87,9 +97,11 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"a": "albatross"})),
+			metadata.New(map[string]string{"a": "albatross"}),
+		),
 		map[string]string{"a": "albatross", "b": "buffalo"},
-		status.Error(codes.Internal, "Backend failure"))
+		status.Error(codes.Internal, "Backend failure"),
+	)
 	testUnaryClientCall(ctx, map[string]string{"a": "aardvark", "b": "buffalo"}, nil)
 
 	// Succeeding calls should cause existing header values to be
@@ -97,8 +109,10 @@ func TestMetadataForwardingAndReusingInterceptor(t *testing.T) {
 	testUnaryClientCall(
 		metadata.NewIncomingContext(
 			ctx,
-			metadata.New(map[string]string{"a": "albatross"})),
+			metadata.New(map[string]string{"a": "albatross"}),
+		),
 		map[string]string{"a": "albatross", "b": "buffalo"},
-		nil)
+		nil,
+	)
 	testUnaryClientCall(ctx, map[string]string{"a": "albatross", "b": "buffalo"}, nil)
 }

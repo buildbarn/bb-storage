@@ -71,7 +71,8 @@ func (s Source) notifyCASTooBig(sizeExpected, sizeObserved int64) error {
 		s.errorCode,
 		"Buffer is at least %d bytes in size, while %d bytes were expected",
 		sizeObserved,
-		sizeExpected)
+		sizeExpected,
+	)
 }
 
 // notifyCASSizeMismatch triggers a repair due to a Content Addressable
@@ -82,7 +83,8 @@ func (s Source) notifyCASSizeMismatch(sizeExpected, sizeObserved int64) error {
 		s.errorCode,
 		"Buffer is %d bytes in size, while %d bytes were expected",
 		sizeObserved,
-		sizeExpected)
+		sizeExpected,
+	)
 }
 
 // notifyCASHashMismatch triggers a repair due to a Content Addressable
@@ -93,7 +95,8 @@ func (s Source) notifyCASHashMismatch(hashExpected, hashObserved []byte) error {
 		s.errorCode,
 		"Buffer has checksum %s, while %s was expected",
 		hex.EncodeToString(hashObserved),
-		hex.EncodeToString(hashExpected))
+		hex.EncodeToString(hashExpected),
+	)
 }
 
 // UserProvided indicates that the buffer did not come from storage.

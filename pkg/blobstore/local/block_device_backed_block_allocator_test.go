@@ -59,7 +59,8 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		digest.MustNewDigest("some-instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		25,
 		5,
-		dataIntegrityCallback.Call)
+		dataIntegrityCallback.Call,
+	)
 	blocks[7].Release()
 	_, _, err = pa.NewBlock()
 	testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "No unused blocks available"), err)
@@ -70,7 +71,8 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")
 			return 5, nil
-		})
+		},
+	)
 	data, err := b.ToByteSlice(100)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
