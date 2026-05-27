@@ -38,7 +38,8 @@ func TestVisitProtoBytesFields(t *testing.T) {
 			util.VisitProtoBytesFields(bytes.NewBuffer([]byte{
 				// Tag.
 				0x80,
-			}), visitor.Call))
+			}), visitor.Call),
+		)
 	})
 
 	t.Run("InvalidType", func(t *testing.T) {
@@ -54,7 +55,8 @@ func TestVisitProtoBytesFields(t *testing.T) {
 				0x08,
 				// Value == 150.
 				0x96, 0x01,
-			}), visitor.Call))
+			}), visitor.Call),
+		)
 	})
 
 	t.Run("InvalidSize", func(t *testing.T) {
@@ -69,7 +71,8 @@ func TestVisitProtoBytesFields(t *testing.T) {
 				0x12,
 				// Size.
 				0x80,
-			}), visitor.Call))
+			}), visitor.Call),
+		)
 	})
 
 	t.Run("TruncatedPayloadRead", func(t *testing.T) {
@@ -94,7 +97,8 @@ func TestVisitProtoBytesFields(t *testing.T) {
 				0x05,
 				// Payload == "Hel".
 				0x48, 0x65, 0x6c,
-			}), visitor.Call))
+			}), visitor.Call),
+		)
 	})
 
 	t.Run("TruncatedPayloadDiscard", func(t *testing.T) {
@@ -114,7 +118,8 @@ func TestVisitProtoBytesFields(t *testing.T) {
 				0x05,
 				// Payload == "Hel".
 				0x48, 0x65, 0x6c,
-			}), visitor.Call))
+			}), visitor.Call),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {

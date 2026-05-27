@@ -32,7 +32,8 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			nil,
 			"",
 			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"))
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+		)
 
 		_, err := blobAccess.Get(
 			ctx,
@@ -49,8 +50,10 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
 
@@ -68,8 +71,10 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
@@ -94,7 +99,8 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 			nil,
 			"",
 			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"))
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+		)
 		blobSlicer := mock.NewMockBlobSlicer(ctrl)
 
 		_, err := blobAccess.GetFromComposite(
@@ -114,8 +120,10 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		blobSlicer := mock.NewMockBlobSlicer(ctrl)
 		baseBlobAccess.EXPECT().GetFromComposite(
 			ctx,
@@ -140,8 +148,10 @@ func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		blobSlicer := mock.NewMockBlobSlicer(ctrl)
 		baseBlobAccess.EXPECT().GetFromComposite(
 			ctx,
@@ -173,7 +183,8 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			nil,
 			"",
 			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"))
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+		)
 
 		require.Equal(
 			t,
@@ -181,7 +192,9 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+			),
+		)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
@@ -192,8 +205,10 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
@@ -206,7 +221,9 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+			),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -216,8 +233,10 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(100)
@@ -231,7 +250,9 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+			),
+		)
 	})
 }
 
@@ -247,11 +268,13 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			nil,
 			"",
 			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"))
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+		)
 
 		_, err := blobAccess.FindMissing(
 			ctx,
-			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet())
+			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
 	})
 
@@ -263,14 +286,17 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build()).
+				Build(),
+		).
 			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
 
 		_, err := blobAccess.FindMissing(
@@ -278,7 +304,8 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build())
+				Build(),
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": I/O error"), err)
 	})
 
@@ -294,30 +321,38 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			"a",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("a")),
-				util.Must(digest.NewInstanceName("A"))),
-			nil)
+				util.Must(digest.NewInstanceName("A")),
+			),
+			nil,
+		)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("a/x"))).Return(
 			baseBlobAccessA,
 			"a",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("a")),
-				util.Must(digest.NewInstanceName("A"))),
-			nil)
+				util.Must(digest.NewInstanceName("A")),
+			),
+			nil,
+		)
 		baseBlobAccessB := mock.NewMockBlobAccess(ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("b"))).Return(
 			baseBlobAccessB,
 			"b",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("b")),
-				util.Must(digest.NewInstanceName("B"))),
-			nil)
+				util.Must(digest.NewInstanceName("B")),
+			),
+			nil,
+		)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("b/x"))).Return(
 			baseBlobAccessB,
 			"b",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("b")),
-				util.Must(digest.NewInstanceName("B"))),
-			nil)
+				util.Must(digest.NewInstanceName("B")),
+			),
+			nil,
+		)
 		baseBlobAccessA.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder(0).
@@ -325,13 +360,15 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build()).
+				Build(),
+		).
 			Return(
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("A", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Add(digest.MustNewDigest("A/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
-				nil)
+				nil,
+			)
 		baseBlobAccessB.EXPECT().FindMissing(
 			ctx,
 			digest.NewSetBuilder(0).
@@ -339,13 +376,15 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build()).
+				Build(),
+		).
 			Return(
 				digest.NewSetBuilder(0).
 					Add(digest.MustNewDigest("B", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Add(digest.MustNewDigest("B/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 					Build(),
-				nil)
+				nil,
+			)
 
 		missing, err := blobAccess.FindMissing(
 			ctx,
@@ -358,7 +397,8 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
 				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7)).
-				Build())
+				Build(),
+		)
 		require.NoError(t, err)
 		require.Equal(
 			t,
@@ -368,7 +408,8 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 				Add(digest.MustNewDigest("b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Add(digest.MustNewDigest("b/x", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 				Build(),
-			missing)
+			missing,
+		)
 	})
 }
 
@@ -384,7 +425,8 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 			nil,
 			"",
 			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"))
+			status.Error(codes.InvalidArgument, "Unknown instance name"),
+		)
 
 		_, err := blobAccess.GetCapabilities(ctx, util.Must(digest.NewInstanceName("unknown")))
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
@@ -398,8 +440,10 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("goodbye/world"))).
 			Return(nil, status.Error(codes.Internal, "Server offline"))
 
@@ -414,8 +458,10 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 			"Primary",
 			digest.NewInstanceNamePatcher(
 				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye"))),
-			nil)
+				util.Must(digest.NewInstanceName("goodbye")),
+			),
+			nil,
+		)
 		baseBlobAccess.EXPECT().GetCapabilities(ctx, util.Must(digest.NewInstanceName("goodbye/world"))).
 			Return(&remoteexecution.ServerCapabilities{
 				CacheCapabilities: &remoteexecution.CacheCapabilities{

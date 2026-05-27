@@ -45,7 +45,8 @@ func TestRemoteRequestHeadersAuthenticatorFailure(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Remote authentication failed: Server offline"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("InvalidVerdict", func(t *testing.T) {
@@ -72,7 +73,8 @@ func TestRemoteRequestHeadersAuthenticatorFailure(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Invalid authentication verdict"),
-			err)
+			err,
+		)
 	})
 }
 
@@ -113,7 +115,8 @@ func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "You are an alien: "+token),
-			err)
+			err,
+		)
 	}
 
 	t.Run("SuccessAllow", func(t *testing.T) {
@@ -181,7 +184,8 @@ func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "You are an alien: deny3"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("ExpireResponses", func(t *testing.T) {
@@ -275,7 +279,8 @@ func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.Unauthenticated, "Invalid authentication verdict"),
-				err)
+				err,
+			)
 			close(done)
 		}
 		authRelease["token1"] = make(chan struct{})
@@ -295,7 +300,8 @@ func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.Canceled, "context canceled"),
-				err)
+				err,
+			)
 			close(done1c)
 		}()
 		// Nothing done yet.
@@ -371,7 +377,8 @@ func TestRemoteRequestHeadersAuthenticatorSuccess(t *testing.T) {
 			testutil.RequireEqualStatus(
 				t,
 				status.Error(codes.Unauthenticated, verdict),
-				err)
+				err,
+			)
 		}
 
 		authRelease["token1"] = make(chan struct{})

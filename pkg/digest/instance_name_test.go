@@ -121,12 +121,14 @@ func TestInstanceNameGetComponents(t *testing.T) {
 	require.Equal(
 		t,
 		[]string{"hello"},
-		util.Must(digest.NewInstanceName("hello")).GetComponents())
+		util.Must(digest.NewInstanceName("hello")).GetComponents(),
+	)
 
 	require.Equal(
 		t,
 		[]string{"hello", "world"},
-		util.Must(digest.NewInstanceName("hello/world")).GetComponents())
+		util.Must(digest.NewInstanceName("hello/world")).GetComponents(),
+	)
 }
 
 func TestInstanceNameNewDigestFromCompactBinary(t *testing.T) {

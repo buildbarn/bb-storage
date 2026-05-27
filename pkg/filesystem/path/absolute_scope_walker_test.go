@@ -29,6 +29,7 @@ func TestAbsoluteScopeWalker(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "Path is relative, while an absolute path was expected"),
-			path.Resolve(path.UNIXFormat.NewParser("hello"), path.NewAbsoluteScopeWalker(componentWalker)))
+			path.Resolve(path.UNIXFormat.NewParser("hello"), path.NewAbsoluteScopeWalker(componentWalker)),
+		)
 	})
 }

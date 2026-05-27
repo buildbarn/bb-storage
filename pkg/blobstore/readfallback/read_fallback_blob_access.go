@@ -63,7 +63,8 @@ func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest)
 		ctx,
 		digest,
 		ba.BlobAccess,
-		ba.getBlobReplicatorSelector())
+		ba.getBlobReplicatorSelector(),
+	)
 }
 
 func (ba *readFallbackBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -73,7 +74,8 @@ func (ba *readFallbackBlobAccess) GetFromComposite(ctx context.Context, parentDi
 		childDigest,
 		slicer,
 		ba.BlobAccess,
-		ba.getBlobReplicatorSelector())
+		ba.getBlobReplicatorSelector(),
+	)
 }
 
 func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

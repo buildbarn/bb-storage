@@ -77,7 +77,8 @@ func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx cont
 			err = s.blobAccess.Put(
 				ctx,
 				digest,
-				buffer.NewProtoBufferFromProto(request.Reference, buffer.UserProvided))
+				buffer.NewProtoBufferFromProto(request.Reference, buffer.UserProvided),
+			)
 		}
 		responses = append(responses,
 			&remoteexecution.BatchUpdateBlobsResponse_Response{
@@ -106,7 +107,8 @@ func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Conte
 	}
 	actionResult, err := s.blobAccess.Get(ctx, digest).ToProto(
 		&icas.Reference{},
-		s.maximumMessageSizeBytes)
+		s.maximumMessageSizeBytes,
+	)
 	if err != nil {
 		return nil, err
 	}

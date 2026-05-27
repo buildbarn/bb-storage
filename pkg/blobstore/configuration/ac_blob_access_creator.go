@@ -85,7 +85,8 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 				bac.maximumMessageSizeBytes,
 				minimumTimestamp.AsTime(),
 				minimumValidity.AsDuration(),
-				maximumValidityJitter.AsDuration()),
+				maximumValidityJitter.AsDuration(),
+			),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "action_result_expiring", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
@@ -102,7 +103,8 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 				bac.contentAddressableStorage.BlobAccess,
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
-				backend.CompletenessChecking.MaximumTotalTreeSizeBytes),
+				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,
+			),
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
@@ -126,5 +128,6 @@ func (bac *acBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.Blob
 	return blobstore.NewActionResultTimestampInjectingBlobAccess(
 		blobAccess,
 		clock.SystemClock,
-		bac.maximumMessageSizeBytes)
+		bac.maximumMessageSizeBytes,
+	)
 }

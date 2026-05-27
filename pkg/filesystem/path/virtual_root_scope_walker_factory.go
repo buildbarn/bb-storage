@@ -125,7 +125,8 @@ func NewVirtualRootScopeWalkerFactory(rootPath Parser, aliases map[string]string
 	// Resolve the directory at which we want to place the virtual root.
 	rootCreator := virtualRootNodeCreator{namelessNode: &wf.rootNode}
 	rootPathBuilder, rootPathWalker := EmptyBuilder.Join(
-		NewAbsoluteScopeWalker(&rootCreator))
+		NewAbsoluteScopeWalker(&rootCreator),
+	)
 
 	if err := Resolve(rootPath, rootPathWalker); err != nil {
 		return nil, util.StatusWrap(err, "Failed to resolve root path")
@@ -149,7 +150,8 @@ func NewVirtualRootScopeWalkerFactory(rootPath Parser, aliases map[string]string
 		// Convert the relative target path to an absolute path
 		// underneath the virtual root.
 		targetPathBuilder, targetPathWalker := rootPathBuilder.Join(
-			NewRelativeScopeWalker(VoidComponentWalker))
+			NewRelativeScopeWalker(VoidComponentWalker),
+		)
 		if err := Resolve(UNIXFormat.NewParser(target), targetPathWalker); err != nil {
 			return nil, util.StatusWrapf(err, "Failed to resolve alias target %#v", target)
 		}

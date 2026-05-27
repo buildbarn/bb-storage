@@ -20,7 +20,8 @@ var (
 			Help:      "Amount of time spent per HTTP request, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"name", "code", "method"})
+		[]string{"name", "code", "method"},
+	)
 )
 
 // NewMetricsRoundTripper creates an adapter for http.RoundTripper that
@@ -32,5 +33,6 @@ func NewMetricsRoundTripper(base http.RoundTripper, name string) http.RoundTripp
 
 	return promhttp.InstrumentRoundTripperDuration(
 		roundTripperRequestsDurationSeconds.MustCurryWith(prometheus.Labels{"name": name}),
-		base)
+		base,
+	)
 }

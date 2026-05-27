@@ -57,7 +57,8 @@ func addRequestMetadataToSpan(ctx context.Context) {
 		attribute.String("request_metadata.configuration_id", requestMetadata.ConfigurationId),
 		attribute.String("request_metadata.correlated_invocations_id", requestMetadata.CorrelatedInvocationsId),
 		attribute.String("request_metadata.target_id", requestMetadata.TargetId),
-		attribute.String("request_metadata.tool_invocation_id", requestMetadata.ToolInvocationId))
+		attribute.String("request_metadata.tool_invocation_id", requestMetadata.ToolInvocationId),
+	)
 	if toolDetails := requestMetadata.ToolDetails; toolDetails != nil {
 		attributes = append(attributes,
 			attribute.String("request_metadata.tool_details.tool_name", toolDetails.ToolName),

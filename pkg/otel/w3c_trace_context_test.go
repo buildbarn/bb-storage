@@ -24,7 +24,8 @@ func TestW3CTraceContext(t *testing.T) {
 			context.Background(),
 			map[string]string{
 				"hello": "world",
-			})
+			},
+		)
 		require.Empty(t, otel.W3CTraceContextFromContext(ctx))
 	})
 
@@ -38,7 +39,8 @@ func TestW3CTraceContext(t *testing.T) {
 			context.Background(),
 			map[string]string{
 				"traceparent": "This is a garbage value",
-			})
+			},
+		)
 		require.Empty(t, otel.W3CTraceContextFromContext(ctx))
 	})
 
@@ -50,12 +52,14 @@ func TestW3CTraceContext(t *testing.T) {
 			context.Background(),
 			map[string]string{
 				"traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
-			})
+			},
+		)
 		require.Equal(
 			t,
 			map[string]string{
 				"traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
 			},
-			otel.W3CTraceContextFromContext(ctx))
+			otel.W3CTraceContextFromContext(ctx),
+		)
 	})
 }

@@ -16,7 +16,8 @@ var (
 			Name:      "set_operations_total",
 			Help:      "Total number of operations against eviction sets.",
 		},
-		[]string{"name", "operation"})
+		[]string{"name", "operation"},
+	)
 )
 
 type metricsSet[T any] struct {

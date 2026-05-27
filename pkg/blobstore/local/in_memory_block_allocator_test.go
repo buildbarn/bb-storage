@@ -34,7 +34,8 @@ func TestInMemoryBlockAllocatorNewBlock(t *testing.T) {
 		digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 456),
 		0,
 		11,
-		dataIntegrityCallback.Call).ToByteSlice(1024)
+		dataIntegrityCallback.Call,
+	).ToByteSlice(1024)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello world"), data)
 

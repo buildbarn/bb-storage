@@ -33,7 +33,8 @@ func GenerateAuthorizationHeader(payload interface{}, signatureGenerator Signatu
 	headerAndPayload := fmt.Sprintf(
 		"%s.%s",
 		base64.RawURLEncoding.EncodeToString(headerJSON),
-		base64.RawURLEncoding.EncodeToString(payloadJSON))
+		base64.RawURLEncoding.EncodeToString(payloadJSON),
+	)
 
 	// Sign header and payload.
 	signature, err := signatureGenerator.GenerateSignature(headerAndPayload)
@@ -43,5 +44,6 @@ func GenerateAuthorizationHeader(payload interface{}, signatureGenerator Signatu
 	return fmt.Sprintf(
 		"Bearer %s.%s",
 		headerAndPayload,
-		base64.RawURLEncoding.EncodeToString(signature)), nil
+		base64.RawURLEncoding.EncodeToString(signature),
+	), nil
 }

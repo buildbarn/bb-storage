@@ -490,7 +490,8 @@ func TestFlatBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "Read error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewBufferFromError(status.Error(codes.Internal, "Read error"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewBufferFromError(status.Error(codes.Internal, "Read error"))),
+		)
 	})
 
 	t.Run("PutFailure", func(t *testing.T) {
@@ -501,7 +502,8 @@ func TestFlatBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "No space left to store data"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 	})
 
 	t.Run("FinalizeFailure", func(t *testing.T) {
@@ -522,7 +524,8 @@ func TestFlatBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "Write error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {

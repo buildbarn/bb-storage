@@ -77,7 +77,8 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Server offline"),
-			err)
+			err,
+		)
 	})
 
 	// The current implementation forwards headers in canonical form, so don't
@@ -93,6 +94,7 @@ func TestRequestHeadersAuthenticator(t *testing.T) {
 				codes.InvalidArgument,
 				"Header key \"Non-CANONICAL-Header\" is not canonical, did you mean \"Non-Canonical-Header\"?",
 			),
-			err)
+			err,
+		)
 	})
 }

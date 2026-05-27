@@ -167,10 +167,12 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		}
 		unaryInterceptors = append(
 			unaryInterceptors,
-			NewMetadataAddingUnaryClientInterceptor(headerValues))
+			NewMetadataAddingUnaryClientInterceptor(headerValues),
+		)
 		streamInterceptors = append(
 			streamInterceptors,
-			NewMetadataAddingStreamClientInterceptor(headerValues))
+			NewMetadataAddingStreamClientInterceptor(headerValues),
+		)
 	}
 
 	// Optional: proxying.
@@ -197,10 +199,12 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		}
 		unaryInterceptors = append(
 			unaryInterceptors,
-			NewMetadataExtractingAndForwardingUnaryClientInterceptor(extractor))
+			NewMetadataExtractingAndForwardingUnaryClientInterceptor(extractor),
+		)
 		streamInterceptors = append(
 			streamInterceptors,
-			NewMetadataExtractingAndForwardingStreamClientInterceptor(extractor))
+			NewMetadataExtractingAndForwardingStreamClientInterceptor(extractor),
+		)
 	}
 
 	// Optional: service config.
@@ -211,12 +215,14 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		}
 		dialOptions = append(
 			dialOptions,
-			grpc.WithDefaultServiceConfig(string(serviceConfigJSON)))
+			grpc.WithDefaultServiceConfig(string(serviceConfigJSON)),
+		)
 	}
 
 	dialOptions = append(
 		dialOptions,
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
-		grpc.WithChainStreamInterceptor(streamInterceptors...))
+		grpc.WithChainStreamInterceptor(streamInterceptors...),
+	)
 	return cf.dialer(context.Background(), config.Address, dialOptions...)
 }

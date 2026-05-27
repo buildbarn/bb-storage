@@ -130,11 +130,13 @@ func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buf
 				blobAccess: ba,
 				context:    ctx,
 				digest:     d,
-			})
+			},
+		)
 	}
 	return buffer.WithErrorHandler(
 		ba.BlobAccess.Get(ctx, d),
-		readCanaryingSourceErrorHandler{})
+		readCanaryingSourceErrorHandler{},
+	)
 }
 
 func (ba *readCanaryingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -148,11 +150,13 @@ func (ba *readCanaryingBlobAccess) GetFromComposite(ctx context.Context, parentD
 				parentDigest: parentDigest,
 				childDigest:  childDigest,
 				slicer:       slicer,
-			})
+			},
+		)
 	}
 	return buffer.WithErrorHandler(
 		ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		readCanaryingSourceErrorHandler{})
+		readCanaryingSourceErrorHandler{},
+	)
 }
 
 func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

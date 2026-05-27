@@ -42,7 +42,9 @@ func TestPeerCredentialsAuthenticator(t *testing.T) {
 						UID:    1000,
 						Groups: []uint32{100, 12, 42},
 					},
-				}))
+				},
+			),
+		)
 		require.NoError(t, err)
 		require.Equal(t, map[string]any{
 			"public": map[string]any{

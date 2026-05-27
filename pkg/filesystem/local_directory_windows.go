@@ -362,7 +362,8 @@ func getNextRegionOffsetSparse(handle windows.Handle, offset int64, regionType R
 				}
 				lastOffset = allocRangeBufferPtr.FileOffset + allocRangeBufferPtr.Length
 				allocRangeBufferPtr = (*windowsext.FILE_ALLOCATED_RANGE_BUFFER)(unsafe.Pointer(
-					uintptr(unsafe.Pointer(allocRangeBufferPtr)) + unsafe.Sizeof(bufferSize)))
+					uintptr(unsafe.Pointer(allocRangeBufferPtr)) + unsafe.Sizeof(bufferSize),
+				))
 			}
 			offset = lastOffset
 		}
@@ -523,7 +524,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 			return []string{}, err
 		}
 
-		offset := ^(uint32(0))
+		offset := ^uint32(0)
 		filledSize = 0
 		dirInfoPtr := (*windowsext.FILE_FULL_DIR_INFO)(unsafe.Pointer(&outBuffer[0]))
 		for offset != 0 {

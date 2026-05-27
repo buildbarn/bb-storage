@@ -19,7 +19,8 @@ var (
 			Name:      "pool_acquisitions_total",
 			Help:      "Total number of successful encoder/decoder acquisitions from the pool.",
 		},
-		[]string{"name", "object_type"})
+		[]string{"name", "object_type"},
+	)
 
 	poolReleasesTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -28,7 +29,8 @@ var (
 			Name:      "pool_releases_total",
 			Help:      "Total number of encoder/decoder releases back to the pool.",
 		},
-		[]string{"name", "object_type"})
+		[]string{"name", "object_type"},
+	)
 
 	poolRejectionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -37,7 +39,8 @@ var (
 			Name:      "pool_rejections_total",
 			Help:      "Total number of encoder/decoder acquisitions rejected due to context cancellation or pool exhaustion.",
 		},
-		[]string{"name", "object_type"})
+		[]string{"name", "object_type"},
+	)
 
 	poolWaitDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -47,7 +50,8 @@ var (
 			Help:      "Time spent waiting to acquire an encoder or decoder from the pool, in seconds.",
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2.0, 16),
 		},
-		[]string{"name", "object_type"})
+		[]string{"name", "object_type"},
+	)
 )
 
 type metricsPool struct {

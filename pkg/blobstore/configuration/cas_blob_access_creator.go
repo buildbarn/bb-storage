@@ -117,7 +117,9 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 			backend.ReferenceExpanding.IndirectContentAddressableStorage,
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,
-				bac.maximumMessageSizeBytes))
+				bac.maximumMessageSizeBytes,
+			),
+		)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -166,7 +168,8 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 				s3.NewFromConfig(awsConfig),
 				gcsClient,
 				bac.maximumMessageSizeBytes,
-				bac.zstdPool),
+				bac.zstdPool,
+			),
 			DigestKeyFormat: indirectContentAddressableStorage.DigestKeyFormat,
 		}, "reference_expanding", nil
 	default:

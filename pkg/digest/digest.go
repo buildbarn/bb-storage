@@ -251,7 +251,8 @@ func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Valu
 		compressorEnumToMidfix[compressor],
 		digestFunctionEnumToMidfix[digestFunction],
 		d.value[hashStart:hashEnd],
-		strconv.FormatInt(sizeBytes, 10))
+		strconv.FormatInt(sizeBytes, 10),
+	)
 }
 
 // GetByteStreamWritePath converts the Digest to a string having one of
@@ -270,7 +271,8 @@ func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecutio
 		compressorEnumToMidfix[compressor],
 		digestFunctionEnumToMidfix[digestFunction],
 		d.value[hashStart:hashEnd],
-		strconv.FormatInt(sizeBytes, 10))
+		strconv.FormatInt(sizeBytes, 10),
+	)
 }
 
 // GetProto encodes the digest into the format used by the remote

@@ -35,7 +35,8 @@ func TestExistenceCache(t *testing.T) {
 	require.Equal(
 		t,
 		allDigests,
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 
 	// Deleting nothing should have no effect.
 	clock.EXPECT().Now().Return(time.Unix(1001, 0))
@@ -44,7 +45,8 @@ func TestExistenceCache(t *testing.T) {
 	require.Equal(
 		t,
 		allDigests,
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 
 	// Mark the first two elements as existing. RemoveExisting()
 	// should now start pruning them from the input set.
@@ -57,7 +59,8 @@ func TestExistenceCache(t *testing.T) {
 	require.Equal(
 		t,
 		digests[2].ToSingletonSet(),
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 
 	// If we touch digests[1] and insert digests[2], digests[0]
 	// should be knocked out of the LRU cache.
@@ -67,7 +70,8 @@ func TestExistenceCache(t *testing.T) {
 		digest.EmptySet,
 		existenceCache.RemoveExisting(digest.NewSetBuilder(0).
 			Add(digests[1]).
-			Build()))
+			Build()),
+	)
 	clock.EXPECT().Now().Return(time.Unix(1006, 0))
 	existenceCache.Add(digest.NewSetBuilder(0).
 		Add(digests[2]).
@@ -76,7 +80,8 @@ func TestExistenceCache(t *testing.T) {
 	require.Equal(
 		t,
 		digests[0].ToSingletonSet(),
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 
 	// digests[1] was inserted at t = 1003, so it should disappear
 	// after t = 1063.
@@ -86,7 +91,8 @@ func TestExistenceCache(t *testing.T) {
 		digest.NewSetBuilder(0).
 			Add(digests[0]).
 			Build(),
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 	clock.EXPECT().Now().Return(time.Unix(1063, 1))
 	require.Equal(
 		t,
@@ -94,7 +100,8 @@ func TestExistenceCache(t *testing.T) {
 			Add(digests[0]).
 			Add(digests[1]).
 			Build(),
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 
 	// digests[2] was inserted at t = 1006, so it should disappear
 	// after t = 1066.
@@ -105,10 +112,12 @@ func TestExistenceCache(t *testing.T) {
 			Add(digests[0]).
 			Add(digests[1]).
 			Build(),
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 	clock.EXPECT().Now().Return(time.Unix(1066, 1))
 	require.Equal(
 		t,
 		allDigests,
-		existenceCache.RemoveExisting(allDigests))
+		existenceCache.RemoveExisting(allDigests),
+	)
 }

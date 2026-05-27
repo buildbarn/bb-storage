@@ -31,7 +31,8 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 		/* maximumMessageSizeBytes = */ 10000,
 		/* minimumTimestamp = */ time.Unix(1641325785, 0),
 		/* minimumValidity = */ 28*24*time.Hour,
-		/* maximumValidityJitter = */ 28*24*time.Hour)
+		/* maximumValidityJitter = */ 28*24*time.Hour,
+	)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "09b6c5db18b5e8db9ca5400c5ced1a0f", 123)
 

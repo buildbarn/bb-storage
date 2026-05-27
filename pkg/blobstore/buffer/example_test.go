@@ -42,11 +42,13 @@ var (
 		"qux",
 		remoteexecution.DigestFunction_MD5,
 		"d555bf579673a15bb6301f4b2f0593a8",
-		134)
+		134,
+	)
 
 	exampleDigest = digest.MustNewDigest(
 		"hello",
 		remoteexecution.DigestFunction_MD5,
 		"d41d8cd98f00b204e9800998ecf8427e",
-		123)
+		123,
+	)
 )

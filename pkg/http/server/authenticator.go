@@ -138,7 +138,8 @@ func NewAuthenticatorFromConfiguration(policy *configuration.AuthenticationPolic
 			random.CryptoThreadSafeGenerator,
 			cookieName,
 			cookieAEAD,
-			clock.SystemClock)
+			clock.SystemClock,
+		)
 	case *configuration.AuthenticationPolicy_AcceptHeader:
 		base, err := NewAuthenticatorFromConfiguration(policyKind.AcceptHeader.Policy, group, grpcClientFactory)
 		if err != nil {

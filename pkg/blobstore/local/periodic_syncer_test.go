@@ -37,7 +37,8 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 		30*time.Second,
 		time.Minute,
 		0xdf280dd45b2c39e,
-		dataSyncer.Call)
+		dataSyncer.Call,
+	)
 
 	blockReleaseWakeup := make(chan struct{}, 1)
 	close(blockReleaseWakeup)
@@ -113,7 +114,8 @@ func TestPeriodicSyncerProcessBlockRelease(t *testing.T) {
 
 		// Upon success, PersistentBlockList should be notified,
 		// so that previously used blocks may be recycled.
-		source.EXPECT().NotifyPersistentStateWritten())
+		source.EXPECT().NotifyPersistentStateWritten(),
+	)
 
 	periodicSyncer.ProcessBlockRelease()
 }
@@ -137,7 +139,8 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 		30*time.Second,
 		time.Minute,
 		0xdf280dd45b2c39e,
-		dataSyncer.Call)
+		dataSyncer.Call,
+	)
 
 	exampleBlockState := []*pb.BlockState{
 		{
@@ -200,7 +203,8 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 				Blocks:                           exampleBlockState,
 				KeyLocationMapHashInitialization: 0xdf280dd45b2c39e,
 			}),
-			source.EXPECT().NotifyPersistentStateWritten())
+			source.EXPECT().NotifyPersistentStateWritten(),
+		)
 
 		require.True(t, periodicSyncer.ProcessBlockPut(ctx))
 	})
@@ -229,7 +233,8 @@ func TestPeriodicSyncerProcessBlockPut(t *testing.T) {
 				Blocks:                           exampleBlockState,
 				KeyLocationMapHashInitialization: 0xdf280dd45b2c39e,
 			}),
-			source.EXPECT().NotifyPersistentStateWritten())
+			source.EXPECT().NotifyPersistentStateWritten(),
+		)
 
 		cancelledCtx, cancel := context.WithCancel(ctx)
 		cancel()

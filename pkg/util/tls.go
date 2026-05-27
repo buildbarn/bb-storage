@@ -31,7 +31,8 @@ var (
 			Name:      "certificate_not_before_time_seconds",
 			Help:      "The value of the \"Not Before\" field of the TLS certificate.",
 		},
-		[]string{"dns_name", "uri", "ip_address", "certificate_usage"})
+		[]string{"dns_name", "uri", "ip_address", "certificate_usage"},
+	)
 	tlsCertificateNotAfterTimeSeconds = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "buildbarn",
@@ -39,7 +40,8 @@ var (
 			Name:      "certificate_not_after_time_seconds",
 			Help:      "The value of the \"Not After\" field of the TLS certificate.",
 		},
-		[]string{"dns_name", "uri", "ip_address", "certificate_usage"})
+		[]string{"dns_name", "uri", "ip_address", "certificate_usage"},
+	)
 )
 
 func init() {

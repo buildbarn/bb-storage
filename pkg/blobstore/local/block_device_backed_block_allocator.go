@@ -28,7 +28,8 @@ var (
 			Name:      "block_device_backed_block_allocator_allocations_total",
 			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were allocated",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 	blockDeviceBackedBlockAllocatorReleases = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -36,7 +37,8 @@ var (
 			Name:      "block_device_backed_block_allocator_releases_total",
 			Help:      "Number of times blocks managed by BlockDeviceBackedBlockAllocator were released",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 	blockDeviceBackedBlockAllocatorGetsStarted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -44,7 +46,8 @@ var (
 			Name:      "block_device_backed_block_allocator_gets_started_total",
 			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were started",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 	blockDeviceBackedBlockAllocatorGetsCompleted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "buildbarn",
@@ -52,7 +55,8 @@ var (
 			Name:      "block_device_backed_block_allocator_gets_completed_total",
 			Help:      "Number of Get() operations BlockDeviceBackedBlockAllocator that were completed",
 		},
-		[]string{"storage_type"})
+		[]string{"storage_type"},
+	)
 )
 
 type blockDeviceBackedBlockAllocator struct {
@@ -201,11 +205,13 @@ func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeByt
 			SectionReader: *io.NewSectionReader(
 				pb.blockAllocator.blockDevice,
 				pb.deviceOffsetSectors*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
-				sizeBytes),
+				sizeBytes,
+			),
 			block: pb,
 		},
 		sizeBytes,
-		dataIntegrityCallback)
+		dataIntegrityCallback,
+	)
 }
 
 func (pb *blockDeviceBackedBlock) HasSpace(sizeBytes int64) bool {

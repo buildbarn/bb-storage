@@ -30,14 +30,16 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		// Data should be read from the source and written into
 		// the sink.
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(10)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
-			})
+			},
+		)
 
 		// Data should also be returned to the caller.
 		b := replicator.ReplicateSingle(ctx, helloDigest)
@@ -48,13 +50,15 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 
 	t.Run("SourceError", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
+			buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")),
+		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				_, err := b.ToByteSlice(10)
 				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 				return status.Error(codes.Internal, "Failed to read input: Server on fire")
-			})
+			},
+		)
 
 		// The error from the source should be returned to the caller.
 		b := replicator.ReplicateSingle(ctx, helloDigest)
@@ -64,12 +68,14 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 
 	t.Run("SinkError", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "Server on fire")
-			})
+			},
+		)
 
 		// The error from the sink could in theory be ignored,
 		// but doing so would make misbehaviour of the system
@@ -92,24 +98,28 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(10)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
-			})
+			},
+		)
 
 		source.EXPECT().Get(ctx, worldDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("World")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("World")),
+		)
 		sink.EXPECT().Put(ctx, worldDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				data, err := b.ToByteSlice(10)
 				require.NoError(t, err)
 				require.Equal(t, []byte("World"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
@@ -118,24 +128,29 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 				digest.NewSetBuilder(0).
 					Add(helloDigest).
 					Add(worldDigest).
-					Build()))
+					Build(),
+			),
+		)
 	})
 
 	t.Run("ReplicationError", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
+			buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")),
+		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				_, err := b.ToByteSlice(10)
 				testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Server on fire"), err)
 				return status.Error(codes.Internal, "Failed to read input: Server on fire")
-			})
+			},
+		)
 
 		// Error messages should be prefixed with the digest of
 		// the object that was being replicated.
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "3-8b1a9953c4611296a827abf8c47804d7-5-hello: Failed to read input: Server on fire"),
-			replicator.ReplicateMultiple(ctx, helloDigest.ToSingletonSet()))
+			replicator.ReplicateMultiple(ctx, helloDigest.ToSingletonSet()),
+		)
 	})
 }

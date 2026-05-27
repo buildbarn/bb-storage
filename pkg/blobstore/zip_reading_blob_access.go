@@ -57,7 +57,8 @@ func (ba *zipReadingBlobAccess) Get(ctx context.Context, blobDigest digest.Diges
 			blobDigest,
 			nopAtCloser{ReaderAt: r.(io.ReaderAt)},
 			int64(file.UncompressedSize64),
-			buffer.Irreparable(blobDigest))
+			buffer.Irreparable(blobDigest),
+		)
 	}
 
 	// File is compressed. Open it for sequential access.
@@ -68,7 +69,8 @@ func (ba *zipReadingBlobAccess) Get(ctx context.Context, blobDigest digest.Diges
 	return ba.readBufferFactory.NewBufferFromReader(
 		blobDigest,
 		io.NopCloser(r),
-		buffer.Irreparable(blobDigest))
+		buffer.Irreparable(blobDigest),
+	)
 }
 
 func (ba *zipReadingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {

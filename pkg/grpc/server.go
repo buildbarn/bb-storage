@@ -27,7 +27,9 @@ func init() {
 	// Add Prometheus timing metrics.
 	grpc_prometheus.EnableHandlingTimeHistogram(
 		grpc_prometheus.WithHistogramBuckets(
-			util.DecimalExponentialBuckets(-3, 6, 2)))
+			util.DecimalExponentialBuckets(-3, 6, 2),
+		),
+	)
 }
 
 type serverRelayConfigWithGrpcClient struct {

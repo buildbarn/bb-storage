@@ -30,7 +30,8 @@ var (
 			Help:      "Number of blobs synchronized in FindMissing()",
 			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
 		},
-		[]string{"direction"})
+		[]string{"direction"},
+	)
 	mirroredBlobAccessFindMissingSynchronizationsFromAToB = mirroredBlobAccessFindMissingSynchronizations.WithLabelValues("FromAToB")
 	mirroredBlobAccessFindMissingSynchronizationsFromBToA = mirroredBlobAccessFindMissingSynchronizations.WithLabelValues("FromBToA")
 )

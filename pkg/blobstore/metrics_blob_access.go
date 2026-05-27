@@ -28,7 +28,8 @@ var (
 			Help:      "Size of blobs being inserted/retrieved, in bytes.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
-		[]string{"storage_type", "backend_type", "operation"})
+		[]string{"storage_type", "backend_type", "operation"},
+	)
 	blobAccessOperationsFindMissingBatchSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -37,7 +38,8 @@ var (
 			Help:      "Number of digests provided to FindMissing().",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
 		},
-		[]string{"storage_type", "backend_type"})
+		[]string{"storage_type", "backend_type"},
+	)
 	blobAccessOperationsDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -46,7 +48,8 @@ var (
 			Help:      "Amount of time spent per operation on blob access objects, in seconds.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"storage_type", "backend_type", "operation", "grpc_code"})
+		[]string{"storage_type", "backend_type", "operation", "grpc_code"},
+	)
 )
 
 type metricsBlobAccess struct {
@@ -102,7 +105,8 @@ func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 			timeStart:       timeStart,
 			errorCode:       codes.OK,
 			durationSeconds: ba.getDurationSeconds,
-		})
+		},
+	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		ba.getBlobSizeBytes.Observe(float64(sizeBytes))
 	}
@@ -118,7 +122,8 @@ func (ba *metricsBlobAccess) GetFromComposite(ctx context.Context, parentDigest,
 			timeStart:       timeStart,
 			errorCode:       codes.OK,
 			durationSeconds: ba.getFromCompositeDurationSeconds,
-		})
+		},
+	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		ba.getFromCompositeBlobSizeBytes.Observe(float64(sizeBytes))
 	}

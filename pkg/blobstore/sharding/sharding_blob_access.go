@@ -49,14 +49,16 @@ func (ba *shardingBlobAccess) Get(ctx context.Context, digest digest.Digest) buf
 	index := ba.getBackendIndexByDigest(digest)
 	return buffer.WithErrorHandler(
 		ba.backends[index].Backend.Get(ctx, digest),
-		shardKeyAddingErrorHandler{key: ba.backends[index].Key})
+		shardKeyAddingErrorHandler{key: ba.backends[index].Key},
+	)
 }
 
 func (ba *shardingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
 	index := ba.getBackendIndexByDigest(parentDigest)
 	return buffer.WithErrorHandler(
 		ba.backends[index].Backend.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		shardKeyAddingErrorHandler{key: ba.backends[index].Key})
+		shardKeyAddingErrorHandler{key: ba.backends[index].Key},
+	)
 }
 
 func (ba *shardingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

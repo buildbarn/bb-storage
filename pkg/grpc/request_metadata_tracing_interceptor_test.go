@@ -39,7 +39,8 @@ func TestRequestMetadataTracingUnaryInterceptor(t *testing.T) {
 	require.NoError(t, err)
 	ctxWithRequestMetadata := metadata.NewIncomingContext(
 		ctx,
-		metadata.Pairs("build.bazel.remote.execution.v2.requestmetadata-bin", string(requestMetadataBin)))
+		metadata.Pairs("build.bazel.remote.execution.v2.requestmetadata-bin", string(requestMetadataBin)),
+	)
 
 	t.Run("NoSpan", func(t *testing.T) {
 		// In case the provided Context does not provide a trace
@@ -51,7 +52,8 @@ func TestRequestMetadataTracingUnaryInterceptor(t *testing.T) {
 			ctxWithRequestMetadata,
 			&emptypb.Empty{},
 			&grpc.UnaryServerInfo{},
-			unaryHandler.Call)
+			unaryHandler.Call,
+		)
 		require.NoError(t, err)
 	})
 
@@ -68,7 +70,8 @@ func TestRequestMetadataTracingUnaryInterceptor(t *testing.T) {
 			trace.ContextWithSpan(ctxWithRequestMetadata, span),
 			&emptypb.Empty{},
 			&grpc.UnaryServerInfo{},
-			unaryHandler.Call)
+			unaryHandler.Call,
+		)
 		require.NoError(t, err)
 	})
 
@@ -84,7 +87,8 @@ func TestRequestMetadataTracingUnaryInterceptor(t *testing.T) {
 			trace.ContextWithSpan(ctx, span),
 			&emptypb.Empty{},
 			&grpc.UnaryServerInfo{},
-			unaryHandler.Call)
+			unaryHandler.Call,
+		)
 		require.NoError(t, err)
 	})
 
@@ -112,7 +116,8 @@ func TestRequestMetadataTracingUnaryInterceptor(t *testing.T) {
 			trace.ContextWithSpan(ctxWithRequestMetadata, span),
 			&emptypb.Empty{},
 			&grpc.UnaryServerInfo{},
-			unaryHandler.Call)
+			unaryHandler.Call,
+		)
 		require.NoError(t, err)
 	})
 }

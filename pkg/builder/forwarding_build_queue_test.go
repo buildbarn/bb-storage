@@ -175,6 +175,7 @@ func TestForwardingBuildQueueExecute(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unavailable, "Client has closed connection"),
-			buildQueue.Execute(&executeRequest, out))
+			buildQueue.Execute(&executeRequest, out),
+		)
 	})
 }

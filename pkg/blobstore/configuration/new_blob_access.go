@@ -51,7 +51,8 @@ func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConf
 	}
 	return blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
-		dataIntegrityCheckingCache), nil
+		dataIntegrityCheckingCache,
+	), nil
 }
 
 type simpleNestedBlobAccessCreator struct {
@@ -183,7 +184,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			var err error
 			blockDevice, sectorSizeBytes, sectorCount, err = blockdevice.NewBlockDeviceFromConfiguration(
 				blocksOnBlockDevice.Source,
-				persistent == nil)
+				persistent == nil,
+			)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open blocks block device")
 			}
@@ -208,7 +210,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				sectorSizeBytes,
 				blockSectorCount,
 				int(blockCount),
-				storageTypeName)
+				storageTypeName,
+			)
 		default:
 			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Blocks backend not specified")
 		}
@@ -245,7 +248,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			persistentBlockList, initialBlockCount = local.NewPersistentBlockList(
 				blockAllocator,
 				persistentState.OldestEpochId,
-				persistentState.Blocks)
+				persistentState.Blocks,
+			)
 			blockList = persistentBlockList
 
 			// Start goroutines that update the persistent
@@ -264,7 +268,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				10*time.Second,
 				minimumEpochInterval,
 				keyLocationMapHashInitialization,
-				dataSyncer)
+				dataSyncer,
+			)
 			// TODO: Run this as part of the program.Group,
 			// so that it gets cleaned up upon shutdown.
 			go func() {
@@ -284,7 +289,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 
 		blockListGrowthPolicy, err := creator.NewBlockListGrowthPolicy(
 			int(backend.Local.CurrentBlocks),
-			int(backend.Local.NewBlocks))
+			int(backend.Local.NewBlocks),
+		)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -297,7 +303,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			int64(sectorSizeBytes)*blockSectorCount,
 			int(backend.Local.OldBlocks),
 			int(backend.Local.NewBlocks),
-			initialBlockCount)
+			initialBlockCount,
+		)
 
 		// Create the backing store for the key-location map.
 		var locationRecordArraySize int
@@ -307,18 +314,21 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			locationRecordArraySize = int(keyLocationMapBackend.KeyLocationMapInMemory.Entries)
 			locationRecordArray = local.NewInMemoryLocationRecordArray(
 				locationRecordArraySize,
-				locationBlobMap)
+				locationBlobMap,
+			)
 		case *pb.LocalBlobAccessConfiguration_KeyLocationMapOnBlockDevice:
 			blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromConfiguration(
 				keyLocationMapBackend.KeyLocationMapOnBlockDevice,
-				persistent == nil)
+				persistent == nil,
+			)
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open key-location map block device")
 			}
 			locationRecordArraySize = int((int64(sectorSizeBytes) * sectorCount) / local.BlockDeviceBackedLocationRecordSize)
 			locationRecordArray = local.NewBlockDeviceBackedLocationRecordArray(
 				blockDevice,
-				locationBlobMap)
+				locationBlobMap,
+			)
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Key-location map backend not specified")
 		}
@@ -338,14 +348,16 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			keyLocationMapHashInitialization,
 			backend.Local.KeyLocationMapMaximumGetAttempts,
 			int(backend.Local.KeyLocationMapMaximumPutAttempts),
-			storageTypeName)
+			storageTypeName,
+		)
 
 		var localBlobAccess blobstore.BlobAccess
 		if backend.Local.HierarchicalInstanceNames {
 			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
-				&globalLock)
+				&globalLock,
+			)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
 			}
@@ -356,7 +368,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				digestKeyFormat,
 				&globalLock,
 				storageTypeName,
-				creator.GetDefaultCapabilitiesProvider())
+				creator.GetDefaultCapabilitiesProvider(),
+			)
 		}
 		return BlobAccessInfo{
 			BlobAccess:      localBlobAccess,
@@ -417,7 +430,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 						return nil, "", digest.NoopInstanceNamePatcher, status.Errorf(codes.InvalidArgument, "Unknown instance name: %#v", i.String())
 					}
 					return backends[idx].backend, backends[idx].backendName, backends[idx].instanceNamePatcher, nil
-				}),
+				},
+			),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "demultiplexing", nil
 	case *pb.BlobAccessConfiguration_ReadCanarying:
@@ -442,7 +456,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				eviction.NewMetricsSet(eviction.NewLRUSet[string](), "ReadCanaryingBlobAccess"),
 				int(config.MaximumCacheSize),
 				maximumCacheDuration.AsDuration(),
-				util.DefaultErrorLogger),
+				util.DefaultErrorLogger,
+			),
 			DigestKeyFormat: source.DigestKeyFormat.Combine(replica.DigestKeyFormat),
 		}, "read_canarying", nil
 	case *pb.BlobAccessConfiguration_ZipReading:
@@ -472,7 +487,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				creator.GetDefaultCapabilitiesProvider(),
 				cachedReadBufferFactory,
 				digestKeyFormat,
-				zipReader.File),
+				zipReader.File,
+			),
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_reading", nil
 	case *pb.BlobAccessConfiguration_ZipWriting:
@@ -491,7 +507,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			creator.GetDefaultCapabilitiesProvider(),
 			cachedReadBufferFactory,
 			digestKeyFormat,
-			file)
+			file,
+		)
 
 		// Ensure the central directory is written upon termination.
 		nc.terminationGroup.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
@@ -607,7 +624,8 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool))
+		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+	)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
@@ -618,7 +636,9 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 		NewACBlobAccessCreator(
 			&contentAddressableStorage,
 			grpcClientFactory,
-			maximumMessageSizeBytes))
+			maximumMessageSizeBytes,
+		),
+	)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Action Cache")
 	}

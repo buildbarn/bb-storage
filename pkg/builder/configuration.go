@@ -43,7 +43,8 @@ func NewDemultiplexingBuildQueueFromConfiguration(schedulers map[string]*pb.Sche
 			backendName: matchInstanceNamePrefix,
 			instanceNamePatcher: digest.NewInstanceNamePatcher(
 				matchInstanceNamePrefix,
-				addInstanceNamePrefix),
+				addInstanceNamePrefix,
+			),
 		})
 	}
 

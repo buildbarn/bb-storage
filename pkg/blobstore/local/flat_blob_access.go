@@ -28,7 +28,8 @@ var (
 			Help:      "The number of blobs that were refreshed when requested",
 			Buckets:   append([]float64{0}, prometheus.ExponentialBuckets(1.0, 2.0, 16)...),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation"},
+	)
 
 	flatBlobAccessRefreshesDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -38,7 +39,8 @@ var (
 			Help:      "Time spent refreshing blobs in seconds",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation"},
+	)
 
 	flatBlobAccessRefreshesSizeBytes = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -48,7 +50,8 @@ var (
 			Help:      "Size of blobs being refreshed in bytes",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
-		[]string{"storage_type", "operation"})
+		[]string{"storage_type", "operation"},
+	)
 )
 
 type flatBlobAccess struct {

@@ -36,8 +36,10 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				exampleActionResultBytes,
-				buffer.UserProvided),
-			errorHandler).ToByteSlice(1000)
+				buffer.UserProvided,
+			),
+			errorHandler,
+		).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes, data)
 	})
@@ -48,14 +50,16 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
-				buffer.UserProvided), nil)
+				buffer.UserProvided,
+			), nil)
 		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"))).
 			Return(nil, status.Error(codes.Internal, "Maximum number of retries reached"))
 		errorHandler.EXPECT().Done()
 
 		_, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
-			errorHandler).ToByteSlice(1000)
+			errorHandler,
+		).ToByteSlice(1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
 	})
 
@@ -65,14 +69,16 @@ func TestWithErrorHandlerOnProtoBuffers(t *testing.T) {
 			Return(buffer.NewProtoBufferFromByteSlice(
 				&remoteexecution.ActionResult{},
 				[]byte("Hello"),
-				buffer.UserProvided), nil)
+				buffer.UserProvided,
+			), nil)
 		errorHandler.EXPECT().OnError(testutil.EqPrefixedStatus(status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"))).
 			Return(buffer.NewProtoBufferFromProto(&exampleActionResultMessage, buffer.UserProvided), nil)
 		errorHandler.EXPECT().Done()
 
 		data, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
-			errorHandler).ToByteSlice(1000)
+			errorHandler,
+		).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes, data)
 	})
@@ -94,7 +100,8 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 
 		data, err := buffer.WithErrorHandler(
 			buffer.NewCASBufferFromByteSlice(digest, []byte("Hello world"), buffer.UserProvided),
-			errorHandler).ToByteSlice(1000)
+			errorHandler,
+		).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello world"), data)
 	})
@@ -109,7 +116,8 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 
 		_, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
-			errorHandler).ToByteSlice(1000)
+			errorHandler,
+		).ToByteSlice(1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Maximum number of retries reached"), err)
 	})
 
@@ -123,7 +131,8 @@ func TestWithErrorHandlerOnSimpleCASBuffers(t *testing.T) {
 
 		data, err := buffer.WithErrorHandler(
 			buffer.NewBufferFromError(status.Error(codes.Internal, "Network error")),
-			errorHandler).ToByteSlice(1000)
+			errorHandler,
+		).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello world"), data)
 	})
@@ -333,7 +342,8 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 
 		r := buffer.WithErrorHandler(b, errorHandler).ToChunkReader(
 			/* offset = */ 0,
-			/* chunk size = */ 12)
+			/* chunk size = */ 12,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello world"), chunk)
@@ -358,7 +368,8 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 
 		r := buffer.WithErrorHandler(b, errorHandler).ToChunkReader(
 			/* offset = */ 0,
-			/* chunk size = */ 12)
+			/* chunk size = */ 12,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello world"), chunk)
@@ -382,7 +393,8 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 
 		r := buffer.WithErrorHandler(b1, errorHandler).ToChunkReader(
 			/* offset = */ 2,
-			/* chunk size = */ 10)
+			/* chunk size = */ 10,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("llo "), chunk)
@@ -411,7 +423,8 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		// already written is not a problem.
 		r := buffer.WithErrorHandler(b1, errorHandler).ToChunkReader(
 			/* offset = */ 4,
-			/* chunk size = */ 3)
+			/* chunk size = */ 3,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("o "), chunk)
@@ -450,7 +463,8 @@ func TestWithErrorHandlerOnCASBuffersToChunkReader(t *testing.T) {
 		// stream.
 		r := buffer.WithErrorHandler(b1, errorHandler).ToChunkReader(
 			/* offset = */ 0,
-			/* chunk size = */ 1000)
+			/* chunk size = */ 1000,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("Xyzzy "), chunk)

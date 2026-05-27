@@ -134,7 +134,8 @@ func TestNestedBlobReplicator(t *testing.T) {
 			}, buffer.UserProvided))
 		replicator.EXPECT().ReplicateMultiple(
 			ctx,
-			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b90d8d36617845efae5d045918eed4a", 5).ToSingletonSet())
+			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b90d8d36617845efae5d045918eed4a", 5).ToSingletonSet(),
+		)
 		replicator.EXPECT().ReplicateSingle(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "e69b1393b62aacda2d46737aaffda809", 6)).
 			Return(buffer.NewProtoBufferFromProto(&remoteexecution.Directory{}, buffer.UserProvided))
 		replicator.EXPECT().ReplicateMultiple(
@@ -142,7 +143,8 @@ func TestNestedBlobReplicator(t *testing.T) {
 			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6f881c3ef7c841fa5fe3f9e35fd8a745", 7)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "211aa29e2a010eae1bb65b3eed479d6c", 8)).
-				Build())
+				Build(),
+		)
 		replicator.EXPECT().ReplicateSingle(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "878a1677dd14e1485c9c578e8251b9b8", 9)).
 			Return(buffer.NewProtoBufferFromProto(&remoteexecution.Directory{}, buffer.UserProvided))
 		replicator.EXPECT().ReplicateMultiple(
@@ -150,7 +152,8 @@ func TestNestedBlobReplicator(t *testing.T) {
 			digest.NewSetBuilder(0).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "66b39b7d2658407275b6a55ef403f3d0", 10)).
 				Add(digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "13d059e4e8609ea76009df43ff5157d6", 12)).
-				Build())
+				Build(),
+		)
 
 		require.NoError(t, nestedReplicator.Replicate(ctx))
 	})

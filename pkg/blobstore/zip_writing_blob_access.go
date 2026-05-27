@@ -88,7 +88,8 @@ func (ba *ZIPWritingBlobAccess) Get(ctx context.Context, blobDigest digest.Diges
 		blobDigest,
 		nopAtCloser{ReaderAt: io.NewSectionReader(ba.rw, file.dataOffsetBytes, file.dataSizeBytes)},
 		file.dataSizeBytes,
-		buffer.Irreparable(blobDigest))
+		buffer.Irreparable(blobDigest),
+	)
 }
 
 // GetFromComposite fetches an object that is contained within a

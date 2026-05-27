@@ -27,7 +27,8 @@ func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
 		b := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.BackendProvided(dataIntegrityCallback.Call))
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		)
 		n, err := b.GetSizeBytes()
 		require.NoError(t, err)
 		require.Equal(t, int64(len(exampleActionResultBytes)), n)
@@ -41,7 +42,8 @@ func TestNewProtoBufferFromByteSliceGetSizeBytes(t *testing.T) {
 		b := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.BackendProvided(dataIntegrityCallback.Call))
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		)
 		_, err := b.GetSizeBytes()
 		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 		b.Discard()
@@ -59,7 +61,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 0)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 0)
 		require.Equal(t, 5, n)
 		require.NoError(t, err)
 		require.Equal(t, exampleActionResultBytes[:5], p[:])
@@ -73,7 +76,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], -123)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], -123)
 		require.Equal(t, 0, n)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -123"), err)
 	})
@@ -86,7 +90,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)+1))
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], int64(len(exampleActionResultBytes)+1))
 		require.Equal(t, 0, n)
 		require.Equal(t, io.EOF, err)
 	})
@@ -99,7 +104,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			exampleActionResultBytes,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], int64(len(exampleActionResultBytes)-3))
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], int64(len(exampleActionResultBytes)-3))
 		require.Equal(t, 3, n)
 		require.Equal(t, io.EOF, err)
 		require.Equal(t, exampleActionResultBytes[len(exampleActionResultBytes)-3:], p[:3])
@@ -110,7 +116,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.UserProvided).ReadAt(p[:], 0)
+			buffer.UserProvided,
+		).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to unmarshal message: proto:"), err)
 	})
@@ -120,7 +127,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "f988a36ed06e17f6c4a258ec8e03fe88", 123)))).ReadAt(p[:], 0)
+			buffer.BackendProvided(buffer.Irreparable(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "f988a36ed06e17f6c4a258ec8e03fe88", 123))),
+		).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 	})
@@ -133,7 +141,8 @@ func TestNewProtoBufferFromByteSliceReadAt(t *testing.T) {
 		n, err := buffer.NewProtoBufferFromByteSlice(
 			&remoteexecution.ActionResult{},
 			[]byte("Hello world"),
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ReadAt(p[:], 0)
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ReadAt(p[:], 0)
 		require.Equal(t, 0, n)
 		testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to unmarshal message: proto:"), err)
 	})
@@ -152,7 +161,8 @@ func TestNewProtoBufferFromByteSliceToProto(t *testing.T) {
 	actionResult, err := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToProto(&remoteexecution.ActionResult{}, 1000)
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToProto(&remoteexecution.ActionResult{}, 1000)
 	require.NoError(t, err)
 	testutil.RequireEqualProto(t, &exampleActionResultMessage, actionResult)
 }
@@ -165,7 +175,8 @@ func TestNewProtoBufferFromByteSliceToByteSlice(t *testing.T) {
 	data, err := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(10000)
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToByteSlice(10000)
 	require.NoError(t, err)
 	require.Equal(t, exampleActionResultBytes, data)
 }
@@ -178,9 +189,11 @@ func TestNewProtoBufferFromByteSliceToChunkReader(t *testing.T) {
 	r := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToChunkReader(
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToChunkReader(
 		/* offset = */ 0,
-		/* chunk size = */ 10000)
+		/* chunk size = */ 10000,
+	)
 
 	data, err := r.Read()
 	require.NoError(t, err)
@@ -200,7 +213,8 @@ func TestNewProtoBufferFromByteSliceToReader(t *testing.T) {
 	r := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToReader()
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToReader()
 
 	data, err := io.ReadAll(r)
 	require.NoError(t, err)
@@ -217,7 +231,8 @@ func TestNewProtoBufferFromByteSliceCloneCopy(t *testing.T) {
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).CloneCopy(len(exampleActionResultBytes))
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).CloneCopy(len(exampleActionResultBytes))
 
 	data1, err := b1.ToByteSlice(len(exampleActionResultBytes))
 	require.NoError(t, err)
@@ -236,7 +251,8 @@ func TestNewProtoBufferFromByteSliceCloneStream(t *testing.T) {
 	b1, b2 := buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).CloneStream()
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).CloneStream()
 	done := make(chan struct{}, 2)
 
 	go func() {
@@ -265,5 +281,6 @@ func TestNewProtoBufferFromByteSliceDiscard(t *testing.T) {
 	buffer.NewProtoBufferFromByteSlice(
 		&remoteexecution.ActionResult{},
 		exampleActionResultBytes,
-		buffer.BackendProvided(dataIntegrityCallback.Call)).Discard()
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).Discard()
 }

@@ -83,12 +83,14 @@ func TestShardingBlobAccess(t *testing.T) {
 			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Unavailable, "Server offline")
-			})
+			},
+		)
 
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unavailable, "Shard shard1: Server offline"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+		)
 	})
 
 	t.Run("PutSuccess", func(t *testing.T) {
@@ -99,7 +101,8 @@ func TestShardingBlobAccess(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(t, blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
 	})

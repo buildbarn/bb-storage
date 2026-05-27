@@ -74,7 +74,8 @@ func NewAuthorizationHeaderParserFromConfiguration(config *configuration.Authori
 		claimsValidator,
 		metadataExtractor,
 		int(config.MaximumCacheSize),
-		eviction.NewMetricsSet(evictionSet, "AuthorizationHeaderParser")), nil
+		eviction.NewMetricsSet(evictionSet, "AuthorizationHeaderParser"),
+	), nil
 }
 
 // NewSignatureValidatorFromJSONWebKeySet creates a new

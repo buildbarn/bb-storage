@@ -187,7 +187,8 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "Read error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewBufferFromError(status.Error(codes.Internal, "Read error"))))
+			blobAccess.Put(ctx, helloDigest, buffer.NewBufferFromError(status.Error(codes.Internal, "Read error"))),
+		)
 	})
 
 	t.Run("CanonicalLookupFailure", func(t *testing.T) {
@@ -205,7 +206,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 
 	t.Run("CanonicalLookupValidBrokenBlob", func(t *testing.T) {
@@ -229,7 +232,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 
 	t.Run("CanonicalLookupSuccess", func(t *testing.T) {
@@ -253,7 +258,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 
 	t.Run("SpaceAllocationFailure", func(t *testing.T) {
@@ -271,7 +278,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 
 	t.Run("ReadFailure", func(t *testing.T) {
@@ -299,7 +308,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -332,7 +343,9 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				helloDigest,
-				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided)))
+				buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided),
+			),
+		)
 	})
 }
 

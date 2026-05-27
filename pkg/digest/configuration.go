@@ -24,5 +24,6 @@ func NewExistenceCacheFromConfiguration(configuration *pb.ExistenceCacheConfigur
 		keyFormat,
 		int(configuration.CacheSize),
 		cacheDuration.AsDuration(),
-		eviction.NewMetricsSet(evictionSet, name)), nil
+		eviction.NewMetricsSet(evictionSet, name),
+	), nil
 }

@@ -45,7 +45,8 @@ func NewBlockDeviceFromFile(path string, minimumSizeBytes int, zeroInitialize bo
 		nil,
 		createmode,
 		windows.FILE_ATTRIBUTE_NORMAL,
-		0)
+		0,
+	)
 	if err != nil {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to open file %#v", path)
 	}
@@ -78,7 +79,8 @@ func createBlockDevice(path string, minimumSizeBytes int, zeroInitialize bool, h
 		/*sectorsPerCluster=*/ 0,
 		uintptr(unsafe.Pointer(&bytesPerSector)),
 		/*numberOfFreeClusters=*/ 0,
-		/*totalNumberOfClusters=*/ 0)
+		/*totalNumberOfClusters=*/ 0,
+	)
 	if r == 0 {
 		return nil, 0, 0, util.StatusWrapf(err, "Failed to get disk sector size for %#v", rootPath)
 	}

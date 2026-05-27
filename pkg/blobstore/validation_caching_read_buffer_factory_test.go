@@ -27,7 +27,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	baseReadBufferFactory := mock.NewMockReadBufferFactory(ctrl)
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()),
+	)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.
@@ -47,7 +48,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	_, err := readBufferFactory.NewBufferFromByteSlice(
 		helloDigest,
 		[]byte("xyzzy"),
-		dataIntegrityCallback1.Call).ToByteSlice(10)
+		dataIntegrityCallback1.Call,
+	).ToByteSlice(10)
 	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 
 	// The previous checksum failure should not cause data integrity
@@ -69,7 +71,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	data, err := readBufferFactory.NewBufferFromByteSlice(
 		helloDigest,
 		[]byte("Hello"),
-		dataIntegrityCallback2.Call).ToByteSlice(10)
+		dataIntegrityCallback2.Call,
+	).ToByteSlice(10)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
 
@@ -84,7 +87,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	data, err = readBufferFactory.NewBufferFromByteSlice(
 		helloDigest,
 		[]byte("xyzzy"),
-		dataIntegrityCallback3.Call).ToByteSlice(10)
+		dataIntegrityCallback3.Call,
+	).ToByteSlice(10)
 	require.NoError(t, err)
 	require.Equal(t, []byte("xyzzy"), data)
 
@@ -104,7 +108,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromByteSlice(t *testing.T) 
 	_, err = readBufferFactory.NewBufferFromByteSlice(
 		helloDigest,
 		[]byte("xyzzy"),
-		dataIntegrityCallback4.Call).ToByteSlice(10)
+		dataIntegrityCallback4.Call,
+	).ToByteSlice(10)
 	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
 }
 
@@ -118,7 +123,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
 	baseReadBufferFactory := mock.NewMockReadBufferFactory(ctrl)
 	readBufferFactory := blobstore.NewValidationCachingReadBufferFactory(
 		baseReadBufferFactory,
-		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()))
+		digest.NewExistenceCache(clock, digest.KeyWithoutInstance, 10, time.Minute, eviction.NewLRUSet[string]()),
+	)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	// In the initial state, blobs are assumed to not be validated.
@@ -142,7 +148,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
 		helloDigest,
 		fileReader1,
 		5,
-		dataIntegrityCallback1.Call).ToByteSlice(10)
+		dataIntegrityCallback1.Call,
+	).ToByteSlice(10)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
 
@@ -164,7 +171,8 @@ func TestValidationCachingReadBufferFactoryNewBufferFromReaderAt(t *testing.T) {
 		helloDigest,
 		fileReader2,
 		5,
-		dataIntegrityCallback2.Call).ToByteSlice(10)
+		dataIntegrityCallback2.Call,
+	).ToByteSlice(10)
 	require.NoError(t, err)
 	require.Equal(t, []byte("xyzzy"), data)
 }

@@ -26,13 +26,15 @@ func TestOldCurrentNewLocationBlobMapAllocationPattern(t *testing.T) {
 		blockList,
 		local.NewImmutableBlockListGrowthPolicy(
 			/* currentBlocksCount = */ 4,
-			/* newBlocksCount = */ 4),
+			/* newBlocksCount = */ 4,
+		),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 2,
 		/* newBlocksCount = */ 4,
-		/* initialBlocksCount = */ 10)
+		/* initialBlocksCount = */ 10,
+	)
 
 	// After starting up, there should be a uniform distribution on
 	// the "current" blocks and an inverse exponential distribution
@@ -60,7 +62,8 @@ func TestOldCurrentNewLocationBlobMapAllocationPattern(t *testing.T) {
 						require.NoError(t, err)
 						require.Equal(t, []byte("Hello"), data)
 						return blockListPutFinalizer.Call
-					})
+					},
+				)
 				blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 				// Perform the Put() operation.
@@ -86,13 +89,15 @@ func TestOldCurrentNewLocationBlobMapGrowsMutableBlockList(t *testing.T) {
 	locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
 		blockList,
 		local.NewMutableBlockListGrowthPolicy(
-			/* currentBlocksCount = */ 4),
+			/* currentBlocksCount = */ 4,
+		),
 		errorLogger,
 		"ac",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 3,
 		/* newBlocksCount = */ 1,
-		/* initialBlocksCount = */ 2)
+		/* initialBlocksCount = */ 2,
+	)
 
 	// After starting up, the "new", "current" and "old" block lists
 	// should grow up to the requested capacity.
@@ -104,7 +109,8 @@ func TestOldCurrentNewLocationBlobMapGrowsMutableBlockList(t *testing.T) {
 		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
 			func(b buffer.Buffer) local.BlockListPutFinalizer {
 				return blockListPutFinalizer.Call
-			})
+			},
+		)
 		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 		// Perform the Put() operation.
@@ -160,13 +166,15 @@ func TestOldCurrentNewLocationBlobMapGrowsImmutableBlockList(t *testing.T) {
 		blockList,
 		local.NewImmutableBlockListGrowthPolicy(
 			/* currentBlocksCount = */ 4,
-			/* newBlocksCount = */ 2),
+			/* newBlocksCount = */ 2,
+		),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 3,
 		/* newBlocksCount = */ 2,
-		/* initialBlocksCount = */ 1)
+		/* initialBlocksCount = */ 1,
+	)
 
 	// After starting up, the "new", "current" and "old" block lists
 	// should grow up to the requested capacity.
@@ -178,7 +186,8 @@ func TestOldCurrentNewLocationBlobMapGrowsImmutableBlockList(t *testing.T) {
 		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
 			func(b buffer.Buffer) local.BlockListPutFinalizer {
 				return blockListPutFinalizer.Call
-			})
+			},
+		)
 		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 		// Perform the Put() operation.
@@ -241,13 +250,15 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 		blockList,
 		local.NewImmutableBlockListGrowthPolicy(
 			/* currentBlocksCount = */ 4,
-			/* newBlocksCount = */ 4),
+			/* newBlocksCount = */ 4,
+		),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 2,
 		/* newBlocksCount = */ 4,
-		/* initialBlocksCount = */ 10)
+		/* initialBlocksCount = */ 10,
+	)
 
 	// Perform a Get() call against block 1. Return a buffer that
 	// will trigger a data integrity error, as the digest
@@ -257,7 +268,8 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	blockList.EXPECT().Get(2, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
 		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
-		})
+		},
+	)
 	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 3 blocks due to a data integrity error"))
 
 	locationBlobGetter, needsRefresh := locationBlobMap.Get(local.Location{
@@ -316,7 +328,8 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 			_, err := b.ToByteSlice(10)
 			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 			return blockListPutFinalizer.Call
-		})
+		},
+	)
 	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
 
 	locationBlobPutWriter, err := locationBlobMap.Put(5)
@@ -334,13 +347,15 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 		blockList,
 		local.NewImmutableBlockListGrowthPolicy(
 			/* currentBlocksCount = */ 4,
-			/* newBlocksCount = */ 4),
+			/* newBlocksCount = */ 4,
+		),
 		errorLogger,
 		"cas",
 		/* blockSizeBytes = */ 16,
 		/* oldBlocksCount = */ 2,
 		/* newBlocksCount = */ 4,
-		/* initialBlocksCount = */ 10)
+		/* initialBlocksCount = */ 10,
+	)
 
 	// Perform a Get() call against the new block 9. Return a buffer that
 	// will trigger a data integrity error in the last block, as the digest
@@ -350,7 +365,8 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 	blockList.EXPECT().Get(9, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
 		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
 			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
-		})
+		},
+	)
 	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 10 blocks due to a data integrity error"))
 
 	locationBlobGetter, needsRefresh := locationBlobMap.Get(local.Location{
@@ -394,7 +410,8 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 			_, err := b.ToByteSlice(10)
 			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 			return blockListPutFinalizer.Call
-		})
+		},
+	)
 	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
 
 	locationBlobPutWriter, err := locationBlobMap.Put(5)

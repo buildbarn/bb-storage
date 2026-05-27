@@ -28,7 +28,8 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("A")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+		)
 
 		data, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(1)
 		require.NoError(t, err)
@@ -40,7 +41,9 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
 			buffer.NewBufferFromError(
-				status.Error(codes.Internal, "Server on fire")))
+				status.Error(codes.Internal, "Server on fire"),
+			),
+		)
 
 		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(1)
 		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
@@ -72,7 +75,8 @@ func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("A")))
+			buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+		)
 
 		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
 		require.NoError(t, err)
@@ -84,7 +88,9 @@ func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
 		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
 			buffer.NewBufferFromError(
-				status.Error(codes.Internal, "Server on fire")))
+				status.Error(codes.Internal, "Server on fire"),
+			),
+		)
 
 		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
 		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
@@ -119,14 +125,17 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, []byte("A"), data)
 				return nil
-			})
+			},
+		)
 
 		require.NoError(
 			t,
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewValidatedBufferFromByteSlice([]byte("A"))))
+				buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+			),
+		)
 	})
 
 	t.Run("NonEmptyFailure", func(t *testing.T) {
@@ -136,7 +145,8 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
 				b.Discard()
 				return status.Error(codes.Internal, "Server on fire")
-			})
+			},
+		)
 
 		require.Equal(
 			t,
@@ -144,7 +154,9 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewValidatedBufferFromByteSlice([]byte("A"))))
+				buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+			),
+		)
 	})
 
 	t.Run("EmptySuccess", func(t *testing.T) {
@@ -154,7 +166,9 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
-				buffer.NewValidatedBufferFromByteSlice(nil)))
+				buffer.NewValidatedBufferFromByteSlice(nil),
+			),
+		)
 	})
 
 	t.Run("EmptyFailure", func(t *testing.T) {
@@ -167,7 +181,9 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
-				buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire"))))
+				buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")),
+			),
+		)
 	})
 }
 

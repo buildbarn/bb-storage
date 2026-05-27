@@ -192,7 +192,8 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 		// large.
 		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 3,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		chunk, err := r.Read()
 		require.NoError(t, err)
 		require.Equal(t, []byte("lo"), chunk)
@@ -220,7 +221,8 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 		// return an end-of-file immediately.
 		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 11,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		require.Equal(t, io.EOF, err)
 		r.Close()
@@ -232,7 +234,8 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 
 		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ -1,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -1"), err)
 		r.Close()
@@ -244,7 +247,8 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 
 		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 12,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Buffer is 11 bytes in size, while a read at offset 12 was requested"), err)
 		r.Close()
@@ -259,7 +263,8 @@ func TestNewValidatedBufferFromReaderAtToChunkReader(t *testing.T) {
 
 		r := buffer.NewValidatedBufferFromReaderAt(reader, 11).ToChunkReader(
 			/* offset = */ 3,
-			/* chunk size = */ 2)
+			/* chunk size = */ 2,
+		)
 		_, err := r.Read()
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Storage backend on fire"), err)
 		r.Close()

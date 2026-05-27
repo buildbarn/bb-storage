@@ -134,7 +134,8 @@ func TestClientCertificateVerifier(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Client provided no X.509 client certificate"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("NoCAMatch", func(t *testing.T) {
@@ -148,7 +149,8 @@ func TestClientCertificateVerifier(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Cannot validate X.509 client certificate: x509: certificate signed by unknown authority"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("Expired", func(t *testing.T) {
@@ -163,7 +165,8 @@ func TestClientCertificateVerifier(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Cannot validate X.509 client certificate: x509: certificate has expired or is not yet valid: current time 2025-06-15T15:06:40Z is after 2025-04-09T20:18:01Z"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("ValidationFail", func(t *testing.T) {
@@ -179,7 +182,8 @@ func TestClientCertificateVerifier(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unauthenticated, "Rejected X.509 client certificate claims"),
-			err)
+			err,
+		)
 	})
 
 	t.Run("Success", func(t *testing.T) {

@@ -19,7 +19,8 @@ func TestNameFilteringGatherer(t *testing.T) {
 	baseGatherer := mock.NewMockPrometheusGatherer(ctrl)
 	gatherer := prometheus.NewNameFilteringGatherer(
 		baseGatherer,
-		regexp.MustCompile("^node_"))
+		regexp.MustCompile("^node_"),
+	)
 
 	t.Run("Success", func(t *testing.T) {
 		baseGatherer.EXPECT().Gather().Return([]*io_prometheus_client.MetricFamily{

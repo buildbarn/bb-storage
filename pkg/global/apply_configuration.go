@@ -153,7 +153,9 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 	if configuration.GetDiagnosticsHttpServer().GetEnablePrometheus() || configuration.GetPrometheusPushgateway() != nil {
 		grpc_prometheus.EnableClientHandlingTimeHistogram(
 			grpc_prometheus.WithHistogramBuckets(
-				util.DecimalExponentialBuckets(-3, 6, 2)))
+				util.DecimalExponentialBuckets(-3, 6, 2),
+			),
+		)
 		grpcUnaryInterceptors = append(grpcUnaryInterceptors, grpc_prometheus.UnaryClientInterceptor)
 		grpcStreamInterceptors = append(grpcStreamInterceptors, grpc_prometheus.StreamClientInterceptor)
 	}
@@ -264,7 +266,8 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 			}
 			tracerProviderOptions = append(
 				tracerProviderOptions,
-				sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes...)))
+				sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes...)),
+			)
 
 			// Create a Sampler, acting as a policy for when to sample.
 			sampler, err := newSamplerFromConfiguration(tracingConfiguration.Sampler)
@@ -317,8 +320,11 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 					bb_prometheus.NewNameFilteringGatherer(
 						bb_prometheus.NewHTTPGatherer(
 							&http.Client{Transport: roundTripper},
-							scrapeTarget.Url),
-						metricNamePattern))
+							scrapeTarget.Url,
+						),
+						metricNamePattern,
+					),
+				)
 			}
 			gatherer = append(allGatherers, gatherer)
 		}
@@ -417,7 +423,8 @@ func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler)
 			sdktrace.WithLocalParentNotSampled(localParentNotSampled),
 			sdktrace.WithLocalParentSampled(localParentSampled),
 			sdktrace.WithRemoteParentNotSampled(remoteParentNotSampled),
-			sdktrace.WithRemoteParentSampled(remoteParentSampled)), nil
+			sdktrace.WithRemoteParentSampled(remoteParentSampled),
+		), nil
 	case *pb.TracingConfiguration_Sampler_TraceIdRatioBased:
 		return sdktrace.TraceIDRatioBased(policy.TraceIdRatioBased), nil
 	case *pb.TracingConfiguration_Sampler_MaximumRate_:
@@ -428,7 +435,8 @@ func newSamplerFromConfiguration(configuration *pb.TracingConfiguration_Sampler)
 		return bb_otel.NewMaximumRateSampler(
 			clock.SystemClock,
 			int(policy.MaximumRate.SamplesPerEpoch),
-			epochDuration.AsDuration()), nil
+			epochDuration.AsDuration(),
+		), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Unknown sampling policy")
 	}

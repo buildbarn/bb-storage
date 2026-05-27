@@ -46,7 +46,8 @@ mwIDAQAB
 			0x79, 0xe4, 0xe4, 0xad, 0x7b, 0x1d, 0x63, 0xff,
 			0xdd, 0xc6, 0x07, 0x07, 0x0e, 0xc0, 0x84, 0x76,
 			0xa5, 0x7b, 0x9c, 0x24, 0xcb, 0xaf, 0xac, 0x54,
-		}))
+		},
+	))
 
 	// RSA with SHA-256, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
@@ -86,7 +87,8 @@ mwIDAQAB
 			0x83, 0xc0, 0x6a, 0x11, 0x11, 0x25, 0xac, 0x27,
 			0xb6, 0x1a, 0x34, 0x9b, 0x2f, 0x78, 0xd9, 0x78,
 			0x5e, 0x54, 0xb9, 0x86, 0xc0, 0xb3, 0x01, 0x91,
-		}))
+		},
+	))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS256",
 		/* keyID = */ nil,
@@ -124,7 +126,8 @@ mwIDAQAB
 			0xfe, 0xd4, 0x71, 0xb9, 0x03, 0x43, 0xca, 0xa6,
 			0xc7, 0xbd, 0x8a, 0x20, 0xb2, 0x7d, 0x6e, 0x69,
 			0x9b, 0xaf, 0x56, 0x77, 0xa8, 0xe0, 0x8c, 0x57,
-		}))
+		},
+	))
 
 	// RSA with SHA-384, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
@@ -164,7 +167,8 @@ mwIDAQAB
 			0xc5, 0x78, 0x67, 0x40, 0x58, 0xaf, 0x17, 0x9b,
 			0xef, 0xba, 0x00, 0xee, 0x32, 0x61, 0x87, 0xdf,
 			0x78, 0x44, 0x03, 0xf3, 0x08, 0x6d, 0x21, 0x99,
-		}))
+		},
+	))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS384",
 		/* keyID = */ nil,
@@ -202,7 +206,8 @@ mwIDAQAB
 			0x65, 0xd1, 0x1e, 0x76, 0xd2, 0xbc, 0x4d, 0xf8,
 			0x65, 0x5e, 0xf2, 0x21, 0xd1, 0x45, 0x4d, 0xe1,
 			0x04, 0xda, 0xbe, 0x15, 0x8b, 0x43, 0x1f, 0x19,
-		}))
+		},
+	))
 
 	// RSA with SHA-512, both with a valid and invalid signature.
 	require.True(t, signatureValidator.ValidateSignature(
@@ -242,7 +247,8 @@ mwIDAQAB
 			0x47, 0x8f, 0x03, 0x3f, 0x3b, 0x76, 0xea, 0xb2,
 			0xcd, 0x23, 0x29, 0x08, 0x1d, 0x26, 0x08, 0xeb,
 			0x84, 0xdc, 0x25, 0x36, 0x54, 0xcb, 0x46, 0x79,
-		}))
+		},
+	))
 	require.False(t, signatureValidator.ValidateSignature(
 		"RS512",
 		/* keyID = */ nil,
@@ -280,7 +286,8 @@ mwIDAQAB
 			0x83, 0x51, 0xf3, 0x31, 0xa3, 0x0a, 0xb6, 0x82,
 			0x21, 0x5d, 0x0e, 0x9c, 0xf2, 0x7d, 0x07, 0x0f,
 			0x54, 0x13, 0xc7, 0xef, 0xe0, 0x25, 0xec, 0xe5,
-		}))
+		},
+	))
 
 	// RSA-PSS uses a different (statically embedded) private key
 	// because PSS signatures are randomized via salt and so must be
@@ -331,12 +338,14 @@ j5iYg0ok2Rc6EhMzXc5kxUY=
 		"PS256",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps256ValidSig))
+		ps256ValidSig,
+	))
 	require.False(t, pssValidator.ValidateSignature(
 		"PS256",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps256InvalidSig))
+		ps256InvalidSig,
+	))
 
 	// RSA-PSS with SHA-384, both with a valid and invalid signature.
 	ps384Digest := sha512.Sum384([]byte("eyJhbGciOiJQUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0"))
@@ -349,12 +358,14 @@ j5iYg0ok2Rc6EhMzXc5kxUY=
 		"PS384",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps384ValidSig))
+		ps384ValidSig,
+	))
 	require.False(t, pssValidator.ValidateSignature(
 		"PS384",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps384InvalidSig))
+		ps384InvalidSig,
+	))
 
 	// RSA-PSS with SHA-512, both with a valid and invalid signature.
 	ps512Digest := sha512.Sum512([]byte("eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0"))
@@ -367,10 +378,12 @@ j5iYg0ok2Rc6EhMzXc5kxUY=
 		"PS512",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps512ValidSig))
+		ps512ValidSig,
+	))
 	require.False(t, pssValidator.ValidateSignature(
 		"PS512",
 		/* keyID = */ nil,
 		"eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
-		ps512InvalidSig))
+		ps512InvalidSig,
+	))
 }

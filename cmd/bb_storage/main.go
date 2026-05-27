@@ -63,8 +63,10 @@ func main() {
 				blobstore_configuration.NewCASBlobAccessCreator(
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
-					zstdPool),
-				grpcClientFactory)
+					zstdPool,
+				),
+				grpcClientFactory,
+			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
@@ -93,13 +95,15 @@ func main() {
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
 				),
-				grpcClientFactory)
+				grpcClientFactory,
+			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Action Cache")
 			}
 			cacheCapabilitiesProviders = append(
 				cacheCapabilitiesProviders,
-				capabilities.NewActionCacheUpdateEnabledClearingProvider(info.BlobAccess, putAuthorizer))
+				capabilities.NewActionCacheUpdateEnabledClearingProvider(info.BlobAccess, putAuthorizer),
+			)
 			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
 			actionCache = authorizedBackend
 		}
@@ -112,8 +116,10 @@ func main() {
 				configuration.IndirectContentAddressableStorage,
 				blobstore_configuration.NewICASBlobAccessCreator(
 					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes)),
-				grpcClientFactory)
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				grpcClientFactory,
+			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Indirect Content Addressable Storage")
 			}
@@ -128,8 +134,10 @@ func main() {
 				configuration.InitialSizeClassCache,
 				blobstore_configuration.NewISCCBlobAccessCreator(
 					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes)),
-				grpcClientFactory)
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				grpcClientFactory,
+			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Initial Size Class Cache")
 			}
@@ -144,8 +152,10 @@ func main() {
 				configuration.FileSystemAccessCache,
 				blobstore_configuration.NewFSACBlobAccessCreator(
 					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes)),
-				grpcClientFactory)
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				grpcClientFactory,
+			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create File System Access Cache")
 			}
@@ -158,7 +168,9 @@ func main() {
 				capabilitiesProviders,
 				capabilities.NewAuthorizingProvider(
 					capabilities.NewMergingProvider(cacheCapabilitiesProviders),
-					auth.NewAnyAuthorizer(cacheCapabilitiesAuthorizers)))
+					auth.NewAnyAuthorizer(cacheCapabilitiesAuthorizers),
+				),
+			)
 		}
 
 		// Create a demultiplexing build queue that forwards traffic to
@@ -185,41 +197,53 @@ func main() {
 						s,
 						grpcservers.NewContentAddressableStorageServer(
 							contentAddressableStorage,
-							configuration.MaximumMessageSizeBytes))
+							configuration.MaximumMessageSizeBytes,
+						),
+					)
 					bytestream.RegisterByteStreamServer(
 						s,
 						grpcservers.NewByteStreamServer(
 							contentAddressableStorage,
 							1<<16,
-							zstdPool))
+							zstdPool,
+						),
+					)
 				}
 				if actionCache != nil {
 					remoteexecution.RegisterActionCacheServer(
 						s,
 						grpcservers.NewActionCacheServer(
 							actionCache,
-							int(configuration.MaximumMessageSizeBytes)))
+							int(configuration.MaximumMessageSizeBytes),
+						),
+					)
 				}
 				if indirectContentAddressableStorage != nil {
 					icas.RegisterIndirectContentAddressableStorageServer(
 						s,
 						grpcservers.NewIndirectContentAddressableStorageServer(
 							indirectContentAddressableStorage,
-							int(configuration.MaximumMessageSizeBytes)))
+							int(configuration.MaximumMessageSizeBytes),
+						),
+					)
 				}
 				if initialSizeClassCache != nil {
 					iscc.RegisterInitialSizeClassCacheServer(
 						s,
 						grpcservers.NewInitialSizeClassCacheServer(
 							initialSizeClassCache,
-							int(configuration.MaximumMessageSizeBytes)))
+							int(configuration.MaximumMessageSizeBytes),
+						),
+					)
 				}
 				if fileSystemAccessCache != nil {
 					fsac.RegisterFileSystemAccessCacheServer(
 						s,
 						grpcservers.NewFileSystemAccessCacheServer(
 							fileSystemAccessCache,
-							int(configuration.MaximumMessageSizeBytes)))
+							int(configuration.MaximumMessageSizeBytes),
+						),
+					)
 				}
 				if buildQueue != nil {
 					remoteexecution.RegisterExecutionServer(s, buildQueue)
@@ -236,7 +260,9 @@ func main() {
 					remoteexecution.RegisterCapabilitiesServer(
 						s,
 						capabilities.NewServer(
-							capabilities.NewMergingProvider(capabilitiesProviders)))
+							capabilities.NewMergingProvider(capabilitiesProviders),
+						),
+					)
 				}
 			},
 			siblingsGroup,

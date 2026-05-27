@@ -120,7 +120,8 @@ func TestAuthorizingBuildQueueExecute(t *testing.T) {
 					Done: true,
 				}))
 				return nil
-			})
+			},
+		)
 		executeServer.EXPECT().Send(&longrunningpb.Operation{
 			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 			Done: true,
@@ -155,7 +156,8 @@ func TestAuthorizingBuildQueueWaitExecution(t *testing.T) {
 					Done: true,
 				}))
 				return nil
-			})
+			},
+		)
 		executeServer.EXPECT().Send(&longrunningpb.Operation{
 			Name: "fd6ee599-dee5-4390-a221-2bd34cd8ff53",
 			Done: true,
@@ -176,6 +178,7 @@ func TestAuthorizingBuildQueueWaitExecution(t *testing.T) {
 			status.Error(codes.Unavailable, "Server not available"),
 			authorizingBuildQueue.WaitExecution(&remoteexecution.WaitExecutionRequest{
 				Name: "3fc21c92-5db0-42e5-b657-ddf6f937b348",
-			}, executeServer))
+			}, executeServer),
+		)
 	})
 }

@@ -43,7 +43,8 @@ func TestNewCASBufferFromByteSliceSuccess(t *testing.T) {
 		data, err := buffer.NewCASBufferFromByteSlice(
 			digest,
 			entry.body,
-			buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(len(entry.body))
+			buffer.BackendProvided(dataIntegrityCallback.Call),
+		).ToByteSlice(len(entry.body))
 		require.NoError(t, err)
 		require.Equal(t, entry.body, data)
 	}
@@ -59,7 +60,8 @@ func TestNewCASBufferFromByteSliceSizeMismatch(t *testing.T) {
 	_, err := buffer.NewCASBufferFromByteSlice(
 		digest,
 		[]byte("Hello"),
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToByteSlice(5)
 	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer is 5 bytes in size, while 6 bytes were expected"), err)
 }
 
@@ -73,6 +75,7 @@ func TestNewCASBufferFromByteSliceHashMismatch(t *testing.T) {
 	_, err := buffer.NewCASBufferFromByteSlice(
 		digest,
 		[]byte("Hello"),
-		buffer.BackendProvided(dataIntegrityCallback.Call)).ToByteSlice(5)
+		buffer.BackendProvided(dataIntegrityCallback.Call),
+	).ToByteSlice(5)
 	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 8b1a9953c4611296a827abf8c47804d7, while d41d8cd98f00b204e9800998ecf8427e was expected"), err)
 }
