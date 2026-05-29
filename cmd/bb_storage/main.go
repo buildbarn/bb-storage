@@ -84,6 +84,27 @@ func main() {
 			contentAddressableStorage = authorizedBackend
 		}
 
+		// Chunk List Storage (CLS).
+		var chunkListStorage blobstore.BlobAccess
+		if configuration.ChunkListStorage != nil {
+			info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+				dependenciesGroup,
+				configuration.ChunkListStorage,
+				blobstore_configuration.NewCLSBlobAccessCreator(
+					contentAddressableStorageInfo,
+					grpcClientFactory,
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				grpcClientFactory,
+			)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Chunk List Storage")
+			}
+			cacheCapabilitiesProviders = append(cacheCapabilitiesProviders, info.BlobAccess)
+			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
+			chunkListStorage = authorizedBackend
+		}
+
 		// Action Cache (AC).
 		var actionCache blobstore.BlobAccess
 		if configuration.ActionCache != nil {
@@ -193,12 +214,14 @@ func main() {
 			configuration.GrpcServers,
 			func(s grpc.ServiceRegistrar) {
 				if contentAddressableStorage != nil {
+					contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(
+						contentAddressableStorage,
+						chunkListStorage,
+						configuration.MaximumMessageSizeBytes,
+					)
 					remoteexecution.RegisterContentAddressableStorageServer(
 						s,
-						grpcservers.NewContentAddressableStorageServer(
-							contentAddressableStorage,
-							configuration.MaximumMessageSizeBytes,
-						),
+						contentAddressableStorageServer,
 					)
 					bytestream.RegisterByteStreamServer(
 						s,

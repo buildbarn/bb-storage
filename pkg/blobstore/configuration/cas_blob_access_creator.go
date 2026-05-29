@@ -72,8 +72,8 @@ func (casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks in
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
-func (casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
-	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, casCapabilitiesProvider), nil
+func (casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error) {
+	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, capabilitiesProvider), nil
 }
 
 func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
