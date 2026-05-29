@@ -61,6 +61,10 @@ message ApplicationConfiguration {
   // Storage (CAS).
   ScannableBlobAccessConfiguration content_addressable_storage = 17;
 
+  // Optional: Blobstore configuration for the Content List Storage
+  // (CLS).
+  ScannableBlobAccessConfiguration chunk_list_storage = 22;
+
   // Optional: Blobstore configuration for the Action Cache (AC).
   NonScannableBlobAccessConfiguration action_cache = 18;
 
