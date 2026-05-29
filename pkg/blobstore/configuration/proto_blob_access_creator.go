@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -25,7 +26,7 @@ func (protoBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks 
 	return local.NewMutableBlockListGrowthPolicy(currentBlocks), nil
 }
 
-func (protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
+func (protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error) {
 	return nil, status.Error(codes.InvalidArgument, "The hierarchical instance names option can only be used for the Content Addressable Storage")
 }
 
