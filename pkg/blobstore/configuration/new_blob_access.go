@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
@@ -14,6 +15,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -352,11 +354,26 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		)
 
 		var localBlobAccess blobstore.BlobAccess
+		capabilitiesProvider := creator.GetDefaultCapabilitiesProvider()
+		chunkingParameters := backend.Local.GetChunkingParameters()
+		if chunkingParameters != nil {
+			capabilitiesProvider = capabilities.NewMergingProvider([]capabilities.Provider{
+				capabilitiesProvider,
+				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+					CacheCapabilities: &remoteexecution.CacheCapabilities{
+						SplitBlobSupport:  true,
+						SpliceBlobSupport: true,
+						RepMaxCdcParams:   chunkingParameters,
+					},
+				}),
+			})
+		}
 		if backend.Local.HierarchicalInstanceNames {
 			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
 				&globalLock,
+				capabilitiesProvider,
 			)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
@@ -368,7 +385,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				digestKeyFormat,
 				&globalLock,
 				storageTypeName,
-				creator.GetDefaultCapabilitiesProvider(),
+				capabilitiesProvider,
 			)
 		}
 		return BlobAccessInfo{

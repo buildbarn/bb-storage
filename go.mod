@@ -20,6 +20,7 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20260527135131-3b47c424ecf5
 	github.com/bazelbuild/remote-apis v0.0.0-20260331222004-becdd8f9ff81
 	github.com/bazelbuild/rules_go v0.61.1
+	github.com/buildbarn/go-cdc v0.0.9
 	github.com/buildbarn/go-sha256tree v0.0.0-20250310211320-0f70f20e855b
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.5
