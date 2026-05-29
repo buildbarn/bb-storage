@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "ac_blob_access.go",
         "cas_blob_access.go",
+        "cls_blob_access.go",
         "fsac_blob_access.go",
         "icas_blob_access.go",
         "iscc_blob_access.go",
