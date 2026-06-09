@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -116,23 +115,6 @@ func (r *metricsBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest 
 	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		r.singleBlobSizeBytes.Observe(float64(sizeBytes))
-	}
-	return b
-}
-
-func (r *metricsBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	timeStart := r.clock.Now()
-	b := buffer.WithErrorHandler(
-		r.replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer),
-		&metricsErrorHandler{
-			replicator:      r,
-			timeStart:       timeStart,
-			errorCode:       codes.OK,
-			durationSeconds: r.compositeDurationSeconds,
-		},
-	)
-	if sizeBytes, err := b.GetSizeBytes(); err == nil {
-		r.compositeBlobSizeBytes.Observe(float64(sizeBytes))
 	}
 	return b
 }

@@ -14,6 +14,24 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// MustMarshal is a helper that requires a proto message to succesfully
+// marshal to a slice of bytes.
+func MustMarshal(t *testing.T, msg proto.Message) []byte {
+	t.Helper()
+	b, err := proto.Marshal(msg)
+	require.NoError(t, err)
+	return b
+}
+
+// MustUnmarshal is a helper that requires a byte slice to unmarshal
+// into a proto message.
+func MustUnmarshal[T proto.Message](t *testing.T, data []byte, m T) T {
+	t.Helper()
+	err := proto.Unmarshal(data, m)
+	require.NoError(t, err)
+	return m
+}
+
 // RequireEqualProto asserts that the two passed protocol buffer
 // messages are equal.
 //

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -38,21 +37,6 @@ func (ba *hierarchicalInstanceNamesBlobAccess) Get(ctx context.Context, digest d
 			blobAccess: ba.BlobAccess,
 			context:    ctx,
 			digests:    digests,
-		},
-	)
-}
-
-func (ba *hierarchicalInstanceNamesBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	parentDigests := parentDigest.GetDigestsWithParentInstanceNames()
-	childDigests := childDigest.GetDigestsWithParentInstanceNames()
-	return buffer.WithErrorHandler(
-		ba.BlobAccess.GetFromComposite(ctx, parentDigests[len(parentDigests)-1], childDigests[len(childDigests)-1], slicer),
-		&hierarchicalInstanceNamesGetFromCompositeErrorHandler{
-			blobAccess:    ba.BlobAccess,
-			context:       ctx,
-			parentDigests: parentDigests,
-			childDigests:  childDigests,
-			slicer:        slicer,
 		},
 	)
 }
@@ -156,34 +140,3 @@ func (eh *hierarchicalInstanceNamesGetErrorHandler) OnError(err error) (buffer.B
 }
 
 func (hierarchicalInstanceNamesGetErrorHandler) Done() {}
-
-type hierarchicalInstanceNamesGetFromCompositeErrorHandler struct {
-	blobAccess    BlobAccess
-	context       context.Context
-	parentDigests []digest.Digest
-	childDigests  []digest.Digest
-	slicer        slicing.BlobSlicer
-}
-
-func (eh *hierarchicalInstanceNamesGetFromCompositeErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	if status.Code(err) != codes.NotFound {
-		// Serious error. Prepend the instance name, so that
-		// errors can be disambiguated.
-		return nil, util.StatusWrapf(err, "Instance name %#v", eh.parentDigests[len(eh.parentDigests)-1].GetInstanceName().String())
-	}
-	if len(eh.parentDigests) == 1 {
-		// The object was found in none of the instance names.
-		// There is no need to prepend the instance name.
-		return nil, err
-	}
-	eh.parentDigests = eh.parentDigests[:len(eh.parentDigests)-1]
-	eh.childDigests = eh.childDigests[:len(eh.childDigests)-1]
-	return eh.blobAccess.GetFromComposite(
-		eh.context,
-		eh.parentDigests[len(eh.parentDigests)-1],
-		eh.childDigests[len(eh.childDigests)-1],
-		eh.slicer,
-	), nil
-}
-
-func (hierarchicalInstanceNamesGetFromCompositeErrorHandler) Done() {}

@@ -7,7 +7,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -109,23 +108,6 @@ func (ba *metricsBlobAccess) Get(ctx context.Context, digest digest.Digest) buff
 	)
 	if sizeBytes, err := b.GetSizeBytes(); err == nil {
 		ba.getBlobSizeBytes.Observe(float64(sizeBytes))
-	}
-	return b
-}
-
-func (ba *metricsBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	timeStart := ba.clock.Now()
-	b := buffer.WithErrorHandler(
-		ba.blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		&metricsErrorHandler{
-			blobAccess:      ba,
-			timeStart:       timeStart,
-			errorCode:       codes.OK,
-			durationSeconds: ba.getFromCompositeDurationSeconds,
-		},
-	)
-	if sizeBytes, err := b.GetSizeBytes(); err == nil {
-		ba.getFromCompositeBlobSizeBytes.Observe(float64(sizeBytes))
 	}
 	return b
 }

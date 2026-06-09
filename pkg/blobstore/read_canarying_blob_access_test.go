@@ -113,34 +113,6 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is offline"), err)
 	})
 
-	t.Run("GetFromComposite", func(t *testing.T) {
-		// Don't provide exhaustive testing coverage for
-		// GetFromComposite(), as most of the logic is shared
-		// with Get(). Just test that traffic is capable of
-		// going to both backends.
-		parentDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 100)
-		childDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "80cd354fb9a929ffad1b059d909b3b69", 10)
-		slicer := mock.NewMockBlobSlicer(ctrl)
-
-		clock.EXPECT().Now().Return(time.Unix(15000, 0))
-		replicaBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
-		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
-		clock.EXPECT().Now().Return(time.Unix(15000, 100000000))
-		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
-
-		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
-
-		clock.EXPECT().Now().Return(time.Unix(15001, 0))
-		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
-
-		_, err = blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is offline"), err)
-	})
-
 	t.Run("FindMissing", func(t *testing.T) {
 		// Let a FindMissing() call against the replica fail for a
 		// given REv2 instance name. This should cause it to be

@@ -113,6 +113,9 @@ func (f Function) NewDigestFromProto(digest *remoteexecution.Digest) (Digest, er
 	if digest == nil {
 		return BadDigest, status.Error(codes.InvalidArgument, "No digest provided")
 	}
+	if digest.SizeBytes < 0 {
+		return BadDigest, status.Error(codes.InvalidArgument, "Negative size digest provided")
+	}
 	return f.NewDigest(digest.Hash, digest.SizeBytes)
 }
 

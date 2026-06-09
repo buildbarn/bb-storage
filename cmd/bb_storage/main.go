@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
@@ -54,55 +55,57 @@ func main() {
 		var cacheCapabilitiesAuthorizers []auth.Authorizer
 
 		// Content Addressable Storage (CAS).
-		var contentAddressableStorageInfo *blobstore_configuration.BlobAccessInfo
-		var contentAddressableStorage blobstore.BlobAccess
-		if configuration.ContentAddressableStorage != nil {
-			info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+		var contentAddressableStorage cdc.ContentAddressableStorage
+		var authorizedContentAddressableStorage cdc.ContentAddressableStorage
+		if configuration.ContentAddressableStorageServer != nil {
+			cas, chunkStorage, chunkListStorage, _, cdcParametersFetcher, err := blobstore_configuration.NewCASFromConfiguration(
 				dependenciesGroup,
-				configuration.ContentAddressableStorage,
-				blobstore_configuration.NewCASBlobAccessCreator(
-					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
-				),
+				configuration.ContentAddressableStorageServer.ContentAddressableStorage,
 				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes),
+				zstdPool,
 			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
+			contentAddressableStorage = cas
+
+			// Create authorizers.
+			getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.GetAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Get() authorizer for Content Addressable Storage")
+			}
+			putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.PutAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Put() authorizer for Content Addressable Storage")
+			}
+			findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.FindMissingAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create FindMissing() authorizer for Content Addressable Storage")
+			}
+
+			// Create authorized versions of the backends.
+			authorizedChunkStorage := blobstore.NewAuthorizingBlobAccess(chunkStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			authorizedChunkListStorage := blobstore.NewAuthorizingBlobAccess(chunkListStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			authorizedChunkListFetcher := blobstore.NewBlobAccessChunkListFetcher(authorizedChunkListStorage, int(configuration.MaximumMessageSizeBytes))
+			authorizedContentAddressableStorage = cdc.NewContentAddressableStorage(
+				authorizedChunkStorage,
+				authorizedChunkListStorage,
+				authorizedChunkListFetcher,
+				cdcParametersFetcher,
+				contentAddressableStorage.GetDigestKeyFormat(),
+			)
+			// Create the Chunk Storage (CS).
 			cacheCapabilitiesProviders = append(
 				cacheCapabilitiesProviders,
-				info.BlobAccess,
+				chunkStorage,
 				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 					CacheCapabilities: &remoteexecution.CacheCapabilities{
 						SupportedCompressors: configuration.SupportedCompressors,
 					},
 				}),
 			)
-			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
-			contentAddressableStorageInfo = &info
-			contentAddressableStorage = authorizedBackend
-		}
-
-		// Chunk List Storage (CLS).
-		var chunkListStorage blobstore.BlobAccess
-		if configuration.ChunkListStorage != nil {
-			info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
-				dependenciesGroup,
-				configuration.ChunkListStorage,
-				blobstore_configuration.NewCLSBlobAccessCreator(
-					contentAddressableStorageInfo,
-					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes),
-				),
-				grpcClientFactory,
-			)
-			if err != nil {
-				return util.StatusWrap(err, "Failed to create Chunk List Storage")
-			}
-			cacheCapabilitiesProviders = append(cacheCapabilitiesProviders, info.BlobAccess)
-			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
-			chunkListStorage = authorizedBackend
+			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, getAuthorizer, putAuthorizer, findMissingAuthorizer)
 		}
 
 		// Action Cache (AC).
@@ -112,7 +115,7 @@ func main() {
 				dependenciesGroup,
 				configuration.ActionCache,
 				blobstore_configuration.NewACBlobAccessCreator(
-					contentAddressableStorageInfo,
+					contentAddressableStorage,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
 				),
@@ -213,10 +216,9 @@ func main() {
 		if err := bb_grpc.NewServersFromConfigurationAndServe(
 			configuration.GrpcServers,
 			func(s grpc.ServiceRegistrar) {
-				if contentAddressableStorage != nil {
+				if authorizedContentAddressableStorage != nil {
 					contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(
-						contentAddressableStorage,
-						chunkListStorage,
+						authorizedContentAddressableStorage,
 						configuration.MaximumMessageSizeBytes,
 					)
 					remoteexecution.RegisterContentAddressableStorageServer(
@@ -226,8 +228,7 @@ func main() {
 					bytestream.RegisterByteStreamServer(
 						s,
 						grpcservers.NewByteStreamServer(
-							contentAddressableStorage,
-							1<<16,
+							authorizedContentAddressableStorage,
 							zstdPool,
 						),
 					)

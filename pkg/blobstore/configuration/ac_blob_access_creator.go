@@ -3,6 +3,7 @@ package configuration
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -31,7 +32,7 @@ type acBlobAccessCreator struct {
 	protoBlobAccessCreator
 	protoBlobReplicatorCreator
 
-	contentAddressableStorage *BlobAccessInfo
+	contentAddressableStorage cdc.ContentAddressableStorage
 	grpcClientFactory         grpc.ClientFactory
 	maximumMessageSizeBytes   int
 }
@@ -39,7 +40,7 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(contentAddressableStorage cdc.ContentAddressableStorage, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &acBlobAccessCreator{
 		contentAddressableStorage: contentAddressableStorage,
 		grpcClientFactory:         grpcClientFactory,
@@ -100,20 +101,22 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		return BlobAccessInfo{
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
-				bac.contentAddressableStorage.BlobAccess,
+				bac.contentAddressableStorage,
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
 				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.GetDigestKeyFormat()),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
+		grpc := backend.Grpc
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
+		ba := grpcclients.NewACBlobAccess(client, bac.maximumMessageSizeBytes)
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewACBlobAccess(client, bac.maximumMessageSizeBytes),
+			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:

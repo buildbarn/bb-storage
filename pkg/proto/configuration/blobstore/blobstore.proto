@@ -16,10 +16,35 @@ import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
+message ContentAddressableStorageConfiguration {
+  // Storage configuration for the Chunk Storage (CS).
+  BlobAccessConfiguration chunk_storage = 1;
+
+  // Storage configuration for the Chunk List Storage (CLS).
+  BlobAccessConfiguration chunk_list_storage = 2;
+
+  // Optional: In memory cache for parsed object from the CLS. This
+  // cache is particularly useful for consumers which need to random
+  // access reads to the same digest often such as bb-clientd and
+  // bb-worker.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration chunk_list_cache =
+      3;
+
+  // Optional: In memory cache for CDC parameters per instance. When the
+  // chunk storage is remote this cache prevents each operation that
+  // interacts with CDC from having to fetch the capabilities from the
+  // upstream CS for every interaction with the CDC subsystem. It can be
+  // set to a relatively small cache with short retention as the number
+  // of instance names is typically small and the cost of a cache miss
+  // is relatively low.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      cdc_parameter_cache = 4;
+}
+
 // Storage configuration for Bazel Buildbarn.
 message BlobstoreConfiguration {
   // Storage configuration for the Content Addressable Storage (CAS).
-  BlobAccessConfiguration content_addressable_storage = 1;
+  ContentAddressableStorageConfiguration content_addressable_storage = 1;
 
   // Storage configuration for the Action Cache (AC).
   BlobAccessConfiguration action_cache = 2;
@@ -201,27 +226,26 @@ message BlobAccessConfiguration {
     // code will be returned.
     DeadlineEnforcingBlobAccess deadline_enforcing = 28;
 
-    // Validate that chunk list requests fulfill the api specification.
+    // Validate that chunk list requests fulfill the API specification.
     // Chunk List Storage (CLS) is used to implement the SplitBlob and
-    // SpliceBlob methods from the REv2 api. The protocol has several
+    // SpliceBlob methods from the REv2 API. The protocol has several
     // demands on the state of the Content Addressable Storage (CAS)
     // after those methods have been called.
     //
-    // SplitBlob requires that that the blob as well as all chunks of
-    // the blob are available in the CAS, they have their lifetime
-    // renewed and that the resulting chunk list composes into the blob.
-    // This is validated by the Get path by splitting the Blob on demand
-    // if required.
+    // SplitBlob requires that the blob as well as all chunks of the
+    // blob are available in the CAS, they have their lifetime renewed
+    // and that the resulting chunk list composes into the blob. This is
+    // validated by the Get path.
     //
     // SpliceBlob requires that the blob as well as all chunks of the
     // blob are present in storage, they have their lifetime renewed and
     // that the supplied chunk list composes into the blob. Notably it
     // does not require the chunks to follow any particular chunking
     // algorithm but our implementation ensures that after any call a
-    // proper rep max cdc chunk list is verified even if the caller
+    // proper RepMaxCDC chunk list is verified even if the caller
     // supplied a different chunk list.
     //
-    // This decorator must be placed on the CLS.
+    // This decorator is only supported for the CLS.
     ChunkListValidatingBlobAccessConfiguration chunk_list_validating = 29;
   }
 
@@ -676,7 +700,7 @@ message LocalBlobAccessConfiguration {
   // an outer ChunkValidatingBlobAccess that has view of the entire
   // Content Addressable Storage (CAS).
   //
-  // This option is only supported for the CLS.
+  // This option is only supported for the CS.
   build.bazel.remote.execution.v2.RepMaxCdcParams chunking_parameters = 15;
 }
 
@@ -741,7 +765,7 @@ message ReferenceExpandingBlobAccessConfiguration {
 
   // Optional: Storage backend to use when Reference objects refer to
   // objects stored in another Content Addressable Storage.
-  BlobAccessConfiguration content_addressable_storage = 5;
+  ContentAddressableStorageConfiguration content_addressable_storage = 5;
 }
 
 message BlobReplicatorConfiguration {

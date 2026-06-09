@@ -3,19 +3,19 @@ package blobstore
 import (
 	"io"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	chunklist_pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/chunklist"
 )
 
 type clsReadBufferFactory struct{}
 
 func (clsReadBufferFactory) NewBufferFromByteSlice(digest digest.Digest, data []byte, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return buffer.NewProtoBufferFromByteSlice(&remoteexecution.SplitBlobResponse{}, data, buffer.BackendProvided(dataIntegrityCallback))
+	return buffer.NewProtoBufferFromByteSlice(&chunklist_pb.ChunkList{}, data, buffer.BackendProvided(dataIntegrityCallback))
 }
 
 func (clsReadBufferFactory) NewBufferFromReader(digest digest.Digest, r io.ReadCloser, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return buffer.NewProtoBufferFromReader(&remoteexecution.SplitBlobResponse{}, r, buffer.BackendProvided(dataIntegrityCallback))
+	return buffer.NewProtoBufferFromReader(&chunklist_pb.ChunkList{}, r, buffer.BackendProvided(dataIntegrityCallback))
 }
 
 func (f clsReadBufferFactory) NewBufferFromReaderAt(digest digest.Digest, r buffer.ReadAtCloser, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {

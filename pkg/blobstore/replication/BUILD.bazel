@@ -20,7 +20,6 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
         "//pkg/clock",
         "//pkg/digest",
         "//pkg/proto/replicator",

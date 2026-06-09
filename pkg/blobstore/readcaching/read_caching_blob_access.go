@@ -6,7 +6,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
@@ -48,17 +47,6 @@ func (ba *readCachingBlobAccess) Get(ctx context.Context, digest digest.Digest) 
 	return replication.GetWithBlobReplicator(
 		ctx,
 		digest,
-		ba.fast,
-		ba.getBlobReplicatorSelector(),
-	)
-}
-
-func (ba *readCachingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	return replication.GetFromCompositeWithBlobReplicator(
-		ctx,
-		parentDigest,
-		childDigest,
-		slicer,
 		ba.fast,
 		ba.getBlobReplicatorSelector(),
 	)

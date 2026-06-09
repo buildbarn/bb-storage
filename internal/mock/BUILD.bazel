@@ -153,6 +153,19 @@ gomock(
 )
 
 gomock(
+    name = "cdc",
+    out = "cdc.go",
+    interfaces = [
+        "ContentAddressableStorage",
+        "ParametersFetcher",
+    ],
+    library = "//pkg/blobstore/cdc",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+)
+
+gomock(
     name = "clock",
     out = "clock.go",
     interfaces = [
@@ -377,6 +390,7 @@ go_library(
         "buffer.go",
         "builder.go",
         "capabilities.go",
+        "cdc.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
@@ -402,6 +416,8 @@ go_library(
         "//pkg/auth",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
         "//pkg/blobstore/slicing",
