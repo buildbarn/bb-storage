@@ -23,7 +23,7 @@ register_toolchains("//tools/platforms:test_toolchain_running_linux_x86_32_on_x8
 
 git_override(
     module_name = "bazel_remote_apis",
-    commit = "becdd8f9ff811df88a22d3eadd6341753d51d167",
+    commit = "76ddd98e1f92c0e2e71d0d3aa6906eca31754c03",
     patches = ["//:patches/bazel_remote_apis/upstream-pr-378.diff"],
     remote = "https://github.com/bazelbuild/remote-apis.git",
 )

@@ -8,8 +8,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -44,11 +43,11 @@ type ReadWriterAt interface {
 // ZIPWritingBlobAccess is an implementation of BlobAccess that stores
 // all objects in a ZIP archive. The resulting ZIP archives can be read
 // using NewZIPReadingBlobAccess().
-type ZIPWritingBlobAccess struct {
+type ZIPWritingBlobAccess[T any] struct {
 	capabilities.Provider
-	readBufferFactory ReadBufferFactory
-	digestKeyFormat   digest.KeyFormat
-	rw                ReadWriterAt
+	coder           coder.Coder[T, []byte]
+	digestKeyFormat digest.KeyFormat
+	rw              ReadWriterAt
 
 	lock             sync.Mutex
 	filesAccess      map[string]zippedFileAccessInfo
@@ -57,17 +56,17 @@ type ZIPWritingBlobAccess struct {
 	finalized        bool
 }
 
-var _ BlobAccess = &ZIPWritingBlobAccess{}
+var _ BlobAccess[any] = (*ZIPWritingBlobAccess[any])(nil)
 
 // NewZIPWritingBlobAccess creates a new BlobAccess that stores all
 // objects in a ZIP archive. In its initial state, the resulting ZIP
 // file will be empty.
-func NewZIPWritingBlobAccess(capabilitiesProvider capabilities.Provider, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, rw ReadWriterAt) *ZIPWritingBlobAccess {
-	return &ZIPWritingBlobAccess{
-		Provider:          capabilitiesProvider,
-		readBufferFactory: readBufferFactory,
-		digestKeyFormat:   digestKeyFormat,
-		rw:                rw,
+func NewZIPWritingBlobAccess[T any](capabilitiesProvider capabilities.Provider, coder coder.Coder[T, []byte], digestKeyFormat digest.KeyFormat, rw ReadWriterAt) *ZIPWritingBlobAccess[T] {
+	return &ZIPWritingBlobAccess[T]{
+		Provider:        capabilitiesProvider,
+		coder:           coder,
+		digestKeyFormat: digestKeyFormat,
+		rw:              rw,
 
 		filesAccess: map[string]zippedFileAccessInfo{},
 	}
@@ -75,41 +74,31 @@ func NewZIPWritingBlobAccess(capabilitiesProvider capabilities.Provider, readBuf
 
 // Get the contents of an object that was successfully stored in the ZIP
 // archive through a previous call to Put().
-func (ba *ZIPWritingBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+func (ba *ZIPWritingBlobAccess[T]) Get(ctx context.Context, blobDigest digest.Digest) (T, error) {
 	key := blobDigest.GetKey(ba.digestKeyFormat)
 	ba.lock.Lock()
 	file, ok := ba.filesAccess[key]
 	ba.lock.Unlock()
+	var zero T
 	if !ok {
-		return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "File %#v not found in ZIP archive", key))
+		return zero, status.Errorf(codes.NotFound, "File %#v not found in ZIP archive", key)
 	}
-
-	return ba.readBufferFactory.NewBufferFromReaderAt(
-		blobDigest,
-		nopAtCloser{ReaderAt: io.NewSectionReader(ba.rw, file.dataOffsetBytes, file.dataSizeBytes)},
-		file.dataSizeBytes,
-		buffer.Irreparable(blobDigest),
-	)
-}
-
-// GetFromComposite fetches an object that is contained within a
-// composite object that was successfully stored in the ZIP archive
-// through a previous call to Put().
-func (ba *ZIPWritingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	// TODO: We can provide a better implementation that stores the
-	// resulting slices.
-	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
-	return b
+	blobData := make([]byte, file.dataSizeBytes)
+	_, err := ba.rw.ReadAt(blobData, file.dataOffsetBytes)
+	if err != nil {
+		return zero, util.StatusWrapfWithCode(err, codes.Internal, "Failed to read file %#v in ZIP archive", key)
+	}
+	return ba.coder.Decode(blobData, blobDigest)
 }
 
 // Put a new object in the ZIP archive.
-func (ba *ZIPWritingBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
+func (ba *ZIPWritingBlobAccess[T]) Put(ctx context.Context, blobDigest digest.Digest, value T) error {
 	key := blobDigest.GetKey(ba.digestKeyFormat)
-	dataSizeBytes, err := b.GetSizeBytes()
+	data, err := ba.coder.Encode(value, blobDigest)
 	if err != nil {
-		b.Discard()
-		return err
+		return util.StatusWrap(err, "Could not encode value to bytes")
 	}
+	dataSizeBytes := int64(len(data))
 
 	// Construct the full header to place before the file contents.
 	localZIP64ExtraField := [...]byte{
@@ -159,7 +148,6 @@ func (ba *ZIPWritingBlobAccess) Put(ctx context.Context, blobDigest digest.Diges
 	ba.lock.Lock()
 	if ba.finalized {
 		ba.lock.Unlock()
-		b.Discard()
 		return status.Error(codes.Unavailable, "ZIP archive has already been finalized")
 	}
 	headerOffsetBytes := ba.writeOffsetBytes
@@ -167,12 +155,12 @@ func (ba *ZIPWritingBlobAccess) Put(ctx context.Context, blobDigest digest.Diges
 	ba.writeOffsetBytes = dataOffsetBytes + dataSizeBytes
 	ba.lock.Unlock()
 
-	// Ingest data, while at the same time computing a CRC32.
+	// Write data and calculate a crc32 hash
+	if _, err := ba.rw.WriteAt(data, dataOffsetBytes); err != nil {
+		return err
+	}
 	hasher := crc32.NewIEEE()
-	if err := b.IntoWriter(io.MultiWriter(&sectionWriter{
-		w:           ba.rw,
-		offsetBytes: dataOffsetBytes,
-	}, hasher)); err != nil {
+	if _, err = hasher.Write(data); err != nil {
 		return err
 	}
 
@@ -204,7 +192,7 @@ func (ba *ZIPWritingBlobAccess) Put(ctx context.Context, blobDigest digest.Diges
 
 // FindMissing reports which objects are absent from a ZIP archive,
 // given a set of digests.
-func (ba *ZIPWritingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *ZIPWritingBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	ba.lock.Lock()
 	defer ba.lock.Unlock()
 
@@ -219,7 +207,7 @@ func (ba *ZIPWritingBlobAccess) FindMissing(ctx context.Context, digests digest.
 
 // Finalize the ZIP archive by appending a central directory to the
 // underlying file. Once called, it is no longer possible to call Put().
-func (ba *ZIPWritingBlobAccess) Finalize() error {
+func (ba *ZIPWritingBlobAccess[T]) Finalize() error {
 	ba.lock.Lock()
 	ba.finalized = true
 	ba.lock.Unlock()

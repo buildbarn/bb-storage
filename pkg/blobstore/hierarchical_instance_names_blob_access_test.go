@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ import (
 func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
 	helloDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -34,12 +34,12 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 		// message, to disambiguate.
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))),
+				Return(nil, status.Error(codes.Internal, "Disk on fire")),
 		)
 
-		_, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, helloDigest1)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Instance name \"a\": Disk on fire"), err)
 	})
 
@@ -48,94 +48,36 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 		// against parent instance names.
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest3).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+				Return(nil, status.Error(codes.NotFound, "Object not found")),
 		)
 
-		_, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, helloDigest1)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		gomock.InOrder(
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
+				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+				Return(chunk.NewChunk(nil, []byte("Hello")), nil),
 		)
 
-		data, err := blobAccess.Get(ctx, helloDigest1).ToByteSlice(100)
+		chunk, err := blobAccess.Get(ctx, helloDigest1)
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
-	})
-}
-
-func TestHierarchicalInstanceNamesBlobAccessGetFromComposite(t *testing.T) {
-	ctrl, ctx := gomock.WithContext(context.Background(), t)
-
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
-
-	helloDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest2 := digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	helloDigest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	ellDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
-	ellDigest2 := digest.MustNewDigest("a", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
-	ellDigest3 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 5)
-	slicer := mock.NewMockBlobSlicer(ctrl)
-
-	t.Run("Failure", func(t *testing.T) {
-		// Errors from backends should be propagated. The
-		// instance name should be prepended to the error
-		// message, to disambiguate.
-		gomock.InOrder(
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Disk on fire"))),
-		)
-
-		_, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Instance name \"a\": Disk on fire"), err)
-	})
-
-	t.Run("NotFound", func(t *testing.T) {
-		// NotFound errors should cause requests to be retried
-		// against parent instance names.
-		gomock.InOrder(
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest3, ellDigest3, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
-		)
-
-		_, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
-	})
-
-	t.Run("Success", func(t *testing.T) {
-		gomock.InOrder(
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).
-				Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found"))),
-			baseBlobAccess.EXPECT().GetFromComposite(ctx, helloDigest2, ellDigest2, slicer).
-				Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell"))),
-		)
-
-		data, err := blobAccess.GetFromComposite(ctx, helloDigest1, ellDigest1, slicer).ToByteSlice(100)
-		require.NoError(t, err)
-		require.Equal(t, []byte("ell"), data)
 	})
 }
 
 func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
 	t.Run("InitialFailure", func(t *testing.T) {

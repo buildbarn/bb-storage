@@ -10,7 +10,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -25,11 +24,20 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	readBufferFactory := mock.NewMockReadBufferFactory(ctrl)
 	capturingReadWriter := mock.NewMockFileReadWriter(ctrl)
-	blobAccess := blobstore.NewZIPWritingBlobAccess(
+
+	// Create an identity coder since the test uses raw bytes
+	mockCoder := mock.NewMockCoder[[]byte, []byte](ctrl)
+	mockCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) ([]byte, error) {
+		return data, nil
+	}).AnyTimes()
+	mockCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) ([]byte, error) {
+		return data, nil
+	}).AnyTimes()
+
+	blobAccess := blobstore.NewZIPWritingBlobAccess[[]byte](
 		capabilitiesProvider,
-		readBufferFactory,
+		mockCoder,
 		digest.KeyWithoutInstance,
 		capturingReadWriter,
 	)
@@ -106,7 +114,7 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 				blobAccess.Put(
 					ctx,
 					digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5),
-					buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+					[]byte("Hello"),
 				),
 			)
 		})
@@ -157,7 +165,7 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 				blobAccess.Put(
 					ctx,
 					digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "ebbbb099e9d2f7892d97ab3640ae8283", 9),
-					buffer.NewValidatedBufferFromByteSlice([]byte("Buildbarn")),
+					[]byte("Buildbarn"),
 				),
 			)
 		})
@@ -167,8 +175,7 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			// Attempt to access a file that wasn't stored.
 			_, err := blobAccess.
-				Get(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA1, "cac4074a2a428b50fe9588583544ac5412c61b34", 42)).
-				ToByteSlice(1000)
+				Get(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA1, "cac4074a2a428b50fe9588583544ac5412c61b34", 42))
 			testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "File \"2-cac4074a2a428b50fe9588583544ac5412c61b34-42\" not found in ZIP archive"), err)
 		})
 
@@ -176,14 +183,12 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 			// Attempt to access a file that was written
 			// using Put() previously.
 			fileDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
-			readBufferFactory.EXPECT().NewBufferFromReaderAt(fileDigest, gomock.Any(), int64(5), gomock.Any()).
-				DoAndReturn(blobstore.CASReadBufferFactory.NewBufferFromReaderAt)
 			readWriter.EXPECT().ReadAt(gomock.Len(5), int64(118)).
 				DoAndReturn(func(p []byte, offset int64) (int, error) {
 					return copy(p, "Hello"), nil
 				})
 
-			data, err := blobAccess.Get(ctx, fileDigest).ToByteSlice(1000)
+			data, err := blobAccess.Get(ctx, fileDigest)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
 		})
@@ -396,16 +401,13 @@ func TestZIPWritingBlobAccess(t *testing.T) {
 	})
 
 	t.Run("PutAfterFinalize", func(t *testing.T) {
-		reader := mock.NewMockReadAtCloser(ctrl)
-		reader.EXPECT().Close()
-
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unavailable, "ZIP archive has already been finalized"),
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "848c3b8d79097873c69534c194bd666a", 3000),
-				buffer.NewValidatedBufferFromReaderAt(reader, 3000),
+				make([]byte, 3000),
 			),
 		)
 	})

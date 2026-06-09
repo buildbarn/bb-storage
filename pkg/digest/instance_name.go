@@ -90,7 +90,7 @@ func (in InstanceName) NewDigestFromCompactBinary(r io.ByteReader) (Digest, erro
 		return BadDigest, err
 	}
 
-	hashBytesSize := digestFunction.bareFunction.hashBytesSize
+	hashBytesSize := len(digestFunction.bareFunction.emptyHash) / 2
 	hash := make([]byte, 0, hashBytesSize)
 	for i := 0; i < hashBytesSize; i++ {
 		b, err := r.ReadByte()

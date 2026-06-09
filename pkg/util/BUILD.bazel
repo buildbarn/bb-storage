@@ -9,6 +9,7 @@ go_library(
         "must.go",
         "non_empty_stack.go",
         "proto.go",
+        "read_fully_decompressed.go",
         "semaphore.go",
         "status.go",
         "tls.go",

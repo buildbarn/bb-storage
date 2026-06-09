@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -15,16 +16,16 @@ import (
 // BlobAccessCreator may use to construct nested instances of
 // BlobAccess. For example, ACBlobAccessCreator will call into this
 // interface to create the backend of CompletenessCheckingBlobAccess.
-type NestedBlobAccessCreator interface {
-	NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error)
+type NestedBlobAccessCreator[T any] interface {
+	NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator[T]) (BlobAccessInfo[T], error)
 }
 
 // BlobAccessCreator contains a set of methods that are invoked by the
 // generic NewBlobAccessFromConfiguration() function to create a
 // BlobAccess of a specific kind (e.g., Action Cache, Content
 // Addressable Storage).
-type BlobAccessCreator interface {
-	BlobReplicatorCreator
+type BlobAccessCreator[T any] interface {
+	BlobReplicatorCreator[T]
 
 	// GetBaseDigestKeyFormat() returns the format that leaf
 	// instances of BlobAccess (e.g., LocalBlobAccess) should be
@@ -34,9 +35,9 @@ type BlobAccessCreator interface {
 	// return digest.KeyWithoutInstance, so that identical objects
 	// are only stored once.
 	GetBaseDigestKeyFormat() digest.KeyFormat
-	// GetReadBufferFactory() returns operations that can be used by
-	// BlobAccess to create Buffer objects to return data.
-	GetReadBufferFactory() blobstore.ReadBufferFactory
+	// GetBinaryCoder() returns a coder.Coder that Encodes or
+	// Decodes a T into a byte slice.
+	GetBinaryCoder() coder.Coder[T, []byte]
 	// GetCapabilitiesProvider() returns a provider of REv2
 	// ServerCapabilities messages that should be returned for
 	// backends that can't report their own capabilities. This
@@ -48,14 +49,14 @@ type BlobAccessCreator interface {
 	// NewHierarchicalInstanceNamesLocalBlobAccess() creates a
 	// BlobAccess suitable for storing data on the local system that
 	// uses hierarchical instance names.
-	NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, blockReferenceResolver local.BlockReferenceResolver, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error)
+	NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, blockReferenceResolver local.BlockReferenceResolver, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess[T], error)
 	// NewCustomBlobAccess() can be used as a fallback to create
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only
 	// applicable to the Action Cache.
-	NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error)
+	NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[T]) (BlobAccessInfo[T], string, error)
 	// WrapTopLevelBlobAccess() is called at the very end of
 	// NewBlobAccessFromConfiguration() to apply any top-level
 	// decorators.
-	WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess
+	WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[T]) blobstore.BlobAccess[T]
 }
