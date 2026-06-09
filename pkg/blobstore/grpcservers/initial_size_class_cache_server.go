@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -13,8 +12,7 @@ import (
 )
 
 type initialSizeClassCacheServer struct {
-	blobAccess              blobstore.BlobAccess
-	maximumMessageSizeBytes int
+	blobAccess blobstore.BlobAccess[*iscc.PreviousExecutionStats]
 }
 
 // NewInitialSizeClassCacheServer creates a gRPC service for serving the
@@ -23,10 +21,9 @@ type initialSizeClassCacheServer struct {
 // execution times of actions, so that it can make better predictions
 // about which size class to pick during future invocations of similar
 // actions.
-func NewInitialSizeClassCacheServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) iscc.InitialSizeClassCacheServer {
+func NewInitialSizeClassCacheServer(blobAccess blobstore.BlobAccess[*iscc.PreviousExecutionStats]) iscc.InitialSizeClassCacheServer {
 	return &initialSizeClassCacheServer{
-		blobAccess:              blobAccess,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		blobAccess: blobAccess,
 	}
 }
 
@@ -44,14 +41,7 @@ func (s *initialSizeClassCacheServer) GetPreviousExecutionStats(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
-	previousExecutionStats, err := s.blobAccess.Get(ctx, digest).ToProto(
-		&iscc.PreviousExecutionStats{},
-		s.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return previousExecutionStats.(*iscc.PreviousExecutionStats), nil
+	return s.blobAccess.Get(ctx, digest)
 }
 
 func (s *initialSizeClassCacheServer) UpdatePreviousExecutionStats(ctx context.Context, in *iscc.UpdatePreviousExecutionStatsRequest) (*emptypb.Empty, error) {
@@ -71,6 +61,6 @@ func (s *initialSizeClassCacheServer) UpdatePreviousExecutionStats(ctx context.C
 	return &emptypb.Empty{}, s.blobAccess.Put(
 		ctx,
 		digest,
-		buffer.NewProtoBufferFromProto(in.PreviousExecutionStats, buffer.UserProvided),
+		in.PreviousExecutionStats,
 	)
 }

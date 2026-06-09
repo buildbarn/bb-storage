@@ -23,9 +23,9 @@ import (
 func TestReadCanaryingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	sourceBackend := mock.NewMockBlobAccess(ctrl)
+	sourceBackend := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
 	sourceBackend.EXPECT().FindMissing(ctx, digest.EmptySet).Return(digest.EmptySet, nil).AnyTimes()
-	replicaBackend := mock.NewMockBlobAccess(ctrl)
+	replicaBackend := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
 	clock := mock.NewMockClock(ctrl)
 	replicaErrorLogger := mock.NewMockErrorLogger(ctrl)
 	blobAccess := blobstore.NewReadCanaryingBlobAccess(
@@ -44,15 +44,15 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// would need to replicate it to the source anyway.
 		blobDigest := digest.MustNewDigest("put", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		sourceBackend.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				data, err := b.ToByteSlice(100)
+			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
 		)
 
-		require.NoError(t, blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+		require.NoError(t, blobAccess.Put(ctx, blobDigest, buffer.NewChunk(nil, []byte("Hello"))))
 	})
 
 	t.Run("Get", func(t *testing.T) {
@@ -61,12 +61,12 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// In the initial state, calls to Get() should go to the
 		// replica backend, just to see whether it's online.
 		clock.EXPECT().Now().Return(time.Unix(10000, 0))
-		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.Unavailable, "Server is offline"))
 		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(10000, 100000000))
-		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
+		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.Unavailable, "Server is also offline"))
 
-		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
 
 		// If the replica is offline, calls within the next five
@@ -74,9 +74,11 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// That way the client doesn't observe too many errors.
 		for _, ts := range []int64{10002, 10100, 10200, 10300} {
 			clock.EXPECT().Now().Return(time.Unix(ts, 0))
-			sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello")), nil)
 
-			data, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
+			chunk, err := blobAccess.Get(ctx, blobDigest)
+			require.NoError(t, err)
+			data, err := chunk.GetBytes(ctx)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
 		}
@@ -87,10 +89,12 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// replica, as it's known to be online.
 		for _, ts := range []int64{10301, 10601, 10901, 11201} {
 			clock.EXPECT().Now().Return(time.Unix(ts, 0))
-			replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello")), nil)
 			clock.EXPECT().Now().Return(time.Unix(ts, 100000000))
 
-			data, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
+			chunk, err := blobAccess.Get(ctx, blobDigest)
+			require.NoError(t, err)
+			data, err := chunk.GetBytes(ctx)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
 		}
@@ -98,46 +102,18 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// If a single request to the replica fails, we will
 		// fall back to the source for another five minutes.
 		clock.EXPECT().Now().Return(time.Unix(11202, 0))
-		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		replicaBackend.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.Unavailable, "Server is offline"))
 		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
 		clock.EXPECT().Now().Return(time.Unix(11202, 100000000))
-		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
+		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.Unavailable, "Server is also offline"))
 
-		_, err = blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
+		_, err = blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
 
 		clock.EXPECT().Now().Return(time.Unix(11501, 0))
-		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
+		sourceBackend.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.Unavailable, "Server is offline"))
 
-		_, err = blobAccess.Get(ctx, blobDigest).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is offline"), err)
-	})
-
-	t.Run("GetFromComposite", func(t *testing.T) {
-		// Don't provide exhaustive testing coverage for
-		// GetFromComposite(), as most of the logic is shared
-		// with Get(). Just test that traffic is capable of
-		// going to both backends.
-		parentDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 100)
-		childDigest := digest.MustNewDigest("get-from-composite", remoteexecution.DigestFunction_MD5, "80cd354fb9a929ffad1b059d909b3b69", 10)
-		slicer := mock.NewMockBlobSlicer(ctrl)
-
-		clock.EXPECT().Now().Return(time.Unix(15000, 0))
-		replicaBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
-		replicaErrorLogger.EXPECT().Log(status.Error(codes.Unavailable, "Server is offline"))
-		clock.EXPECT().Now().Return(time.Unix(15000, 100000000))
-		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is also offline")))
-
-		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is also offline"), err)
-
-		clock.EXPECT().Now().Return(time.Unix(15001, 0))
-		sourceBackend.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server is offline")))
-
-		_, err = blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
+		_, err = blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Source: Server is offline"), err)
 	})
 

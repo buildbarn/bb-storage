@@ -6,7 +6,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc/codes"
@@ -15,45 +14,42 @@ import (
 
 // fakeBlobAccess provides a thread-safe, in-memory BlobAccess for
 // testing.
-type fakeBlobAccess struct {
-	blobstore.BlobAccess
+type fakeBlobAccess[T any] struct {
+	blobstore.BlobAccess[T]
 	lock               sync.Mutex
-	blobs              map[digest.Digest][]byte
+	blobs              map[digest.Digest]T
 	touches            map[digest.Digest]int // Tracks lifetime extensions
 	chunkingParameters *remoteexecution.RepMaxCdcParams
 }
 
-func newFakeBlobAccess(chunkingParameters *remoteexecution.RepMaxCdcParams) *fakeBlobAccess {
-	return &fakeBlobAccess{
-		blobs:              make(map[digest.Digest][]byte),
+func newFakeBlobAccess[T any](chunkingParameters *remoteexecution.RepMaxCdcParams) *fakeBlobAccess[T] {
+	return &fakeBlobAccess[T]{
+		blobs:              make(map[digest.Digest]T),
 		touches:            make(map[digest.Digest]int),
 		chunkingParameters: chunkingParameters,
 	}
 }
 
-func (f *fakeBlobAccess) Get(ctx context.Context, d digest.Digest) buffer.Buffer {
+func (f *fakeBlobAccess[T]) Get(ctx context.Context, d digest.Digest) (T, error) {
+	var zero T
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	data, ok := f.blobs[d]
 	if !ok {
-		return buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found"))
+		return zero, status.Error(codes.NotFound, "Blob not found")
 	}
-	return buffer.NewValidatedBufferFromByteSlice(data)
+	return data, nil
 }
 
-func (f *fakeBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {
-	data, err := b.ToByteSlice(100 * 1024 * 1024)
-	if err != nil {
-		return err
-	}
+func (f *fakeBlobAccess[T]) Put(ctx context.Context, d digest.Digest, val T) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	f.touches[d]++
-	f.blobs[d] = data
+	f.blobs[d] = val
 	return nil
 }
 
-func (f *fakeBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (f *fakeBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	missing := digest.NewSetBuilder(digests.Length())
@@ -67,7 +63,7 @@ func (f *fakeBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (d
 	return missing.Build(), nil
 }
 
-func (f *fakeBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+func (f *fakeBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	return &remoteexecution.ServerCapabilities{
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
 			RepMaxCdcParams: f.chunkingParameters,
@@ -75,13 +71,13 @@ func (f *fakeBlobAccess) GetCapabilities(ctx context.Context, instanceName diges
 	}, nil
 }
 
-func (f *fakeBlobAccess) GetTouches(d digest.Digest) int {
+func (f *fakeBlobAccess[T]) GetTouches(d digest.Digest) int {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	return f.touches[d]
 }
 
-func (f *fakeBlobAccess) ResetTouches() {
+func (f *fakeBlobAccess[T]) ResetTouches() {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	f.touches = make(map[digest.Digest]int)

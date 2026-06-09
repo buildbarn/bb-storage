@@ -4,14 +4,12 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
-type queuedBlobReplicator struct {
-	source         blobstore.BlobAccess
+type queuedBlobReplicator[T any] struct {
+	source         blobstore.BlobAccess[T]
 	base           BlobReplicator
 	existenceCache *digest.ExistenceCache
 	wait           chan struct{}
@@ -25,8 +23,8 @@ type queuedBlobReplicator struct {
 // not guarantee fairness. Should all requests be processed in FIFO
 // order? Alternatively, should we replicate objects with most waiters
 // first?
-func NewQueuedBlobReplicator(source blobstore.BlobAccess, base BlobReplicator, existenceCache *digest.ExistenceCache) BlobReplicator {
-	q := &queuedBlobReplicator{
+func NewQueuedBlobReplicator[T any](source blobstore.BlobAccess[T], base BlobReplicator, existenceCache *digest.ExistenceCache) BlobReplicator {
+	q := &queuedBlobReplicator[T]{
 		source:         source,
 		base:           base,
 		existenceCache: existenceCache,
@@ -36,31 +34,7 @@ func NewQueuedBlobReplicator(source blobstore.BlobAccess, base BlobReplicator, e
 	return q
 }
 
-func (br *queuedBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
-	// Serve the read request from the source, while letting the
-	// replication go through the regular queueing process.
-	//
-	// This causes a duplicate read on the source, but this cannot
-	// be prevented reasonably. The client and the replication
-	// process may each run at a different pace.
-	return br.source.Get(ctx, blobDigest).WithTask(func() error {
-		if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
-			return util.StatusWrap(err, "Replication failed")
-		}
-		return nil
-	})
-}
-
-func (br *queuedBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	return br.source.GetFromComposite(ctx, parentDigest, childDigest, slicer).WithTask(func() error {
-		if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
-			return util.StatusWrap(err, "Replication failed")
-		}
-		return nil
-	})
-}
-
-func (br *queuedBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (br *queuedBlobReplicator[T]) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	// Don't queue requests for objects that have already been
 	// replicated.
 	if br.existenceCache.RemoveExisting(digests).Empty() {

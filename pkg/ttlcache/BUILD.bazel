@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ttlcache",
+    srcs = ["ttl_cache.go"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/ttlcache",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/clock",
+        "//pkg/eviction",
+        "//pkg/proto/configuration/digest",
+        "//pkg/util",
+    ],
+)

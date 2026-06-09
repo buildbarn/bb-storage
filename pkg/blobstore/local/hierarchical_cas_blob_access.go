@@ -2,12 +2,11 @@ package local
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -16,9 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type hierarchicalCASBlobAccess struct {
+type hierarchicalCSBlobAccess struct {
 	capabilities.Provider
 
+	coder                  coder.Coder[*buffer.Chunk, []byte]
 	keyLocationMap         KeyLocationMap
 	blockReferenceResolver BlockReferenceResolver
 	locationBlobMap        LocationBlobMap
@@ -27,7 +27,7 @@ type hierarchicalCASBlobAccess struct {
 	refreshLock sync.Mutex
 }
 
-// NewHierarchicalCASBlobAccess creates a BlobAccess that uses a
+// NewHierarchicalCSBlobAccess creates a BlobAccess that uses a
 // KeyLocationMap and a LocationBlobMap as backing stores.
 //
 // The BlobAccess returned by this function can be thought of as being
@@ -43,14 +43,15 @@ type hierarchicalCASBlobAccess struct {
 //     the lookup entry points to an object that needs to be refreshed.
 //
 // As the name implies, this implementation should only be used for the
-// Content Addressable Storage (CAS). This is because writes for objects
-// that already exist for a different REv2 instance name don't cause any
-// new data to be ingested. This makes this implementation unsuitable
-// for mutable data sets.
-func NewHierarchicalCASBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
-	return &hierarchicalCASBlobAccess{
+// Chunk Storage (CS). This is because writes for objects that already
+// exist for a different REv2 instance name don't cause any new data to
+// be ingested. This makes this implementation unsuitable for mutable
+// data sets.
+func NewHierarchicalCSBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider, coder coder.Coder[*buffer.Chunk, []byte]) blobstore.BlobAccess[*buffer.Chunk] {
+	return &hierarchicalCSBlobAccess{
 		Provider: capabilitiesProvider,
 
+		coder:                  coder,
 		keyLocationMap:         keyLocationMap,
 		blockReferenceResolver: blockReferenceResolver,
 		locationBlobMap:        locationBlobMap,
@@ -89,7 +90,7 @@ var errKeyLocationMapNotFound = status.Error(codes.NotFound, "Object not found")
 // given a list of lookup Keys. It returns the first Key (with the
 // shortest instance name) for which a match occurred, together with a
 // Location at which the object is stored.
-func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Key) (Key, Location, error) {
+func (ba *hierarchicalCSBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Key) (Key, Location, error) {
 	for _, lookupKey := range lookupKeys {
 		if location, err := ba.keyLocationMap.Get(lookupKey, ba.blockReferenceResolver); err == nil {
 			return lookupKey, location, nil
@@ -106,21 +107,21 @@ func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Ke
 //
 // This method can be used to refresh a key-location map without
 // necessarily copying the data of the underlying object.
-func (ba *hierarchicalCASBlobAccess) syncFromCanonicalEntry(canonicalKey, lookupKey Key) (LocationBlobGetter, error) {
+func (ba *hierarchicalCSBlobAccess) syncFromCanonicalEntry(canonicalKey, lookupKey Key) error {
 	canonicalLocation, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	getter, needsRefresh := ba.locationBlobMap.Get(canonicalLocation)
+	_, needsRefresh := ba.locationBlobMap.Get(canonicalLocation)
 	if needsRefresh {
-		return nil, status.Error(codes.NotFound, "Canonical entry needs to be refreshed")
+		return status.Error(codes.NotFound, "Canonical entry needs to be refreshed")
 	}
-	return getter, ba.keyLocationMap.Put(lookupKey, canonicalLocation, ba.blockReferenceResolver)
+	return ba.keyLocationMap.Put(lookupKey, canonicalLocation, ba.blockReferenceResolver)
 }
 
 // finalizePut is called to finalize a write to the data store. This
 // method must be called while holding the write lock.
-func (ba *hierarchicalCASBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, canonicalKey, lookupKey Key) error {
+func (ba *hierarchicalCSBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, canonicalKey, lookupKey Key) error {
 	// Finalize the write of the data.
 	location, err := putFinalizer()
 	if err != nil {
@@ -135,97 +136,94 @@ func (ba *hierarchicalCASBlobAccess) finalizePut(putFinalizer LocationBlobPutFin
 	return ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
 }
 
-func (ba *hierarchicalCASBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+func (ba *hierarchicalCSBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (*buffer.Chunk, error) {
 	lookupKeys := getAllLookupKeys(blobDigest)
-
-	// Look up the blob in storage while holding a read lock.
-	ba.lock.RLock()
-	_, location, err := ba.getLeastSpecificLookupEntry(lookupKeys)
-	if err != nil {
-		ba.lock.RUnlock()
-		return buffer.NewBufferFromError(err)
-	}
-	if getter, needsRefresh := ba.locationBlobMap.Get(location); !needsRefresh {
-		// The blob doesn't need to be refreshed, so we can
-		// return its data directly.
-		b := getter(blobDigest)
-		ba.lock.RUnlock()
-		return b
-	}
-	ba.lock.RUnlock()
-
-	// Blob was found, but it needs to be refreshed to ensure it
-	// doesn't disappear. Retry loading the blob a second time, this
-	// time holding a write lock. This allows us to mutate the
-	// key-location map or allocate new space to copy the blob on
-	// the fly.
-	//
-	// TODO: Instead of copying data on the fly, should this be done
-	// immediately, so that we can prevent potential duplication by
-	// picking up the refresh lock?
 	canonicalKey := getCanonicalKey(blobDigest)
-	ba.lock.Lock()
-	lookupKey, lookupLocation, err := ba.getLeastSpecificLookupEntry(lookupKeys)
-	if err != nil {
-		ba.lock.Unlock()
-		return buffer.NewBufferFromError(err)
-	}
-	getter, needsRefresh := ba.locationBlobMap.Get(lookupLocation)
-	if !needsRefresh {
-		// Some other thread managed to refresh the blob before
-		// we got the write lock. No need to copy anymore.
-		b := getter(blobDigest)
-		ba.lock.Unlock()
-		return b
-	}
 
-	// Maybe it already got refreshed as part of another instance
-	// name prefix. First attempt to synchronize from the canonical
-	// entry.
-	if getter, err := ba.syncFromCanonicalEntry(canonicalKey, lookupKey); err == nil {
-		b := getter(blobDigest)
-		ba.lock.Unlock()
-		return b
-	} else if status.Code(err) != codes.NotFound {
-		ba.lock.Unlock()
-		return buffer.NewBufferFromError(err)
-	}
+	for {
+		// Look up the blob in storage while holding a read lock.
+		ba.lock.RLock()
+		_, location, err := ba.getLeastSpecificLookupEntry(lookupKeys)
+		if err != nil {
+			ba.lock.RUnlock()
+			return nil, err
+		}
+		getter, needsRefresh := ba.locationBlobMap.Get(location)
+		data, integrityCallback, err := getter(blobDigest)
 
-	// Could not synchronize from the canonical entry. Allocate
-	// space for a new copy.
-	b := getter(blobDigest)
-	putWriter, err := ba.locationBlobMap.Put(lookupLocation.SizeBytes)
-	ba.lock.Unlock()
-	if err != nil {
-		return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to refresh blob"))
-	}
+		// We can now release the read lock and decode the data.
+		ba.lock.RUnlock()
+		if err != nil {
+			return nil, err
+		}
+		val, err := ba.coder.Decode(data, blobDigest)
+		if err != nil {
+			integrityCallback()
+			return nil, util.StatusWrapWithCode(err, codes.NotFound, "Blob did not decode when read")
+		}
 
-	// Copy the object while it's been returned. Block until copying
-	// has finished to apply back-pressure.
-	b1, b2 := b.CloneStream()
-	return b1.WithTask(func() error {
-		putFinalizer := putWriter(b2)
+		if !needsRefresh {
+			// The blob doesn't need to be refreshed, so we can
+			// return its data directly.
+			return val, nil
+		}
+
+		// Blob was found, but it needs to be refreshed to ensure it
+		// doesn't disappear. Retry loading the blob a second time, this
+		// time holding a write lock. This allows us to mutate the
+		// key-location map or allocate new space to copy the blob on
+		// the fly.
 		ba.lock.Lock()
-		err := ba.finalizePut(putFinalizer, canonicalKey, lookupKey)
+		lookupKey, currentLocation, err := ba.getLeastSpecificLookupEntry(lookupKeys)
+		if err != nil {
+			ba.lock.Unlock()
+			return nil, err
+		}
+
+		if currentLocation != location {
+			// We came back from acquiring the lock and now the map
+			// points to a new position in the block storage, the value
+			// was either overwritten or refreshed by another thread. We
+			// try again.
+			ba.lock.Unlock()
+			continue
+		}
+
+		// Maybe it already got refreshed as part of another instance
+		// name prefix. First attempt to synchronize from the canonical
+		// entry.
+		if err := ba.syncFromCanonicalEntry(canonicalKey, lookupKey); err == nil {
+			ba.lock.Unlock()
+			return val, nil
+		} else if status.Code(err) != codes.NotFound {
+			ba.lock.Unlock()
+			return nil, err
+		}
+
+		// Could not synchronize from the canonical entry. Allocate
+		// space for a new copy.
+		putWriter, err := ba.locationBlobMap.Put(currentLocation.SizeBytes)
 		ba.lock.Unlock()
 		if err != nil {
-			return util.StatusWrap(err, "Failed to refresh blob")
+			return nil, util.StatusWrap(err, "Failed to refresh blob")
 		}
-		return nil
-	})
+
+		putFinalizer := putWriter(data)
+
+		ba.lock.Lock()
+		err = ba.finalizePut(putFinalizer, canonicalKey, lookupKey)
+		ba.lock.Unlock()
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to refresh blob")
+		}
+		return val, nil
+	}
 }
 
-func (ba *hierarchicalCASBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	// TODO: We can provide a better implementation that stores the
-	// resulting slices, just like FlatBlobAccess already has.
-	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
-	return b
-}
-
-func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-	sizeBytes, err := b.GetSizeBytes()
+func (ba *hierarchicalCSBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value *buffer.Chunk) error {
+	// Encode data up front lock-free.
+	data, err := ba.coder.Encode(value, blobDigest)
 	if err != nil {
-		b.Discard()
 		return err
 	}
 
@@ -237,52 +235,29 @@ func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.
 	ba.lock.Lock()
 	if location, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver); err == nil {
 		if _, needsRefresh := ba.locationBlobMap.Get(location); !needsRefresh {
-			ba.lock.Unlock()
-
-			// Do make sure that the caller actually
-			// provided a valid copy of the data, as we
-			// don't want to allow the client to gain access
-			// to an object it doesn't possess. The buffer
-			// layer validates data automatically, so we
-			// only need to consume the buffer.
-			if err := b.IntoWriter(io.Discard); err != nil {
-				return err
-			}
-
 			// Create a new key-location map entry pointing
-			// to the existing object. We can't use the
-			// location read previously, as dropping the
-			// lock invalidated it.
-			ba.lock.Lock()
-			defer ba.lock.Unlock()
-			location, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver)
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return status.Error(codes.Internal, "Existing object disappeared while buffer was read")
-				}
-				return err
-			}
-			return ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
+			// to the existing object.
+			err = ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
+			ba.lock.Unlock()
+			return err
 		}
 	} else if status.Code(err) != codes.NotFound {
 		ba.lock.Unlock()
-		b.Discard()
 		return err
 	}
 
 	// Object not found, or it's close to expiring. Allocate space
 	// for a new copy.
-	putWriter, err := ba.locationBlobMap.Put(sizeBytes)
+	putWriter, err := ba.locationBlobMap.Put(int64(len(data)))
 	ba.lock.Unlock()
 	if err != nil {
-		b.Discard()
 		return err
 	}
 
 	// Ingest the data associated with the object. This must be done
 	// without holding any locks, so that I/O can happen in
 	// parallel.
-	putFinalizer := putWriter(b)
+	putFinalizer := putWriter(data)
 
 	// Write the object into the key-location map twice. Once with
 	// the instance name and once without.
@@ -291,7 +266,7 @@ func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.
 	return ba.finalizePut(putFinalizer, canonicalKey, lookupKey)
 }
 
-func (ba *hierarchicalCASBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *hierarchicalCSBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Convert all digests to a list of potential Keys.
 	// TODO: This may be expensive to do all up front. Would it be
 	// smarter to do this level by level? On the other hand, this
@@ -349,53 +324,81 @@ func (ba *hierarchicalCASBlobAccess) FindMissing(ctx context.Context, digests di
 	ba.refreshLock.Lock()
 	defer ba.refreshLock.Unlock()
 
-	ba.lock.Lock()
 	for i, blobToRefresh := range blobsToRefresh {
-		if lookupKey, lookupLocation, err := ba.getLeastSpecificLookupEntry(blobToRefresh.lookupKeys); err == nil {
-			if getter, needsRefresh := ba.locationBlobMap.Get(lookupLocation); needsRefresh {
-				// Maybe it already got refreshed as
-				// part of another instance name prefix.
-				// First attempt to synchronize from the
-				// canonical entry.
-				canonicalKey := canonicalKeys[i]
-				if _, err := ba.syncFromCanonicalEntry(canonicalKey, lookupKey); err == nil {
-					continue
-				} else if status.Code(err) != codes.NotFound {
-					ba.lock.Unlock()
-					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-				}
-
-				// Could not synchronize from the
-				// canonical entry. Allocate space for a
-				// new copy.
-				b := getter(blobToRefresh.digest)
-				putWriter, err := ba.locationBlobMap.Put(lookupLocation.SizeBytes)
-				ba.lock.Unlock()
-				if err != nil {
-					b.Discard()
-					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-				}
-
-				// Copy the data while unlocked, so that
-				// concurrent requests for other data
-				// continue to be serviced.
-				putFinalizer := putWriter(b)
-
-				ba.lock.Lock()
-				if err := ba.finalizePut(putFinalizer, canonicalKey, lookupKey); err != nil {
-					ba.lock.Unlock()
-					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-				}
+		ba.lock.RLock()
+		_, location, err := ba.getLeastSpecificLookupEntry(blobToRefresh.lookupKeys)
+		if err != nil {
+			ba.lock.RUnlock()
+			if status.Code(err) == codes.NotFound {
+				// Blob disappeared between the first and second
+				// scan. Simply report it as missing.
+				missing.Add(blobToRefresh.digest)
+				continue
 			}
-		} else if status.Code(err) == codes.NotFound {
-			// Blob disappeared between the first and second
-			// scan. Simply report it as missing.
-			missing.Add(blobToRefresh.digest)
-		} else {
-			ba.lock.Unlock()
 			return digest.EmptySet, util.StatusWrapf(err, "Failed to get blob %#v", blobToRefresh.digest.String())
 		}
+
+		getter, needsRefresh := ba.locationBlobMap.Get(location)
+		if !needsRefresh {
+			// Blob was refreshed by someone else.
+			ba.lock.RUnlock()
+			continue
+		}
+		data, integrityCallback, err := getter(blobToRefresh.digest)
+		ba.lock.RUnlock()
+
+		if err != nil {
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+		}
+		if _, err := ba.coder.Decode(data, blobToRefresh.digest); err != nil {
+			integrityCallback()
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+		}
+
+		// Acquire write lock to sync or rewrite.
+		ba.lock.Lock()
+		lookupKey, currentLocation, err := ba.getLeastSpecificLookupEntry(blobToRefresh.lookupKeys)
+		if err != nil {
+			ba.lock.Unlock()
+			if status.Code(err) == codes.NotFound {
+				// Blob is missing after acquiring write lock.
+				missing.Add(blobToRefresh.digest)
+				continue
+			}
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to get blob %#v", blobToRefresh.digest.String())
+		}
+
+		// Maybe it already got refreshed as part of another instance
+		// name prefix. First attempt to synchronize from the canonical
+		// entry.
+		canonicalKey := canonicalKeys[i]
+		if err := ba.syncFromCanonicalEntry(canonicalKey, lookupKey); err == nil {
+			ba.lock.Unlock()
+			continue
+		} else if status.Code(err) != codes.NotFound {
+			ba.lock.Unlock()
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+		}
+
+		// Could not synchronize from the canonical entry. Allocate
+		// space for a new copy.
+		putWriter, err := ba.locationBlobMap.Put(currentLocation.SizeBytes)
+		ba.lock.Unlock()
+
+		if err != nil {
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+		}
+
+		// Copy the data while unlocked, so that concurrent requests for
+		// other data continue to be serviced.
+		putFinalizer := putWriter(data)
+
+		ba.lock.Lock()
+		if err := ba.finalizePut(putFinalizer, canonicalKey, lookupKey); err != nil {
+			ba.lock.Unlock()
+			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+		}
+		ba.lock.Unlock()
 	}
-	ba.lock.Unlock()
 	return missing.Build(), nil
 }

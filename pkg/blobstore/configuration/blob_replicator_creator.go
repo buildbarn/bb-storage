@@ -11,12 +11,12 @@ import (
 // the generic NewBlobReplicatorFromConfiguration() function to create a
 // BlobReplicator of a specific kind (e.g., Action Cache, Content
 // Addressable Storage).
-type BlobReplicatorCreator interface {
+type BlobReplicatorCreator[T any] interface {
 	// NewCustomBlobReplicator() can be used as a fallback to create
 	// BlobReplicator instances that only apply to this storage
 	// type. For example, sending replication requests over gRPC is
 	// only supported for the Content Addressable Storage.
-	NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error)
+	NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess[T], sink BlobAccessInfo[T]) (replication.BlobReplicator, error)
 
 	// GetStorageTypeName returns the name of the storage type that
 	// this BlobReplicatorCreator is able to create BlobReplicators for.

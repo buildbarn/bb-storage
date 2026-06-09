@@ -11,8 +11,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
@@ -29,7 +27,6 @@ go_test(
     deps = [
         ":sharding",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
         "//pkg/digest",
         "//pkg/testutil",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",

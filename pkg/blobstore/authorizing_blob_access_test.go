@@ -22,7 +22,7 @@ import (
 func TestAuthorizingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
 	getAuthorizer := mock.NewMockAuthorizer(ctrl)
 	putAuthorizer := mock.NewMockAuthorizer(ctrl)
 	findMissingAuthorizer := mock.NewMockAuthorizer(ctrl)
@@ -31,7 +31,7 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 	d2 := digest.MustNewDigest("bop/bip", remoteexecution.DigestFunction_SHA256, "da95ccd92a874d2169839cd90d9045be61d17df779fb28fe520a7465c6063723", 3)
 	digests := digest.GetUnion([]digest.Set{d.ToSingletonSet(), d2.ToSingletonSet()})
 	wantBytes := []byte("European Burmese")
-	wantBuf := buffer.NewValidatedBufferFromByteSlice(wantBytes)
+	wantChunk := buffer.NewChunk(nil, wantBytes)
 
 	beep := util.Must(digest.NewInstanceName("beep"))
 	beepSlice := []digest.InstanceName{beep}
@@ -40,50 +40,34 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 
 	t.Run("Get-Allowed", func(t *testing.T) {
 		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{nil})
-		baseBlobAccess.EXPECT().Get(ctx, d).Return(wantBuf)
+		baseBlobAccess.EXPECT().Get(ctx, d).Return(wantChunk, nil)
 
-		gotBuf, err := ba.Get(ctx, d).ToByteSlice(30)
+		gotChunk, err := ba.Get(ctx, d)
 		require.NoError(t, err)
-		require.Equal(t, wantBytes, gotBuf)
+		gotBytes, err := gotChunk.GetBytes(ctx)
+		require.NoError(t, err)
+		require.Equal(t, wantBytes, gotBytes)
 	})
 
 	t.Run("Get-Denied", func(t *testing.T) {
 		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
 
-		_, err := ba.Get(ctx, d).ToByteSlice(30)
-		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
-	})
-
-	t.Run("GetFromComposite-Allowed", func(t *testing.T) {
-		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{nil})
-		blobSlicer := mock.NewMockBlobSlicer(ctrl)
-		baseBlobAccess.EXPECT().GetFromComposite(ctx, d, d2, blobSlicer).Return(wantBuf)
-
-		gotBuf, err := ba.GetFromComposite(ctx, d, d2, blobSlicer).ToByteSlice(30)
-		require.NoError(t, err)
-		require.Equal(t, wantBytes, gotBuf)
-	})
-
-	t.Run("GetFromComposite-Denied", func(t *testing.T) {
-		blobSlicer := mock.NewMockBlobSlicer(ctrl)
-		getAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
-
-		_, err := ba.GetFromComposite(ctx, d, d2, blobSlicer).ToByteSlice(30)
+		_, err := ba.Get(ctx, d)
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
 	})
 
 	t.Run("Put-Allowed", func(t *testing.T) {
 		putAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{nil})
-		baseBlobAccess.EXPECT().Put(ctx, d, wantBuf).Return(nil)
+		baseBlobAccess.EXPECT().Put(ctx, d, wantChunk).Return(nil)
 
-		err := ba.Put(ctx, d, wantBuf)
+		err := ba.Put(ctx, d, wantChunk)
 		require.NoError(t, err)
 	})
 
 	t.Run("Put-Denied", func(t *testing.T) {
 		putAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
 
-		err := ba.Put(ctx, d, wantBuf)
+		err := ba.Put(ctx, d, wantChunk)
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
 	})
 

@@ -8,7 +8,8 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
         "//pkg/cas",
         "//pkg/digest",
         "//pkg/util",
@@ -16,6 +17,7 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 
@@ -26,6 +28,7 @@ go_test(
         ":completenesschecking",
         "//internal/mock",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunklist",
         "//pkg/digest",
         "//pkg/testutil",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",

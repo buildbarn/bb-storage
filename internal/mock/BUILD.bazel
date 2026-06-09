@@ -37,16 +37,31 @@ gomock(
 gomock(
     name = "blobstore",
     out = "blobstore.go",
-    interfaces = [
-        "BlobAccess",
-        "DemultiplexedBlobAccessGetter",
-        "ReadBufferFactory",
-        "ReadWriterAt",
-    ],
+    interfaces = ["ReadWriterAt"],
     library = "//pkg/blobstore",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
+)
+
+gomock(
+    name = "blobstore_blobaccess",
+    out = "blobstore_blobaccess.go",
+    interfaces = ["BlobAccess"],
+    library = "//pkg/blobstore",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore:blob_access.go",
+)
+
+gomock(
+    name = "blobstore_demultiplexing",
+    out = "blobstore_demultiplexing.go",
+    interfaces = ["DemultiplexedBlobAccessGetter"],
+    library = "//pkg/blobstore",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore:demultiplexing_blob_access.go",
 )
 
 gomock(
@@ -97,16 +112,6 @@ gomock(
 )
 
 gomock(
-    name = "blobstore_slicing",
-    out = "blobstore_slicing.go",
-    interfaces = ["BlobSlicer"],
-    library = "//pkg/blobstore/slicing",
-    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
-    mockgen_tool = "@org_uber_go_mock//mockgen",
-    package = "mock",
-)
-
-gomock(
     name = "blockdevice",
     out = "blockdevice.go",
     interfaces = ["BlockDevice"],
@@ -120,9 +125,6 @@ gomock(
     name = "buffer",
     out = "buffer.go",
     interfaces = [
-        "ChunkReader",
-        "DataIntegrityCallback",
-        "ErrorHandler",
         "ReadAtCloser",
     ],
     library = "//pkg/blobstore/buffer",
@@ -159,8 +161,8 @@ gomock(
     name = "cas",
     out = "cas.go",
     interfaces = [
-        "StreamReader",
         "Replicator",
+        "StreamReader",
     ],
     library = "//pkg/cas",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -168,17 +170,36 @@ gomock(
     package = "mock",
 )
 
-# Normally we would put the mocks of this interface in cas.go but as it
-# is generic it needs to be supplied as a source file which we therefore
-# put in cas_message_reader.go.
 gomock(
-    name = "cas_message_reader",
-    out = "cas_message_reader.go",
-    interfaces = ["MessageReader"],
-    library = "//pkg/cas",
+    name = "cas_reader",
+    out = "cas_reader.go",
+    interfaces = ["Reader"],
+    library = "//pkg/cas/reader",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
-    source = "//pkg/cas:message_reader.go",
+    source = "//pkg/cas/reader:reader.go",
+)
+
+gomock(
+    name = "chunklist",
+    out = "chunklist.go",
+    interfaces = ["Fetcher"],
+    library = "//pkg/blobstore/chunklist",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+)
+
+gomock(
+    name = "cdc",
+    out = "cdc.go",
+    interfaces = [
+        "ParametersFetcher",
+    ],
+    library = "//pkg/blobstore/cdc",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
 )
 
 gomock(
@@ -217,6 +238,16 @@ gomock(
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
+)
+
+gomock(
+    name = "coder",
+    out = "coder.go",
+    interfaces = ["Coder"],
+    library = "//pkg/blobstore/coder",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore/coder:coder.go",
 )
 
 gomock(
@@ -388,19 +419,23 @@ go_library(
         "aliases.go",
         "auth.go",
         "blobstore.go",
+        "blobstore_blobaccess.go",
+        "blobstore_demultiplexing.go",
         "blobstore_local.go",
         "blobstore_replication.go",
         "blobstore_sharding.go",
-        "blobstore_slicing.go",
         "blockdevice.go",
         "buffer.go",
         "builder.go",
         "capabilities.go",
         "cas.go",
-        "cas_message_reader.go",
+        "cas_reader.go",
+        "cdc.go",
+        "chunklist.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
+        "coder.go",
         "digest.go",
         "filesystem.go",
         "filesystem_path.go",
@@ -422,10 +457,13 @@ go_library(
         "//pkg/auth",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/coder",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
-        "//pkg/blobstore/slicing",
         "//pkg/builder",
+        "//pkg/cas",
         "//pkg/clock",
         "//pkg/cloud/gcp",
         "//pkg/digest",

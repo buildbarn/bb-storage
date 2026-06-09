@@ -5,8 +5,6 @@ import (
 	"time"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -15,7 +13,7 @@ import (
 )
 
 type actionResultExpiringBlobAccess struct {
-	BlobAccess
+	BlobAccess[*remoteexecution.ActionResult]
 	clock                   clock.Clock
 	maximumMessageSizeBytes int
 	minimumTimestamp        time.Time
@@ -33,7 +31,7 @@ type actionResultExpiringBlobAccess struct {
 // is added to the expiration time to amortize rebuilds. The process for
 // determining the amount of jitter is deterministic, meaning that it is
 // safe to use this decorator in a distributed setting.
-func NewActionResultExpiringBlobAccess(blobAccess BlobAccess, clock clock.Clock, maximumMessageSizeBytes int, minimumTimestamp time.Time, minimumValidity, maximumValidityJitter time.Duration) BlobAccess {
+func NewActionResultExpiringBlobAccess(blobAccess BlobAccess[*remoteexecution.ActionResult], clock clock.Clock, maximumMessageSizeBytes int, minimumTimestamp time.Time, minimumValidity, maximumValidityJitter time.Duration) BlobAccess[*remoteexecution.ActionResult] {
 	return &actionResultExpiringBlobAccess{
 		BlobAccess:              blobAccess,
 		clock:                   clock,
@@ -56,25 +54,16 @@ func (ba *actionResultExpiringBlobAccess) checkWorkerCompletedTimestamp(t time.T
 	return nil
 }
 
-func (ba *actionResultExpiringBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	b1, b2 := ba.BlobAccess.Get(ctx, digest).CloneCopy(ba.maximumMessageSizeBytes)
-	actionResultMessage, err := b1.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
+func (ba *actionResultExpiringBlobAccess) Get(ctx context.Context, digest digest.Digest) (*remoteexecution.ActionResult, error) {
+	actionResult, err := ba.BlobAccess.Get(ctx, digest)
 	if err != nil {
-		b2.Discard()
-		return buffer.NewBufferFromError(err)
+		return nil, err
 	}
-	actionResult := actionResultMessage.(*remoteexecution.ActionResult)
 	if workerCompletedTimestamp := actionResult.ExecutionMetadata.GetWorkerCompletedTimestamp(); workerCompletedTimestamp.CheckValid() == nil {
 		// ActionResult has a valid 'worker_completed_timestamp' field.
 		if err := ba.checkWorkerCompletedTimestamp(workerCompletedTimestamp.AsTime()); err != nil {
-			b2.Discard()
-			return buffer.NewBufferFromError(err)
+			return nil, err
 		}
 	}
-	return b2
-}
-
-func (ba *actionResultExpiringBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
-	return b
+	return actionResult, nil
 }

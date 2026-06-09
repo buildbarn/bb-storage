@@ -9,7 +9,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -93,10 +92,13 @@ func TestZIPReadingBlobAccess(t *testing.T) {
 	require.NoError(t, err)
 
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	readBufferFactory := mock.NewMockReadBufferFactory(ctrl)
-	blobAccess := blobstore.NewZIPReadingBlobAccess(
+
+	// Create a dummy identity decoder since the test expects raw bytes back.
+	mockDecoder := mock.NewMockCoder[[]byte, []byte](ctrl)
+
+	blobAccess := blobstore.NewZIPReadingBlobAccess[[]byte](
 		capabilitiesProvider,
-		readBufferFactory,
+		mockDecoder,
 		digest.KeyWithoutInstance,
 		zipReader.File,
 	)
@@ -106,49 +108,48 @@ func TestZIPReadingBlobAccess(t *testing.T) {
 			// Attempt to load a file that does not exist in
 			// the ZIP archive.
 			_, err := blobAccess.
-				Get(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "dd73f1a43f60bcf5c1f6df9f62e9b4ee3af3f6d3803040a9ed3e3211e83adc9c", 4200)).
-				ToByteSlice(1000)
+				Get(ctx, digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "dd73f1a43f60bcf5c1f6df9f62e9b4ee3af3f6d3803040a9ed3e3211e83adc9c", 4200))
 			testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "File \"1-dd73f1a43f60bcf5c1f6df9f62e9b4ee3af3f6d3803040a9ed3e3211e83adc9c-4200\" not found in ZIP archive"), err)
 		})
 
 		t.Run("SuccessUncompressed", func(t *testing.T) {
 			// Attempt to load a file that is stored with
-			// compression method STORE. These should permit
-			// random access.
+			// compression method STORE.
 			fileDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-			readBufferFactory.EXPECT().NewBufferFromReaderAt(fileDigest, gomock.Any(), int64(5), gomock.Any()).
-				DoAndReturn(blobstore.CASReadBufferFactory.NewBufferFromReaderAt)
 
-			data, err := blobAccess.Get(ctx, fileDigest).ToByteSlice(1000)
+			// The decoder receives the raw bytes loaded from the zip file
+			mockDecoder.EXPECT().Decode(gomock.Any(), fileDigest).DoAndReturn(func(data []byte, d digest.Digest) ([]byte, error) {
+				return data, nil
+			})
+
+			data, err := blobAccess.Get(ctx, fileDigest)
 			require.NoError(t, err)
 			require.Equal(t, []byte("Hello"), data)
 		})
 
 		t.Run("SuccessCompressed", func(t *testing.T) {
 			// Attempt to load a file that is stored with
-			// compression method DEFLATE. This one cannot
-			// be accessed randomly.
+			// compression method DEFLATE.
 			fileDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA1, "897256b6709e1a4da9daba92b6bde39ccfccd8c1", 16384)
-			readBufferFactory.EXPECT().NewBufferFromReader(fileDigest, gomock.Any(), gomock.Any()).
-				DoAndReturn(blobstore.CASReadBufferFactory.NewBufferFromReader)
 
-			data, err := blobAccess.Get(ctx, fileDigest).ToByteSlice(20000)
+			mockDecoder.EXPECT().Decode(gomock.Any(), fileDigest).DoAndReturn(func(data []byte, d digest.Digest) ([]byte, error) {
+				return data, nil
+			})
+
+			data, err := blobAccess.Get(ctx, fileDigest)
 			require.NoError(t, err)
 			require.Equal(t, make([]byte, 16384), data)
 		})
 	})
 
 	t.Run("Put", func(t *testing.T) {
-		r := mock.NewMockReadAtCloser(ctrl)
-		r.EXPECT().Close()
-
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.InvalidArgument, "The ZIP reading storage backend does not permit writes"),
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "522b44d647b6989f60302ef755c277e508d5bcc38f05e139906ebdb03a5b19f2", 9),
-				buffer.NewValidatedBufferFromReaderAt(r, 9),
+				[]byte("Hello, ZIP"),
 			),
 		)
 	})

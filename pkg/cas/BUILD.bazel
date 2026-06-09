@@ -1,16 +1,22 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 # Exported for mock generation purposes.
-exports_files(["message_reader.go"])
 
 go_library(
     name = "cas",
     srcs = [
-        "blob_access_message_reader.go",
-        "blob_access_replicator.go",
-        "blob_access_stream_reader.go",
+        "chunk_bytes_reader.go",
+        "find_missing.go",
+        "get_bytes.go",
+        "get_read_closer_at.go",
+        "into_writer.go",
+        "is_single_chunk.go",
         "message_reader.go",
         "nested_blob_replicator.go",
+        "put_bytes.go",
+        "put_proto.go",
+        "put_reader.go",
+        "read_blob_at.go",
         "replicator.go",
         "stream_reader.go",
     ],
@@ -19,10 +25,15 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/replication",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
+        "//pkg/cas/reader",
         "//pkg/digest",
         "//pkg/util",
+        "//pkg/zstd",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
     ],
@@ -30,14 +41,22 @@ go_library(
 
 go_test(
     name = "cas_test",
-    srcs = ["nested_blob_replicator_test.go"],
+    srcs = [
+        "nested_blob_replicator_test.go",
+        "put_bytes_test.go",
+    ],
     deps = [
         ":cas",
         "//internal/mock",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunklist",
         "//pkg/digest",
+        "//pkg/zstd",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
         "@org_uber_go_mock//gomock",
     ],
 )

@@ -1,41 +1,40 @@
 package configuration
 
 import (
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/buildbarn/bb-storage/pkg/zstd"
 )
 
 type clsBlobAccessCreator struct {
-	protoBlobAccessCreator
-	protoBlobReplicatorCreator
+	protoBlobAccessCreator[chunklist.ChunkList]
+	protoBlobReplicatorCreator[chunklist.ChunkList]
 
-	contentAddressableStorage *BlobAccessInfo
-	grpcClientFactory         grpc.ClientFactory
-	maximumMessageSizeBytes   int
+	chunkStorage            *BlobAccessInfo[*buffer.Chunk]
+	grpcClientFactory       grpc.ClientFactory
+	maximumMessageSizeBytes int
+	zstdPool                zstd.Pool
 }
 
 // NewCLSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for querying for chunk list.
-func NewCLSBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewCLSBlobAccessCreator(chunkStorage *BlobAccessInfo[*buffer.Chunk], grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[chunklist.ChunkList] {
 	return &clsBlobAccessCreator{
-		contentAddressableStorage: contentAddressableStorage,
-		grpcClientFactory:         grpcClientFactory,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		chunkStorage:            chunkStorage,
+		grpcClientFactory:       grpcClientFactory,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		zstdPool:                zstdPool,
 	}
-}
-
-func (clsBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
-	return blobstore.CLSReadBufferFactory
 }
 
 func (clsBlobAccessCreator) GetStorageTypeName() string {
@@ -43,36 +42,41 @@ func (clsBlobAccessCreator) GetStorageTypeName() string {
 }
 
 func (clsBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
-	return capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{})
+	return nil
 }
 
-func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (bac *clsBlobAccessCreator) GetBinaryCoder() coder.Coder[chunklist.ChunkList, []byte] {
+	c := coder.NewChunkListCoder( /* prevalidated = */ true)
+	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
+	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
+}
+
+func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[chunklist.ChunkList]) (BlobAccessInfo[chunklist.ChunkList], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ChunkListValidating:
-		if bac.contentAddressableStorage == nil {
-			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Chunk list validation can only be enabled if a Content Addressable Storage is configured")
-		}
-
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ChunkListValidating.Backend, bac)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[chunklist.ChunkList]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[chunklist.ChunkList]{
 			BlobAccess: chunklistvalidating.NewChunkListValidatingBlobAccess(
 				base.BlobAccess,
-				bac.contentAddressableStorage.BlobAccess,
+				bac.chunkStorage.BlobAccess,
 				bac.maximumMessageSizeBytes,
+				bac.zstdPool,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.chunkStorage.DigestKeyFormat),
 		}, "chunk_list_validating", nil
 
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
+		grpc := backend.Grpc
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[chunklist.ChunkList]{}, "", err
 		}
-		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCLSBlobAccess(client, bac.maximumMessageSizeBytes),
+		ba := grpcclients.NewCLSBlobAccess(client, bac.maximumMessageSizeBytes)
+		return BlobAccessInfo[chunklist.ChunkList]{
+			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 
@@ -81,6 +85,6 @@ func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 	}
 }
 
-func (clsBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (clsBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[chunklist.ChunkList]) blobstore.BlobAccess[chunklist.ChunkList] {
 	return blobAccess
 }

@@ -78,7 +78,7 @@ func TestVisitTopologicallySortedTree(t *testing.T) {
 		rootArgument := 123
 		testutil.RequirePrefixedStatus(
 			t,
-			status.Error(codes.InvalidArgument, "Field with number 1 at offset 2 size 5: Failed to unmarshal message: "),
+			status.Error(codes.InvalidArgument, "Field with number 1 at offset 2 size 5: Failed to unmarshal root directory: "),
 			blobstore.VisitTopologicallySortedTree(
 				bytes.NewBuffer([]byte{byte(blobstore.TreeRootFieldNumber<<3) | byte(protowire.BytesType), 5, 'H', 'e', 'l', 'l', 'o'}),
 				digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256),

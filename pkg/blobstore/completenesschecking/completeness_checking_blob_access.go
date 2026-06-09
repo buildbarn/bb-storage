@@ -7,7 +7,8 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -15,15 +16,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 // findMissingQueue is a helper for calling BlobAccess.FindMissing() in
 // batches, as opposed to calling it for individual digests.
 type findMissingQueue struct {
-	context                   context.Context
-	digestFunction            digest.Function
-	contentAddressableStorage blobstore.BlobAccess
-	batchSize                 int
+	context              context.Context
+	digestFunction       digest.Function
+	chunkStorage         blobstore.BlobAccess[*buffer.Chunk]
+	chunkListStorage     blobstore.BlobAccess[chunklist.ChunkList]
+	cdcParametersFetcher cdc.ParametersFetcher
+	batchSize            int
 
 	pending digest.SetBuilder
 }
@@ -62,7 +66,11 @@ func (q *findMissingQueue) add(blobDigest *remoteexecution.Digest) error {
 
 // Finalize by checking the last batch of digests for existence.
 func (q *findMissingQueue) finalize() error {
-	missing, err := q.contentAddressableStorage.FindMissing(q.context, q.pending.Build())
+	params, err := q.cdcParametersFetcher.FetchCDCParameters(q.context, q.digestFunction.GetInstanceName())
+	if err != nil {
+		return util.StatusWrap(err, "Failed to fetch CDC parameters")
+	}
+	missing, err := cas.FindMissing(q.context, q.chunkStorage, q.chunkListStorage, params, q.pending.Build())
 	if err != nil {
 		return util.StatusWrap(err, "Failed to determine existence of child objects")
 	}
@@ -73,8 +81,10 @@ func (q *findMissingQueue) finalize() error {
 }
 
 type completenessCheckingBlobAccess struct {
-	blobstore.BlobAccess
-	contentAddressableStorage blobstore.BlobAccess
+	blobstore.BlobAccess[*remoteexecution.ActionResult]
+	chunkStorage              blobstore.BlobAccess[*buffer.Chunk]
+	chunkListStorage          blobstore.BlobAccess[chunklist.ChunkList]
+	cdcParametersFetcher      cdc.ParametersFetcher
 	treeReader                cas.StreamReader
 	batchSize                 int
 	maximumMessageSizeBytes   int
@@ -95,10 +105,12 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess[*remoteexecution.ActionResult], chunkStorage blobstore.BlobAccess[*buffer.Chunk], chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], cdcParametersFetcher cdc.ParametersFetcher, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess[*remoteexecution.ActionResult] {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
-		contentAddressableStorage: contentAddressableStorage,
+		chunkStorage:              chunkStorage,
+		chunkListStorage:          chunkListStorage,
+		cdcParametersFetcher:      cdcParametersFetcher,
 		treeReader:                treeReader,
 		batchSize:                 batchSize,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
@@ -108,11 +120,13 @@ func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage bl
 
 func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context, digestFunction digest.Function, actionResult *remoteexecution.ActionResult) error {
 	findMissingQueue := findMissingQueue{
-		context:                   ctx,
-		digestFunction:            digestFunction,
-		contentAddressableStorage: ba.contentAddressableStorage,
-		batchSize:                 ba.batchSize,
-		pending:                   digest.NewSetBuilder(ba.batchSize),
+		context:              ctx,
+		digestFunction:       digestFunction,
+		chunkStorage:         ba.chunkStorage,
+		chunkListStorage:     ba.chunkListStorage,
+		cdcParametersFetcher: ba.cdcParametersFetcher,
+		batchSize:            ba.batchSize,
+		pending:              digest.NewSetBuilder(ba.batchSize),
 	}
 
 	// Iterate over all remoteexecution.Digest fields contained
@@ -161,15 +175,14 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		}
 		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
 			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
-				directoryMessage, err := buffer.NewProtoBufferFromReader(
-					&remoteexecution.Directory{},
-					io.NopCloser(fieldReader),
-					buffer.UserProvided,
-				).ToProto(&remoteexecution.Directory{}, ba.maximumMessageSizeBytes)
-				if err != nil {
+				directoryData := make([]byte, sizeBytes)
+				if _, err := io.ReadFull(fieldReader, directoryData); err != nil {
 					return err
 				}
-				directory := directoryMessage.(*remoteexecution.Directory)
+				var directory *remoteexecution.Directory = &remoteexecution.Directory{}
+				if err := proto.Unmarshal(directoryData, directory); err != nil {
+					return err
+				}
 
 				// Files are always stored as separate CAS
 				// objects. Directories should only be stored
@@ -191,13 +204,6 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			}
 			return nil
 		}); err != nil {
-			// Any errors generated above may be caused by
-			// data corruption on the Tree object. Force
-			// reading the Tree until completion, and prefer
-			// read errors over any errors generated above.
-			if _, copyErr := io.Copy(io.Discard, r); copyErr != nil {
-				err = copyErr
-			}
 			r.Close()
 			return util.StatusWrapf(err, "Output directory %#v", outputDirectory.Path)
 		}
@@ -206,21 +212,13 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 	return findMissingQueue.finalize()
 }
 
-func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	b1, b2 := ba.BlobAccess.Get(ctx, digest).CloneCopy(ba.maximumMessageSizeBytes)
-	actionResult, err := b1.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
+func (ba *completenessCheckingBlobAccess) Get(ctx context.Context, digest digest.Digest) (*remoteexecution.ActionResult, error) {
+	actionResult, err := ba.BlobAccess.Get(ctx, digest)
 	if err != nil {
-		b2.Discard()
-		return buffer.NewBufferFromError(err)
+		return nil, err
 	}
-	if err := ba.checkCompleteness(ctx, digest.GetDigestFunction(), actionResult.(*remoteexecution.ActionResult)); err != nil {
-		b2.Discard()
-		return buffer.NewBufferFromError(err)
+	if err := ba.checkCompleteness(ctx, digest.GetDigestFunction(), actionResult); err != nil {
+		return nil, err
 	}
-	return b2
-}
-
-func (ba *completenessCheckingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
-	return b
+	return actionResult, nil
 }

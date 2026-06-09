@@ -6,19 +6,28 @@ import (
 	"slices"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"golang.org/x/sync/errgroup"
+	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type chunkListValidatingBlobAccess struct {
-	blobstore.BlobAccess
-	contentAddressableStorage blobstore.BlobAccess
-	maximumMessageSizeBytes   int
+	blobstore.BlobAccess[chunklist.ChunkList]
+	zstdPool                zstd.Pool
+	cdcParametersFetcher    cdc.ParametersFetcher
+	chunkListFetcher        chunklist.Fetcher
+	chunkBytesFetcher       reader.Reader[[]byte]
+	chunkStorage            blobstore.BlobAccess[*buffer.Chunk]
+	maximumMessageSizeBytes int
 }
 
 // NewChunkListValidatingBlobAccess creates a wrapper around a Chunk
@@ -31,73 +40,54 @@ type chunkListValidatingBlobAccess struct {
 // This validation is fairly expensive and validation should only be
 // done at a single layer as close as possible to the CAS where the full
 // view of the CAS is available.
-func NewChunkListValidatingBlobAccess(chunkListStorage, contentAddressableStorage blobstore.BlobAccess, maximumMessageSizeBytes int) blobstore.BlobAccess {
+func NewChunkListValidatingBlobAccess(chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], chunkStorage blobstore.BlobAccess[*buffer.Chunk], maximumMessageSizeBytes int, zstdPool zstd.Pool) blobstore.BlobAccess[chunklist.ChunkList] {
 	return &chunkListValidatingBlobAccess{
-		BlobAccess:                chunkListStorage,
-		contentAddressableStorage: contentAddressableStorage,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		BlobAccess:              chunkListStorage,
+		cdcParametersFetcher:    cdc.NewCapabilitiesParametersFetcher(chunkStorage),
+		chunkListFetcher:        blobstore.NewBlobAccessChunkListFetcher(chunkListStorage),
+		chunkStorage:            chunkStorage,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		chunkBytesFetcher:       cas.NewChunkBytesReader(chunkStorage),
+		zstdPool:                zstdPool,
 	}
 }
 
-// Fetch the chunking parameters from the GetCapabilities
-// implementation.
-func (ba *chunkListValidatingBlobAccess) getValidChunkingParameters(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.RepMaxCdcParams, error) {
-	capabilities, err := ba.BlobAccess.GetCapabilities(ctx, instanceName)
+// Get the split result from the downstream blob access, should one
+// exist return it only if all its constituent chunks exist.
+func (ba *chunkListValidatingBlobAccess) getComplete(ctx context.Context, d digest.Digest) (chunklist.ChunkList, error) {
+	// Verify the existence of the blob itself against the chunk
+	// list storage. This renews the lifetime of the blob even when
+	// the chunk list is served from a caching chunk list storage's
+	// local cache, because the FindMissing is punched through to
+	// the authoritative chunk list storage.
+	missing, err := ba.BlobAccess.FindMissing(ctx, d.ToSingletonSet())
+	if err != nil || !missing.Empty() {
+		return chunklist.ChunkList{}, status.Error(codes.NotFound, "Blob could not be found")
+	}
+
+	storedChunkList, err := ba.chunkListFetcher.FetchChunkList(ctx, d)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Unable to GetCapabilities to determine chunking parameters")
+		return chunklist.ChunkList{}, status.Error(codes.NotFound, "Failed to get chunk list")
 	}
 
-	params := capabilities.CacheCapabilities.GetRepMaxCdcParams()
-	if params == nil {
-		return nil, status.Error(codes.Unimplemented, "This backend only supports upstream servers with RepMaxCDC support")
-	}
-	if params.MinChunkSizeBytes < 64 {
-		return nil, status.Errorf(codes.Internal, "RepMaxCDC minimum chunk size was %d bytes but a minimum of 64 bytes is required", params.MinChunkSizeBytes)
+	digestSetBuilder := digest.NewSetBuilder(len(storedChunkList.Digests))
+	for _, digest := range storedChunkList.Digests {
+		digestSetBuilder.Add(digest)
 	}
 
-	return params, nil
-}
-
-// Check the downstream blob access if this particular blob has already
-// been split. If that's the case and all the chunks are still there we
-// can return early. In case of errors we will return nil and continue
-// with the regular code path.
-func (ba *chunkListValidatingBlobAccess) checkSplitResult(ctx context.Context, d digest.Digest) buffer.Buffer {
-	b1, b2 := ba.BlobAccess.Get(ctx, d).CloneCopy(ba.maximumMessageSizeBytes)
-	responseMsg, err := b1.ToProto(&remoteexecution.SplitBlobResponse{}, ba.maximumMessageSizeBytes)
-	if err != nil {
-		b2.Discard()
-		return nil
-	}
-
-	splitBlobResponse := responseMsg.(*remoteexecution.SplitBlobResponse)
-	digestFunction := d.GetDigestFunction()
-	digestSetBuilder := digest.NewSetBuilder(len(splitBlobResponse.ChunkDigests))
-	digestSetBuilder.Add(d)
-
-	for _, chunkDigestProto := range splitBlobResponse.ChunkDigests {
-		chunkDigest, err := digestFunction.NewDigestFromProto(chunkDigestProto)
-		if err != nil {
-			b2.Discard()
-			return nil
-		}
-		digestSetBuilder.Add(chunkDigest)
-	}
-
-	missing, err := ba.contentAddressableStorage.FindMissing(ctx, digestSetBuilder.Build())
+	missing, err = ba.chunkStorage.FindMissing(ctx, digestSetBuilder.Build())
 	if err == nil && missing.Empty() {
-		return b2
+		return storedChunkList, nil
 	}
-	b2.Discard()
-	return nil
+	return chunklist.ChunkList{}, status.Error(codes.NotFound, "Blob could not be found")
 }
 
-// Get returns a valid SplitResult for the given digest chunking the
+// Get returns a valid chunk list for the given digest, chunking the
 // blob and storing the chunk list if needed.
-func (ba *chunkListValidatingBlobAccess) Get(ctx context.Context, d digest.Digest) buffer.Buffer {
-	params, err := ba.getValidChunkingParameters(ctx, d.GetInstanceName())
+func (ba *chunkListValidatingBlobAccess) Get(ctx context.Context, d digest.Digest) (chunklist.ChunkList, error) {
+	params, err := ba.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
-		return buffer.NewBufferFromError(err)
+		return chunklist.ChunkList{}, err
 	}
 
 	// Check for the trivial case, the blob is small enough that it will
@@ -105,120 +95,50 @@ func (ba *chunkListValidatingBlobAccess) Get(ctx context.Context, d digest.Diges
 	// original blob. We verify the existence of the blob in CAS and
 	// break out early.
 	blobSize := d.GetSizeBytes()
-	if uint64(blobSize) < 2*params.MinChunkSizeBytes {
-		missing, err := ba.contentAddressableStorage.FindMissing(ctx, d.ToSingletonSet())
+	if blobSize < 2*int64(params.MinChunkSizeBytes) {
+		missing, err := ba.chunkStorage.FindMissing(ctx, d.ToSingletonSet())
 		if err != nil {
-			return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to verify blob existence"))
+			return chunklist.ChunkList{}, util.StatusWrap(err, "Failed to verify blob existence")
 		}
 		if !missing.Empty() {
-			return buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found in CAS"))
+			return chunklist.ChunkList{}, status.Error(codes.NotFound, "Blob not found in CAS")
 		}
 
-		response := &remoteexecution.SplitBlobResponse{
-			ChunkDigests:     []*remoteexecution.Digest{d.GetProto()},
-			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+		chunkList := chunklist.ChunkList{
+			Offsets:   []uint64{0},
+			Digests:   []digest.Digest{d},
+			Validated: true,
 		}
-
-		return buffer.NewProtoBufferFromProto(response, buffer.UserProvided)
+		return chunkList, nil
 	}
 
-	// Check if we have already computed the result for this blob.
-	if result := ba.checkSplitResult(ctx, d); result != nil {
-		return result
-	}
-
-	// Fallthrough case, compute the chunk list, upload the chunks and
-	// store the chunk list.
-	blobReader := ba.contentAddressableStorage.Get(ctx, d).ToReader()
-	defer blobReader.Close()
-	chunker := NewReaderChunker(d.GetDigestFunction(), blobReader, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
-
-	chunkDigests := make([]*remoteexecution.Digest, 0, uint64(blobSize)/params.MinChunkSizeBytes+1)
-
-	for {
-		chunk, err := chunker.NextChunk()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return buffer.NewBufferFromError(err)
-		}
-
-		missing, err := ba.contentAddressableStorage.FindMissing(ctx, chunk.Digest.ToSingletonSet())
-		if err != nil {
-			return buffer.NewBufferFromError(err)
-		}
-		if !missing.Empty() {
-			if err := ba.contentAddressableStorage.Put(ctx, chunk.Digest, buffer.NewValidatedBufferFromByteSlice(chunk.Data)); err != nil {
-				return buffer.NewBufferFromError(err)
-			}
-		}
-
-		chunkDigests = append(chunkDigests, chunk.Digest.GetProto())
-	}
-
-	response := &remoteexecution.SplitBlobResponse{
-		ChunkDigests:     chunkDigests,
-		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
-	}
-
-	b1, b2 := buffer.NewProtoBufferFromProto(response, buffer.UserProvided).CloneCopy(ba.maximumMessageSizeBytes)
-
-	if err := ba.BlobAccess.Put(ctx, d, b1); err != nil {
-		b2.Discard()
-		return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to store the split blob response"))
-	}
-
-	return b2
+	// Return upstream value if complete.
+	return ba.getComplete(ctx, d)
 }
 
-func (ba *chunkListValidatingBlobAccess) matchesStoredChunkList(ctx context.Context, d digest.Digest, userResponse *remoteexecution.SplitBlobResponse) bool {
-	existingMsg, err := ba.BlobAccess.Get(ctx, d).ToProto(&remoteexecution.SplitBlobResponse{}, ba.maximumMessageSizeBytes)
+// matchesStoredChunkList checks if the user-provided chunk digests
+// match the chunk list already stored for the given digest.
+func (ba *chunkListValidatingBlobAccess) matchesStoredChunkList(ctx context.Context, d digest.Digest, userChunkList chunklist.ChunkList) (bool, error) {
+	storedChunkList, err := ba.BlobAccess.Get(ctx, d)
+	if status.Code(err) == codes.NotFound {
+		return false, nil
+	}
 	if err != nil {
-		return false
+		return false, util.StatusWrap(err, "Failed to retrieve stored chunk list")
 	}
 
-	cachedResponse := existingMsg.(*remoteexecution.SplitBlobResponse)
-	return slices.EqualFunc(cachedResponse.ChunkDigests, userResponse.ChunkDigests,
-		func(c, u *remoteexecution.Digest) bool {
-			return c.Hash == u.Hash && c.SizeBytes == u.SizeBytes
-		})
+	return slices.Equal(userChunkList.Digests, storedChunkList.Digests), nil
 }
 
-func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {
-	// Parse the buffer as a SplitBlobResponse
-	msg, err := b.ToProto(&remoteexecution.SplitBlobResponse{}, ba.maximumMessageSizeBytes)
-	if err != nil {
-		return util.StatusWrap(err, "Failed to parse input as SplitBlobResponse")
-	}
-	userResponse := msg.(*remoteexecution.SplitBlobResponse)
-
-	digestFunction := d.GetDigestFunction()
-	var userChunks []digest.Digest
-	digestSetBuilder := digest.NewSetBuilder(len(userResponse.ChunkDigests))
-	for _, chunkDigestProto := range userResponse.ChunkDigests {
-		chunkDigest, err := digestFunction.NewDigestFromProto(chunkDigestProto)
-		if err != nil {
-			return status.Errorf(codes.InvalidArgument, "Invalid chunk digest: %v", err)
-		}
-		digestSetBuilder.Add(chunkDigest)
-		userChunks = append(userChunks, chunkDigest)
+func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Digest, value chunklist.ChunkList) error {
+	if value.Validated {
+		// ChunkList has already been validated, push it directly to
+		// downstream blob store.
+		return ba.BlobAccess.Put(ctx, d, value)
 	}
 
-	// Check that all referenced chunks are present in storage.
-	missing, err := ba.contentAddressableStorage.FindMissing(ctx, digestSetBuilder.Build())
-	if err != nil {
-		return util.StatusWrap(err, "Failed to check existence of chunks")
-	}
-	if !missing.Empty() {
-		return status.Error(codes.NotFound, "At least one chunk in the chunk list was not found")
-	}
-
-	// Check the trivial cases without hitting the downstream blob
-	// stores.
-
-	// No chunks given, blob must be the empty blob.
-	if len(userChunks) == 0 {
+	if len(value.Digests) == 0 {
+		// Empty chunk list, blob must be the empty blob.
 		if d.GetSizeBytes() != 0 {
 			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 		}
@@ -227,118 +147,140 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 		}
 		return nil
 	}
-	// Single chunk given, the blob must be equal to the chunk. At this
-	// point we have already verified the presence of the chunk so we do
-	// not have to verify the presence of the blob.
-	if len(userChunks) == 1 {
-		if d != userChunks[0] {
-			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
-		}
-		return nil
-	}
 
-	chunksMatchesStoredLists := ba.matchesStoredChunkList(ctx, d, userResponse)
-	missing, err = ba.contentAddressableStorage.FindMissing(ctx, d.ToSingletonSet())
+	params, err := ba.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
-		return util.StatusWrap(err, "Failed to check existence of blob")
+		return err
 	}
-	blobExistsInCAS := missing.Empty()
 
-	// The request is identical to an already existing chunk list with
-	// content we have verified exists in CAS.
-	if blobExistsInCAS && chunksMatchesStoredLists {
+	// Check that all referenced chunks are present in storage.
+	value, err = ba.flattenChunks(ctx, params, value)
+	if err != nil {
+		return status.Error(codes.NotFound, "At least one chunk is missing from storage.")
+	}
+
+	// Check if the chunk list is identical to what already exists in
+	// storage.
+	match, err := ba.matchesStoredChunkList(ctx, d, value)
+	if err != nil {
+		return err
+	}
+	if match {
 		return nil
 	}
 
 	// No more shortcuts available go through the heavy path of
 	// concatenating/verifying and chunking the blobs.
-	params, err := ba.getValidChunkingParameters(ctx, d.GetInstanceName())
-	if err != nil {
-		return err
+	canonicalChunkList := chunklist.ChunkList{
+		Offsets:   make([]uint64, 0, len(value.Offsets)),
+		Digests:   make([]digest.Digest, 0, len(value.Offsets)),
+		Validated: true,
 	}
-
-	reader := &chunkConcatenatingReader{
-		ctx:                       ctx,
-		contentAddressableStorage: ba.contentAddressableStorage,
-		chunkDigests:              userChunks,
-	}
-
-	blobBuffer := buffer.NewCASBufferFromReader(d, reader, buffer.UserProvided)
-	b1, b2 := blobBuffer.CloneStream()
-
-	// Stream 1: Uploads the blob to CAS.
-	group, gCtx := errgroup.WithContext(ctx)
-	group.Go(func() error {
-		if blobExistsInCAS {
-			// Upload unnecessary, blob already exists in CAS.
-			b1.Discard()
-			return nil
+	offset := uint64(0)
+	reader := chunklist.NewChunkConcatenatingReader(ctx, value, ba.chunkBytesFetcher)
+	digestFunction := d.GetDigestFunction()
+	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
+	chunker := cdc.NewReaderChunker(d.GetDigestFunction(), reader, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
+	for {
+		chunk, err := chunker.NextChunk()
+		if err == io.EOF {
+			break
 		}
-		return ba.contentAddressableStorage.Put(gCtx, d, b1)
-	})
-
-	// Stream 2: Chunk the stream to compute the digest and cache the
-	// canonical chunks.
-	var canonicalChunkDigests []*remoteexecution.Digest
-	group.Go(func() error {
-		b2Reader := b2.ToReader()
-		defer b2Reader.Close()
-		chunker := NewReaderChunker(d.GetDigestFunction(), b2Reader, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
-		for {
-			chunk, err := chunker.NextChunk()
-			if err == io.EOF {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-
-			missing, err := ba.contentAddressableStorage.FindMissing(gCtx, chunk.Digest.ToSingletonSet())
-			if err != nil {
-				return err
-			}
-			if !missing.Empty() {
-				if err := ba.contentAddressableStorage.Put(gCtx, chunk.Digest, buffer.NewValidatedBufferFromByteSlice(chunk.Data)); err != nil {
-					return util.StatusWrap(err, "Failed to save chunk")
-				}
-			}
-			canonicalChunkDigests = append(canonicalChunkDigests, chunk.Digest.GetProto())
+		if err != nil {
+			return err
 		}
-	})
 
-	// Wait for the full blob validation and upload to complete.
-	if err := group.Wait(); err != nil {
-		return util.StatusWrap(err, "Failed to splice the blob")
+		if _, err := wholeGen.Write(chunk.Data); err != nil {
+			return status.Error(codes.Internal, "Could not compute digest of blob")
+		}
+
+		missing, err := ba.chunkStorage.FindMissing(ctx, chunk.Digest.ToSingletonSet())
+		if err != nil {
+			return err
+		}
+		if !missing.Empty() {
+			if err := ba.chunkStorage.Put(ctx, chunk.Digest, buffer.NewChunk(ba.zstdPool, chunk.Data)); err != nil {
+				return util.StatusWrap(err, "Failed to save chunk")
+			}
+		}
+		canonicalChunkList.Offsets = append(canonicalChunkList.Offsets, offset)
+		canonicalChunkList.Digests = append(canonicalChunkList.Digests, chunk.Digest)
+		offset += uint64(chunk.Digest.GetSizeBytes())
 	}
 
-	// Store the canonical response.
-	canonicalResponse := &remoteexecution.SplitBlobResponse{
-		ChunkDigests:     canonicalChunkDigests,
-		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+	// Verify the whole blob against the advertised digest.
+	if actual := wholeGen.Sum(); actual != d {
+		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
 	}
-	canonicalBuffer := buffer.NewProtoBufferFromProto(canonicalResponse, buffer.UserProvided)
-	if err := ba.BlobAccess.Put(ctx, d, canonicalBuffer); err != nil {
+
+	// Store the canonical chunk list.
+	if err := ba.BlobAccess.Put(ctx, d, canonicalChunkList); err != nil {
 		return util.StatusWrap(err, "Failed to save canonical chunk list")
 	}
 	return nil
 }
 
-func (ba *chunkListValidatingBlobAccess) findMissingChunks(ctx context.Context, d digest.Digest) (digest.Set, error) {
-	splitBlobResponseProto, err := ba.BlobAccess.Get(ctx, d).ToProto(&remoteexecution.SplitBlobResponse{}, ba.maximumMessageSizeBytes)
-	if err != nil {
-		return digest.EmptySet, err
-	}
-	splitBlobResponse := splitBlobResponseProto.(*remoteexecution.SplitBlobResponse)
-	digestFunction := d.GetDigestFunction()
-	builder := digest.NewSetBuilder(len(splitBlobResponse.ChunkDigests))
-	for _, chunkDigestProto := range splitBlobResponse.ChunkDigests {
-		chunkDigest, err := digestFunction.NewDigestFromProto(chunkDigestProto)
-		if err != nil {
-			return digest.EmptySet, util.StatusWrapf(err, "Invalid chunk digest %#v", chunkDigestProto)
+func (ba *chunkListValidatingBlobAccess) flattenChunks(ctx context.Context, params *remoteexecution.RepMaxCdcParams, userChunkList chunklist.ChunkList) (chunklist.ChunkList, error) {
+	maxChunkSize := 2*int64(params.MinChunkSizeBytes) - 1
+	bigDigests := digest.NewSetBuilder(len(userChunkList.Digests))
+	for _, d := range userChunkList.Digests {
+		if d.GetSizeBytes() > maxChunkSize {
+			bigDigests.Add(d)
 		}
-		builder.Add(chunkDigest)
 	}
-	return ba.contentAddressableStorage.FindMissing(ctx, builder.Build())
+	missing, err := ba.BlobAccess.FindMissing(ctx, bigDigests.Build())
+	if err != nil {
+		return chunklist.ChunkList{}, util.StatusWrap(err, "Error checking for chunk lists of big chunks")
+	}
+	if !missing.Empty() {
+		return chunklist.ChunkList{}, status.Error(codes.NotFound, "Chunk lists not found for big chunks")
+	}
+	flattenedOffsets := make([]uint64, 0, len(userChunkList.Offsets))
+	flattenedDigests := make([]digest.Digest, 0, len(userChunkList.Digests))
+	flattenedChunksBuilder := digest.NewSetBuilder(len(userChunkList.Digests))
+	for i, outerDigest := range userChunkList.Digests {
+		outerOffset := userChunkList.Offsets[i]
+		if outerDigest.GetSizeBytes() <= maxChunkSize {
+			flattenedOffsets = append(flattenedOffsets, outerOffset)
+			flattenedDigests = append(flattenedDigests, outerDigest)
+			flattenedChunksBuilder.Add(outerDigest)
+		} else {
+			innerChunkList, err := ba.chunkListFetcher.FetchChunkList(ctx, outerDigest)
+			if err != nil {
+				return chunklist.ChunkList{}, util.StatusWrap(err, "Error fetching inner chunk list")
+			}
+			for j, innerDigest := range innerChunkList.Digests {
+				innerOffset := innerChunkList.Offsets[j]
+				flattenedOffsets = append(flattenedOffsets, outerOffset+innerOffset)
+				flattenedDigests = append(flattenedDigests, innerDigest)
+				flattenedChunksBuilder.Add(innerDigest)
+			}
+		}
+	}
+	missing, err = ba.chunkStorage.FindMissing(ctx, flattenedChunksBuilder.Build())
+	if err != nil {
+		return chunklist.ChunkList{}, util.StatusWrap(err, "Error checking for existence of flattened chunks.")
+	}
+	if !missing.Empty() {
+		return chunklist.ChunkList{}, status.Error(codes.NotFound, "At least one chunk among flattened chunks are missing.")
+	}
+	return chunklist.ChunkList{
+		Offsets:   flattenedOffsets,
+		Digests:   flattenedDigests,
+		Validated: userChunkList.Validated,
+	}, nil
+}
+
+func (ba *chunkListValidatingBlobAccess) findMissingChunks(ctx context.Context, d digest.Digest) (digest.Set, error) {
+	storedChunkList, err := ba.BlobAccess.Get(ctx, d)
+	if err != nil {
+		return digest.EmptySet, util.StatusWrap(err, "Failed to decode chunk list")
+	}
+	builder := digest.NewSetBuilder(len(storedChunkList.Digests))
+	for _, digest := range storedChunkList.Digests {
+		builder.Add(digest)
+	}
+	return ba.chunkStorage.FindMissing(ctx, builder.Build())
 }
 
 func (ba *chunkListValidatingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

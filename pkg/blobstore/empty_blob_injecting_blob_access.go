@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type emptyBlobInjectingBlobAccess struct {
-	BlobAccess
+	BlobAccess[*buffer.Chunk]
 }
 
 // NewEmptyBlobInjectingBlobAccess is a decorator for BlobAccess that
@@ -32,32 +33,42 @@ type emptyBlobInjectingBlobAccess struct {
 // blob is always present.
 //
 // More details: https://github.com/bazelbuild/bazel/issues/11063
-func NewEmptyBlobInjectingBlobAccess(base BlobAccess) BlobAccess {
+func NewEmptyBlobInjectingBlobAccess(base BlobAccess[*buffer.Chunk]) BlobAccess[*buffer.Chunk] {
 	return &emptyBlobInjectingBlobAccess{
 		BlobAccess: base,
 	}
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
+func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) (*buffer.Chunk, error) {
 	if digest.GetSizeBytes() == 0 {
-		return buffer.NewCASBufferFromByteSlice(digest, nil, buffer.UserProvided)
+		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
+		if digest != emptyDigest {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"Empty blob has checksum %s, while %s was expected",
+				emptyDigest.GetHashString(),
+				digest.GetHashString(),
+			)
+		}
+		return buffer.EmptyChunk, nil
 	}
 	return ba.BlobAccess.Get(ctx, digest)
 }
 
-func (ba *emptyBlobInjectingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	if childDigest.GetSizeBytes() == 0 {
-		return buffer.NewCASBufferFromByteSlice(childDigest, nil, buffer.UserProvided)
-	}
-	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
-}
-
-func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *buffer.Chunk) error {
 	if digest.GetSizeBytes() == 0 {
-		_, err := b.ToByteSlice(0)
-		return err
+		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
+		if digest != emptyDigest {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Empty blob has checksum %s, while %s was expected",
+				emptyDigest.GetHashString(),
+				digest.GetHashString(),
+			)
+		}
+		return nil
 	}
-	return ba.BlobAccess.Put(ctx, digest, b)
+	return ba.BlobAccess.Put(ctx, digest, value)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

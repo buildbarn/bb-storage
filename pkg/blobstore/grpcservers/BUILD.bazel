@@ -15,6 +15,9 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
+        "//pkg/cas",
         "//pkg/digest",
         "//pkg/proto/fsac",
         "//pkg/proto/icas",
@@ -40,6 +43,7 @@ go_test(
         ":grpcservers",
         "//internal/mock",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunklist",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/testutil",

@@ -7,13 +7,17 @@ import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobst
 
 message ApplicationConfiguration {
   // Content Addressable Storage where data needs to be read.
-  buildbarn.configuration.blobstore.BlobAccessConfiguration source = 1;
+  buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+      source = 1;
 
   // Content Addressable Storage where data needs to be written.
-  buildbarn.configuration.blobstore.BlobAccessConfiguration sink = 2;
+  buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+      sink = 2;
 
-  // Configuration for replication.
-  buildbarn.configuration.blobstore.BlobReplicatorConfiguration replicator = 3;
+  // Was 'replicator' the replication configuration to use. Has been
+  // rendered moot as bb_copy now handles its own replication strategy
+  // internally.
+  reserved 3;
 
   // REv2 instance name that should be used for all requests.
   string instance_name = 4;
