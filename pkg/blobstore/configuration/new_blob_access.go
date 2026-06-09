@@ -9,6 +9,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -638,11 +639,7 @@ func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuratio
 // and Action Cache. Most Buildbarn components tend to require access to
 // both these data stores.
 func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
-	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
-		terminationGroup,
-		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
-	)
+	contentAddressableStorage, _, _, err := NewCASBlobAccessFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
@@ -661,4 +658,37 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 	}
 
 	return contentAddressableStorage.BlobAccess, actionCache.BlobAccess, nil
+}
+
+// NewCASBlobAccessFromConfiguration is a convenience function to create
+// BlobAccessInfo for Content Addressable Storage (CAS) and BlobAccess
+// objects for its constituent blobstores Chunk Storage (CS) and Chunk
+// List Storage (CLS).
+func NewCASBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorage, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (contentAddressableStorage BlobAccessInfo, chunkStorage, chunkListStorage blobstore.BlobAccess, err error) {
+	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkStorage(),
+		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+	)
+	if err != nil {
+		return BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Chunk Storage")
+	}
+	chunkStorage = chunkStorageInfo.BlobAccess
+
+	chunkListStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkListStorage(),
+		NewCLSBlobAccessCreator(&chunkStorageInfo, grpcClientFactory, maximumMessageSizeBytes),
+	)
+	if err != nil {
+		return BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Chunk List Storage")
+	}
+	chunkListStorage = chunkListStorageInfo.BlobAccess
+
+	contentAddressableStorage = BlobAccessInfo{
+		BlobAccess:      cdc.NewCasChunkingBlobAccess(chunkStorage, chunkListStorage, maximumMessageSizeBytes),
+		DigestKeyFormat: chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat),
+	}
+
+	return contentAddressableStorage, chunkStorage, chunkListStorage, nil
 }

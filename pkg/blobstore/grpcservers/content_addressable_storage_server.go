@@ -14,8 +14,8 @@ import (
 )
 
 type contentAddressableStorageServer struct {
-	contentAddressableStorage blobstore.BlobAccess
 	chunkListStorage          blobstore.BlobAccess
+	contentAddressableStorage blobstore.BlobAccess
 	maximumMessageSizeBytes   int64
 }
 
@@ -23,8 +23,8 @@ type contentAddressableStorageServer struct {
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
 func NewContentAddressableStorageServer(contentAddressableStorage, chunkListStorage blobstore.BlobAccess, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
-		contentAddressableStorage: contentAddressableStorage,
 		chunkListStorage:          chunkListStorage,
+		contentAddressableStorage: contentAddressableStorage,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
 }
@@ -43,53 +43,26 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	}
 
 	inDigests := digest.NewSetBuilder(len(in.BlobDigests))
-	for _, partialDigest := range in.BlobDigests {
-		digest, err := digestFunction.NewDigestFromProto(partialDigest)
+	for _, inDigest := range in.BlobDigests {
+		digest, err := digestFunction.NewDigestFromProto(inDigest)
 		if err != nil {
 			return nil, err
 		}
 		inDigests.Add(digest)
 	}
-	outDigests, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
+
+	missing, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
 	if err != nil {
 		return nil, err
 	}
-	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
-	for _, outDigest := range outDigests.Items() {
-		partialDigests = append(partialDigests, outDigest.GetProto())
-	}
 
-	// Server is configured with Chunk List Storage (CLS) so we must
-	// verify the CLS as well. Note that in this version of bb-storage a
-	// missing chunk list for a blob does not imply that the blob is
-	// missing. It is merely required to manage the life time of chunk
-	// lists. In a future version of bb-storage FMB calls will go to
-	// either the chunk storage or the chunk list storage.
-	if s.chunkListStorage != nil {
-		capabilities, err := s.chunkListStorage.GetCapabilities(ctx, instanceName)
-		if err != nil {
-			return nil, err
-		}
-		if capabilities.CacheCapabilities.GetRepMaxCdcParams() == nil {
-			return nil, status.Error(codes.Internal, "This server implementation is only compatible with RepMaxCDC")
-		}
-		minChunkSize := capabilities.CacheCapabilities.RepMaxCdcParams.MinChunkSizeBytes
-		maxChunkSize := 2*minChunkSize - 1
-		bigBlobDigests := digest.NewSetBuilder(0)
-		for _, partialDigest := range in.BlobDigests {
-			if partialDigest.GetSizeBytes() > int64(maxChunkSize) {
-				digest, err := digestFunction.NewDigestFromProto(partialDigest)
-				if err != nil {
-					return nil, err
-				}
-				bigBlobDigests.Add(digest)
-			}
-		}
-		_, _ = s.chunkListStorage.FindMissing(ctx, bigBlobDigests.Build())
+	outDigests := make([]*remoteexecution.Digest, 0, missing.Length())
+	for _, outDigest := range missing.Items() {
+		outDigests = append(outDigests, outDigest.GetProto())
 	}
 
 	return &remoteexecution.FindMissingBlobsResponse{
-		MissingBlobDigests: partialDigests,
+		MissingBlobDigests: outDigests,
 	}, nil
 }
 
@@ -106,6 +79,7 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 		return nil, err
 	}
 
+	// TODO: Compensate for message overhead.
 	bytesRemaining := s.maximumMessageSizeBytes
 	digests := make([]digest.Digest, 0, len(in.Digests))
 	for _, reqDigest := range in.Digests {
@@ -183,11 +157,6 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 }
 
 func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
-	// TODO: Require that s.chunkListStorage is non-null once we require chunking.
-	if s.chunkListStorage == nil {
-		return nil, status.Error(codes.Unimplemented, "This service does not support SpliceBlob")
-	}
-
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
@@ -217,11 +186,6 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 }
 
 func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
-	// TODO: Require that s.chunkListStorage is non-null once we require chunking.
-	if s.chunkListStorage == nil {
-		return nil, status.Error(codes.Unimplemented, "This service does not support SplitBlob")
-	}
-
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
 		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)

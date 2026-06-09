@@ -33,8 +33,8 @@ func TestByteStreamServer(t *testing.T) {
 	// Create an RPC server/client pair.
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
-	blobAccess := mock.NewMockBlobAccess(ctrl)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10, bb_zstd.NewUnboundedPool(
+	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(contentAddressableStorage, 10, bb_zstd.NewUnboundedPool(
 		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
 	)))
@@ -91,7 +91,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the small blob without an instance name.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "09f7e02f1290be211da707a266f153b3", 5),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
@@ -109,7 +109,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessNonEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the large blob with an instance name.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "3538d378083b9afa5ffad767f7269509", 22),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This is a long message")))
@@ -134,7 +134,7 @@ func TestByteStreamServer(t *testing.T) {
 	t.Run("ReadZSTDCompression", func(t *testing.T) {
 		// Test reading with ZSTD compression.
 		originalData := []byte("This is a test message that should be compressed with ZSTD")
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
 		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
@@ -170,7 +170,7 @@ func TestByteStreamServer(t *testing.T) {
 			originalData[i] = byte(i % 256)
 		}
 
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", 100000),
 		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
@@ -214,7 +214,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadNegativeReadOffset", func(t *testing.T) {
 		// Attempt to fetch a blob with a negative offset.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Goodbye")))
@@ -231,7 +231,7 @@ func TestByteStreamServer(t *testing.T) {
 	t.Run("ReadOffsetBeyondEnd", func(t *testing.T) {
 		// Attempt to fetch a blob with a offset beyond the size
 		// of the blob.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "ad3c8ac9eef32188da352082244b3598", 13),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("short message")))
@@ -247,7 +247,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessWithOffset", func(t *testing.T) {
 		// Attempt to fetch a lblob with an instance name and offset.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "da39a3ee5e6b4b0d3255bfef95601890", 19),
 		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This offset message")))
@@ -269,7 +269,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadNonexistentBlob", func(t *testing.T) {
 		// Attempt to fetch a nonexistent blob.
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "09f34d28e9c8bb445ec996388968a9e8", 7),
 		).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
@@ -304,7 +304,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to write a blob without an instance name.
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14),
 			gomock.Any(),
@@ -345,7 +345,7 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			actualDigest,
 			gomock.Any(),
@@ -382,7 +382,7 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			actualDigest,
 			gomock.Any(),
@@ -431,7 +431,7 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			actualDigest,
 			gomock.Any(),
@@ -485,7 +485,7 @@ func TestByteStreamServer(t *testing.T) {
 		// Test writing with invalid ZSTD data.
 		invalidData := []byte("This is not valid ZSTD compressed data")
 
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5", 10),
 			gomock.Any(),
@@ -520,7 +520,7 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			actualDigest,
 			gomock.Any(),
@@ -553,7 +553,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteSuccessWithoutFinish", func(t *testing.T) {
 		// Attempt to write without finishing properly.
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA1, "f10e562d8825ec2e17e0d9f58646f8084a658cfa", 6),
 			gomock.Any(),
@@ -575,7 +575,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteFailFinishTwice", func(t *testing.T) {
 		// Attempted to write while finishing twice.
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "cbd8f7984c654c25512e3d9241ae569f", 3),
 			gomock.Any(),
@@ -603,7 +603,7 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteFailBadOffset", func(t *testing.T) {
 		// Attempted to write with a bad write offset.
-		blobAccess.EXPECT().Put(
+		contentAddressableStorage.EXPECT().Put(
 			gomock.Any(),
 			digest.MustNewDigest("windows10", remoteexecution.DigestFunction_MD5, "68e109f0f40ca72a15e05cc22786f8e6", 10),
 			gomock.Any(),

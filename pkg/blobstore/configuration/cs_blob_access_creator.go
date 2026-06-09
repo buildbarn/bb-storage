@@ -11,6 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -28,27 +29,26 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-var casCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+var csCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 	CacheCapabilities: &remoteexecution.CacheCapabilities{
 		DigestFunctions: digest.SupportedDigestFunctions,
 		// MaxBatchTotalSize: Not used by Bazel yet.
 	},
 })
 
-type casBlobAccessCreator struct {
-	casBlobReplicatorCreator
+type csBlobAccessCreator struct {
+	csBlobReplicatorCreator
 
 	maximumMessageSizeBytes int
 	zstdPool                bb_zstd.Pool
 }
 
-// NewCASBlobAccessCreator creates a BlobAccessCreator that can be
+// NewCSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
-// BlobAccess that is suitable for accessing the Content Addressable
-// Storage.
-func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator {
-	return &casBlobAccessCreator{
-		casBlobReplicatorCreator: casBlobReplicatorCreator{
+// BlobAccess that is suitable for accessing the Chunk Storage.
+func NewCSBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator {
+	return &csBlobAccessCreator{
+		csBlobReplicatorCreator: csBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,
 		},
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
@@ -56,27 +56,27 @@ func NewCASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessag
 	}
 }
 
-func (casBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
+func (csBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
 	return digest.KeyWithoutInstance
 }
 
-func (casBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
+func (csBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
 	return blobstore.CASReadBufferFactory
 }
 
-func (casBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
-	return casCapabilitiesProvider
+func (csBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provider {
+	return csCapabilitiesProvider
 }
 
-func (casBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
+func (csBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
-func (casBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error) {
+func (csBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error) {
 	return local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, globalLock, capabilitiesProvider), nil
 }
 
-func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
@@ -92,7 +92,8 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
+		grpc := backend.Grpc
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
@@ -100,10 +101,22 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		if backend.Grpc.EnableCompression {
 			zstdPool = bac.zstdPool
 		}
+		ba := grpcclients.NewCSBlobAccess(client, uuid.NewRandom, 64<<10, zstdPool)
+		if grpc.CapabilitiesCache != nil {
+			cache, err := blobstore.NewTTLCacheFromConfiguration[*remoteexecution.ServerCapabilities](
+				grpc.CapabilitiesCache,
+				clock.SystemClock,
+				"CSCapabilityCachingBlobStore",
+			)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create capabilities cache")
+			}
+			ba = blobstore.NewCapabilitiesCachingBlobAccess(ba, cache)
+		}
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCASBlobAccess(client, uuid.NewRandom, 64<<10, zstdPool),
+			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	case *pb.BlobAccessConfiguration_ReferenceExpanding:
@@ -177,7 +190,7 @@ func (bac *casBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 	}
 }
 
-func (casBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (csBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
 	// For the Content Addressable Storage it is required that the empty
 	// blob is always present. This decorator ensures that requests
 	// for the empty blob never contact the storage backend.

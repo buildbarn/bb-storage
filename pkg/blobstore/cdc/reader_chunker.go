@@ -1,4 +1,4 @@
-package chunklistvalidating
+package cdc
 
 import (
 	"bufio"

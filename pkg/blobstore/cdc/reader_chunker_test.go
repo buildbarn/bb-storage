@@ -1,4 +1,4 @@
-package chunklistvalidating_test
+package cdc_test
 
 import (
 	"io"
@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func FuzzReaderChunker(f *testing.F) {
 
 		reader := buffer.NewValidatedBufferFromByteSlice(originalData).ToReader()
 		defer reader.Close()
-		chunker := chunklistvalidating.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
+		chunker := cdc.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
 
 		composedData := make([]byte, 0, dataSizeBytes)
 		var numberOfChunks int
@@ -76,7 +76,7 @@ func TestReaderChunkerSmallBlob(t *testing.T) {
 	defer reader.Close()
 
 	digestFunc := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
-	chunker := chunklistvalidating.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
+	chunker := cdc.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
 
 	chunks := make([][]byte, 0, 1)
 	for {
@@ -99,7 +99,7 @@ func TestReaderChunkerEmptyBlob(t *testing.T) {
 	defer reader.Close()
 
 	digestFunc := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
-	chunker := chunklistvalidating.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
+	chunker := cdc.NewReaderChunker(digestFunc, reader, minChunkSize, horizonLookaheadBytes)
 
 	chunk, err := chunker.NextChunk()
 	require.ErrorIs(t, io.EOF, err)

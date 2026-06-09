@@ -108,12 +108,25 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
+		grpc := backend.Grpc
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
+		ba := grpcclients.NewACBlobAccess(client, bac.maximumMessageSizeBytes)
+		if grpc.CapabilitiesCache != nil {
+			cache, err := blobstore.NewTTLCacheFromConfiguration[*remoteexecution.ServerCapabilities](
+				grpc.CapabilitiesCache,
+				clock.SystemClock,
+				"CSCapabilityCachingBlobStore",
+			)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create capabilities cache")
+			}
+			ba = blobstore.NewCapabilitiesCachingBlobAccess(ba, cache)
+		}
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewACBlobAccess(client, bac.maximumMessageSizeBytes),
+			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 	default:

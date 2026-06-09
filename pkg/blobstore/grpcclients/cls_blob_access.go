@@ -10,8 +10,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type clsBlobAccess struct {
@@ -67,21 +65,18 @@ func (ba *clsBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 }
 
 func (ba *clsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	missing := digest.NewSetBuilder(digests.Length())
-	for _, d := range digests.Items() {
-		_, err := ba.contentAddressableStorageClient.SplitBlob(ctx, &remoteexecution.SplitBlobRequest{
-			InstanceName:     d.GetInstanceName().String(),
-			BlobDigest:       d.GetProto(),
-			DigestFunction:   d.GetDigestFunction().GetEnumValue(),
-			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
-		})
-		if status.Code(err) == codes.NotFound {
-			missing.Add(d)
-		} else if err != nil {
-			return digest.EmptySet, err
-		}
-	}
-	return missing.Build(), nil
+	// Semantically an REv2 server which supports the Split and Splice
+	// apis should be able to answer the SplitBlob call for any blob
+	// which it has in its storage. Thus we can safely say that we are
+	// able to Get a chunk list from an upstream server as long as it
+	// has the blob. We can therefore reuse the existing
+	// FindMissingBlobs api for this purpose.
+	//
+	// In Buildbarn we implement this on the server side by segregating
+	// FMB requests for blobs larger than the maximum chunk size to the
+	// Chunk List Storage (CLS) and to the Chunk Storage (CS) for other
+	// blobs.
+	return findMissingBlobsInternal(ctx, digests, ba.contentAddressableStorageClient)
 }
 
 func (ba *clsBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {

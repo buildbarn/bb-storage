@@ -16,10 +16,18 @@ import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
+message ContentAddressableStorage {
+  // Storage configuration for the Chunk Storage (CS).
+  BlobAccessConfiguration chunk_storage = 1;
+
+  // Storage configuration for the Chunk List Storage (CLS).
+  BlobAccessConfiguration chunk_list_storage = 2;
+}
+
 // Storage configuration for Bazel Buildbarn.
 message BlobstoreConfiguration {
   // Storage configuration for the Content Addressable Storage (CAS).
-  BlobAccessConfiguration content_addressable_storage = 1;
+  ContentAddressableStorage content_addressable_storage = 1;
 
   // Storage configuration for the Action Cache (AC).
   BlobAccessConfiguration action_cache = 2;
@@ -972,6 +980,12 @@ message GrpcBlobAccessConfiguration {
   // used if the server supports it. Has no effect for other storage
   // types (AC, ICAS, etc.).
   bool enable_compression = 2;
+
+  // Optional: In memory cache for getting the capabilities for a
+  // specific instance name. Can be set to a relatively low value like
+  // '60s'.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      capabilities_cache = 3;
 }
 
 message ChunkListValidatingBlobAccessConfiguration {

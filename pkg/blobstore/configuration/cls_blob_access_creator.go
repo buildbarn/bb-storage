@@ -6,31 +6,31 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 type clsBlobAccessCreator struct {
 	protoBlobAccessCreator
 	protoBlobReplicatorCreator
 
-	contentAddressableStorage *BlobAccessInfo
-	grpcClientFactory         grpc.ClientFactory
-	maximumMessageSizeBytes   int
+	chunkStorage            *BlobAccessInfo
+	grpcClientFactory       grpc.ClientFactory
+	maximumMessageSizeBytes int
 }
 
 // NewCLSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for querying for chunk list.
-func NewCLSBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewCLSBlobAccessCreator(chunkStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &clsBlobAccessCreator{
-		contentAddressableStorage: contentAddressableStorage,
-		grpcClientFactory:         grpcClientFactory,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		chunkStorage:            chunkStorage,
+		grpcClientFactory:       grpcClientFactory,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
@@ -49,10 +49,6 @@ func (clsBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provid
 func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ChunkListValidating:
-		if bac.contentAddressableStorage == nil {
-			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Chunk list validation can only be enabled if a Content Addressable Storage is configured")
-		}
-
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ChunkListValidating.Backend, bac)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
@@ -60,19 +56,32 @@ func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		return BlobAccessInfo{
 			BlobAccess: chunklistvalidating.NewChunkListValidatingBlobAccess(
 				base.BlobAccess,
-				bac.contentAddressableStorage.BlobAccess,
+				bac.chunkStorage.BlobAccess,
 				bac.maximumMessageSizeBytes,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.chunkStorage.DigestKeyFormat),
 		}, "chunk_list_validating", nil
 
 	case *pb.BlobAccessConfiguration_Grpc:
-		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
+		grpc := backend.Grpc
+		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
 			return BlobAccessInfo{}, "", err
 		}
+		ba := grpcclients.NewCLSBlobAccess(client, bac.maximumMessageSizeBytes)
+		if grpc.CapabilitiesCache != nil {
+			cache, err := blobstore.NewTTLCacheFromConfiguration[*remoteexecution.ServerCapabilities](
+				grpc.CapabilitiesCache,
+				clock.SystemClock,
+				"CLSCapabilityCachingBlobStore",
+			)
+			if err != nil {
+				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create capabilities cache")
+			}
+			ba = blobstore.NewCapabilitiesCachingBlobAccess(ba, cache)
+		}
 		return BlobAccessInfo{
-			BlobAccess:      grpcclients.NewCLSBlobAccess(client, bac.maximumMessageSizeBytes),
+			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
 

@@ -8,6 +8,7 @@ go_library(
         "action_result_timestamp_injecting_blob_access.go",
         "authorizing_blob_access.go",
         "blob_access.go",
+        "capability_caching_blob_access.go",
         "cas_read_buffer_factory.go",
         "cls_read_buffer_factory.go",
         "deadline_enforcing_blob_access.go",
@@ -23,6 +24,7 @@ go_library(
         "read_buffer_factory.go",
         "read_canarying_blob_access.go",
         "reference_expanding_blob_access.go",
+        "ttl_cache.go",
         "validation_caching_read_buffer_factory.go",
         "visit_topologically_sorted_tree.go",
         "zip_reading_blob_access.go",
@@ -40,6 +42,7 @@ go_library(
         "//pkg/cloud/gcp",
         "//pkg/digest",
         "//pkg/eviction",
+        "//pkg/proto/configuration/digest",
         "//pkg/proto/fsac",
         "//pkg/proto/icas",
         "//pkg/proto/iscc",
@@ -54,6 +57,7 @@ go_library(
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_sync//singleflight",
     ],
 )
 

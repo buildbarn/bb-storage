@@ -1,36 +1,38 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "chunklistvalidating",
-    srcs = ["chunk_list_validating_blob_access.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating",
+    name = "cdc",
+    srcs = [
+        "bypass.go",
+        "cas_chunking_blob_access.go",
+        "cdc_parameters.go",
+        "chunker.go",
+        "reader_chunker.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/cdc",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/slicing",
+        "//pkg/capabilities",
         "//pkg/digest",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
+        "@com_github_buildbarn_go_cdc//:go-cdc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
     ],
 )
 
 go_test(
-    name = "chunklistvalidating_test",
-    srcs = [
-        "chunk_list_validating_blob_access_test.go",
-        "fake_blob_access_test.go",
-    ],
+    name = "cdc_test",
+    srcs = ["reader_chunker_test.go"],
     deps = [
-        ":chunklistvalidating",
-        "//pkg/blobstore",
+        ":cdc",
         "//pkg/blobstore/buffer",
         "//pkg/digest",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
     ],
 )
