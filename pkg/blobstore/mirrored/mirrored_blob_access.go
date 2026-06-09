@@ -9,7 +9,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -105,11 +104,6 @@ func (ba *mirroredBlobAccess) getBlobReplicatorSelector() (blobstore.BlobAccess,
 func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
 	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
 	return replication.GetWithBlobReplicator(ctx, digest, firstBackend, successiveBackends)
-}
-
-func (ba *mirroredBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
-	return replication.GetFromCompositeWithBlobReplicator(ctx, parentDigest, childDigest, slicer, firstBackend, successiveBackends)
 }
 
 func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {

@@ -11,25 +11,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type casBlobReplicatorCreator struct {
+type csBlobReplicatorCreator struct {
 	grpcClientFactory grpc.ClientFactory
 }
 
-// NewCASBlobReplicatorCreator creates a BlobReplicatorCreator that can
+// NewCSBlobReplicatorCreator creates a BlobReplicatorCreator that can
 // be provided to NewBlobReplicatorFromConfiguration() to construct a
-// BlobReplicator that is suitable for replicating Content Addressable
-// Storage objects.
-func NewCASBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator {
-	return &casBlobReplicatorCreator{
+// BlobReplicator that is suitable for replicating Chunk Storage
+// objects.
+func NewCSBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator {
+	return &csBlobReplicatorCreator{
 		grpcClientFactory: grpcClientFactory,
 	}
 }
 
-func (casBlobReplicatorCreator) GetStorageTypeName() string {
-	return "cas"
+func (csBlobReplicatorCreator) GetStorageTypeName() string {
+	return "cs"
 }
 
-func (brc *casBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
+func (brc *csBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
 		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.Deduplicating, source, sink, brc)

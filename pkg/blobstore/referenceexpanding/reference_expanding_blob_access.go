@@ -1,4 +1,4 @@
-package blobstore
+package referenceexpanding
 
 import (
 	"compress/flate"
@@ -11,8 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	cloud_gcp "github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -25,8 +27,8 @@ import (
 )
 
 type referenceExpandingBlobAccess struct {
-	indirectContentAddressableStorage BlobAccess
-	contentAddressableStorage         BlobAccess
+	indirectContentAddressableStorage blobstore.BlobAccess
+	contentAddressableStorage         cas.ContentAddressableStorage
 	httpClient                        *http.Client
 	s3Client                          cloud_aws.S3Client
 	gcsClient                         cloud_gcp.StorageClient
@@ -48,7 +50,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage, contentAddressableStorage BlobAccess, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccess {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess, contentAddressableStorage cas.ContentAddressableStorage, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		contentAddressableStorage:         contentAddressableStorage,
@@ -135,17 +137,10 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Invalid digest"))
 		}
 
-		b := ba.contentAddressableStorage.Get(ctx, referenceDigest)
-		if reference.Decompressor == remoteexecution.Compressor_IDENTITY {
-			// Optimize the fast path: if no transformations are
-			// being performed and the digests are identical, we
-			// can pass through the underlying buffer directly.
-			instanceNamePatcher := digest.NewInstanceNamePatcher(referenceDigest.GetInstanceName(), blobDigest.GetInstanceName())
-			if blobDigest == instanceNamePatcher.PatchDigest(referenceDigest) {
-				return b
-			}
+		r, err = cas.GetReadCloser(ctx, ba.contentAddressableStorage, referenceDigest)
+		if err != nil {
+			return buffer.NewBufferFromError(err)
 		}
-		r = b.ToReader()
 	default:
 		return buffer.NewBufferFromError(status.Error(codes.Unimplemented, "Reference uses an unsupported medium"))
 	}

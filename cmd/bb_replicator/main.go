@@ -33,7 +33,7 @@ func main() {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
-		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
+		blobAccessCreator := blobstore_configuration.NewCSBlobAccessCreator(
 			grpcClientFactory,
 			int(configuration.MaximumMessageSizeBytes),
 			bb_zstd.NewPoolFromConfiguration(nil),
@@ -59,7 +59,7 @@ func main() {
 			configuration.Replicator,
 			source.BlobAccess,
 			sink,
-			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
+			blobstore_configuration.NewCSBlobReplicatorCreator(grpcClientFactory),
 		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create replicator")

@@ -22,7 +22,7 @@ import (
 type findMissingQueue struct {
 	context                   context.Context
 	digestFunction            digest.Function
-	contentAddressableStorage blobstore.BlobAccess
+	contentAddressableStorage cas.ContentAddressableStorage
 	batchSize                 int
 
 	pending digest.SetBuilder
@@ -74,7 +74,7 @@ func (q *findMissingQueue) finalize() error {
 
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess
-	contentAddressableStorage blobstore.BlobAccess
+	contentAddressableStorage cas.ContentAddressableStorage
 	treeReader                cas.StreamReader
 	batchSize                 int
 	maximumMessageSizeBytes   int
@@ -95,7 +95,7 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage cas.ContentAddressableStorage, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		contentAddressableStorage: contentAddressableStorage,
@@ -191,13 +191,6 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			}
 			return nil
 		}); err != nil {
-			// Any errors generated above may be caused by
-			// data corruption on the Tree object. Force
-			// reading the Tree until completion, and prefer
-			// read errors over any errors generated above.
-			if _, copyErr := io.Copy(io.Discard, r); copyErr != nil {
-				err = copyErr
-			}
 			r.Close()
 			return util.StatusWrapf(err, "Output directory %#v", outputDirectory.Path)
 		}

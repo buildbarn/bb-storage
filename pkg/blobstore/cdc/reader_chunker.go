@@ -1,4 +1,4 @@
-package chunklistvalidating
+package cdc
 
 import (
 	"bufio"
@@ -12,7 +12,6 @@ import (
 
 type readerChunker struct {
 	cdcChunker     cdc.ContentDefinedChunker
-	reader         io.Reader
 	digestFunction digest.Function
 }
 
@@ -47,7 +46,6 @@ func NewReaderChunker(digestFunction digest.Function, reader io.Reader, minChunk
 			int(minChunkSizeBytes),
 			int(horizonSizeBytes),
 		),
-		reader,
 		digestFunction,
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -139,26 +138,6 @@ func (ba *readCanaryingBlobAccess) Get(ctx context.Context, d digest.Digest) buf
 	)
 }
 
-func (ba *readCanaryingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	instanceNameStr := parentDigest.GetInstanceName().String()
-	if ba.shouldSendToReplica(instanceNameStr) {
-		return buffer.WithErrorHandler(
-			ba.replica.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-			&readCanaryingReplicaGetFromCompositeErrorHandler{
-				blobAccess:   ba,
-				context:      ctx,
-				parentDigest: parentDigest,
-				childDigest:  childDigest,
-				slicer:       slicer,
-			},
-		)
-	}
-	return buffer.WithErrorHandler(
-		ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		readCanaryingSourceErrorHandler{},
-	)
-}
-
 func (ba *readCanaryingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// The backend may behave differently based on the REv2 instance
 	// name that is, for example if AuthorizingBlobAccess and
@@ -223,39 +202,6 @@ func (eh *readCanaryingReplicaGetErrorHandler) OnError(err error) (buffer.Buffer
 func (eh *readCanaryingReplicaGetErrorHandler) Done() {
 	if ba := eh.blobAccess; ba != nil {
 		ba.recordReplicaResponse(eh.digest.GetInstanceName().String(), nil)
-	}
-}
-
-// readCanaryingReplicaGetFromCompositeErrorHandler is the ErrorHandler
-// that is attached to all buffers read from the replica backend through
-// the GetFromComposite() operation.
-type readCanaryingReplicaGetFromCompositeErrorHandler struct {
-	blobAccess   *readCanaryingBlobAccess
-	context      context.Context
-	parentDigest digest.Digest
-	childDigest  digest.Digest
-	slicer       slicing.BlobSlicer
-}
-
-func (eh *readCanaryingReplicaGetFromCompositeErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	ba := eh.blobAccess
-	if ba == nil {
-		// Already retried the operation against the source backend.
-		return nil, util.StatusWrap(err, "Source")
-	}
-	eh.blobAccess = nil
-	if ba.recordReplicaResponse(eh.parentDigest.GetInstanceName().String(), err) {
-		// Request against the replica failed with an
-		// infrastructure error. Retry it against the source
-		// backend.
-		return ba.BlobAccess.GetFromComposite(eh.context, eh.parentDigest, eh.childDigest, eh.slicer), nil
-	}
-	return nil, util.StatusWrap(err, "Replica")
-}
-
-func (eh *readCanaryingReplicaGetFromCompositeErrorHandler) Done() {
-	if ba := eh.blobAccess; ba != nil {
-		ba.recordReplicaResponse(eh.parentDigest.GetInstanceName().String(), nil)
 	}
 }
 

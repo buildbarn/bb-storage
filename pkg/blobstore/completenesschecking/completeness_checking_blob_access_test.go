@@ -25,7 +25,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	actionCache := mock.NewMockBlobAccess(ctrl)
-	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
 	treeReader := mock.NewMockStreamReader(ctrl)
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(
 		actionCache,
@@ -191,101 +191,6 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Combined size of all output directories exceeds maximum limit of 10000 bytes"), err)
-	})
-
-	t.Run("GetTreeDataCorruption", func(t *testing.T) {
-		// Because Tree objects are processed in a streaming
-		// fashion, it may be the case that we call
-		// FindMissing() against the CAS, even though we later
-		// discover that the Tree object was corrupted.
-		//
-		// This means that even if FindMissing() reports objects
-		// as being absent, we cannot terminate immediately. We
-		// must process the Tree object in its entirety.
-		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
-		dataIntegrityCallback.EXPECT().Call(true)
-		actionCache.EXPECT().Get(ctx, actionDigest).Return(
-			buffer.NewProtoBufferFromProto(
-				&remoteexecution.ActionResult{
-					OutputDirectories: []*remoteexecution.OutputDirectory{
-						{
-							Path: "bazel-out/foo",
-							TreeDigest: &remoteexecution.Digest{
-								Hash:      "8f0450aa5f4602d93968daba6f2e7611",
-								SizeBytes: 4000,
-							},
-						},
-					},
-				},
-				buffer.BackendProvided(dataIntegrityCallback.Call),
-			),
-		)
-
-		mockStream := mock.NewMockReadCloser(ctrl)
-		gomock.InOrder(
-			mockStream.EXPECT().Read(gomock.Any()).
-				DoAndReturn(func(p []byte) (int, error) {
-					treeData, err := proto.Marshal(&remoteexecution.Tree{
-						Root: &remoteexecution.Directory{
-							Files: []*remoteexecution.FileNode{
-								{
-									Digest: &remoteexecution.Digest{
-										Hash:      "024ced29f1fdef2f644f34a071ade5be",
-										SizeBytes: 1,
-									},
-								},
-								{
-									Digest: &remoteexecution.Digest{
-										Hash:      "8b3b146b1c4df062a2dc35168cbf4ce6",
-										SizeBytes: 2,
-									},
-								},
-								{
-									Digest: &remoteexecution.Digest{
-										Hash:      "4a4a6ebb3f8b062653cb957cbdc047d9",
-										SizeBytes: 3,
-									},
-								},
-								{
-									Digest: &remoteexecution.Digest{
-										Hash:      "69778ed3e4dcf4e0c40df49e4ca5bd37",
-										SizeBytes: 4,
-									},
-								},
-								{
-									Digest: &remoteexecution.Digest{
-										Hash:      "ff7816e0353299e801a30e37aee1758c",
-										SizeBytes: 5,
-									},
-								},
-							},
-						},
-					})
-					require.NoError(t, err)
-					return copy(p, treeData), nil
-				}),
-			mockStream.EXPECT().Read(gomock.Any()).
-				DoAndReturn(func(p []byte) (int, error) {
-					return copy(p, "Garbage"), status.Error(codes.Internal, "Some internal data corruption error discovered later in the stream.")
-				}),
-			mockStream.EXPECT().Close(),
-		)
-
-		treeDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8f0450aa5f4602d93968daba6f2e7611", 4000)
-		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(mockStream, nil)
-		contentAddressableStorage.EXPECT().FindMissing(
-			ctx,
-			digest.NewSetBuilder(0).
-				Add(treeDigest).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "024ced29f1fdef2f644f34a071ade5be", 1)).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b3b146b1c4df062a2dc35168cbf4ce6", 2)).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3)).
-				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "69778ed3e4dcf4e0c40df49e4ca5bd37", 4)).
-				Build(),
-		).Return(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3).ToSingletonSet(), nil)
-
-		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest).ToProto(&remoteexecution.ActionResult{}, 1000)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Output directory \"bazel-out/foo\": Some internal data corruption error discovered later in the stream."), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

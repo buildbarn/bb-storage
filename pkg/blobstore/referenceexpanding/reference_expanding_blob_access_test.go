@@ -1,4 +1,4 @@
-package blobstore_test
+package referenceexpanding_test
 
 import (
 	"bytes"
@@ -13,8 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/referenceexpanding"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -32,11 +33,11 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
-	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
@@ -467,10 +468,14 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				buffer.BackendProvided(buffer.Irreparable(helloDigest)),
 			),
 		)
-		contentAddressableStorage.EXPECT().Get(
+		contentAddressableStorage.EXPECT().FetchCDCParameters(
+			gomock.Any(),
+			mustNewInstanceName("instance/name"),
+		).Return(cdc.Parameters{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
 			ctx,
 			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		).Return([]byte("Hello"), nil)
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		require.NoError(t, err)
@@ -497,16 +502,21 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 				buffer.BackendProvided(buffer.Irreparable(aaaDigest)),
 			),
 		)
-		contentAddressableStorage.EXPECT().Get(
-			ctx,
-			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA1, "a6cf72f4c7f42afde230ac461d5c7b9e25838530", 21),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte{
+		data := []byte{
 			// 21 bytes of Zstandard compressed data
 			// that decompress to fifty 'a' bytes.
 			0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x45,
 			0x00, 0x00, 0x10, 0x61, 0x61, 0x01, 0x00,
 			0x45, 0x00, 0x0b, 0x23, 0x9f, 0x0f, 0x9a,
-		}))
+		}
+		contentAddressableStorage.EXPECT().FetchCDCParameters(
+			gomock.Any(),
+			mustNewInstanceName("instance/name"),
+		).Return(cdc.Parameters{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			ctx,
+			digest.MustNewDigest("instance/name", remoteexecution.DigestFunction_SHA1, "a6cf72f4c7f42afde230ac461d5c7b9e25838530", 21),
+		).Return(data, nil)
 
 		data, err := blobAccess.Get(ctx, aaaDigest).ToByteSlice(100)
 		require.NoError(t, err)
@@ -518,11 +528,11 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
-	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
@@ -557,11 +567,11 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess(ctrl)
-	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
 	gcsClient := mock.NewMockStorageClient(ctrl)
-	blobAccess := blobstore.NewReferenceExpandingBlobAccess(
+	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		contentAddressableStorage,
 		&http.Client{Transport: roundTripper},
@@ -597,4 +607,12 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		_, err := blobAccess.FindMissing(ctx, digests)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Network error"), err)
 	})
+}
+
+func mustNewInstanceName(name string) digest.InstanceName {
+	instanceName, err := digest.NewInstanceName(name)
+	if err != nil {
+		panic(err)
+	}
+	return instanceName
 }

@@ -6,12 +6,12 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	chunklist_pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/chunklist"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type clsBlobAccess struct {
@@ -21,7 +21,7 @@ type clsBlobAccess struct {
 }
 
 // NewCLSBlobAccess creates a BlobAccess that relays any requests to a
-// gRPC server that implements the split and splice api calls of a
+// gRPC server that implements the split and splice API calls of a
 // remoteexecution.ContentAddressableStorage service.
 func NewCLSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess {
 	return &clsBlobAccess{
@@ -31,17 +31,32 @@ func NewCLSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes i
 	}
 }
 
-func (ba *clsBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	digestFunction := digest.GetDigestFunction()
+func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+	digestFunction := blobDigest.GetDigestFunction()
 	splitBlobsResponse, err := ba.contentAddressableStorageClient.SplitBlob(ctx, &remoteexecution.SplitBlobRequest{
 		InstanceName:   digestFunction.GetInstanceName().String(),
-		BlobDigest:     digest.GetProto(),
+		BlobDigest:     blobDigest.GetProto(),
 		DigestFunction: digestFunction.GetEnumValue(),
 	})
 	if err != nil {
 		return buffer.NewBufferFromError(err)
 	}
-	return buffer.NewProtoBufferFromProto(splitBlobsResponse, buffer.BackendProvided(buffer.Irreparable(digest)))
+
+	// Convert wire format to storage format.
+	chunkDigests := make([]digest.Digest, 0, len(splitBlobsResponse.ChunkDigests))
+	for _, proto := range splitBlobsResponse.ChunkDigests {
+		d, err := digestFunction.NewDigestFromProto(proto)
+		if err != nil {
+			return buffer.NewBufferFromError(err)
+		}
+		chunkDigests = append(chunkDigests, d)
+	}
+	return buffer.NewProtoBufferFromProto(
+		&chunklist_pb.ChunkList{
+			Data: chunklist.EncodeToBinary(chunkDigests),
+		},
+		buffer.BackendProvided(buffer.Irreparable(blobDigest)),
+	)
 }
 
 func (ba *clsBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
@@ -49,39 +64,46 @@ func (ba *clsBlobAccess) GetFromComposite(ctx context.Context, parentDigest, chi
 	return b
 }
 
-func (ba *clsBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	splitBlobResponseProto, err := b.ToProto(&remoteexecution.SplitBlobResponse{}, ba.maximumMessageSizeBytes)
+func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
+	msg, err := b.ToProto(&chunklist_pb.ChunkList{}, ba.maximumMessageSizeBytes)
 	if err != nil {
 		return err
 	}
-	splitBlobResponse := splitBlobResponseProto.(*remoteexecution.SplitBlobResponse)
-	digestFunction := digest.GetDigestFunction()
+
+	// Convert storage format to wire format.
+	chunkList, err := chunklist.NewChunkListFromProto(msg.(*chunklist_pb.ChunkList), blobDigest.GetInstanceName())
+	if err != nil {
+		return err
+	}
+	chunkDigests := make([]*remoteexecution.Digest, 0, len(chunkList))
+	for _, entry := range chunkList {
+		chunkDigests = append(chunkDigests, entry.Digest.GetProto())
+	}
+
+	digestFunction := blobDigest.GetDigestFunction()
 	_, err = ba.contentAddressableStorageClient.SpliceBlob(ctx, &remoteexecution.SpliceBlobRequest{
 		InstanceName:     digestFunction.GetInstanceName().String(),
 		DigestFunction:   digestFunction.GetEnumValue(),
-		ChunkDigests:     splitBlobResponse.GetChunkDigests(),
-		ChunkingFunction: splitBlobResponse.GetChunkingFunction(),
-		BlobDigest:       digest.GetProto(),
+		ChunkDigests:     chunkDigests,
+		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+		BlobDigest:       blobDigest.GetProto(),
 	})
 	return err
 }
 
 func (ba *clsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	missing := digest.NewSetBuilder(digests.Length())
-	for _, d := range digests.Items() {
-		_, err := ba.contentAddressableStorageClient.SplitBlob(ctx, &remoteexecution.SplitBlobRequest{
-			InstanceName:     d.GetInstanceName().String(),
-			BlobDigest:       d.GetProto(),
-			DigestFunction:   d.GetDigestFunction().GetEnumValue(),
-			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
-		})
-		if status.Code(err) == codes.NotFound {
-			missing.Add(d)
-		} else if err != nil {
-			return digest.EmptySet, err
-		}
-	}
-	return missing.Build(), nil
+	// Semantically an REv2 server which supports the Split and Splice
+	// apis should be able to answer the SplitBlob call for any blob
+	// which it has in its storage. Thus we can safely say that we are
+	// able to Get a chunk list from an upstream server as long as it
+	// has the blob. We can therefore reuse the existing
+	// FindMissingBlobs API for this purpose.
+	//
+	// In Buildbarn we implement this on the server side by segregating
+	// FMB requests for blobs larger than the maximum chunk size to the
+	// Chunk List Storage (CLS) and to the Chunk Storage (CS) for other
+	// blobs.
+	return findMissingBlobsInternal(ctx, digests, ba.contentAddressableStorageClient)
 }
 
 func (ba *clsBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
@@ -95,7 +117,6 @@ func (ba *clsBlobAccess) GetCapabilities(ctx context.Context, instanceName diges
 		CacheCapabilities: &remoteexecution.CacheCapabilities{
 			SplitBlobSupport:  cacheCapabilities.SplitBlobSupport,
 			SpliceBlobSupport: cacheCapabilities.SpliceBlobSupport,
-			RepMaxCdcParams:   cacheCapabilities.RepMaxCdcParams,
 		},
 	}, nil
 }

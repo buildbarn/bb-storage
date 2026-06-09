@@ -40,7 +40,6 @@ func TestShardingBlobAccess(t *testing.T) {
 	)
 
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	llDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5b54c0a045f179bcbbbc9abcb8b5cd4c", 2)
 
 	t.Run("GetFailure", func(t *testing.T) {
 		// Errors should be prefixed with the shard key.
@@ -60,20 +59,6 @@ func TestShardingBlobAccess(t *testing.T) {
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(1000)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-	})
-
-	t.Run("GetFromCompositeSuccess", func(t *testing.T) {
-		// For reads from composite objects, the sharding needs
-		// to be based on the parent digest. That digest was
-		// used to upload the object to storage.
-		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(0)
-		slicer := mock.NewMockBlobSlicer(ctrl)
-		shard0.EXPECT().GetFromComposite(ctx, helloDigest, llDigest, slicer).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("ll")))
-
-		data, err := blobAccess.GetFromComposite(ctx, helloDigest, llDigest, slicer).ToByteSlice(1000)
-		require.NoError(t, err)
-		require.Equal(t, []byte("ll"), data)
 	})
 
 	t.Run("PutFailure", func(t *testing.T) {

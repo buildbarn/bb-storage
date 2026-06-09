@@ -156,8 +156,9 @@ gomock(
     name = "cas",
     out = "cas.go",
     interfaces = [
-        "StreamReader",
+        "ContentAddressableStorage",
         "Replicator",
+        "StreamReader",
     ],
     library = "//pkg/cas",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -176,6 +177,18 @@ gomock(
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
     source = "//pkg/cas:message_reader.go",
+)
+
+gomock(
+    name = "cdc",
+    out = "cdc.go",
+    interfaces = [
+        "ParametersFetcher",
+    ],
+    library = "//pkg/blobstore/cdc",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
 )
 
 gomock(
@@ -395,6 +408,7 @@ go_library(
         "capabilities.go",
         "cas.go",
         "cas_message_reader.go",
+        "cdc.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
@@ -419,10 +433,13 @@ go_library(
         "//pkg/auth",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
         "//pkg/blobstore/slicing",
         "//pkg/builder",
+        "//pkg/cas",
         "//pkg/clock",
         "//pkg/cloud/gcp",
         "//pkg/digest",

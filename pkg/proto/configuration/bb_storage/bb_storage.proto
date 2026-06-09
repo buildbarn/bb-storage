@@ -57,13 +57,10 @@ message ApplicationConfiguration {
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 9;
 
-  // Optional: Blobstore configuration for the Content Addressable
-  // Storage (CAS).
-  ScannableBlobAccessConfiguration content_addressable_storage = 17;
-
-  // Optional: Blobstore configuration for the Content List Storage
-  // (CLS).
-  ScannableBlobAccessConfiguration chunk_list_storage = 22;
+  // Optional: Configurations for the Content Addressable Storage server
+  // (CAS).
+  ContentAddressableStorageServerConfiguration
+      content_addressable_storage_server = 17;
 
   // Optional: Blobstore configuration for the Action Cache (AC).
   NonScannableBlobAccessConfiguration action_cache = 18;
@@ -113,6 +110,29 @@ message ApplicationConfiguration {
   // ByteStream server, and enables ZSTD compression for ByteStream
   // operations where the server supports it.
   buildbarn.configuration.zstd.PoolConfiguration zstd_pool = 21;
+}
+
+// Storage configuration for a content addressable storage.
+message ContentAddressableStorageServerConfiguration {
+  // Configurations for the constituent Blob Accesses that make up the
+  // ContentAddressableStorageServer.
+  buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+      content_addressable_storage = 1;
+
+  // The authorizer for determining whether a client may read from
+  // storage. Access to this authorizer pertains to the
+  // ByteStream.Read(), BatchReadBlobs() and SplitBlob() operations.
+  buildbarn.configuration.auth.AuthorizerConfiguration get_authorizer = 2;
+
+  // The authorizer for determining whether a client may write to
+  // storage. Access to this configuration pertains to the
+  // ByteStream.Write(), BatchUpdateBlobs() and SpliceBlob() operations.
+  buildbarn.configuration.auth.AuthorizerConfiguration put_authorizer = 3;
+
+  // The authorizer for determining whether a client may scan storage
+  // for the existence of a batch of digests.
+  buildbarn.configuration.auth.AuthorizerConfiguration find_missing_authorizer =
+      4;
 }
 
 // Storage configuration for backends which don't allow batch digest
