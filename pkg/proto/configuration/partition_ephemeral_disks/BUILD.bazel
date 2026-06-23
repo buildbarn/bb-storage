@@ -1,0 +1,24 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "partition_ephemeral_disks_proto",
+    srcs = ["partition_ephemeral_disks.proto"],
+    import_prefix = "github.com/buildbarn/bb-storage",
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "partition_ephemeral_disks_go_proto",
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/partition_ephemeral_disks",
+    proto = ":partition_ephemeral_disks_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "partition_ephemeral_disks",
+    embed = [":partition_ephemeral_disks_go_proto"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/proto/configuration/partition_ephemeral_disks",
+    visibility = ["//visibility:public"],
+)

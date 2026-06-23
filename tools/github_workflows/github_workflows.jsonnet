@@ -5,12 +5,14 @@ workflows_template.getWorkflows(
     'bb_copy',
     'bb_replicator',
     'bb_storage',
+    'partition_ephemeral_disks',
     'sync_jwks_to_configmap',
   ],
   [
     'bb_copy:bb_copy',
     'bb_replicator:bb_replicator',
     'bb_storage:bb_storage',
+    'partition_ephemeral_disks:partition_ephemeral_disks',
     'sync_jwks_to_configmap:sync_jwks_to_configmap',
   ],
 )
