@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package buildbarn.configuration.partition_ephemeral_disks;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/partition_ephemeral_disks";
+
+message ApplicationConfiguration {
+  // A glob pattern indicating which block devices on the host system
+  // should be placed in the ephemeral volume group.
+  string ephemeral_disk_devices_pattern = 1;
+
+  // Partitions to create within the ephemeral volume group.
+  repeated Partition partitions = 2;
+}
+
+message Partition {
+  // The name of the partition to create.
+  string name = 1;
+
+  // The size of the partition, provided in the form of a percentage.
+  // The sizes of all partitions must add up to 100%.
+  int32 size_percentage = 2;
+}

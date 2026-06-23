@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("//tools:container.bzl", "container_push_official", "multiarch_go_image")
+
+go_library(
+    name = "partition_ephemeral_disks_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/buildbarn/bb-storage/cmd/partition_ephemeral_disks",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/proto/configuration/partition_ephemeral_disks",
+        "//pkg/util",
+    ],
+)
+
+go_binary(
+    name = "partition_ephemeral_disks",
+    embed = [":partition_ephemeral_disks_lib"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+multiarch_go_image(
+    name = "partition_ephemeral_disks_container",
+    binary = ":partition_ephemeral_disks",
+)
+
+container_push_official(
+    name = "partition_ephemeral_disks_container_push",
+    component = "bb-storage",
+    image = ":partition_ephemeral_disks_container",
+)

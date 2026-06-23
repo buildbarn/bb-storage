@@ -67,6 +67,20 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "linux_amd64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.linux_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.linux_amd64",
+                  "path": "partition_ephemeral_disks.linux_amd64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "linux_amd64: copy sync_jwks_to_configmap",
                "run": "rm -f sync_jwks_to_configmap.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.linux_amd64"
             },
@@ -124,6 +138,20 @@
                "with": {
                   "name": "bb_storage.linux_amd64_v3",
                   "path": "bb_storage.linux_amd64_v3"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.linux_amd64_v3 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.linux_amd64_v3"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64_v3: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.linux_amd64_v3",
+                  "path": "partition_ephemeral_disks.linux_amd64_v3"
                }
             },
             {
@@ -189,6 +217,20 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "linux_386: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.linux_386 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.linux_386"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_386: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.linux_386",
+                  "path": "partition_ephemeral_disks.linux_386"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "linux_386: copy sync_jwks_to_configmap",
                "run": "rm -f sync_jwks_to_configmap.linux_386 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.linux_386"
             },
@@ -246,6 +288,20 @@
                "with": {
                   "name": "bb_storage.linux_arm",
                   "path": "bb_storage.linux_arm"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.linux_arm && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.linux_arm"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.linux_arm",
+                  "path": "partition_ephemeral_disks.linux_arm"
                }
             },
             {
@@ -311,6 +367,20 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "linux_arm64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.linux_arm64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.linux_arm64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_arm64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.linux_arm64",
+                  "path": "partition_ephemeral_disks.linux_arm64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "linux_arm64: copy sync_jwks_to_configmap",
                "run": "rm -f sync_jwks_to_configmap.linux_arm64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.linux_arm64"
             },
@@ -368,6 +438,20 @@
                "with": {
                   "name": "bb_storage.darwin_amd64",
                   "path": "bb_storage.darwin_amd64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_amd64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.darwin_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.darwin_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_amd64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.darwin_amd64",
+                  "path": "partition_ephemeral_disks.darwin_amd64"
                }
             },
             {
@@ -433,6 +517,20 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "darwin_arm64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.darwin_arm64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.darwin_arm64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "darwin_arm64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.darwin_arm64",
+                  "path": "partition_ephemeral_disks.darwin_arm64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "darwin_arm64: copy sync_jwks_to_configmap",
                "run": "rm -f sync_jwks_to_configmap.darwin_arm64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.darwin_arm64"
             },
@@ -490,6 +588,20 @@
                "with": {
                   "name": "bb_storage.freebsd_amd64",
                   "path": "bb_storage.freebsd_amd64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "freebsd_amd64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.freebsd_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.freebsd_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "freebsd_amd64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.freebsd_amd64",
+                  "path": "partition_ephemeral_disks.freebsd_amd64"
                }
             },
             {
@@ -555,6 +667,20 @@
             },
             {
                "if": "matrix.host.upload",
+               "name": "windows_amd64: copy partition_ephemeral_disks",
+               "run": "rm -f partition_ephemeral_disks.windows_amd64.exe && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 //cmd/partition_ephemeral_disks $(pwd)/partition_ephemeral_disks.windows_amd64.exe"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "windows_amd64: upload partition_ephemeral_disks",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "partition_ephemeral_disks.windows_amd64",
+                  "path": "partition_ephemeral_disks.windows_amd64.exe"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
                "name": "windows_amd64: copy sync_jwks_to_configmap",
                "run": "rm -f sync_jwks_to_configmap.windows_amd64.exe && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 //cmd/sync_jwks_to_configmap $(pwd)/sync_jwks_to_configmap.windows_amd64.exe"
             },
@@ -594,6 +720,11 @@
                "if": "matrix.host.upload",
                "name": "Push container bb_storage:bb_storage",
                "run": "bazel run --stamp //cmd/bb_storage:bb_storage_container_push"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "Push container partition_ephemeral_disks:partition_ephemeral_disks",
+               "run": "bazel run --stamp //cmd/partition_ephemeral_disks:partition_ephemeral_disks_container_push"
             },
             {
                "if": "matrix.host.upload",
