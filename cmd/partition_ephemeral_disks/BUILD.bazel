@@ -26,6 +26,6 @@ multiarch_go_image(
 
 container_push_official(
     name = "partition_ephemeral_disks_container_push",
-    component = "bb-storage",
+    component = "bb-partition-ephemeral-disks",
     image = ":partition_ephemeral_disks_container",
 )
