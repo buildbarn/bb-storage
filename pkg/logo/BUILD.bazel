@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# Minify the logo into a favicon.
+genrule(
+    name = "favicon",
+    srcs = [":buildbarn_logo.svg"],
+    outs = ["favicon.svg"],
+    # Remove embedded draw.io content attribute and svg comments.
+    cmd = "tr -d '\n' < $(location :buildbarn_logo.svg) | sed -e 's/ content=\"[^\"]*\"//' -e 's/<!--[^!]*-->//g' > $@",
+)
+
+go_library(
+    name = "logo",
+    srcs = ["logo.go"],
+    embedsrcs = ["favicon.svg"],
+    importpath = "github.com/buildbarn/bb-storage/pkg/logo",
+    visibility = ["//visibility:public"],
+)
