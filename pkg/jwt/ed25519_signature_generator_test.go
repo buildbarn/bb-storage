@@ -2,8 +2,7 @@ package jwt_test
 
 import (
 	"crypto/ed25519"
-	"crypto/x509"
-	"encoding/pem"
+	"crypto/rand"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/jwt"
@@ -11,14 +10,12 @@ import (
 )
 
 func TestEd25519SignatureGenerator(t *testing.T) {
-	// Create a signature generator.
-	block, _ := pem.Decode([]byte(`-----BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VwBCIEIJFl+ugysbBc60+O+IIFLSJL0TYtV1iW9W9YQ9t2l4MN
------END PRIVATE KEY-----`))
-	require.NotNil(t, block)
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	// Generate an Ed25519 key pair at test time, so that no private
+	// key material needs to be embedded in source.
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
-	privateKey := key.(ed25519.PrivateKey)
+
+	// Create a signature generator.
 	signatureGenerator := jwt.NewEd25519SignatureGenerator(privateKey)
 	require.Equal(t, "EdDSA", signatureGenerator.GetAlgorithm())
 
@@ -28,7 +25,6 @@ MC4CAQAwBQYDK2VwBCIEIJFl+ugysbBc60+O+IIFLSJL0TYtV1iW9W9YQ9t2l4MN
 	require.NoError(t, err)
 
 	// Ensure that the generated signature is valid.
-	signatureValidator := jwt.NewEd25519SignatureValidator(privateKey.Public().(ed25519.PublicKey))
-	require.NoError(t, err)
+	signatureValidator := jwt.NewEd25519SignatureValidator(publicKey)
 	require.True(t, signatureValidator.ValidateSignature("EdDSA", nil, headerAndPayload, signature))
 }

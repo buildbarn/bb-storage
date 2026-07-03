@@ -1,8 +1,9 @@
 package jwt_test
 
 import (
-	"crypto/x509"
-	"encoding/pem"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/jwt"
@@ -12,15 +13,12 @@ import (
 
 func TestECDSASHASignatureGenerator(t *testing.T) {
 	t.Run("ES256", func(t *testing.T) {
-		// Create a signature generator.
-		block, _ := pem.Decode([]byte(`-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIBEf3U53imN4pfQBPtGT1TG+SZfkiSDKITr/SMuscXVDoAoGCCqGSM49
-AwEHoUQDQgAEkx7qtWaVCs8Xlqwnfb5X64NvE7uuxjv5JcjJhfkwdjrEms5bpIy/
-f2EJfEoVNO/YidkVY+J35v8vQoAMS4rRGA==
------END EC PRIVATE KEY-----`))
-		require.NotNil(t, block)
-		key, err := x509.ParseECPrivateKey(block.Bytes)
+		// Generate an ECDSA key pair at test time, so that no
+		// private key material needs to be embedded in source.
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)
+
+		// Create a signature generator.
 		signatureGenerator, err := jwt.NewECDSASHASignatureGenerator(key, random.CryptoThreadSafeGenerator)
 		require.NoError(t, err)
 		require.Equal(t, "ES256", signatureGenerator.GetAlgorithm())
