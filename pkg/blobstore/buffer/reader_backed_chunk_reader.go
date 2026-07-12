@@ -8,6 +8,7 @@ type readerBackedChunkReader struct {
 	r                     io.ReadCloser
 	maximumChunkSizeBytes int
 
+	buf *[]byte
 	err error
 }
 
@@ -23,8 +24,11 @@ func newReaderBackedChunkReader(r io.ReadCloser, maximumChunkSizeBytes int) Chun
 
 func (r *readerBackedChunkReader) Read() ([]byte, error) {
 	if r.err == nil {
-		b := make([]byte, r.maximumChunkSizeBytes)
-		n, err := io.ReadFull(r.r, b[:])
+		if r.buf == nil {
+			r.buf = getChunkBuffer(r.maximumChunkSizeBytes)
+		}
+		b := *r.buf
+		n, err := io.ReadFull(r.r, b)
 		if err == io.ErrUnexpectedEOF {
 			r.err = io.EOF
 		} else {
@@ -38,5 +42,9 @@ func (r *readerBackedChunkReader) Read() ([]byte, error) {
 }
 
 func (r *readerBackedChunkReader) Close() {
+	if r.buf != nil {
+		putChunkBuffer(r.buf)
+		r.buf = nil
+	}
 	r.r.Close()
 }
