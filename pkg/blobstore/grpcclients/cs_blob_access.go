@@ -33,7 +33,7 @@ type casBlobAccess struct {
 	zstdPool                        bb_zstd.Pool
 }
 
-// NewCASBlobAccess creates a BlobAccess handle that relays any requests
+// NewCSBlobAccess creates a BlobAccess handle that relays any requests
 // to a gRPC service that implements the bytestream.ByteStream and
 // remoteexecution.ContentAddressableStorage services. Those are the
 // services that Bazel uses to access blobs stored in the Content
@@ -41,7 +41,7 @@ type casBlobAccess struct {
 //
 // If zstdPool is non-nil, the client will use ZSTD compression for
 // ByteStream operations if the server supports it.
-func NewCASBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
+func NewCSBlobAccess(client grpc.ClientConnInterface, uuidGenerator util.UUIDGenerator, readChunkSize int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
 	return &casBlobAccess{
 		byteStreamClient:                bytestream.NewByteStreamClient(client),
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),

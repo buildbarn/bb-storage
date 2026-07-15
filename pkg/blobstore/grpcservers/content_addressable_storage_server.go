@@ -14,14 +14,16 @@ import (
 )
 
 type contentAddressableStorageServer struct {
+	chunkListStorage          blobstore.BlobAccess
 	contentAddressableStorage blobstore.BlobAccess
 	maximumMessageSizeBytes   int64
 }
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(contentAddressableStorage, chunkListStorage blobstore.BlobAccess, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
+		chunkListStorage:          chunkListStorage,
 		contentAddressableStorage: contentAddressableStorage,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
@@ -41,23 +43,26 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	}
 
 	inDigests := digest.NewSetBuilder(len(in.BlobDigests))
-	for _, partialDigest := range in.BlobDigests {
-		digest, err := digestFunction.NewDigestFromProto(partialDigest)
+	for _, inDigest := range in.BlobDigests {
+		digest, err := digestFunction.NewDigestFromProto(inDigest)
 		if err != nil {
 			return nil, err
 		}
 		inDigests.Add(digest)
 	}
-	outDigests, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
+
+	missing, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
 	if err != nil {
 		return nil, err
 	}
-	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
-	for _, outDigest := range outDigests.Items() {
-		partialDigests = append(partialDigests, outDigest.GetProto())
+
+	outDigests := make([]*remoteexecution.Digest, 0, missing.Length())
+	for _, outDigest := range missing.Items() {
+		outDigests = append(outDigests, outDigest.GetProto())
 	}
+
 	return &remoteexecution.FindMissingBlobsResponse{
-		MissingBlobDigests: partialDigests,
+		MissingBlobDigests: outDigests,
 	}, nil
 }
 
@@ -74,6 +79,7 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 		return nil, err
 	}
 
+	// TODO: Compensate for message overhead.
 	bytesRemaining := s.maximumMessageSizeBytes
 	digests := make([]digest.Digest, 0, len(in.Digests))
 	for _, reqDigest := range in.Digests {
@@ -150,10 +156,51 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 	return status.Error(codes.Unimplemented, "This service does not support downloading directory trees")
 }
 
-func (contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support splicing blobs")
+func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(in.BlobDigest)
+	if err != nil {
+		return nil, err
+	}
+
+	splitBlobResponse := &remoteexecution.SplitBlobResponse{
+		ChunkDigests:     in.ChunkDigests,
+		ChunkingFunction: in.ChunkingFunction,
+	}
+	b := buffer.NewProtoBufferFromProto(splitBlobResponse, buffer.UserProvided)
+
+	if err := s.chunkListStorage.Put(ctx, blobDigest, b); err != nil {
+		return nil, err
+	}
+
+	return &remoteexecution.SpliceBlobResponse{
+		BlobDigest: in.BlobDigest,
+	}, nil
 }
 
-func (contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support splitting blobs")
+func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(in.BlobDigest)
+	if err != nil {
+		return nil, err
+	}
+	splitBlobResponse, err := s.chunkListStorage.Get(ctx, blobDigest).ToProto(&remoteexecution.SplitBlobResponse{}, int(s.maximumMessageSizeBytes))
+	if err != nil {
+		return nil, err
+	}
+	return splitBlobResponse.(*remoteexecution.SplitBlobResponse), nil
 }

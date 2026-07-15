@@ -57,9 +57,9 @@ message ApplicationConfiguration {
   // Common configuration options that apply to all Buildbarn binaries.
   buildbarn.configuration.global.Configuration global = 9;
 
-  // Optional: Blobstore configuration for the Content Addressable
-  // Storage (CAS).
-  ScannableBlobAccessConfiguration content_addressable_storage = 17;
+  // Optional: Blobstore configurations for the Content
+  // AddressableContentAddressa Storage (CAS).
+  ContentAddressableStorageConfiguration content_addressable_storage = 17;
 
   // Optional: Blobstore configuration for the Action Cache (AC).
   NonScannableBlobAccessConfiguration action_cache = 18;
@@ -109,6 +109,21 @@ message ApplicationConfiguration {
   // ByteStream server, and enables ZSTD compression for ByteStream
   // operations where the server supports it.
   buildbarn.configuration.zstd.PoolConfiguration zstd_pool = 21;
+
+  // Was 'chunk_list_storage'. Has been moved into the
+  // content_addressable_storage.
+  reserved 22;
+}
+
+// Storage configuration for a content addressable storage.
+message ContentAddressableStorageConfiguration {
+  // Blob Access Configuration for the chunk storage of the content
+  // addressable storage.
+  ScannableBlobAccessConfiguration chunk_storage = 1;
+
+  // Blob Access Configuration for the chunk list storage of the content
+  // addressable storage.
+  ScannableBlobAccessConfiguration chunk_list_storage = 2;
 }
 
 // Storage configuration for backends which don't allow batch digest

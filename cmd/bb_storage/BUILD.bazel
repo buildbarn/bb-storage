@@ -10,6 +10,7 @@ go_library(
         "//pkg/auth",
         "//pkg/auth/configuration",
         "//pkg/blobstore",
+        "//pkg/blobstore/cdc",
         "//pkg/blobstore/configuration",
         "//pkg/blobstore/grpcservers",
         "//pkg/builder",

@@ -18,19 +18,19 @@ import (
 )
 
 type byteStreamServer struct {
-	blobAccess    blobstore.BlobAccess
-	readChunkSize int
-	zstdPool      bb_zstd.Pool
+	contentAddressableStorage blobstore.BlobAccess
+	readChunkSize             int
+	zstdPool                  bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to a BlobAccess. It is used by Bazel to access the
 // Content Addressable Storage (CAS).
-func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+func NewByteStreamServer(contentAddressableStorage blobstore.BlobAccess, readChunkSize int, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
-		blobAccess:    blobAccess,
-		readChunkSize: readChunkSize,
-		zstdPool:      zstdPool,
+		contentAddressableStorage: contentAddressableStorage,
+		readChunkSize:             readChunkSize,
+		zstdPool:                  zstdPool,
 	}
 }
 
@@ -38,14 +38,14 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if in.ReadLimit != 0 {
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
-	digest, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
+	d, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
 	if err != nil {
 		return err
 	}
 	ctx := out.Context()
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		r := s.blobAccess.Get(ctx, digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
+		r := s.contentAddressableStorage.Get(ctx, d).ToChunkReader(in.ReadOffset, s.readChunkSize)
 		defer r.Close()
 
 		for {
@@ -62,14 +62,12 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		}
 
 	case remoteexecution.Compressor_ZSTD:
-		b := s.blobAccess.Get(ctx, digest)
 		encoder, err := s.zstdPool.NewEncoder(ctx, &readStreamWriter{out: out})
 		if err != nil {
-			b.Discard()
 			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
 		}
 		defer encoder.Close()
-		return b.IntoWriter(encoder)
+		return s.contentAddressableStorage.Get(ctx, d).IntoWriter(encoder)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support downloading compression type: %s", compressor)
 	}
@@ -138,35 +136,52 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 		}
 		return err
 	}
-	digest, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
+
+	d, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
 	if err != nil {
 		return err
 	}
+
+	ctx := stream.Context()
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return s.writeIdentity(stream, request, digest)
+		r := &byteStreamWriteServerChunkReader{stream: stream}
+		if err := r.setRequest(request); err != nil {
+			return err
+		}
+
+		b := buffer.NewCASBufferFromChunkReader(d, r, buffer.UserProvided)
+		if err := s.contentAddressableStorage.Put(stream.Context(), d, b); err != nil {
+			return err
+		}
+
+		return stream.SendAndClose(&bytestream.WriteResponse{
+			CommittedSize: d.GetSizeBytes(),
+		})
 	case remoteexecution.Compressor_ZSTD:
-		return s.writeZstd(stream, request, digest)
+		streamReader := &zstdWriteStreamReader{
+			stream:      stream,
+			nextOffset:  int64(len(request.Data)),
+			finished:    request.FinishWrite,
+			pendingData: request.Data,
+		}
+
+		zstdReader, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, streamReader)
+		if err != nil {
+			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
+		}
+
+		b := buffer.NewCASBufferFromReader(d, zstdReader, buffer.UserProvided)
+		if err := s.contentAddressableStorage.Put(ctx, d, b); err != nil {
+			return err
+		}
+
+		return stream.SendAndClose(&bytestream.WriteResponse{
+			CommittedSize: streamReader.nextOffset,
+		})
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
-}
-
-func (s *byteStreamServer) writeIdentity(stream bytestream.ByteStream_WriteServer, request *bytestream.WriteRequest, digest digest.Digest) error {
-	r := &byteStreamWriteServerChunkReader{stream: stream}
-	if err := r.setRequest(request); err != nil {
-		return err
-	}
-	if err := s.blobAccess.Put(
-		stream.Context(),
-		digest,
-		buffer.NewCASBufferFromChunkReader(digest, r, buffer.UserProvided),
-	); err != nil {
-		return err
-	}
-	return stream.SendAndClose(&bytestream.WriteResponse{
-		CommittedSize: digest.GetSizeBytes(),
-	})
 }
 
 type zstdWriteStreamReader struct {
@@ -209,32 +224,6 @@ func (r *zstdWriteStreamReader) Read(p []byte) (n int, err error) {
 
 func (zstdWriteStreamReader) Close() error {
 	return nil
-}
-
-func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, request *bytestream.WriteRequest, digest digest.Digest) error {
-	ctx := stream.Context()
-	streamReader := &zstdWriteStreamReader{
-		stream:      stream,
-		nextOffset:  int64(len(request.Data)),
-		finished:    request.FinishWrite,
-		pendingData: request.Data,
-	}
-
-	zstdReader, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, streamReader)
-	if err != nil {
-		return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
-	}
-
-	if err := s.blobAccess.Put(
-		ctx,
-		digest,
-		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided),
-	); err != nil {
-		return err
-	}
-	return stream.SendAndClose(&bytestream.WriteResponse{
-		CommittedSize: streamReader.nextOffset,
-	})
 }
 
 func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {

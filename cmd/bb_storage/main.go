@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
@@ -56,11 +57,21 @@ func main() {
 		// Content Addressable Storage (CAS).
 		var contentAddressableStorageInfo *blobstore_configuration.BlobAccessInfo
 		var contentAddressableStorage blobstore.BlobAccess
+		var chunkListStorage blobstore.BlobAccess
 		if configuration.ContentAddressableStorage != nil {
-			info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+			casConfiguration := configuration.ContentAddressableStorage
+			if casConfiguration.ChunkStorage == nil {
+				return status.Error(codes.InvalidArgument, "The Chunk Storage is a mandatory part of the Content Addressable Storage.")
+			}
+			if casConfiguration.ChunkListStorage == nil {
+				return status.Error(codes.InvalidArgument, "The Chunk List Storage is a mandatory part of the Content Addressable Storage.")
+			}
+
+			// Create the Chunk Storage (CS).
+			chunkStorageInfo, authorizedChunkStorage, allAuthorizers, err := newScannableBlobAccess(
 				dependenciesGroup,
-				configuration.ContentAddressableStorage,
-				blobstore_configuration.NewCASBlobAccessCreator(
+				casConfiguration.ChunkStorage,
+				blobstore_configuration.NewCSBlobAccessCreator(
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
 					zstdPool,
@@ -68,11 +79,11 @@ func main() {
 				grpcClientFactory,
 			)
 			if err != nil {
-				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
+				return util.StatusWrap(err, "Failed to create Chunk Storage for Content Addressable Storage")
 			}
 			cacheCapabilitiesProviders = append(
 				cacheCapabilitiesProviders,
-				info.BlobAccess,
+				chunkStorageInfo.BlobAccess,
 				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 					CacheCapabilities: &remoteexecution.CacheCapabilities{
 						SupportedCompressors: configuration.SupportedCompressors,
@@ -80,8 +91,30 @@ func main() {
 				}),
 			)
 			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
-			contentAddressableStorageInfo = &info
-			contentAddressableStorage = authorizedBackend
+
+			// Create the Chunk List Storage (CLS).
+			chunkListStorageInfo, authorizedChunkListStorage, allAuthorizers, err := newScannableBlobAccess(
+				dependenciesGroup,
+				casConfiguration.ChunkListStorage,
+				blobstore_configuration.NewCLSBlobAccessCreator(
+					&chunkStorageInfo,
+					grpcClientFactory,
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				grpcClientFactory,
+			)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Chunk List Storage for Content Addressable Storage")
+			}
+			chunkListStorage = authorizedChunkListStorage
+			cacheCapabilitiesProviders = append(cacheCapabilitiesProviders, chunkListStorageInfo.BlobAccess)
+			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
+
+			contentAddressableStorageInfo = &blobstore_configuration.BlobAccessInfo{
+				BlobAccess:      cdc.NewCasChunkingBlobAccess(chunkStorageInfo.BlobAccess, chunkListStorageInfo.BlobAccess, int(configuration.MaximumMessageSizeBytes)),
+				DigestKeyFormat: chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat),
+			}
+			contentAddressableStorage = cdc.NewCasChunkingBlobAccess(authorizedChunkStorage, authorizedChunkListStorage, int(configuration.MaximumMessageSizeBytes))
 		}
 
 		// Action Cache (AC).
@@ -193,12 +226,14 @@ func main() {
 			configuration.GrpcServers,
 			func(s grpc.ServiceRegistrar) {
 				if contentAddressableStorage != nil {
+					contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(
+						contentAddressableStorage,
+						chunkListStorage,
+						configuration.MaximumMessageSizeBytes,
+					)
 					remoteexecution.RegisterContentAddressableStorageServer(
 						s,
-						grpcservers.NewContentAddressableStorageServer(
-							contentAddressableStorage,
-							configuration.MaximumMessageSizeBytes,
-						),
+						contentAddressableStorageServer,
 					)
 					bytestream.RegisterByteStreamServer(
 						s,

@@ -25,6 +25,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 	actionCache := mock.NewMockBlobAccess(ctrl)
 	contentAddressableStorage := mock.NewMockBlobAccess(ctrl)
+
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(
 		actionCache,
 		contentAddressableStorage,
