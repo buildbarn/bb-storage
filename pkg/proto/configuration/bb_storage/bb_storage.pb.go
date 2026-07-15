@@ -35,6 +35,7 @@ type ApplicationConfiguration struct {
 	MaximumMessageSizeBytes           int64                                      `protobuf:"varint,8,opt,name=maximum_message_size_bytes,json=maximumMessageSizeBytes,proto3" json:"maximum_message_size_bytes,omitempty"`
 	Global                            *global.Configuration                      `protobuf:"bytes,9,opt,name=global,proto3" json:"global,omitempty"`
 	ContentAddressableStorage         *ScannableBlobAccessConfiguration          `protobuf:"bytes,17,opt,name=content_addressable_storage,json=contentAddressableStorage,proto3" json:"content_addressable_storage,omitempty"`
+	ChunkListStorage                  *ScannableBlobAccessConfiguration          `protobuf:"bytes,22,opt,name=chunk_list_storage,json=chunkListStorage,proto3" json:"chunk_list_storage,omitempty"`
 	ActionCache                       *NonScannableBlobAccessConfiguration       `protobuf:"bytes,18,opt,name=action_cache,json=actionCache,proto3" json:"action_cache,omitempty"`
 	IndirectContentAddressableStorage *ScannableBlobAccessConfiguration          `protobuf:"bytes,10,opt,name=indirect_content_addressable_storage,json=indirectContentAddressableStorage,proto3" json:"indirect_content_addressable_storage,omitempty"`
 	InitialSizeClassCache             *NonScannableBlobAccessConfiguration       `protobuf:"bytes,11,opt,name=initial_size_class_cache,json=initialSizeClassCache,proto3" json:"initial_size_class_cache,omitempty"`
@@ -107,6 +108,13 @@ func (x *ApplicationConfiguration) GetGlobal() *global.Configuration {
 func (x *ApplicationConfiguration) GetContentAddressableStorage() *ScannableBlobAccessConfiguration {
 	if x != nil {
 		return x.ContentAddressableStorage
+	}
+	return nil
+}
+
+func (x *ApplicationConfiguration) GetChunkListStorage() *ScannableBlobAccessConfiguration {
+	if x != nil {
+		return x.ChunkListStorage
 	}
 	return nil
 }
@@ -292,7 +300,7 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_s
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_storage_proto_rawDesc = "" +
 	"\n" +
-	"Sgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x1aMgithub.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto\"\xbd\v\n" +
+	"Sgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_storage/bb_storage.proto\x12\"buildbarn.configuration.bb_storage\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/auth/auth.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x1aMgithub.com/buildbarn/bb-storage/pkg/proto/configuration/builder/builder.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/zstd/zstd.proto\"\xb1\f\n" +
 	"\x18ApplicationConfiguration\x12T\n" +
 	"\fgrpc_servers\x18\x04 \x03(\v21.buildbarn.configuration.grpc.ServerConfigurationR\vgrpcServers\x12l\n" +
 	"\n" +
@@ -300,7 +308,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb
 	"schedulers\x12;\n" +
 	"\x1amaximum_message_size_bytes\x18\b \x01(\x03R\x17maximumMessageSizeBytes\x12E\n" +
 	"\x06global\x18\t \x01(\v2-.buildbarn.configuration.global.ConfigurationR\x06global\x12\x84\x01\n" +
-	"\x1bcontent_addressable_storage\x18\x11 \x01(\v2D.buildbarn.configuration.bb_storage.ScannableBlobAccessConfigurationR\x19contentAddressableStorage\x12j\n" +
+	"\x1bcontent_addressable_storage\x18\x11 \x01(\v2D.buildbarn.configuration.bb_storage.ScannableBlobAccessConfigurationR\x19contentAddressableStorage\x12r\n" +
+	"\x12chunk_list_storage\x18\x16 \x01(\v2D.buildbarn.configuration.bb_storage.ScannableBlobAccessConfigurationR\x10chunkListStorage\x12j\n" +
 	"\faction_cache\x18\x12 \x01(\v2G.buildbarn.configuration.bb_storage.NonScannableBlobAccessConfigurationR\vactionCache\x12\x95\x01\n" +
 	"$indirect_content_addressable_storage\x18\n" +
 	" \x01(\v2D.buildbarn.configuration.bb_storage.ScannableBlobAccessConfigurationR!indirectContentAddressableStorage\x12\x80\x01\n" +
@@ -353,26 +362,27 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_storage_bb_s
 	3,  // 1: buildbarn.configuration.bb_storage.ApplicationConfiguration.schedulers:type_name -> buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry
 	5,  // 2: buildbarn.configuration.bb_storage.ApplicationConfiguration.global:type_name -> buildbarn.configuration.global.Configuration
 	2,  // 3: buildbarn.configuration.bb_storage.ApplicationConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
-	1,  // 4: buildbarn.configuration.bb_storage.ApplicationConfiguration.action_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
-	2,  // 5: buildbarn.configuration.bb_storage.ApplicationConfiguration.indirect_content_addressable_storage:type_name -> buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
-	1,  // 6: buildbarn.configuration.bb_storage.ApplicationConfiguration.initial_size_class_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
-	1,  // 7: buildbarn.configuration.bb_storage.ApplicationConfiguration.file_system_access_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
-	6,  // 8: buildbarn.configuration.bb_storage.ApplicationConfiguration.execute_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	7,  // 9: buildbarn.configuration.bb_storage.ApplicationConfiguration.supported_compressors:type_name -> build.bazel.remote.execution.v2.Compressor.Value
-	8,  // 10: buildbarn.configuration.bb_storage.ApplicationConfiguration.zstd_pool:type_name -> buildbarn.configuration.zstd.PoolConfiguration
-	9,  // 11: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	6,  // 12: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.get_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	6,  // 13: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.put_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	9,  // 14: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	6,  // 15: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.get_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	6,  // 16: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.put_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	6,  // 17: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.find_missing_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
-	10, // 18: buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry.value:type_name -> buildbarn.configuration.builder.SchedulerConfiguration
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	2,  // 4: buildbarn.configuration.bb_storage.ApplicationConfiguration.chunk_list_storage:type_name -> buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
+	1,  // 5: buildbarn.configuration.bb_storage.ApplicationConfiguration.action_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
+	2,  // 6: buildbarn.configuration.bb_storage.ApplicationConfiguration.indirect_content_addressable_storage:type_name -> buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration
+	1,  // 7: buildbarn.configuration.bb_storage.ApplicationConfiguration.initial_size_class_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
+	1,  // 8: buildbarn.configuration.bb_storage.ApplicationConfiguration.file_system_access_cache:type_name -> buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration
+	6,  // 9: buildbarn.configuration.bb_storage.ApplicationConfiguration.execute_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	7,  // 10: buildbarn.configuration.bb_storage.ApplicationConfiguration.supported_compressors:type_name -> build.bazel.remote.execution.v2.Compressor.Value
+	8,  // 11: buildbarn.configuration.bb_storage.ApplicationConfiguration.zstd_pool:type_name -> buildbarn.configuration.zstd.PoolConfiguration
+	9,  // 12: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	6,  // 13: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.get_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	6,  // 14: buildbarn.configuration.bb_storage.NonScannableBlobAccessConfiguration.put_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	9,  // 15: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	6,  // 16: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.get_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	6,  // 17: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.put_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	6,  // 18: buildbarn.configuration.bb_storage.ScannableBlobAccessConfiguration.find_missing_authorizer:type_name -> buildbarn.configuration.auth.AuthorizerConfiguration
+	10, // 19: buildbarn.configuration.bb_storage.ApplicationConfiguration.SchedulersEntry.value:type_name -> buildbarn.configuration.builder.SchedulerConfiguration
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() {
