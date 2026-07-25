@@ -78,10 +78,10 @@ func (bd *memoryMappedBlockDevice) WriteAt(p []byte, off int64) (int, error) {
 	nTotal := 0
 	for len(p) > 0 {
 		n, err := unix.Pwrite(bd.fd, p, off)
-		nTotal += n
 		if err != nil {
 			return nTotal, err
 		}
+		nTotal += n
 		p = p[n:]
 		off += int64(n)
 	}
