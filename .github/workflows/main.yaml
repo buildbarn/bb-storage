@@ -21,7 +21,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64'",
                "name": "linux_amd64: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -96,7 +96,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64_v3'",
                "name": "linux_amd64_v3: build${{ matrix.host.platform_name == 'linux_amd64_v3' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -171,7 +171,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
                "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -246,7 +246,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm'",
                "name": "linux_arm: build${{ matrix.host.platform_name == 'linux_arm' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm //..."
             },
             {
                "if": "matrix.host.upload",
@@ -321,7 +321,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
                "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -396,7 +396,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_amd64'",
                "name": "darwin_amd64: build${{ matrix.host.platform_name == 'darwin_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -471,7 +471,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
                "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -546,7 +546,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'freebsd_amd64'",
                "name": "freebsd_amd64: build${{ matrix.host.platform_name == 'freebsd_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 //..."
             },
             {
                "if": "matrix.host.upload",
@@ -621,7 +621,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
                "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 //..."
             },
             {
                "if": "matrix.host.upload",

@@ -84,7 +84,7 @@
         [{
           name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
           // Run tests only if we're not cross-compiling.
-          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:%s --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..." % [
+          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:%s //..." % [
             std.get(platform, 'testPlatform', platform.name),
             platform.name + if enableCgo then '_cgo' else '',
           ],

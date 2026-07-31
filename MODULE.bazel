@@ -19,6 +19,8 @@ bazel_dep(name = "rules_nodejs", version = "6.7.4")
 bazel_dep(name = "rules_shell", version = "0.8.0")
 bazel_dep(name = "toolchains_llvm", version = "1.7.0")
 
+register_toolchains("//tools/platforms:test_toolchain_running_linux_x86_32_on_x86_64")
+
 git_override(
     module_name = "bazel_remote_apis",
     commit = "becdd8f9ff811df88a22d3eadd6341753d51d167",
