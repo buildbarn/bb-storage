@@ -26,3 +26,37 @@ platform(
     parents = ["@rules_go//go/toolchain:linux_amd64"],
     visibility = ["//visibility:public"],
 )
+
+platform(
+    name = "host",
+    constraint_values = [
+        # If any of the @rules_go//go/toolchain:rules_go platforms above are
+        # used as target platform under `bazel test`,
+        # @bazel_tools//tools/test:default_test_toolchain does not match the
+        # default @platforms//host as execution platform because it is missing
+        # @rules_go//go/toolchain:cgo_off constraint.
+        #
+        # See also https://github.com/bazelbuild/bazel/issues/30560.
+        "@rules_go//go/toolchain:cgo_off",
+    ],
+    # The host is not remote.
+    exec_properties = {"no-remote-exec": "true"},
+    parents = ["@platforms//host"],
+    visibility = ["//visibility:public"],
+)
+
+# x86_32 binaries can run on x86_64, at least for Linux.
+toolchain(
+    name = "test_toolchain_running_linux_x86_32_on_x86_64",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_32",
+    ],
+    toolchain = "@bazel_tools//tools/test:empty_toolchain",
+    toolchain_type = "@bazel_tools//tools/test:default_test_toolchain_type",
+    visibility = ["//visibility:private"],
+)
