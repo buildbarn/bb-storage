@@ -8,7 +8,7 @@ load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 expand_template(
     name = "stamped_tags",
     out = "_stamped.tags.txt",
-    stamp_substitutions = {"_TAG_": "{{BUILD_SCM_TIMESTAMP}}-{{BUILD_SCM_REVISION}}"},
+    stamp_substitutions = {"_TAG_": "{{STABLE_BUILD_SCM_TIMESTAMP}}-{{STABLE_BUILD_SCM_REVISION}}"},
     substitutions = {"_TAG_": "0.0.0"},
     template = ["_TAG_"],
     visibility = ["//visibility:public"],
