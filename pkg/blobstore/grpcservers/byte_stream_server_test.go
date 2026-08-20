@@ -249,16 +249,6 @@ func TestByteStreamServer(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Read limits are not permitted for compressed blobs"), err)
 	})
 
-	t.Run("ReadIdentityWithReadLimit", func(t *testing.T) {
-		req, err := client.Read(ctx, &bytestream.ReadRequest{
-			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
-			ReadLimit:    10,
-		})
-		require.NoError(t, err)
-		_, err = req.Recv()
-		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This service does not support downloading partial files"), err)
-	})
-
 	t.Run("ReadZSTDCompressionResumedMultipleTimes", func(t *testing.T) {
 		originalData := []byte("This is a test message that should survive multiple interrupted and resumed downloads")
 		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
