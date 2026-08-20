@@ -27,6 +27,32 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func readAndDecompressZSTD(t *testing.T, ctx context.Context, client bytestream.ByteStreamClient, resourceName string, readOffset int64) []byte {
+	t.Helper()
+	req, err := client.Read(ctx, &bytestream.ReadRequest{
+		ResourceName: resourceName,
+		ReadOffset:   readOffset,
+	})
+	require.NoError(t, err)
+
+	var compressedData []byte
+	for {
+		response, err := req.Recv()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		compressedData = append(compressedData, response.Data...)
+	}
+
+	decoder, err := zstd.NewReader(nil)
+	require.NoError(t, err)
+	decompressedData, err := decoder.DecodeAll(compressedData, nil)
+	decoder.Close()
+	require.NoError(t, err)
+	return decompressedData
+}
+
 func TestByteStreamServer(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
@@ -200,6 +226,68 @@ func TestByteStreamServer(t *testing.T) {
 
 		// Compressed data should be smaller than original data.
 		require.Less(t, len(compressedData), len(originalData))
+	})
+
+	t.Run("ReadZSTDCompressionWithOffset", func(t *testing.T) {
+		originalData := []byte("This is a test message that should be compressed with ZSTD")
+		blobAccess.EXPECT().Get(
+			gomock.Any(),
+			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
+		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+
+		decompressedData := readAndDecompressZSTD(t, ctx, client, "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58", 17)
+		require.Equal(t, originalData[17:], decompressedData)
+	})
+
+	t.Run("ReadZSTDCompressionWithReadLimit", func(t *testing.T) {
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58",
+			ReadLimit:    10,
+		})
+		require.NoError(t, err)
+		_, err = req.Recv()
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Read limits are not permitted for compressed blobs"), err)
+	})
+
+	t.Run("ReadIdentityWithReadLimit", func(t *testing.T) {
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
+			ReadLimit:    10,
+		})
+		require.NoError(t, err)
+		_, err = req.Recv()
+		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This service does not support downloading partial files"), err)
+	})
+
+	t.Run("ReadZSTDCompressionResumedMultipleTimes", func(t *testing.T) {
+		originalData := []byte("This is a test message that should survive multiple interrupted and resumed downloads")
+		digestFunction := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+		generator := digestFunction.NewGenerator(int64(len(originalData)))
+		_, err := generator.Write(originalData)
+		require.NoError(t, err)
+		blobDigest := generator.Sum()
+		resourceName := fmt.Sprintf("compressed-blobs/zstd/%s/%d", blobDigest.GetHashString(), len(originalData))
+		offsets := []int64{0, 13, 47, int64(len(originalData))}
+
+		var downloadedData []byte
+		for i := 0; i < len(offsets)-1; i++ {
+			blobAccess.EXPECT().Get(
+				gomock.Any(),
+				blobDigest,
+			).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+
+			decompressedData := readAndDecompressZSTD(t, ctx, client, resourceName, offsets[i])
+
+			bytesConsumedBeforeInterruption := offsets[i+1] - offsets[i]
+			require.GreaterOrEqual(t, int64(len(decompressedData)), bytesConsumedBeforeInterruption)
+			downloadedData = append(downloadedData, decompressedData[:bytesConsumedBeforeInterruption]...)
+		}
+		require.Len(t, downloadedData, len(originalData))
+		downloadedDataGenerator := digestFunction.NewGenerator(int64(len(downloadedData)))
+		_, err = downloadedDataGenerator.Write(downloadedData)
+		require.NoError(t, err)
+		require.Equal(t, blobDigest, downloadedDataGenerator.Sum())
+		require.Equal(t, originalData, downloadedData)
 	})
 
 	t.Run("ReadUnsupportedCompression", func(t *testing.T) {

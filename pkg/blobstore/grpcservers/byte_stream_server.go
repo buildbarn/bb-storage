@@ -35,12 +35,18 @@ func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int, zst
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
-	if in.ReadLimit != 0 {
-		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
-	}
 	digest, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
 	if err != nil {
 		return err
+	}
+	if in.ReadLimit != 0 {
+		if compressor != remoteexecution.Compressor_IDENTITY {
+			// REAPI requires non-zero read limits on compressed ByteStream
+			// reads to be rejected with INVALID_ARGUMENT.
+			// https://github.com/bazelbuild/remote-apis/blob/becdd8f9ff811df88a22d3eadd6341753d51d167/build/bazel/remote/execution/v2/remote_execution.proto#L313-L317
+			return status.Error(codes.InvalidArgument, "Read limits are not permitted for compressed blobs")
+		}
+		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
 	ctx := out.Context()
 	switch compressor {
@@ -69,7 +75,21 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
 		}
 		defer encoder.Close()
-		return b.IntoWriter(encoder)
+
+		r := b.ToChunkReader(in.ReadOffset, s.readChunkSize)
+		defer r.Close()
+		for {
+			chunk, err := r.Read()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if _, err := encoder.Write(chunk); err != nil {
+				return err
+			}
+		}
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support downloading compression type: %s", compressor)
 	}
