@@ -7,14 +7,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
+	"github.com/buildbarn/bb-storage/pkg/storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type fileSystemAccessCacheServer struct {
-	blobAccess              blobstore.BlobAccess
-	maximumMessageSizeBytes int
+	blobAccess    blobstore.BlobAccess
+	profileReader storage.MessageReader[*fsac.FileSystemAccessProfile]
 }
 
 // NewFileSystemAccessCacheServer creates a gRPC service for serving the
@@ -22,10 +23,10 @@ type fileSystemAccessCacheServer struct {
 // that is specific to Buildbarn, used to store profiles of file system
 // access patterns of build actions. These profiles can be used to
 // perform readahead of objects stored in the action's input root.
-func NewFileSystemAccessCacheServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) fsac.FileSystemAccessCacheServer {
+func NewFileSystemAccessCacheServer(blobAccess blobstore.BlobAccess, profileReader storage.MessageReader[*fsac.FileSystemAccessProfile]) fsac.FileSystemAccessCacheServer {
 	return &fileSystemAccessCacheServer{
-		blobAccess:              blobAccess,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		blobAccess:    blobAccess,
+		profileReader: profileReader,
 	}
 }
 
@@ -43,14 +44,7 @@ func (s *fileSystemAccessCacheServer) GetFileSystemAccessProfile(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	previousExecutionStats, err := s.blobAccess.Get(ctx, digest).ToProto(
-		&fsac.FileSystemAccessProfile{},
-		s.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return previousExecutionStats.(*fsac.FileSystemAccessProfile), nil
+	return s.profileReader.ReadMessage(ctx, digest, &fsac.FileSystemAccessProfile{})
 }
 
 func (s *fileSystemAccessCacheServer) UpdateFileSystemAccessProfile(ctx context.Context, in *fsac.UpdateFileSystemAccessProfileRequest) (*emptypb.Empty, error) {

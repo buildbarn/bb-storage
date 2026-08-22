@@ -321,6 +321,16 @@ gomock(
 )
 
 gomock(
+    name = "storage",
+    out = "storage.go",
+    interfaces = ["MessageReader"],
+    library = "//pkg/storage",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/storage:message_reader.go",
+)
+
+gomock(
     name = "trace",
     out = "trace.go",
     interfaces = [
@@ -380,6 +390,7 @@ go_library(
         "prometheus.go",
         "random.go",
         "remoteexecution.go",
+        "storage.go",
         "trace.go",
         "trace_wrap.go",
         "util.go",
@@ -416,6 +427,7 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_golang_google_protobuf//proto",
         "@org_uber_go_mock//gomock",
     ],
 )
