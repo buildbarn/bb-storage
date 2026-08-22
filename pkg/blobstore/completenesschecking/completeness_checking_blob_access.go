@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -74,6 +75,7 @@ func (q *findMissingQueue) finalize() error {
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess
 	contentAddressableStorage blobstore.BlobAccess
+	treeReader                cas.StreamReader
 	batchSize                 int
 	maximumMessageSizeBytes   int
 	maximumTotalTreeSizeBytes int64
@@ -93,10 +95,11 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache, contentAddressableStorage blobstore.BlobAccess, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		contentAddressableStorage: contentAddressableStorage,
+		treeReader:                treeReader,
 		batchSize:                 batchSize,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 		maximumTotalTreeSizeBytes: maximumTotalTreeSizeBytes,
@@ -152,7 +155,10 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		}
 		remainingTreeSizeBytes -= sizeBytes
 
-		r := ba.contentAddressableStorage.Get(ctx, treeDigest).ToReader()
+		r, err := ba.treeReader.ReadStream(ctx, treeDigest)
+		if err != nil {
+			return err
+		}
 		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
 			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
 				directoryMessage, err := buffer.NewProtoBufferFromReader(

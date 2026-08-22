@@ -1,4 +1,4 @@
-package replication
+package cas
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 type blobToReplicate struct {
 	digest       digest.Digest
-	expanderFunc func(ctx context.Context, b buffer.Buffer) error
+	expanderFunc func(ctx context.Context, d digest.Digest) error
 }
 
 // NestedBlobReplicator is a helper type for BlobReplicator that can be
@@ -24,9 +24,12 @@ type blobToReplicate struct {
 // Addressable Storage (CAS). In the case of the REv2 protocol, these
 // are Action, Directory and Tree messages.
 type NestedBlobReplicator struct {
-	replicator              BlobReplicator
+	replicator              Replicator
 	digestKeyFormat         digest.KeyFormat
 	maximumMessageSizeBytes int
+	actionReader            MessageReader[*remoteexecution.Action]
+	directoryReader         MessageReader[*remoteexecution.Directory]
+	treeReader              StreamReader
 
 	lock             sync.Mutex
 	blobsSeen        map[string]struct{}
@@ -37,17 +40,20 @@ type NestedBlobReplicator struct {
 
 // NewNestedBlobReplicator creates a new NestedBlobReplicator that does
 // not have any objects to be replicated queued.
-func NewNestedBlobReplicator(replicator BlobReplicator, digestKeyFormat digest.KeyFormat, maximumMessageSizeBytes int) *NestedBlobReplicator {
+func NewNestedBlobReplicator(replicator Replicator, maximumMessageSizeBytes int, actionReader MessageReader[*remoteexecution.Action], directoryReader MessageReader[*remoteexecution.Directory], treeReader StreamReader, digestKeyFormat digest.KeyFormat) *NestedBlobReplicator {
 	return &NestedBlobReplicator{
 		replicator:              replicator,
-		digestKeyFormat:         digestKeyFormat,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		digestKeyFormat:         digestKeyFormat,
+		actionReader:            actionReader,
+		directoryReader:         directoryReader,
+		treeReader:              treeReader,
 
 		blobsSeen: map[string]struct{}{},
 	}
 }
 
-func (nr *NestedBlobReplicator) enqueue(blobDigest digest.Digest, expanderFunc func(ctx context.Context, b buffer.Buffer) error) {
+func (nr *NestedBlobReplicator) enqueue(blobDigest digest.Digest, expanderFunc func(ctx context.Context, d digest.Digest) error) {
 	nr.lock.Lock()
 	defer nr.lock.Unlock()
 
@@ -73,12 +79,11 @@ func (nr *NestedBlobReplicator) maybeWakeUpLocked() {
 // referenced input root and Command message will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 	digestFunction := actionDigest.GetDigestFunction()
-	nr.enqueue(actionDigest, func(ctx context.Context, b buffer.Buffer) error {
-		actionMessage, err := b.ToProto(&remoteexecution.Action{}, nr.maximumMessageSizeBytes)
+	nr.enqueue(actionDigest, func(ctx context.Context, d digest.Digest) error {
+		action, err := nr.actionReader.ReadMessage(ctx, d)
 		if err != nil {
 			return err
 		}
-		action := actionMessage.(*remoteexecution.Action)
 
 		inputRootDigest, err := digestFunction.NewDigestFromProto(action.InputRootDigest)
 		if err != nil {
@@ -90,7 +95,7 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 		if err != nil {
 			return util.StatusWrap(err, "Invalid command digest")
 		}
-		if err := nr.replicator.ReplicateMultiple(ctx, commandDigest.ToSingletonSet()); err != nil {
+		if err := nr.replicator.Replicate(ctx, commandDigest.ToSingletonSet()); err != nil {
 			return util.StatusWrap(err, "Failed to replicate command")
 		}
 		return nil
@@ -102,12 +107,11 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 // well, recursively.
 func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) {
 	digestFunction := directoryDigest.GetDigestFunction()
-	nr.enqueue(directoryDigest, func(ctx context.Context, b buffer.Buffer) error {
-		directoryMessage, err := b.ToProto(&remoteexecution.Directory{}, nr.maximumMessageSizeBytes)
+	nr.enqueue(directoryDigest, func(ctx context.Context, d digest.Digest) error {
+		directory, err := nr.directoryReader.ReadMessage(ctx, d)
 		if err != nil {
 			return err
 		}
-		directory := directoryMessage.(*remoteexecution.Directory)
 
 		for i, childDirectory := range directory.Directories {
 			childDigest, err := digestFunction.NewDigestFromProto(childDirectory.Digest)
@@ -125,7 +129,7 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 			}
 			childFileDigests.Add(childFileDigest)
 		}
-		if err := nr.replicator.ReplicateMultiple(ctx, childFileDigests.Build()); err != nil {
+		if err := nr.replicator.Replicate(ctx, childFileDigests.Build()); err != nil {
 			return util.StatusWrap(err, "Failed to replicate files")
 		}
 		return nil
@@ -136,8 +140,11 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 // file will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 	digestFunction := treeDigest.GetDigestFunction()
-	nr.enqueue(treeDigest, func(ctx context.Context, b buffer.Buffer) error {
-		r := b.ToReader()
+	nr.enqueue(treeDigest, func(ctx context.Context, d digest.Digest) error {
+		r, err := nr.treeReader.ReadStream(ctx, d)
+		if err != nil {
+			return err
+		}
 		defer r.Close()
 
 		// Gather digests of files contained in the directories.
@@ -173,7 +180,7 @@ func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 			return err
 		}
 
-		if err := nr.replicator.ReplicateMultiple(ctx, childFileDigests.Build()); err != nil {
+		if err := nr.replicator.Replicate(ctx, childFileDigests.Build()); err != nil {
 			return util.StatusWrap(err, "Failed to replicate files")
 		}
 		return nil
@@ -214,9 +221,10 @@ func (nr *NestedBlobReplicator) Replicate(ctx context.Context) error {
 		// Replicate a single object.
 		nr.blobsReplicating++
 		nr.lock.Unlock()
+		nr.replicator.Replicate(ctx, blobToReplicate.digest.ToSingletonSet())
 		err := blobToReplicate.expanderFunc(
 			ctx,
-			nr.replicator.ReplicateSingle(ctx, blobToReplicate.digest),
+			blobToReplicate.digest,
 		)
 		nr.lock.Lock()
 		nr.blobsReplicating--

@@ -1,38 +1,43 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
+# Exported for mock generation purposes.
+exports_files(["message_reader.go"])
+
 go_library(
-    name = "completenesschecking",
-    srcs = ["completeness_checking_blob_access.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking",
+    name = "cas",
+    srcs = [
+        "blob_access_message_reader.go",
+        "blob_access_replicator.go",
+        "blob_access_stream_reader.go",
+        "message_reader.go",
+        "nested_blob_replicator.go",
+        "replicator.go",
+        "stream_reader.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/cas",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
-        "//pkg/cas",
+        "//pkg/blobstore/replication",
         "//pkg/digest",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 
 go_test(
-    name = "completenesschecking_test",
-    srcs = ["completeness_checking_blob_access_test.go"],
+    name = "cas_test",
+    srcs = ["nested_blob_replicator_test.go"],
     deps = [
-        ":completenesschecking",
+        ":cas",
         "//internal/mock",
         "//pkg/blobstore/buffer",
         "//pkg/digest",
-        "//pkg/testutil",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
         "@org_uber_go_mock//gomock",
     ],
 )

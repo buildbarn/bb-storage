@@ -8,7 +8,6 @@ go_library(
         "deduplicating_blob_replicator.go",
         "local_blob_replicator.go",
         "metrics_blob_replicator.go",
-        "nested_blob_replicator.go",
         "noop_blob_replicator.go",
         "queued_blob_replicator.go",
         "remote_blob_replicator.go",
@@ -30,7 +29,6 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//types/known/emptypb",
         "@org_golang_x_sync//semaphore",
     ],
@@ -42,7 +40,6 @@ go_test(
         "deduplicating_blob_replicator_test.go",
         "local_blob_replicator_test.go",
         "metrics_blob_replicator_test.go",
-        "nested_blob_replicator_test.go",
         "queued_blob_replicator_test.go",
     ],
     deps = [
