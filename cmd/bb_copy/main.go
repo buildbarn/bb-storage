@@ -4,8 +4,9 @@ import (
 	"context"
 	"os"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -63,7 +64,7 @@ func main() {
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
-		replicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
+		blobReplicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
 			dependenciesGroup,
 			configuration.Replicator,
 			source.BlobAccess,
@@ -71,12 +72,15 @@ func main() {
 			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
 		)
 		if err != nil {
-			return util.StatusWrap(err, "Failed to create replicator")
+			return util.StatusWrap(err, "Failed to create blob replicator")
 		}
-		nestedReplicator := replication.NewNestedBlobReplicator(
-			replicator,
-			sink.DigestKeyFormat,
+		nestedReplicator := cas.NewNestedBlobReplicator(
+			cas.NewBlobAccessReplicator(blobReplicator),
 			int(configuration.MaximumMessageSizeBytes),
+			cas.NewBlobAccessMessageReader[remoteexecution.Action](source.BlobAccess, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewBlobAccessMessageReader[remoteexecution.Directory](source.BlobAccess, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewBlobAccessStreamReader(source.BlobAccess),
+			sink.DigestKeyFormat,
 		)
 
 		instanceName, err := digest.NewInstanceName(configuration.InstanceName)
@@ -101,7 +105,7 @@ func main() {
 			if err != nil {
 				return util.StatusWrapf(err, "Invalid blob digest at index %d", i)
 			}
-			if err := replicator.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
+			if err := blobReplicator.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
 				return util.StatusWrapf(err, "Failed to schedule replication of blob with digest %#v", blobDigest.String())
 			}
 		}

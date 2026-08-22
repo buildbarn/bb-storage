@@ -153,6 +153,32 @@ gomock(
 )
 
 gomock(
+    name = "cas",
+    out = "cas.go",
+    interfaces = [
+        "StreamReader",
+        "Replicator",
+    ],
+    library = "//pkg/cas",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+)
+
+# Normally we would put the mocks of this interface in cas.go but as it
+# is generic it needs to be supplied as a source file which we therefore
+# put in cas_message_reader.go.
+gomock(
+    name = "cas_message_reader",
+    out = "cas_message_reader.go",
+    interfaces = ["MessageReader"],
+    library = "//pkg/cas",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/cas:message_reader.go",
+)
+
+gomock(
     name = "clock",
     out = "clock.go",
     interfaces = [
@@ -367,6 +393,8 @@ go_library(
         "buffer.go",
         "builder.go",
         "capabilities.go",
+        "cas.go",
+        "cas_message_reader.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
@@ -416,6 +444,7 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_golang_google_protobuf//proto",
         "@org_uber_go_mock//gomock",
     ],
 )
