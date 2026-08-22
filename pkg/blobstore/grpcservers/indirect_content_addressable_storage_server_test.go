@@ -23,7 +23,8 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	referenceReader := mock.NewMockMessageReader[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, referenceReader)
 
 	t.Run("BadDigest", func(t *testing.T) {
 		// Malformed requests cannot be executed.
@@ -107,7 +108,8 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	referenceReader := mock.NewMockMessageReader[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, referenceReader)
 
 	t.Run("Mixed", func(t *testing.T) {
 		// Send a single batch update request containing three
@@ -212,7 +214,8 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	referenceReader := mock.NewMockMessageReader[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, referenceReader)
 
 	t.Run("BadDigest", func(t *testing.T) {
 		// Malformed requests cannot be executed.
@@ -228,11 +231,12 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Errors returned by the backend should be forwarded.
-		blobAccess.EXPECT().Get(
+		referenceReader.EXPECT().ReadMessage(
 			ctx,
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+			gomock.Any(),
 		).
-			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hardware failure")))
+			Return(nil, status.Error(codes.Internal, "Hardware failure"))
 
 		_, err := s.GetReference(ctx, &icas.GetReferenceRequest{
 			InstanceName:   "example",
@@ -246,20 +250,18 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
-		dataIntegrityCallback.EXPECT().Call(true)
-		blobAccess.EXPECT().Get(
+		referenceReader.EXPECT().ReadMessage(
 			ctx,
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		).
-			Return(buffer.NewProtoBufferFromProto(
-				&icas.Reference{
-					Medium: &icas.Reference_HttpUrl{
-						HttpUrl: "http://example.com/file3.txt",
-					},
+			gomock.Any(),
+		).Return(
+			&icas.Reference{
+				Medium: &icas.Reference_HttpUrl{
+					HttpUrl: "http://example.com/file3.txt",
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call),
-			))
+			},
+			nil,
+		)
 
 		resp, err := s.GetReference(ctx, &icas.GetReferenceRequest{
 			InstanceName:   "example",

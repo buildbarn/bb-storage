@@ -7,14 +7,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
+	"github.com/buildbarn/bb-storage/pkg/storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type initialSizeClassCacheServer struct {
-	blobAccess              blobstore.BlobAccess
-	maximumMessageSizeBytes int
+	blobAccess  blobstore.BlobAccess
+	statsReader storage.MessageReader[*iscc.PreviousExecutionStats]
 }
 
 // NewInitialSizeClassCacheServer creates a gRPC service for serving the
@@ -23,10 +24,10 @@ type initialSizeClassCacheServer struct {
 // execution times of actions, so that it can make better predictions
 // about which size class to pick during future invocations of similar
 // actions.
-func NewInitialSizeClassCacheServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) iscc.InitialSizeClassCacheServer {
+func NewInitialSizeClassCacheServer(blobAccess blobstore.BlobAccess, statsReader storage.MessageReader[*iscc.PreviousExecutionStats]) iscc.InitialSizeClassCacheServer {
 	return &initialSizeClassCacheServer{
-		blobAccess:              blobAccess,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		blobAccess:  blobAccess,
+		statsReader: statsReader,
 	}
 }
 
@@ -44,14 +45,7 @@ func (s *initialSizeClassCacheServer) GetPreviousExecutionStats(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
-	previousExecutionStats, err := s.blobAccess.Get(ctx, digest).ToProto(
-		&iscc.PreviousExecutionStats{},
-		s.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return previousExecutionStats.(*iscc.PreviousExecutionStats), nil
+	return s.statsReader.ReadMessage(ctx, digest, &iscc.PreviousExecutionStats{})
 }
 
 func (s *initialSizeClassCacheServer) UpdatePreviousExecutionStats(ctx context.Context, in *iscc.UpdatePreviousExecutionStatsRequest) (*emptypb.Empty, error) {
