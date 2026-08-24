@@ -13,8 +13,8 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	cloud_gcp "github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -28,7 +28,7 @@ import (
 
 type referenceExpandingBlobAccess struct {
 	indirectContentAddressableStorage blobstore.BlobAccess
-	contentAddressableStorage         cdc.ContentAddressableStorage
+	contentAddressableStorage         cas.ContentAddressableStorage
 	httpClient                        *http.Client
 	s3Client                          cloud_aws.S3Client
 	gcsClient                         cloud_gcp.StorageClient
@@ -50,7 +50,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess, contentAddressableStorage cdc.ContentAddressableStorage, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess, contentAddressableStorage cas.ContentAddressableStorage, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		contentAddressableStorage:         contentAddressableStorage,
@@ -137,7 +137,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 			return buffer.NewBufferFromError(util.StatusWrapWithCode(err, codes.Internal, "Invalid digest"))
 		}
 
-		r, err = cdc.GetReadCloser(ctx, ba.contentAddressableStorage, referenceDigest)
+		r, err = cas.GetReadCloser(ctx, ba.contentAddressableStorage, referenceDigest)
 		if err != nil {
 			return buffer.NewBufferFromError(err)
 		}

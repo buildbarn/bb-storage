@@ -18,6 +18,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -640,7 +641,7 @@ func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuratio
 // Content Addressable Storage (CAS) and a BlobAccess for the Action
 // Cache. Most Buildbarn components tend to require access to both these
 // data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cdc.ContentAddressableStorage, blobstore.BlobAccess, error) {
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cas.ContentAddressableStorage, blobstore.BlobAccess, error) {
 	contentAddressableStorage, _, _, _, _, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
@@ -665,7 +666,7 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 // NewCASFromConfiguration is a convenience function to create a
 // ContentAddressableStorage (CAS) and its constituent parts from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cdc.ContentAddressableStorage, blobstore.BlobAccess, blobstore.BlobAccess, chunklist.Fetcher, cdc.ParametersFetcher, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cas.ContentAddressableStorage, blobstore.BlobAccess, blobstore.BlobAccess, chunklist.Fetcher, cdc.ParametersFetcher, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
@@ -713,7 +714,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		cdcParametersFetcher = cdc.NewCachingParametersFetcher(cdcParametersFetcher, cache)
 	}
 
-	contentAddressableStorage := cdc.NewContentAddressableStorage(chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat))
+	contentAddressableStorage := cas.NewContentAddressableStorage(chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat))
 
 	return contentAddressableStorage, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, nil
 }

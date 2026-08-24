@@ -1,4 +1,4 @@
-package cdc
+package cas
 
 import (
 	"context"

@@ -8,11 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/referenceexpanding"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -127,7 +127,7 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			return BlobAccessInfo{}, "", err
 		}
 
-		var contentAddressableStorage cdc.ContentAddressableStorage
+		var contentAddressableStorage cas.ContentAddressableStorage
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
 			contentAddressableStorage, _, _, _, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
 		} else {

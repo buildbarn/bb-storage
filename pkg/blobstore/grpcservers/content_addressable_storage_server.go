@@ -4,8 +4,8 @@ import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -14,13 +14,13 @@ import (
 )
 
 type contentAddressableStorageServer struct {
-	contentAddressableStorage cdc.ContentAddressableStorage
+	contentAddressableStorage cas.ContentAddressableStorage
 	maximumMessageSizeBytes   int64
 }
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(contentAddressableStorage cdc.ContentAddressableStorage, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(contentAddressableStorage cas.ContentAddressableStorage, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		contentAddressableStorage: contentAddressableStorage,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
@@ -102,7 +102,7 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 		Responses: make([]*remoteexecution.BatchReadBlobsResponse_Response, 0, len(in.Digests)),
 	}
 	for i, reqDigest := range in.Digests {
-		data, err := cdc.GetBytes(
+		data, err := cas.GetBytes(
 			ctx,
 			s.contentAddressableStorage,
 			digests[i],
@@ -136,7 +136,7 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 	for _, request := range in.Requests {
 		digest, err := digestFunction.NewDigestFromProto(request.Digest)
 		if err == nil {
-			err = cdc.PutBytes(
+			err = cas.PutBytes(
 				ctx,
 				s.contentAddressableStorage,
 				digest,
@@ -210,7 +210,7 @@ func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *rem
 	if err != nil {
 		return nil, err
 	}
-	if cdc.IsSingleChunk(params, blobDigest) {
+	if cas.IsSingleChunk(params, blobDigest) {
 		missing, err := s.contentAddressableStorage.FindMissing(ctx, blobDigest.ToSingletonSet())
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to check blob existence")

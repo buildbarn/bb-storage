@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cas",
+    srcs = [
+        "content_addressable_storage.go",
+        "operations.go",
+        "put_proto.go",
+        "read_blob_at.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/cas",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/blobstore",
+        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunklist",
+        "//pkg/digest",
+        "//pkg/util",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

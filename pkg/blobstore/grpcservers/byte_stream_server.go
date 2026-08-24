@@ -6,7 +6,7 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
@@ -17,14 +17,14 @@ import (
 )
 
 type byteStreamServer struct {
-	contentAddressableStorage cdc.ContentAddressableStorage
+	contentAddressableStorage cas.ContentAddressableStorage
 	zstdPool                  bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to a BlobAccess. It is used by Bazel to access the
 // Content Addressable Storage (CAS).
-func NewByteStreamServer(contentAddressableStorage cdc.ContentAddressableStorage, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+func NewByteStreamServer(contentAddressableStorage cas.ContentAddressableStorage, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		contentAddressableStorage: contentAddressableStorage,
 		zstdPool:                  zstdPool,
@@ -57,11 +57,11 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		}
 		defer encoder.Close()
 		w = encoder
-		return cdc.IntoWriter(ctx, s.contentAddressableStorage, d, in.ReadOffset, encoder)
+		return cas.IntoWriter(ctx, s.contentAddressableStorage, d, in.ReadOffset, encoder)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support downloading compression type: %s", compressor)
 	}
-	return cdc.IntoWriter(ctx, s.contentAddressableStorage, d, in.ReadOffset, w)
+	return cas.IntoWriter(ctx, s.contentAddressableStorage, d, in.ReadOffset, w)
 }
 
 // readStreamWriter adapts the ByteStream_ReadServer to an io.Writer.
@@ -113,7 +113,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
 
-	if err := cdc.PutReader(ctx, s.contentAddressableStorage, d, r); err != nil {
+	if err := cas.PutReader(ctx, s.contentAddressableStorage, d, r); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{

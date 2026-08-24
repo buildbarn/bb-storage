@@ -7,8 +7,8 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -22,7 +22,7 @@ import (
 type findMissingQueue struct {
 	context                   context.Context
 	digestFunction            digest.Function
-	contentAddressableStorage cdc.ContentAddressableStorage
+	contentAddressableStorage cas.ContentAddressableStorage
 	batchSize                 int
 
 	pending digest.SetBuilder
@@ -74,7 +74,7 @@ func (q *findMissingQueue) finalize() error {
 
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess
-	contentAddressableStorage cdc.ContentAddressableStorage
+	contentAddressableStorage cas.ContentAddressableStorage
 	batchSize                 int
 	maximumMessageSizeBytes   int
 	maximumTotalTreeSizeBytes int64
@@ -94,7 +94,7 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage cdc.ContentAddressableStorage, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess, contentAddressableStorage cas.ContentAddressableStorage, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		contentAddressableStorage: contentAddressableStorage,
@@ -152,7 +152,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			return status.Errorf(codes.NotFound, "Combined size of all output directories exceeds maximum limit of %d bytes", ba.maximumTotalTreeSizeBytes)
 		}
 		remainingTreeSizeBytes -= sizeBytes
-		r, err := cdc.GetReadCloser(ctx, ba.contentAddressableStorage, treeDigest)
+		r, err := cas.GetReadCloser(ctx, ba.contentAddressableStorage, treeDigest)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package cdc
+package cas
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"runtime/debug"
 
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -16,7 +17,7 @@ import (
 )
 
 // IsSingleChunk checks if a digest is represented by a single chunk.
-func IsSingleChunk(params Parameters, d digest.Digest) bool {
+func IsSingleChunk(params cdc.Parameters, d digest.Digest) bool {
 	return d.GetSizeBytes() < 2*params.MinChunkSizeBytes
 }
 
@@ -107,7 +108,7 @@ func PutReader(ctx context.Context, cas ContentAddressableStorage, d digest.Dige
 	}
 
 	digestFunction := d.GetDigestFunction()
-	chunker := NewReaderChunker(digestFunction, r, params.MinChunkSizeBytes, params.HorizonSizeBytes)
+	chunker := cdc.NewReaderChunker(digestFunction, r, params.MinChunkSizeBytes, params.HorizonSizeBytes)
 	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
 
 	chunkList := make(chunklist.ChunkList, 0, d.GetSizeBytes()/params.MinChunkSizeBytes+1)
@@ -146,7 +147,7 @@ func PutReader(ctx context.Context, cas ContentAddressableStorage, d digest.Dige
 	}
 
 	// We generated and validated this chunk list ourselves.
-	ctx = NewContextWithChunkListValidationBypass(ctx)
+	ctx = cdc.NewContextWithChunkListValidationBypass(ctx)
 	if err := cas.PutManifest(ctx, d, chunkList); err != nil {
 		return util.StatusWrap(err, "Could not save chunk list for blob")
 	}

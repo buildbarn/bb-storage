@@ -1,10 +1,11 @@
-package cdc
+package cas
 
 import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -13,7 +14,7 @@ import (
 type contentAddressableStorage struct {
 	chunkStorage         blobstore.BlobAccess
 	chunkListFetcher     chunklist.Fetcher
-	cdcParametersFetcher ParametersFetcher
+	cdcParametersFetcher cdc.ParametersFetcher
 	chunkListStorage     blobstore.BlobAccess
 	digestKeyFormat      digest.KeyFormat
 }
@@ -25,7 +26,7 @@ type ContentAddressableStorage interface {
 	// CS and CLS.
 	GetDigestKeyFormat() digest.KeyFormat
 	// FetchCDCParameters fetches the CDC parameters of the CAS.
-	FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (Parameters, error)
+	FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (cdc.Parameters, error)
 	// FindMissing returns the set of digests that are not present in
 	// the CAS.
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)
@@ -46,12 +47,12 @@ type ContentAddressableStorage interface {
 var _ chunklist.ChunkFetcher = ContentAddressableStorage(nil)
 
 // ContentAddressableStorage implements the ParametersFetcher interface.
-var _ ParametersFetcher = ContentAddressableStorage(nil)
+var _ cdc.ParametersFetcher = ContentAddressableStorage(nil)
 
 // NewContentAddressableStorage creates an interface towards the Content
 // Addressable Storage (CAS) that allows access to arbitrary sized
 // objects from the chunks described in the chunk list.
-func NewContentAddressableStorage(chunkStorage, chunkListStorage blobstore.BlobAccess, chunkListFetcher chunklist.Fetcher, cdcParametersFetcher ParametersFetcher, digestKeyFormat digest.KeyFormat) ContentAddressableStorage {
+func NewContentAddressableStorage(chunkStorage, chunkListStorage blobstore.BlobAccess, chunkListFetcher chunklist.Fetcher, cdcParametersFetcher cdc.ParametersFetcher, digestKeyFormat digest.KeyFormat) ContentAddressableStorage {
 	return &contentAddressableStorage{
 		chunkStorage:         chunkStorage,
 		chunkListStorage:     chunkListStorage,
@@ -65,7 +66,7 @@ func (cas *contentAddressableStorage) GetDigestKeyFormat() digest.KeyFormat {
 	return cas.digestKeyFormat
 }
 
-func (cas *contentAddressableStorage) FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (Parameters, error) {
+func (cas *contentAddressableStorage) FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (cdc.Parameters, error) {
 	return cas.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
 }
 

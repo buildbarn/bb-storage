@@ -8,8 +8,8 @@ go_library(
     deps = [
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/cdc",
         "//pkg/blobstore/slicing",
+        "//pkg/cas",
         "//pkg/cloud/aws",
         "//pkg/cloud/gcp",
         "//pkg/digest",

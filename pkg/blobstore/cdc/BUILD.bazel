@@ -6,19 +6,12 @@ go_library(
         "bypass.go",
         "caching_parameters_fetcher.go",
         "chunker.go",
-        "content_addressable_storage.go",
-        "operations.go",
         "parameters.go",
-        "put_proto.go",
-        "read_blob_at.go",
         "reader_chunker.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/cdc",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/chunklist",
         "//pkg/capabilities",
         "//pkg/digest",
         "//pkg/ttlcache",
@@ -26,7 +19,6 @@ go_library(
         "@com_github_buildbarn_go_cdc//:go-cdc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
     ],
 )
 

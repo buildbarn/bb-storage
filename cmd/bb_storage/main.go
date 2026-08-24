@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -55,10 +56,12 @@ func main() {
 		var cacheCapabilitiesAuthorizers []auth.Authorizer
 
 		// Content Addressable Storage (CAS).
-		var contentAddressableStorage cdc.ContentAddressableStorage
-		var authorizedContentAddressableStorage cdc.ContentAddressableStorage
+		var contentAddressableStorage cas.ContentAddressableStorage
+		var authorizedContentAddressableStorage cas.ContentAddressableStorage
 		if configuration.ContentAddressableStorageServer != nil {
-			cas, chunkStorage, chunkListStorage, _, cdcParametersFetcher, err := blobstore_configuration.NewCASFromConfiguration(
+			var chunkStorage, chunkListStorage blobstore.BlobAccess
+			var cdcParametersFetcher cdc.ParametersFetcher
+			contentAddressableStorage, chunkStorage, chunkListStorage, _, cdcParametersFetcher, err = blobstore_configuration.NewCASFromConfiguration(
 				dependenciesGroup,
 				configuration.ContentAddressableStorageServer.ContentAddressableStorage,
 				grpcClientFactory,
@@ -68,7 +71,6 @@ func main() {
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
-			contentAddressableStorage = cas
 
 			// Create authorizers.
 			getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.GetAuthorizer, dependenciesGroup, grpcClientFactory)
@@ -88,7 +90,7 @@ func main() {
 			authorizedChunkStorage := blobstore.NewAuthorizingBlobAccess(chunkStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
 			authorizedChunkListStorage := blobstore.NewAuthorizingBlobAccess(chunkListStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
 			authorizedChunkListFetcher := blobstore.NewBlobAccessChunkListFetcher(authorizedChunkListStorage, int(configuration.MaximumMessageSizeBytes))
-			authorizedContentAddressableStorage = cdc.NewContentAddressableStorage(
+			authorizedContentAddressableStorage = cas.NewContentAddressableStorage(
 				authorizedChunkStorage,
 				authorizedChunkListStorage,
 				authorizedChunkListFetcher,

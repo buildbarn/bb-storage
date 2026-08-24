@@ -3,10 +3,10 @@ package configuration
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -32,7 +32,7 @@ type acBlobAccessCreator struct {
 	protoBlobAccessCreator
 	protoBlobReplicatorCreator
 
-	contentAddressableStorage cdc.ContentAddressableStorage
+	contentAddressableStorage cas.ContentAddressableStorage
 	grpcClientFactory         grpc.ClientFactory
 	maximumMessageSizeBytes   int
 }
@@ -40,7 +40,7 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage cdc.ContentAddressableStorage, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(contentAddressableStorage cas.ContentAddressableStorage, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &acBlobAccessCreator{
 		contentAddressableStorage: contentAddressableStorage,
 		grpcClientFactory:         grpcClientFactory,
