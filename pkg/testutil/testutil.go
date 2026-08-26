@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/status"
@@ -14,22 +15,20 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// MustMarshal is a helper that requires a proto message to succesfully
-// marshal to a slice of bytes.
-func MustMarshal(t *testing.T, msg proto.Message) []byte {
+// FileReaderIsProto is a helper function that requires a
+// filesystem.FileReader to contain the binary representation of a
+// specific proto object. The resulting content gets stored in the
+// actual parameter.
+func FileReaderIsProto[T proto.Message](t *testing.T, r filesystem.FileReader, expected, actual T) {
 	t.Helper()
-	b, err := proto.Marshal(msg)
+	len, err := r.Len()
 	require.NoError(t, err)
-	return b
-}
-
-// MustUnmarshal is a helper that requires a byte slice to unmarshal
-// into a proto message.
-func MustUnmarshal[T proto.Message](t *testing.T, data []byte, m T) T {
-	t.Helper()
-	err := proto.Unmarshal(data, m)
+	bytes := make([]byte, len)
+	n, err := r.ReadAt(bytes, 0)
 	require.NoError(t, err)
-	return m
+	require.Equal(t, len, int64(n))
+	require.NoError(t, proto.Unmarshal(bytes, actual))
+	RequireEqualProto(t, expected, actual)
 }
 
 // RequireEqualProto asserts that the two passed protocol buffer
