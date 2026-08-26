@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"runtime/debug"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
@@ -136,7 +135,6 @@ func PutReader(ctx context.Context, cas ContentAddressableStorage, d digest.Dige
 
 	// Verify the whole blob against the advertised digest.
 	if actual := wholeGen.Sum(); actual != d {
-		debug.PrintStack()
 		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
 	}
 
