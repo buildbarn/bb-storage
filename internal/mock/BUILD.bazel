@@ -76,7 +76,10 @@ gomock(
 gomock(
     name = "blobstore_replication",
     out = "blobstore_replication.go",
-    interfaces = ["BlobReplicator"],
+    interfaces = [
+        "BlobReplicator",
+        "BlobStreamReader",
+    ],
     library = "//pkg/blobstore/replication",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",

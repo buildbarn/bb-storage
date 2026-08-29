@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -29,6 +32,14 @@ import (
 // When used in combination with ZIPReadingBlobAccess and
 // ZIPWritingBlobAccess, this tool can also be used to backup and
 // restore parts of the Content Addressable Storage.
+
+type blobAccessStreamReader struct {
+	blobAccess blobstore.BlobAccess
+}
+
+func (r *blobAccessStreamReader) ReadStream(ctx context.Context, d digest.Digest) (io.ReadCloser, error) {
+	return r.blobAccess.Get(ctx, d).ToReader(), nil
+}
 
 func main() {
 	program.RunMain(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
@@ -75,8 +86,11 @@ func main() {
 		}
 		nestedReplicator := replication.NewNestedBlobReplicator(
 			replicator,
-			sink.DigestKeyFormat,
 			int(configuration.MaximumMessageSizeBytes),
+			blobstore.NewBlobAccessMessageReader(source.BlobAccess, int(configuration.MaximumMessageSizeBytes), func() *remoteexecution.Action { return &remoteexecution.Action{} }),
+			blobstore.NewBlobAccessMessageReader(source.BlobAccess, int(configuration.MaximumMessageSizeBytes), func() *remoteexecution.Directory { return &remoteexecution.Directory{} }),
+			&blobAccessStreamReader{blobAccess: source.BlobAccess},
+			sink.DigestKeyFormat,
 		)
 
 		instanceName, err := digest.NewInstanceName(configuration.InstanceName)

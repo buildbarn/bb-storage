@@ -21,6 +21,7 @@ go_library(
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
         "//pkg/blobstore/slicing",
+        "//pkg/cas",
         "//pkg/clock",
         "//pkg/digest",
         "//pkg/proto/replicator",

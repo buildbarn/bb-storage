@@ -8,15 +8,27 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/protobuf/encoding/protowire"
 )
 
+// CASReplicator replicates blobs to the destination Content
+// Addressable Storage.
+type CASReplicator interface {
+	ReplicateMultiple(ctx context.Context, digests digest.Set) error
+}
+
+// BlobStreamReader provides a stream to the raw bytes of a blob.
+type BlobStreamReader interface {
+	ReadStream(ctx context.Context, d digest.Digest) (io.ReadCloser, error)
+}
+
 type blobToReplicate struct {
 	digest       digest.Digest
-	expanderFunc func(ctx context.Context, b buffer.Buffer) error
+	expanderFunc func(ctx context.Context, d digest.Digest) error
 }
 
 // NestedBlobReplicator is a helper type for BlobReplicator that can be
@@ -24,9 +36,12 @@ type blobToReplicate struct {
 // Addressable Storage (CAS). In the case of the REv2 protocol, these
 // are Action, Directory and Tree messages.
 type NestedBlobReplicator struct {
-	replicator              BlobReplicator
+	replicator              CASReplicator
 	digestKeyFormat         digest.KeyFormat
 	maximumMessageSizeBytes int
+	actionReader            cas.MessageReader[*remoteexecution.Action]
+	directoryReader         cas.MessageReader[*remoteexecution.Directory]
+	treeReader              BlobStreamReader
 
 	lock             sync.Mutex
 	blobsSeen        map[string]struct{}
@@ -37,17 +52,20 @@ type NestedBlobReplicator struct {
 
 // NewNestedBlobReplicator creates a new NestedBlobReplicator that does
 // not have any objects to be replicated queued.
-func NewNestedBlobReplicator(replicator BlobReplicator, digestKeyFormat digest.KeyFormat, maximumMessageSizeBytes int) *NestedBlobReplicator {
+func NewNestedBlobReplicator(replicator CASReplicator, maximumMessageSizeBytes int, actionReader cas.MessageReader[*remoteexecution.Action], directoryReader cas.MessageReader[*remoteexecution.Directory], treeReader BlobStreamReader, digestKeyFormat digest.KeyFormat) *NestedBlobReplicator {
 	return &NestedBlobReplicator{
 		replicator:              replicator,
-		digestKeyFormat:         digestKeyFormat,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		digestKeyFormat:         digestKeyFormat,
+		actionReader:            actionReader,
+		directoryReader:         directoryReader,
+		treeReader:              treeReader,
 
 		blobsSeen: map[string]struct{}{},
 	}
 }
 
-func (nr *NestedBlobReplicator) enqueue(blobDigest digest.Digest, expanderFunc func(ctx context.Context, b buffer.Buffer) error) {
+func (nr *NestedBlobReplicator) enqueue(blobDigest digest.Digest, expanderFunc func(ctx context.Context, d digest.Digest) error) {
 	nr.lock.Lock()
 	defer nr.lock.Unlock()
 
@@ -73,12 +91,11 @@ func (nr *NestedBlobReplicator) maybeWakeUpLocked() {
 // referenced input root and Command message will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 	digestFunction := actionDigest.GetDigestFunction()
-	nr.enqueue(actionDigest, func(ctx context.Context, b buffer.Buffer) error {
-		actionMessage, err := b.ToProto(&remoteexecution.Action{}, nr.maximumMessageSizeBytes)
+	nr.enqueue(actionDigest, func(ctx context.Context, d digest.Digest) error {
+		action, err := nr.actionReader.ReadMessage(ctx, d)
 		if err != nil {
 			return err
 		}
-		action := actionMessage.(*remoteexecution.Action)
 
 		inputRootDigest, err := digestFunction.NewDigestFromProto(action.InputRootDigest)
 		if err != nil {
@@ -102,12 +119,11 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 // well, recursively.
 func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) {
 	digestFunction := directoryDigest.GetDigestFunction()
-	nr.enqueue(directoryDigest, func(ctx context.Context, b buffer.Buffer) error {
-		directoryMessage, err := b.ToProto(&remoteexecution.Directory{}, nr.maximumMessageSizeBytes)
+	nr.enqueue(directoryDigest, func(ctx context.Context, d digest.Digest) error {
+		directory, err := nr.directoryReader.ReadMessage(ctx, d)
 		if err != nil {
 			return err
 		}
-		directory := directoryMessage.(*remoteexecution.Directory)
 
 		for i, childDirectory := range directory.Directories {
 			childDigest, err := digestFunction.NewDigestFromProto(childDirectory.Digest)
@@ -136,8 +152,11 @@ func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) 
 // file will be replicated as well.
 func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 	digestFunction := treeDigest.GetDigestFunction()
-	nr.enqueue(treeDigest, func(ctx context.Context, b buffer.Buffer) error {
-		r := b.ToReader()
+	nr.enqueue(treeDigest, func(ctx context.Context, d digest.Digest) error {
+		r, err := nr.treeReader.ReadStream(ctx, d)
+		if err != nil {
+			return err
+		}
 		defer r.Close()
 
 		// Gather digests of files contained in the directories.
@@ -214,9 +233,10 @@ func (nr *NestedBlobReplicator) Replicate(ctx context.Context) error {
 		// Replicate a single object.
 		nr.blobsReplicating++
 		nr.lock.Unlock()
+		nr.replicator.ReplicateMultiple(ctx, blobToReplicate.digest.ToSingletonSet())
 		err := blobToReplicate.expanderFunc(
 			ctx,
-			nr.replicator.ReplicateSingle(ctx, blobToReplicate.digest),
+			blobToReplicate.digest,
 		)
 		nr.lock.Lock()
 		nr.blobsReplicating--
