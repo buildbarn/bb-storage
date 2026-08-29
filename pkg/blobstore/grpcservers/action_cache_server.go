@@ -7,21 +7,20 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
 type actionCacheServer struct {
-	blobAccess   blobstore.BlobAccess
-	resultReader storage.MessageReader[*remoteexecution.ActionResult]
+	blobAccess              blobstore.BlobAccess
+	maximumMessageSizeBytes int
 }
 
 // NewActionCacheServer creates a GRPC service for serving the contents
 // of a Bazel Action Cache (AC) to Bazel.
-func NewActionCacheServer(blobAccess blobstore.BlobAccess, resultReader storage.MessageReader[*remoteexecution.ActionResult]) remoteexecution.ActionCacheServer {
+func NewActionCacheServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) remoteexecution.ActionCacheServer {
 	return &actionCacheServer{
-		blobAccess:   blobAccess,
-		resultReader: resultReader,
+		blobAccess:              blobAccess,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
@@ -38,7 +37,14 @@ func (s *actionCacheServer) GetActionResult(ctx context.Context, in *remoteexecu
 	if err != nil {
 		return nil, err
 	}
-	return s.resultReader.ReadMessage(ctx, digest, &remoteexecution.ActionResult{})
+	actionResult, err := s.blobAccess.Get(ctx, digest).ToProto(
+		&remoteexecution.ActionResult{},
+		s.maximumMessageSizeBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return actionResult.(*remoteexecution.ActionResult), nil
 }
 
 func (s *actionCacheServer) UpdateActionResult(ctx context.Context, in *remoteexecution.UpdateActionResultRequest) (*remoteexecution.ActionResult, error) {

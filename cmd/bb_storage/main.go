@@ -214,10 +214,7 @@ func main() {
 						s,
 						grpcservers.NewActionCacheServer(
 							actionCache,
-							blobstore.NewBlobAccessMessageReader[*remoteexecution.ActionResult](
-								actionCache,
-								int(configuration.MaximumMessageSizeBytes),
-							),
+							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -226,10 +223,7 @@ func main() {
 						s,
 						grpcservers.NewIndirectContentAddressableStorageServer(
 							indirectContentAddressableStorage,
-							blobstore.NewBlobAccessMessageReader[*icas.Reference](
-								indirectContentAddressableStorage,
-								int(configuration.MaximumMessageSizeBytes),
-							),
+							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -238,10 +232,7 @@ func main() {
 						s,
 						grpcservers.NewInitialSizeClassCacheServer(
 							initialSizeClassCache,
-							blobstore.NewBlobAccessMessageReader[*iscc.PreviousExecutionStats](
-								initialSizeClassCache,
-								int(configuration.MaximumMessageSizeBytes),
-							),
+							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -250,10 +241,7 @@ func main() {
 						s,
 						grpcservers.NewFileSystemAccessCacheServer(
 							fileSystemAccessCache,
-							blobstore.NewBlobAccessMessageReader[*fsac.FileSystemAccessProfile](
-								fileSystemAccessCache,
-								int(configuration.MaximumMessageSizeBytes),
-							),
+							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}

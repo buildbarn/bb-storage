@@ -8,25 +8,24 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
-	"github.com/buildbarn/bb-storage/pkg/storage"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/status"
 )
 
 type indirectContentAddressableStorageServer struct {
-	blobAccess      blobstore.BlobAccess
-	referenceReader storage.MessageReader[*icas.Reference]
+	blobAccess              blobstore.BlobAccess
+	maximumMessageSizeBytes int
 }
 
 // NewIndirectContentAddressableStorageServer creates a gRPC service for
 // serving the contents of an Indirect Content Addressable Storage
 // (ICAS). The ICAS is a Buildbarn specific extension for integrating
 // external corpora into the CAS.
-func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess, referenceReader storage.MessageReader[*icas.Reference]) icas.IndirectContentAddressableStorageServer {
+func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) icas.IndirectContentAddressableStorageServer {
 	return &indirectContentAddressableStorageServer{
-		blobAccess:      blobAccess,
-		referenceReader: referenceReader,
+		blobAccess:              blobAccess,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
 }
 
@@ -106,5 +105,12 @@ func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	return s.referenceReader.ReadMessage(ctx, digest, &icas.Reference{})
+	actionResult, err := s.blobAccess.Get(ctx, digest).ToProto(
+		&icas.Reference{},
+		s.maximumMessageSizeBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return actionResult.(*icas.Reference), nil
 }
