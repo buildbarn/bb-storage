@@ -1,4 +1,4 @@
-package storage
+package cas
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// MessageReader can be used to read a proto.Message from storage and
-// return its contents.
+// MessageReader can be used to read a parsed proto.Message from the
+// Content Addressable Storage.
 type MessageReader[T proto.Message] interface {
 	// Return a parsed message from storage.
 	//

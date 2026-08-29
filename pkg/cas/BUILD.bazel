@@ -4,9 +4,9 @@ load("@rules_go//go:def.bzl", "go_library")
 exports_files(["message_reader.go"])
 
 go_library(
-    name = "storage",
+    name = "cas",
     srcs = ["message_reader.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/storage",
+    importpath = "github.com/buildbarn/bb-storage/pkg/cas",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/digest",

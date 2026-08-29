@@ -3,8 +3,8 @@ package blobstore
 import (
 	"context"
 
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/storage"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,7 +15,7 @@ type blobAccessMessageReader[T proto.Message] struct {
 
 // NewBlobAccessMessageReader creates a storage.MessageReader that reads
 // a message from a BlobAccess up to maximumMessageSizeBytes.
-func NewBlobAccessMessageReader[T proto.Message](blobAccess BlobAccess, maximumMessageSizeBytes int) storage.MessageReader[T] {
+func NewBlobAccessMessageReader[T proto.Message](blobAccess BlobAccess, maximumMessageSizeBytes int) cas.MessageReader[T] {
 	return blobAccessMessageReader[T]{
 		blobAccess:              blobAccess,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,

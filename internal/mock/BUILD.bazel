@@ -321,13 +321,13 @@ gomock(
 )
 
 gomock(
-    name = "storage",
-    out = "storage.go",
+    name = "cas",
+    out = "cas.go",
     interfaces = ["MessageReader"],
-    library = "//pkg/storage",
+    library = "//pkg/cas",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
-    source = "//pkg/storage:message_reader.go",
+    source = "//pkg/cas:message_reader.go",
 )
 
 gomock(
@@ -377,6 +377,7 @@ go_library(
         "buffer.go",
         "builder.go",
         "capabilities.go",
+        "cas.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
@@ -390,7 +391,6 @@ go_library(
         "prometheus.go",
         "random.go",
         "remoteexecution.go",
-        "storage.go",
         "trace.go",
         "trace_wrap.go",
         "util.go",
