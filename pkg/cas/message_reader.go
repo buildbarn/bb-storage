@@ -12,8 +12,5 @@ import (
 // Content Addressable Storage.
 type MessageReader[T proto.Message] interface {
 	// Return a parsed message from storage.
-	//
-	// Implementations may use the provided message to store the
-	// unmarshalled message.
-	ReadMessage(ctx context.Context, d digest.Digest, msg T) (T, error)
+	ReadMessage(ctx context.Context, d digest.Digest) (T, error)
 }
