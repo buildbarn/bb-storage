@@ -3,6 +3,7 @@ package grpc_test
 import (
 	"context"
 	"encoding/base64"
+	"reflect"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -23,6 +24,28 @@ import (
 
 	"go.uber.org/mock/gomock"
 )
+
+func hasAttribute(attributes []attribute.KeyValue, want attribute.KeyValue) bool {
+	for _, attribute := range attributes {
+		if reflect.DeepEqual(attribute, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func findEventAttributes(t *testing.T, events []trace.EventConfig, direction string, index int64) []attribute.KeyValue {
+	t.Helper()
+	for _, event := range events {
+		attributes := event.Attributes()
+		if hasAttribute(attributes, attribute.String("grpc.message.direction", direction)) &&
+			hasAttribute(attributes, attribute.Int64("grpc.message.index", index)) {
+			return attributes
+		}
+	}
+	t.Fatalf("event not found for direction=%q index=%d", direction, index)
+	return nil
+}
 
 func TestProtoTraceAttributesExtractor(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
@@ -48,7 +71,7 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 
 		extractor := bb_grpc.NewProtoTraceAttributesExtractor(map[string]*configuration.TracingMethodConfiguration{
 			fullMethod: {
-				AttributesFromFirstResponseMessage: []string{
+				AttributesFromResponseMessage: []string{
 					"bloom_filter",
 					"bloom_filter_hash_functions",
 				},
@@ -56,7 +79,7 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 		}, mock.NewMockErrorLogger(ctrl))
 
 		handler := mock.NewMockUnaryHandler(ctrl)
-		span.EXPECT().IsRecording().Return(true)
+		span.EXPECT().IsRecording().Return(true).AnyTimes()
 		handler.EXPECT().Call(ctxWithSpan, request).Return(response, nil)
 		span.EXPECT().SetAttributes([]attribute.KeyValue{
 			attribute.String("response.bloom_filter", base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03})),
@@ -91,14 +114,14 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 	errorLogger := mock.NewMockErrorLogger(ctrl)
 	extractor := bb_grpc.NewProtoTraceAttributesExtractor(map[string]*configuration.TracingMethodConfiguration{
 		exampleUnaryFullMethod: {
-			AttributesFromFirstRequestMessage: []string{
+			AttributesFromRequestMessage: []string{
 				// Valid:
 				"instance_name",
 
 				// Invalid.
 				"",
 			},
-			AttributesFromFirstResponseMessage: []string{
+			AttributesFromResponseMessage: []string{
 				// Valid.
 				"cache_capabilities.digest_functions",
 				"cache_capabilities.max_batch_total_size_bytes",
@@ -156,6 +179,8 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// If the span is not recording, we shouldn't
 			// spend any effort inspecting the request and
 			// response.
+			span := mock.NewMockSpan(ctrl)
+			ctxWithSpan := trace.ContextWithSpan(ctx, span)
 			span.EXPECT().IsRecording().Return(false)
 			var observedResponse remoteexecution.ServerCapabilities
 			invoker.EXPECT().Call(ctxWithSpan, exampleUnaryFullMethod, exampleUnaryRequest, &observedResponse, nil).
@@ -173,7 +198,9 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// should use protoreflect to create extractors
 			// for each of the attributes. This should cause
 			// any configuration errors to be reported.
-			span.EXPECT().IsRecording().Return(true)
+			span := mock.NewMockSpan(ctrl)
+			ctxWithSpan := trace.ContextWithSpan(ctx, span)
+			span.EXPECT().IsRecording().Return(true).AnyTimes()
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"request\": Attribute name does not contain any fields")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.cache_capabilities\": Field \"cache_capabilities\" does not have a boolean, enumeration, floating point, integer, bytes or string type")))
 			errorLogger.EXPECT().Log(testutil.EqStatus(t, status.Error(codes.InvalidArgument, "Failed to create extractor for attribute \"response.nonexistent\": Field \"nonexistent\" does not exist")))
@@ -218,6 +245,8 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// Methods for which we've not specified a
 			// configuration should have their calls
 			// forwarded in literal form.
+			span := mock.NewMockSpan(ctrl)
+			ctxWithSpan := trace.ContextWithSpan(ctx, span)
 			request := &remoteexecution.UpdateActionResultRequest{
 				InstanceName: "default-scheduler",
 			}
@@ -235,6 +264,8 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			// If the span is not recording, we shouldn't
 			// spend any effort inspecting the request and
 			// response.
+			span := mock.NewMockSpan(ctrl)
+			ctxWithSpan := trace.ContextWithSpan(ctx, span)
 			span.EXPECT().IsRecording().Return(false)
 			handler.EXPECT().Call(ctxWithSpan, exampleUnaryRequest).Return(exampleUnaryResponse, nil)
 
@@ -248,7 +279,9 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 		t.Run("RecordingSpan", func(t *testing.T) {
 			// As the span is recording, we should see calls
 			// to SetAttributes().
-			span.EXPECT().IsRecording().Return(true)
+			span := mock.NewMockSpan(ctrl)
+			ctxWithSpan := trace.ContextWithSpan(ctx, span)
+			span.EXPECT().IsRecording().Return(true).AnyTimes()
 			span.EXPECT().SetAttributes([]attribute.KeyValue{
 				attribute.String("request.instance_name", "default-scheduler"),
 			})
@@ -267,6 +300,187 @@ func TestProtoTraceAttributesExtractor(t *testing.T) {
 			testutil.RequireEqualProto(t, exampleUnaryResponse, observedResponse.(proto.Message))
 		})
 	})
+}
 
-	// TODO: Add testing coverage for streaming RPCs.
+func TestProtoTraceAttributesExtractorStreaming(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	streamMethod := "/build.bazel.remote.execution.v2.Capabilities/StreamCapabilities"
+	streamDesc := grpc.StreamDesc{StreamName: "StreamCapabilities", ClientStreams: true, ServerStreams: true}
+
+	newExtractor := func(includeFollowupMessages bool) *bb_grpc.ProtoTraceAttributesExtractor {
+		methodConfiguration := &configuration.TracingMethodConfiguration{
+			AttributesFromRequestMessage: []string{
+				"instance_name",
+			},
+			AttributesFromResponseMessage: []string{
+				"execution_capabilities.exec_enabled",
+			},
+			IncludeFollowupMessages: includeFollowupMessages,
+		}
+		return bb_grpc.NewProtoTraceAttributesExtractor(map[string]*configuration.TracingMethodConfiguration{
+			streamMethod: methodConfiguration,
+		}, mock.NewMockErrorLogger(ctrl))
+	}
+
+	collectEvents := func(span *mock.WrappedMockSpan) *[]trace.EventConfig {
+		events := []trace.EventConfig{}
+		span.EXPECT().AddEvent("grpc.message", gomock.Any()).AnyTimes().Do(
+			func(_ string, options ...trace.EventOption) {
+				events = append(events, trace.NewEventConfig(options...))
+			})
+		return &events
+	}
+
+	assertClientEvents := func(t *testing.T, events []trace.EventConfig, includeFollowupMessages bool) {
+		t.Helper()
+		attributes := findEventAttributes(t, events, "out", 1)
+		require.True(t, hasAttribute(attributes, attribute.String("request.instance_name", "default-scheduler")))
+		attributes = findEventAttributes(t, events, "in", 1)
+		require.True(t, hasAttribute(attributes, attribute.Bool("response.execution_capabilities.exec_enabled", true)))
+		if includeFollowupMessages {
+			attributes = findEventAttributes(t, events, "out", 2)
+			require.True(t, hasAttribute(attributes, attribute.String("request.instance_name", "default-scheduler")))
+			attributes = findEventAttributes(t, events, "in", 2)
+			require.True(t, hasAttribute(attributes, attribute.Bool("response.execution_capabilities.exec_enabled", true)))
+		}
+	}
+
+	assertServerEvents := func(t *testing.T, events []trace.EventConfig, includeFollowupMessages bool) {
+		t.Helper()
+		attributes := findEventAttributes(t, events, "in", 1)
+		require.True(t, hasAttribute(attributes, attribute.String("request.instance_name", "first")))
+		attributes = findEventAttributes(t, events, "out", 1)
+		require.True(t, hasAttribute(attributes, attribute.Bool("response.execution_capabilities.exec_enabled", true)))
+		if includeFollowupMessages {
+			attributes = findEventAttributes(t, events, "in", 2)
+			require.True(t, hasAttribute(attributes, attribute.String("request.instance_name", "second")))
+			attributes = findEventAttributes(t, events, "out", 2)
+			require.True(t, hasAttribute(attributes, attribute.Bool("response.execution_capabilities.exec_enabled", false)))
+		}
+	}
+
+	t.Run("InterceptStreamClient", func(t *testing.T) {
+		request := &remoteexecution.GetCapabilitiesRequest{InstanceName: "default-scheduler"}
+		response := &remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{ExecEnabled: true},
+		}
+
+		for _, testCase := range []struct {
+			name                    string
+			includeFollowupMessages bool
+			expectedEventCount      int
+		}{
+			{name: "WithFollowupMessages", includeFollowupMessages: true, expectedEventCount: 4},
+			{name: "WithoutFollowupMessages", includeFollowupMessages: false, expectedEventCount: 2},
+		} {
+			t.Run(testCase.name, func(t *testing.T) {
+				span := mock.NewMockSpan(ctrl)
+				ctxWithSpan := trace.ContextWithSpan(ctx, span)
+				streamer := mock.NewMockStreamer(ctrl)
+				clientStream := mock.NewMockClientStream(ctrl)
+
+				extractor := newExtractor(testCase.includeFollowupMessages)
+
+				span.EXPECT().IsRecording().Return(true).AnyTimes()
+				streamer.EXPECT().Call(ctxWithSpan, &streamDesc, nil, streamMethod).Return(clientStream, nil)
+				clientStream.EXPECT().SendMsg(request).Return(nil).Times(2)
+				clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					func(m interface{}) error {
+						proto.Merge(m.(proto.Message), response)
+						return nil
+					}).Times(2)
+
+				span.EXPECT().SetAttributes([]attribute.KeyValue{
+					attribute.String("request.instance_name", "default-scheduler"),
+				})
+				span.EXPECT().SetAttributes([]attribute.KeyValue{
+					attribute.Bool("response.execution_capabilities.exec_enabled", true),
+				})
+
+				events := collectEvents(span)
+
+				wrappedStream, err := extractor.InterceptStreamClient(ctxWithSpan, &streamDesc, nil, streamMethod, streamer.Call)
+				require.NoError(t, err)
+				require.NoError(t, wrappedStream.SendMsg(request))
+				require.NoError(t, wrappedStream.SendMsg(request))
+				var observedResponse remoteexecution.ServerCapabilities
+				require.NoError(t, wrappedStream.RecvMsg(&observedResponse))
+				require.NoError(t, wrappedStream.RecvMsg(&observedResponse))
+
+				require.Len(t, *events, testCase.expectedEventCount)
+				assertClientEvents(t, *events, testCase.includeFollowupMessages)
+			})
+		}
+	})
+
+	t.Run("InterceptStreamServer", func(t *testing.T) {
+		requestOne := &remoteexecution.GetCapabilitiesRequest{InstanceName: "first"}
+		requestTwo := &remoteexecution.GetCapabilitiesRequest{InstanceName: "second"}
+		responseOne := &remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{ExecEnabled: true},
+		}
+		responseTwo := &remoteexecution.ServerCapabilities{
+			ExecutionCapabilities: &remoteexecution.ExecutionCapabilities{ExecEnabled: false},
+		}
+
+		for _, testCase := range []struct {
+			name                    string
+			includeFollowupMessages bool
+			expectedEventCount      int
+		}{
+			{name: "WithFollowupMessages", includeFollowupMessages: true, expectedEventCount: 4},
+			{name: "WithoutFollowupMessages", includeFollowupMessages: false, expectedEventCount: 2},
+		} {
+			t.Run(testCase.name, func(t *testing.T) {
+				span := mock.NewMockSpan(ctrl)
+				ctxWithSpan := trace.ContextWithSpan(ctx, span)
+				serverStream := mock.NewMockServerStream(ctrl)
+				handler := mock.NewMockStreamHandler(ctrl)
+
+				extractor := newExtractor(testCase.includeFollowupMessages)
+
+				span.EXPECT().IsRecording().Return(true).AnyTimes()
+				serverStream.EXPECT().Context().Return(ctxWithSpan).AnyTimes()
+				serverStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					func(m interface{}) error {
+						proto.Merge(m.(proto.Message), requestOne)
+						return nil
+					})
+				serverStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(
+					func(m interface{}) error {
+						proto.Merge(m.(proto.Message), requestTwo)
+						return nil
+					})
+				serverStream.EXPECT().SendMsg(responseOne).Return(nil)
+				serverStream.EXPECT().SendMsg(responseTwo).Return(nil)
+
+				span.EXPECT().SetAttributes([]attribute.KeyValue{
+					attribute.String("request.instance_name", "first"),
+				})
+				span.EXPECT().SetAttributes([]attribute.KeyValue{
+					attribute.Bool("response.execution_capabilities.exec_enabled", true),
+				})
+
+				events := collectEvents(span)
+
+				handler.EXPECT().Call(nil, gomock.Any()).DoAndReturn(
+					func(srv interface{}, stream grpc.ServerStream) error {
+						var observedRequest remoteexecution.GetCapabilitiesRequest
+						require.NoError(t, stream.RecvMsg(&observedRequest))
+						require.NoError(t, stream.RecvMsg(&observedRequest))
+						require.NoError(t, stream.SendMsg(responseOne))
+						require.NoError(t, stream.SendMsg(responseTwo))
+						return nil
+					})
+
+				require.NoError(t, extractor.InterceptStreamServer(nil, serverStream, &grpc.StreamServerInfo{
+					FullMethod: streamMethod,
+				}, handler.Call))
+
+				require.Len(t, *events, testCase.expectedEventCount)
+				assertServerEvents(t, *events, testCase.includeFollowupMessages)
+			})
+		}
+	})
 }
