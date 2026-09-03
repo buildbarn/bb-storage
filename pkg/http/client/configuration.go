@@ -25,12 +25,15 @@ func NewRoundTripperFromConfiguration(configuration *pb.Configuration) (http.Rou
 		ForceAttemptHTTP2: !configuration.GetDisableHttp2(),
 		TLSClientConfig:   tlsConfig,
 	}
-	if proxyURL := configuration.GetProxyUrl(); proxyURL != "" {
-		parsedProxyURL, err := url.Parse(proxyURL)
+	switch proxy := configuration.GetProxy().(type) {
+	case *pb.Configuration_ProxyUrl:
+		parsedProxyURL, err := url.Parse(proxy.ProxyUrl)
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to parse proxy URL")
 		}
 		defaultTransport.Proxy = http.ProxyURL(parsedProxyURL)
+	case *pb.Configuration_ProxyFromEnvironment:
+		defaultTransport.Proxy = http.ProxyFromEnvironment
 	}
 	var roundTripper http.RoundTripper = &defaultTransport
 
