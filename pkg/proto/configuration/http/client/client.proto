@@ -13,8 +13,17 @@ message Configuration {
   // certificate will be used when left unset.
   buildbarn.configuration.tls.ClientConfiguration tls = 1;
 
-  // If set, forward all traffic through a proxy with a given URL.
-  string proxy_url = 2;
+  oneof proxy {
+    // If set, forward all traffic through a proxy with a given URL.
+    string proxy_url = 2;
+
+    // If set, use the proxy for a given request, as indicated by the
+    // environment variables http_proxy, https_proxy and no_proxy (or
+    // the uppercase versions thereof). Requests use the proxy from the
+    // environment variable matching their scheme, unless excluded by
+    // no_proxy.
+    google.protobuf.Empty proxy_from_environment = 3;
+  }
 
   message HeaderValues {
     string header = 1;

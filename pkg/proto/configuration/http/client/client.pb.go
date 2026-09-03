@@ -24,9 +24,13 @@ const (
 )
 
 type Configuration struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Tls           *tls.ClientConfiguration      `protobuf:"bytes,1,opt,name=tls,proto3" json:"tls,omitempty"`
-	ProxyUrl      string                        `protobuf:"bytes,2,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
+	state protoimpl.MessageState   `protogen:"open.v1"`
+	Tls   *tls.ClientConfiguration `protobuf:"bytes,1,opt,name=tls,proto3" json:"tls,omitempty"`
+	// Types that are valid to be assigned to Proxy:
+	//
+	//	*Configuration_ProxyUrl
+	//	*Configuration_ProxyFromEnvironment
+	Proxy         isConfiguration_Proxy         `protobuf_oneof:"proxy"`
 	AddHeaders    []*Configuration_HeaderValues `protobuf:"bytes,5,rep,name=add_headers,json=addHeaders,proto3" json:"add_headers,omitempty"`
 	DisableHttp2  bool                          `protobuf:"varint,6,opt,name=disable_http2,json=disableHttp2,proto3" json:"disable_http2,omitempty"`
 	Oauth2        *OAuth2Configuration          `protobuf:"bytes,7,opt,name=oauth2,proto3" json:"oauth2,omitempty"`
@@ -71,11 +75,29 @@ func (x *Configuration) GetTls() *tls.ClientConfiguration {
 	return nil
 }
 
+func (x *Configuration) GetProxy() isConfiguration_Proxy {
+	if x != nil {
+		return x.Proxy
+	}
+	return nil
+}
+
 func (x *Configuration) GetProxyUrl() string {
 	if x != nil {
-		return x.ProxyUrl
+		if x, ok := x.Proxy.(*Configuration_ProxyUrl); ok {
+			return x.ProxyUrl
+		}
 	}
 	return ""
+}
+
+func (x *Configuration) GetProxyFromEnvironment() *emptypb.Empty {
+	if x != nil {
+		if x, ok := x.Proxy.(*Configuration_ProxyFromEnvironment); ok {
+			return x.ProxyFromEnvironment
+		}
+	}
+	return nil
 }
 
 func (x *Configuration) GetAddHeaders() []*Configuration_HeaderValues {
@@ -98,6 +120,22 @@ func (x *Configuration) GetOauth2() *OAuth2Configuration {
 	}
 	return nil
 }
+
+type isConfiguration_Proxy interface {
+	isConfiguration_Proxy()
+}
+
+type Configuration_ProxyUrl struct {
+	ProxyUrl string `protobuf:"bytes,2,opt,name=proxy_url,json=proxyUrl,proto3,oneof"`
+}
+
+type Configuration_ProxyFromEnvironment struct {
+	ProxyFromEnvironment *emptypb.Empty `protobuf:"bytes,3,opt,name=proxy_from_environment,json=proxyFromEnvironment,proto3,oneof"`
+}
+
+func (*Configuration_ProxyUrl) isConfiguration_Proxy() {}
+
+func (*Configuration_ProxyFromEnvironment) isConfiguration_Proxy() {}
 
 type OAuth2Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -329,17 +367,19 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_cli
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc = "" +
 	"\n" +
-	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x89\x03\n" +
+	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe4\x03\n" +
 	"\rConfiguration\x12B\n" +
-	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1b\n" +
-	"\tproxy_url\x18\x02 \x01(\tR\bproxyUrl\x12`\n" +
+	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1d\n" +
+	"\tproxy_url\x18\x02 \x01(\tH\x00R\bproxyUrl\x12N\n" +
+	"\x16proxy_from_environment\x18\x03 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x14proxyFromEnvironment\x12`\n" +
 	"\vadd_headers\x18\x05 \x03(\v2?.buildbarn.configuration.http.client.Configuration.HeaderValuesR\n" +
 	"addHeaders\x12#\n" +
 	"\rdisable_http2\x18\x06 \x01(\bR\fdisableHttp2\x12P\n" +
 	"\x06oauth2\x18\a \x01(\v28.buildbarn.configuration.http.client.OAuth2ConfigurationR\x06oauth2\x1a>\n" +
 	"\fHeaderValues\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\tR\x06header\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xb5\x02\n" +
+	"\x06values\x18\x02 \x03(\tR\x06valuesB\a\n" +
+	"\x05proxy\"\xb5\x02\n" +
 	"\x13OAuth2Configuration\x12V\n" +
 	"\x1agoogle_default_credentials\x18\x01 \x01(\v2\x16.google.protobuf.EmptyH\x00R\x18googleDefaultCredentials\x120\n" +
 	"\x13service_account_key\x18\x02 \x01(\tH\x00R\x11serviceAccountKey\x12m\n" +
@@ -376,16 +416,17 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_cli
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_depIdxs = []int32{
 	4, // 0: buildbarn.configuration.http.client.Configuration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
-	3, // 1: buildbarn.configuration.http.client.Configuration.add_headers:type_name -> buildbarn.configuration.http.client.Configuration.HeaderValues
-	1, // 2: buildbarn.configuration.http.client.Configuration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
-	5, // 3: buildbarn.configuration.http.client.OAuth2Configuration.google_default_credentials:type_name -> google.protobuf.Empty
-	2, // 4: buildbarn.configuration.http.client.OAuth2Configuration.client_credentials:type_name -> buildbarn.configuration.http.client.OAuth2ClientCredentials
-	0, // 5: buildbarn.configuration.http.client.OAuth2ClientCredentials.http_client:type_name -> buildbarn.configuration.http.client.Configuration
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 1: buildbarn.configuration.http.client.Configuration.proxy_from_environment:type_name -> google.protobuf.Empty
+	3, // 2: buildbarn.configuration.http.client.Configuration.add_headers:type_name -> buildbarn.configuration.http.client.Configuration.HeaderValues
+	1, // 3: buildbarn.configuration.http.client.Configuration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
+	5, // 4: buildbarn.configuration.http.client.OAuth2Configuration.google_default_credentials:type_name -> google.protobuf.Empty
+	2, // 5: buildbarn.configuration.http.client.OAuth2Configuration.client_credentials:type_name -> buildbarn.configuration.http.client.OAuth2ClientCredentials
+	0, // 6: buildbarn.configuration.http.client.OAuth2ClientCredentials.http_client:type_name -> buildbarn.configuration.http.client.Configuration
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() {
@@ -394,6 +435,10 @@ func init() {
 func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_init() {
 	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto != nil {
 		return
+	}
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[0].OneofWrappers = []any{
+		(*Configuration_ProxyUrl)(nil),
+		(*Configuration_ProxyFromEnvironment)(nil),
 	}
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_msgTypes[1].OneofWrappers = []any{
 		(*OAuth2Configuration_GoogleDefaultCredentials)(nil),
