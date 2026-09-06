@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package buildbarn.blobstore.chunklist;
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/blobstore/chunklist";
+
+// ChunkList is the internal storage format for chunk lists in the
+// Chunk List Storage (CLS). The data field contains a sequence of
+// compact binary digest encodings as produced by
+// digest.Digest.GetCompactBinary().
+message ChunkList {
+  bytes data = 1;
+}

@@ -72,7 +72,6 @@ go_test(
         "//internal/mock",
         "//pkg/blobstore",
         "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/filesystem/path",

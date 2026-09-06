@@ -24,18 +24,17 @@ const (
 )
 
 type ApplicationConfiguration struct {
-	state                   protoimpl.MessageState                 `protogen:"open.v1"`
-	Source                  *blobstore.BlobAccessConfiguration     `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
-	Sink                    *blobstore.BlobAccessConfiguration     `protobuf:"bytes,2,opt,name=sink,proto3" json:"sink,omitempty"`
-	Replicator              *blobstore.BlobReplicatorConfiguration `protobuf:"bytes,3,opt,name=replicator,proto3" json:"replicator,omitempty"`
-	InstanceName            string                                 `protobuf:"bytes,4,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
-	Actions                 []*v2.Digest                           `protobuf:"bytes,5,rep,name=actions,proto3" json:"actions,omitempty"`
-	Blobs                   []*v2.Digest                           `protobuf:"bytes,6,rep,name=blobs,proto3" json:"blobs,omitempty"`
-	Directories             []*v2.Digest                           `protobuf:"bytes,7,rep,name=directories,proto3" json:"directories,omitempty"`
-	Trees                   []*v2.Digest                           `protobuf:"bytes,8,rep,name=trees,proto3" json:"trees,omitempty"`
-	MaximumMessageSizeBytes int64                                  `protobuf:"varint,9,opt,name=maximum_message_size_bytes,json=maximumMessageSizeBytes,proto3" json:"maximum_message_size_bytes,omitempty"`
-	TraversalConcurrency    int32                                  `protobuf:"varint,10,opt,name=traversal_concurrency,json=traversalConcurrency,proto3" json:"traversal_concurrency,omitempty"`
-	DigestFunction          v2.DigestFunction_Value                `protobuf:"varint,11,opt,name=digest_function,json=digestFunction,proto3,enum=build.bazel.remote.execution.v2.DigestFunction_Value" json:"digest_function,omitempty"`
+	state                   protoimpl.MessageState                            `protogen:"open.v1"`
+	Source                  *blobstore.ContentAddressableStorageConfiguration `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	Sink                    *blobstore.ContentAddressableStorageConfiguration `protobuf:"bytes,2,opt,name=sink,proto3" json:"sink,omitempty"`
+	InstanceName            string                                            `protobuf:"bytes,4,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
+	Actions                 []*v2.Digest                                      `protobuf:"bytes,5,rep,name=actions,proto3" json:"actions,omitempty"`
+	Blobs                   []*v2.Digest                                      `protobuf:"bytes,6,rep,name=blobs,proto3" json:"blobs,omitempty"`
+	Directories             []*v2.Digest                                      `protobuf:"bytes,7,rep,name=directories,proto3" json:"directories,omitempty"`
+	Trees                   []*v2.Digest                                      `protobuf:"bytes,8,rep,name=trees,proto3" json:"trees,omitempty"`
+	MaximumMessageSizeBytes int64                                             `protobuf:"varint,9,opt,name=maximum_message_size_bytes,json=maximumMessageSizeBytes,proto3" json:"maximum_message_size_bytes,omitempty"`
+	TraversalConcurrency    int32                                             `protobuf:"varint,10,opt,name=traversal_concurrency,json=traversalConcurrency,proto3" json:"traversal_concurrency,omitempty"`
+	DigestFunction          v2.DigestFunction_Value                           `protobuf:"varint,11,opt,name=digest_function,json=digestFunction,proto3,enum=build.bazel.remote.execution.v2.DigestFunction_Value" json:"digest_function,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -70,23 +69,16 @@ func (*ApplicationConfiguration) Descriptor() ([]byte, []int) {
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ApplicationConfiguration) GetSource() *blobstore.BlobAccessConfiguration {
+func (x *ApplicationConfiguration) GetSource() *blobstore.ContentAddressableStorageConfiguration {
 	if x != nil {
 		return x.Source
 	}
 	return nil
 }
 
-func (x *ApplicationConfiguration) GetSink() *blobstore.BlobAccessConfiguration {
+func (x *ApplicationConfiguration) GetSink() *blobstore.ContentAddressableStorageConfiguration {
 	if x != nil {
 		return x.Sink
-	}
-	return nil
-}
-
-func (x *ApplicationConfiguration) GetReplicator() *blobstore.BlobReplicatorConfiguration {
-	if x != nil {
-		return x.Replicator
 	}
 	return nil
 }
@@ -151,13 +143,10 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_rawDesc = "" +
 	"\n" +
-	"Mgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_copy/bb_copy.proto\x12\x1fbuildbarn.configuration.bb_copy\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\"\xa1\x06\n" +
-	"\x18ApplicationConfiguration\x12R\n" +
-	"\x06source\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x06source\x12N\n" +
-	"\x04sink\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x04sink\x12^\n" +
-	"\n" +
-	"replicator\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\n" +
-	"replicator\x12#\n" +
+	"Mgithub.com/buildbarn/bb-storage/pkg/proto/configuration/bb_copy/bb_copy.proto\x12\x1fbuildbarn.configuration.bb_copy\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aQgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\"\xe5\x05\n" +
+	"\x18ApplicationConfiguration\x12a\n" +
+	"\x06source\x18\x01 \x01(\v2I.buildbarn.configuration.blobstore.ContentAddressableStorageConfigurationR\x06source\x12]\n" +
+	"\x04sink\x18\x02 \x01(\v2I.buildbarn.configuration.blobstore.ContentAddressableStorageConfigurationR\x04sink\x12#\n" +
 	"\rinstance_name\x18\x04 \x01(\tR\finstanceName\x12A\n" +
 	"\aactions\x18\x05 \x03(\v2'.build.bazel.remote.execution.v2.DigestR\aactions\x12=\n" +
 	"\x05blobs\x18\x06 \x03(\v2'.build.bazel.remote.execution.v2.DigestR\x05blobs\x12I\n" +
@@ -166,7 +155,7 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_co
 	"\x1amaximum_message_size_bytes\x18\t \x01(\x03R\x17maximumMessageSizeBytes\x123\n" +
 	"\x15traversal_concurrency\x18\n" +
 	" \x01(\x05R\x14traversalConcurrency\x12^\n" +
-	"\x0fdigest_function\x18\v \x01(\x0e25.build.bazel.remote.execution.v2.DigestFunction.ValueR\x0edigestFunctionb\x06proto3"
+	"\x0fdigest_function\x18\v \x01(\x0e25.build.bazel.remote.execution.v2.DigestFunction.ValueR\x0edigestFunctionJ\x04\b\x03\x10\x04b\x06proto3"
 
 var (
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_rawDescOnce sync.Once
@@ -182,26 +171,24 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_cop
 
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_goTypes = []any{
-	(*ApplicationConfiguration)(nil),              // 0: buildbarn.configuration.bb_copy.ApplicationConfiguration
-	(*blobstore.BlobAccessConfiguration)(nil),     // 1: buildbarn.configuration.blobstore.BlobAccessConfiguration
-	(*blobstore.BlobReplicatorConfiguration)(nil), // 2: buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	(*v2.Digest)(nil),                             // 3: build.bazel.remote.execution.v2.Digest
-	(v2.DigestFunction_Value)(0),                  // 4: build.bazel.remote.execution.v2.DigestFunction.Value
+	(*ApplicationConfiguration)(nil),                         // 0: buildbarn.configuration.bb_copy.ApplicationConfiguration
+	(*blobstore.ContentAddressableStorageConfiguration)(nil), // 1: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+	(*v2.Digest)(nil),                                        // 2: build.bazel.remote.execution.v2.Digest
+	(v2.DigestFunction_Value)(0),                             // 3: build.bazel.remote.execution.v2.DigestFunction.Value
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_bb_copy_bb_copy_proto_depIdxs = []int32{
-	1, // 0: buildbarn.configuration.bb_copy.ApplicationConfiguration.source:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	1, // 1: buildbarn.configuration.bb_copy.ApplicationConfiguration.sink:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	2, // 2: buildbarn.configuration.bb_copy.ApplicationConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
-	3, // 3: buildbarn.configuration.bb_copy.ApplicationConfiguration.actions:type_name -> build.bazel.remote.execution.v2.Digest
-	3, // 4: buildbarn.configuration.bb_copy.ApplicationConfiguration.blobs:type_name -> build.bazel.remote.execution.v2.Digest
-	3, // 5: buildbarn.configuration.bb_copy.ApplicationConfiguration.directories:type_name -> build.bazel.remote.execution.v2.Digest
-	3, // 6: buildbarn.configuration.bb_copy.ApplicationConfiguration.trees:type_name -> build.bazel.remote.execution.v2.Digest
-	4, // 7: buildbarn.configuration.bb_copy.ApplicationConfiguration.digest_function:type_name -> build.bazel.remote.execution.v2.DigestFunction.Value
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	1, // 0: buildbarn.configuration.bb_copy.ApplicationConfiguration.source:type_name -> buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+	1, // 1: buildbarn.configuration.bb_copy.ApplicationConfiguration.sink:type_name -> buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
+	2, // 2: buildbarn.configuration.bb_copy.ApplicationConfiguration.actions:type_name -> build.bazel.remote.execution.v2.Digest
+	2, // 3: buildbarn.configuration.bb_copy.ApplicationConfiguration.blobs:type_name -> build.bazel.remote.execution.v2.Digest
+	2, // 4: buildbarn.configuration.bb_copy.ApplicationConfiguration.directories:type_name -> build.bazel.remote.execution.v2.Digest
+	2, // 5: buildbarn.configuration.bb_copy.ApplicationConfiguration.trees:type_name -> build.bazel.remote.execution.v2.Digest
+	3, // 6: buildbarn.configuration.bb_copy.ApplicationConfiguration.digest_function:type_name -> build.bazel.remote.execution.v2.DigestFunction.Value
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() {

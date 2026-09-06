@@ -6,7 +6,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -62,17 +61,6 @@ func (ba *readFallbackBlobAccess) Get(ctx context.Context, digest digest.Digest)
 	return replication.GetWithBlobReplicator(
 		ctx,
 		digest,
-		ba.BlobAccess,
-		ba.getBlobReplicatorSelector(),
-	)
-}
-
-func (ba *readFallbackBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	return replication.GetFromCompositeWithBlobReplicator(
-		ctx,
-		parentDigest,
-		childDigest,
-		slicer,
 		ba.BlobAccess,
 		ba.getBlobReplicatorSelector(),
 	)

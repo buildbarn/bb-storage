@@ -37,12 +37,12 @@ func newTestZstdPool(maxEncoders, maxDecoders int64) bb_zstd.Pool {
 	)
 }
 
-func TestCASBlobAccessPut(t *testing.T) {
+func TestCSBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, nil)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, nil)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	uuid := uuid.Must(uuid.Parse("7d659e5f-0e4b-48f0-ad9f-3489db6e103b"))
@@ -180,7 +180,7 @@ func TestCASBlobAccessGet(t *testing.T) {
 
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, nil)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -276,12 +276,12 @@ func TestCASBlobAccessGet(t *testing.T) {
 	})
 }
 
-func TestCASBlobAccessGetCapabilities(t *testing.T) {
+func TestCSBlobAccessGetCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, nil)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, nil)
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		client.EXPECT().Invoke(
@@ -377,12 +377,12 @@ func TestCASBlobAccessGetCapabilities(t *testing.T) {
 	})
 }
 
-func TestCASBlobAccessPutWithCompression(t *testing.T) {
+func TestCSBlobAccessPutWithCompression(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, newTestZstdPool(16, 16))
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, newTestZstdPool(16, 16))
 
 	expectGetCapabilitiesWithZSTD(client)
 
@@ -455,12 +455,12 @@ func expectGetCapabilitiesWithZSTD(client *mock.MockClientConnInterface) {
 	}).AnyTimes()
 }
 
-func TestCASBlobAccessGetWithCompression(t *testing.T) {
+func TestCSBlobAccessGetWithCompression(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 100, newTestZstdPool(16, 16))
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 100, newTestZstdPool(16, 16))
 
 	expectGetCapabilitiesWithZSTD(client)
 
@@ -500,14 +500,14 @@ func TestCASBlobAccessGetWithCompression(t *testing.T) {
 	})
 }
 
-func TestCASBlobAccessPutPoolExhaustion(t *testing.T) {
+func TestCSBlobAccessPutPoolExhaustion(t *testing.T) {
 	// Create a pool with only 1 concurrent encoder to test backpressure.
 	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
 
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, pool)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, pool)
 
 	expectGetCapabilitiesWithZSTD(client)
 
@@ -579,7 +579,7 @@ func TestCASBlobAccessPutPoolExhaustion(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCASBlobAccessPutPoolReleasesEncoder(t *testing.T) {
+func TestCSBlobAccessPutPoolReleasesEncoder(t *testing.T) {
 	// Pool with 1 encoder: if encoder isn't released after the first Put,
 	// the second Put would deadlock.
 	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
@@ -587,7 +587,7 @@ func TestCASBlobAccessPutPoolReleasesEncoder(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 10, pool)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 10, pool)
 
 	expectGetCapabilitiesWithZSTD(client)
 
@@ -619,7 +619,7 @@ func TestCASBlobAccessPutPoolReleasesEncoder(t *testing.T) {
 	}
 }
 
-func TestCASBlobAccessGetPoolReleasesDecoder(t *testing.T) {
+func TestCSBlobAccessGetPoolReleasesDecoder(t *testing.T) {
 	// Pool with 1 decoder: if decoder isn't released after the first Get,
 	// the second Get would deadlock.
 	pool := bb_zstd.NewBoundedPool(1, 1, nil, nil)
@@ -627,7 +627,7 @@ func TestCASBlobAccessGetPoolReleasesDecoder(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	client := mock.NewMockClientConnInterface(ctrl)
 	uuidGenerator := mock.NewMockUUIDGenerator(ctrl)
-	blobAccess := grpcclients.NewCASBlobAccess(client, uuidGenerator.Call, 100, pool)
+	blobAccess := grpcclients.NewCSBlobAccess(client, uuidGenerator.Call, 100, pool)
 
 	expectGetCapabilitiesWithZSTD(client)
 

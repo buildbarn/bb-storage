@@ -32,7 +32,7 @@ type acBlobAccessCreator struct {
 	protoBlobAccessCreator
 	protoBlobReplicatorCreator
 
-	contentAddressableStorage *BlobAccessInfo
+	contentAddressableStorage cas.ContentAddressableStorage
 	grpcClientFactory         grpc.ClientFactory
 	maximumMessageSizeBytes   int
 }
@@ -40,7 +40,7 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(contentAddressableStorage cas.ContentAddressableStorage, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
 	return &acBlobAccessCreator{
 		contentAddressableStorage: contentAddressableStorage,
 		grpcClientFactory:         grpcClientFactory,
@@ -101,13 +101,13 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		return BlobAccessInfo{
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
-				bac.contentAddressableStorage.BlobAccess,
-				cas.NewBlobAccessStreamReader(bac.contentAddressableStorage.BlobAccess),
+				bac.contentAddressableStorage,
+				cas.NewStreamReader(bac.contentAddressableStorage),
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
 				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.GetDigestKeyFormat()),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)

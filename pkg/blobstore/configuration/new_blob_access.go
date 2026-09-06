@@ -7,13 +7,18 @@ import (
 	"sync"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -24,6 +29,7 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
+	"github.com/buildbarn/bb-storage/pkg/ttlcache"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/fxtlabs/primes"
@@ -352,11 +358,26 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		)
 
 		var localBlobAccess blobstore.BlobAccess
+		capabilitiesProvider := creator.GetDefaultCapabilitiesProvider()
+		chunkingParameters := backend.Local.GetChunkingParameters()
+		if chunkingParameters != nil {
+			capabilitiesProvider = capabilities.NewMergingProvider([]capabilities.Provider{
+				capabilitiesProvider,
+				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+					CacheCapabilities: &remoteexecution.CacheCapabilities{
+						SplitBlobSupport:  true,
+						SpliceBlobSupport: true,
+						RepMaxCdcParams:   chunkingParameters,
+					},
+				}),
+			})
+		}
 		if backend.Local.HierarchicalInstanceNames {
 			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
 				&globalLock,
+				capabilitiesProvider,
 			)
 			if err != nil {
 				return BlobAccessInfo{}, "", err
@@ -368,7 +389,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				digestKeyFormat,
 				&globalLock,
 				storageTypeName,
-				creator.GetDefaultCapabilitiesProvider(),
+				capabilitiesProvider,
 			)
 		}
 		return BlobAccessInfo{
@@ -616,16 +637,12 @@ func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuratio
 	}, nil
 }
 
-// NewCASAndACBlobAccessFromConfiguration is a convenience function to
-// create BlobAccess objects for both the Content Addressable Storage
-// and Action Cache. Most Buildbarn components tend to require access to
-// both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
-	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
-		terminationGroup,
-		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
-	)
+// NewCASAndACFromConfiguration is a convenience function to create a
+// Content Addressable Storage (CAS) and a BlobAccess for the Action
+// Cache. Most Buildbarn components tend to require access to both these
+// data stores.
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cas.ContentAddressableStorage, blobstore.BlobAccess, error) {
+	contentAddressableStorage, _, _, _, _, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
@@ -634,7 +651,7 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 		terminationGroup,
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(
-			&contentAddressableStorage,
+			contentAddressableStorage,
 			grpcClientFactory,
 			maximumMessageSizeBytes,
 		),
@@ -643,5 +660,61 @@ func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, conf
 		return nil, nil, util.StatusWrap(err, "Failed to create Action Cache")
 	}
 
-	return contentAddressableStorage.BlobAccess, actionCache.BlobAccess, nil
+	return contentAddressableStorage, actionCache.BlobAccess, nil
+}
+
+// NewCASFromConfiguration is a convenience function to create a
+// ContentAddressableStorage (CAS) and its constituent parts from
+// configuration.
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (cas.ContentAddressableStorage, blobstore.BlobAccess, blobstore.BlobAccess, chunklist.Fetcher, cdc.ParametersFetcher, error) {
+	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkStorage(),
+		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+	)
+	if err != nil {
+		return nil, nil, nil, nil, nil, util.StatusWrap(err, "Failed to create Chunk Storage")
+	}
+	chunkStorage := chunkStorageInfo.BlobAccess
+
+	chunkListStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkListStorage(),
+		NewCLSBlobAccessCreator(&chunkStorageInfo, grpcClientFactory, maximumMessageSizeBytes),
+	)
+	if err != nil {
+		return nil, nil, nil, nil, nil, util.StatusWrap(err, "Failed to create Chunk List Storage")
+	}
+	chunkListStorage := chunkListStorageInfo.BlobAccess
+	var chunkListFetcher chunklist.Fetcher = blobstore.NewBlobAccessChunkListFetcher(chunkListStorage, maximumMessageSizeBytes)
+	if configuration.GetChunkListCache() != nil {
+		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.Digest, chunklist.ChunkList](
+			configuration.ChunkListCache,
+			clock.SystemClock,
+			"ChunkListCache",
+		)
+		if err != nil {
+			return nil, nil, nil, nil, nil, util.StatusWrap(err, "Failed to create chunk list cache")
+		}
+		chunkListFetcher = chunklist.NewCachingFetcher(chunkListFetcher, cache)
+	}
+
+	// The chunking parameters are a property of the Chunk Storage
+	// (CS), so the CDC parameters are fetched from there.
+	cdcParametersFetcher := cdc.NewCapabilitiesParametersFetcher(chunkStorage)
+	if configuration.GetCdcParameterCache() != nil {
+		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.InstanceName, cdc.Parameters](
+			configuration.CdcParameterCache,
+			clock.SystemClock,
+			"CDCParameterCache",
+		)
+		if err != nil {
+			return nil, nil, nil, nil, nil, util.StatusWrap(err, "Failed to create cdc parameter cache")
+		}
+		cdcParametersFetcher = cdc.NewCachingParametersFetcher(cdcParametersFetcher, cache)
+	}
+
+	contentAddressableStorage := cas.NewBlobAccessContentAddressableStorage(chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat))
+
+	return contentAddressableStorage, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, nil
 }

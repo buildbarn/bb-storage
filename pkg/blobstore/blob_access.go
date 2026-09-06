@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
@@ -16,7 +15,6 @@ type BlobAccess interface {
 	capabilities.Provider
 
 	Get(ctx context.Context, digest digest.Digest) buffer.Buffer
-	GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer
 	Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)
 }

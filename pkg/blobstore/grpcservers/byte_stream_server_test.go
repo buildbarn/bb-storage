@@ -10,7 +10,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -59,8 +60,8 @@ func TestByteStreamServer(t *testing.T) {
 	// Create an RPC server/client pair.
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
-	blobAccess := mock.NewMockBlobAccess(ctrl)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(blobAccess, 10, bb_zstd.NewUnboundedPool(
+	contentAddressableStorage := mock.NewMockContentAddressableStorage(ctrl)
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(contentAddressableStorage, bb_zstd.NewUnboundedPool(
 		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
 	)))
@@ -115,12 +116,14 @@ func TestByteStreamServer(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Invalid digest size: -42 bytes"), err)
 	})
 
+	singleChunkParameters := cdc.Parameters{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
+	twoChunksParameters := cdc.Parameters{MinChunkSizeBytes: 10, HorizonSizeBytes: 20}
+
 	t.Run("ReadSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the small blob without an instance name.
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "09f7e02f1290be211da707a266f153b3", 5),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "09f7e02f1290be211da707a266f153b3", 5)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(gomock.Any(), digest1).Return([]byte("Hello"), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
@@ -135,10 +138,34 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessNonEmptyInstance", func(t *testing.T) {
 		// Attempt to fetch the large blob with an instance name.
-		blobAccess.EXPECT().Get(
+		digest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "3538d378083b9afa5ffad767f7269509", 22)
+		chunkDigest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "0538d378083b9afa5ffad767f7269509", 10)
+		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "1538d378083b9afa5ffad767f7269509", 10)
+		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "2538d378083b9afa5ffad767f7269509", 2)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
+		contentAddressableStorage.EXPECT().GetManifest(
 			gomock.Any(),
-			digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "3538d378083b9afa5ffad767f7269509", 22),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This is a long message")))
+			digest1,
+		).Return(
+			chunklist.ChunkList{
+				{Offset: 0, Digest: chunkDigest1},
+				{Offset: 10, Digest: chunkDigest2},
+				{Offset: 20, Digest: chunkDigest3},
+			},
+			nil,
+		)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest1,
+		).Return([]byte("This is a "), nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest2,
+		).Return([]byte("long messa"), nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest3,
+		).Return([]byte("ge"), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
@@ -160,10 +187,9 @@ func TestByteStreamServer(t *testing.T) {
 	t.Run("ReadZSTDCompression", func(t *testing.T) {
 		// Test reading with ZSTD compression.
 		originalData := []byte("This is a test message that should be compressed with ZSTD")
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
-		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(gomock.Any(), digest1).Return(originalData, nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58",
@@ -188,7 +214,6 @@ func TestByteStreamServer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, originalData, decompressedData)
 	})
-
 	t.Run("ReadZSTDCompressionLargeData", func(t *testing.T) {
 		// Test reading large data with ZSTD compression.
 		originalData := make([]byte, 100000)
@@ -196,10 +221,9 @@ func TestByteStreamServer(t *testing.T) {
 			originalData[i] = byte(i % 256)
 		}
 
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", 100000),
-		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", 100000)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(gomock.Any(), digest1).Return(originalData, nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "compressed-blobs/zstd/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2/100000",
@@ -230,10 +254,11 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadZSTDCompressionWithOffset", func(t *testing.T) {
 		originalData := []byte("This is a test message that should be compressed with ZSTD")
-		blobAccess.EXPECT().Get(
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("")).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
-		).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+		).Return(originalData, nil)
 
 		decompressedData := readAndDecompressZSTD(t, ctx, client, "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58", 17)
 		require.Equal(t, originalData[17:], decompressedData)
@@ -261,10 +286,11 @@ func TestByteStreamServer(t *testing.T) {
 
 		var downloadedData []byte
 		for i := 0; i < len(offsets)-1; i++ {
-			blobAccess.EXPECT().Get(
+			contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("")).Return(singleChunkParameters, nil)
+			contentAddressableStorage.EXPECT().FetchChunk(
 				gomock.Any(),
 				blobDigest,
-			).Return(buffer.NewValidatedBufferFromByteSlice(originalData))
+			).Return(originalData, nil)
 
 			decompressedData := readAndDecompressZSTD(t, ctx, client, resourceName, offsets[i])
 
@@ -292,16 +318,12 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadNegativeReadOffset", func(t *testing.T) {
 		// Attempt to fetch a blob with a negative offset.
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("Goodbye")))
-
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/6fc422233a40a75a1f028e11c3cd1140/7",
 			ReadOffset:   -4,
 		})
 		require.NoError(t, err)
+
 		_, err = req.Recv()
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Negative read offset: -4"), err)
 	})
@@ -309,11 +331,6 @@ func TestByteStreamServer(t *testing.T) {
 	t.Run("ReadOffsetBeyondEnd", func(t *testing.T) {
 		// Attempt to fetch a blob with a offset beyond the size
 		// of the blob.
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "ad3c8ac9eef32188da352082244b3598", 13),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("short message")))
-
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/ad3c8ac9eef32188da352082244b3598/13",
 			ReadOffset:   100,
@@ -325,10 +342,9 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("ReadSuccessWithOffset", func(t *testing.T) {
 		// Attempt to fetch a lblob with an instance name and offset.
-		blobAccess.EXPECT().Get(
-			gomock.Any(),
-			digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "da39a3ee5e6b4b0d3255bfef95601890", 19),
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("This offset message")))
+		digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "da39a3ee5e6b4b0d3255bfef95601890", 19)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("ubuntu1804")).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(gomock.Any(), digest1).Return([]byte("This offset message"), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/da39a3ee5e6b4b0d3255bfef95601890/19",
@@ -337,20 +353,185 @@ func TestByteStreamServer(t *testing.T) {
 		require.NoError(t, err)
 		readResponse, err := req.Recv()
 		require.NoError(t, err)
-		require.Equal(t, []byte(" offset me"), readResponse.Data)
-		readResponse, err = req.Recv()
-		require.NoError(t, err)
-		require.Equal(t, []byte("ssage"), readResponse.Data)
+		require.Equal(t, []byte(" offset message"), readResponse.Data)
 		_, err = req.Recv()
 		require.Equal(t, io.EOF, err)
 	})
 
-	t.Run("ReadNonexistentBlob", func(t *testing.T) {
-		// Attempt to fetch a nonexistent blob.
-		blobAccess.EXPECT().Get(
+	t.Run("ReadSuccessChunkedWithOffset", func(t *testing.T) {
+		// Fetch the tail of a multi-chunk blob starting in the
+		// middle of the second chunk.
+		digest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269509", 22)
+		chunkDigest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269508", 10)
+		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269507", 10)
+		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269506", 2)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
+		contentAddressableStorage.EXPECT().GetManifest(
 			gomock.Any(),
-			digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "09f34d28e9c8bb445ec996388968a9e8", 7),
-		).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Blob not found")))
+			digest1,
+		).Return(
+			chunklist.ChunkList{
+				{Offset: 0, Digest: chunkDigest1},
+				{Offset: 10, Digest: chunkDigest2},
+				{Offset: 20, Digest: chunkDigest3},
+			},
+			nil,
+		)
+		// The first chunk lies completely before the read offset
+		// and must not be fetched.
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest2,
+		).Return([]byte("long messa"), nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest3,
+		).Return([]byte("ge"), nil)
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "debian8/blobs/4538d378083b9afa5ffad767f7269509/22",
+			ReadOffset:   14,
+		})
+		require.NoError(t, err)
+		readResponse, err := req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, []byte(" messa"), readResponse.Data)
+		readResponse, err = req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, []byte("ge"), readResponse.Data)
+		_, err = req.Recv()
+		require.Equal(t, io.EOF, err)
+	})
+
+	t.Run("ReadSuccessChunkedWithOffsetAtChunkBoundary", func(t *testing.T) {
+		// A read offset that coincides with a chunk boundary
+		// should start the stream at the beginning of that chunk.
+		digest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269509", 22)
+		chunkDigest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269508", 10)
+		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269507", 10)
+		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269506", 2)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
+		contentAddressableStorage.EXPECT().GetManifest(
+			gomock.Any(),
+			digest1,
+		).Return(
+			chunklist.ChunkList{
+				{Offset: 0, Digest: chunkDigest1},
+				{Offset: 10, Digest: chunkDigest2},
+				{Offset: 20, Digest: chunkDigest3},
+			},
+			nil,
+		)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest2,
+		).Return([]byte("long messa"), nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest3,
+		).Return([]byte("ge"), nil)
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "debian8/blobs/5538d378083b9afa5ffad767f7269509/22",
+			ReadOffset:   10,
+		})
+		require.NoError(t, err)
+		readResponse, err := req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, []byte("long messa"), readResponse.Data)
+		readResponse, err = req.Recv()
+		require.NoError(t, err)
+		require.Equal(t, []byte("ge"), readResponse.Data)
+		_, err = req.Recv()
+		require.Equal(t, io.EOF, err)
+	})
+
+	t.Run("ReadSuccessChunkedWithOffsetAtEnd", func(t *testing.T) {
+		// A read offset equal to the blob size is valid and
+		// should yield an empty stream.
+		digest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269509", 22)
+		chunkDigest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269508", 10)
+		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269507", 10)
+		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269506", 2)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
+		contentAddressableStorage.EXPECT().GetManifest(
+			gomock.Any(),
+			digest1,
+		).Return(
+			chunklist.ChunkList{
+				{Offset: 0, Digest: chunkDigest1},
+				{Offset: 10, Digest: chunkDigest2},
+				{Offset: 20, Digest: chunkDigest3},
+			},
+			nil,
+		)
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "debian8/blobs/6538d378083b9afa5ffad767f7269509/22",
+			ReadOffset:   22,
+		})
+		require.NoError(t, err)
+		_, err = req.Recv()
+		require.Equal(t, io.EOF, err)
+	})
+
+	t.Run("ReadChunkedZSTDCompressionWithOffset", func(t *testing.T) {
+		// Test reading with ZSTD compression where the read
+		// offset references the uncompressed stream.
+		digest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269509", 22)
+		chunkDigest1 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269508", 10)
+		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269507", 10)
+		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269506", 2)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
+		contentAddressableStorage.EXPECT().GetManifest(
+			gomock.Any(),
+			digest1,
+		).Return(
+			chunklist.ChunkList{
+				{Offset: 0, Digest: chunkDigest1},
+				{Offset: 10, Digest: chunkDigest2},
+				{Offset: 20, Digest: chunkDigest3},
+			},
+			nil,
+		)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest2,
+		).Return([]byte("long messa"), nil)
+		contentAddressableStorage.EXPECT().FetchChunk(
+			gomock.Any(),
+			chunkDigest3,
+		).Return([]byte("ge"), nil)
+
+		req, err := client.Read(ctx, &bytestream.ReadRequest{
+			ResourceName: "debian8/compressed-blobs/zstd/7538d378083b9afa5ffad767f7269509/22",
+			ReadOffset:   14,
+		})
+		require.NoError(t, err)
+
+		var compressedData []byte
+		for {
+			response, err := req.Recv()
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			compressedData = append(compressedData, response.Data...)
+		}
+
+		decoder, err := zstd.NewReader(nil)
+		require.NoError(t, err)
+		defer decoder.Close()
+
+		decompressedData, err := decoder.DecodeAll(compressedData, nil)
+		require.NoError(t, err)
+		require.Equal(t, []byte(" message"), decompressedData)
+	})
+
+	t.Run("ReadNonexistentBlob", func(t *testing.T) {
+		digest1 := digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "09f34d28e9c8bb445ec996388968a9e8", 7)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("fedora28")).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().FetchChunk(gomock.Any(), digest1).Return(nil, status.Error(codes.NotFound, "Blob not found"))
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "///fedora28//blobs/09f34d28e9c8bb445ec996388968a9e8/////7/",
@@ -382,16 +563,9 @@ func TestByteStreamServer(t *testing.T) {
 
 	t.Run("WriteSuccessEmptyInstance", func(t *testing.T) {
 		// Attempt to write a blob without an instance name.
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14),
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			data, err := b.ToByteSlice(100)
-			require.NoError(t, err)
-			require.Equal(t, []byte("LaputanMachine"), data)
-			return nil
-		})
+		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14)
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().PutChunk(gomock.Any(), digest1, []byte("LaputanMachine")).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -423,16 +597,8 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			actualDigest,
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			data, err := b.ToByteSlice(1000)
-			require.NoError(t, err)
-			require.Equal(t, originalData, data)
-			return nil
-		})
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().PutChunk(gomock.Any(), actualDigest, originalData).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -460,16 +626,8 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			actualDigest,
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			data, err := b.ToByteSlice(1000)
-			require.NoError(t, err)
-			require.Equal(t, originalData, data)
-			return nil
-		})
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().PutChunk(gomock.Any(), actualDigest, originalData).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -509,16 +667,8 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			actualDigest,
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			data, err := b.ToByteSlice(100000)
-			require.NoError(t, err)
-			require.Equal(t, originalData, data)
-			return nil
-		})
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
+		contentAddressableStorage.EXPECT().PutChunk(gomock.Any(), actualDigest, originalData).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -563,15 +713,9 @@ func TestByteStreamServer(t *testing.T) {
 		// Test writing with invalid ZSTD data.
 		invalidData := []byte("This is not valid ZSTD compressed data")
 
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5", 10),
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			_, err := b.ToByteSlice(1000)
-			require.Error(t, err)
-			return err
-		})
+		// The decompressor fails while the blob is being chunked, so
+		// nothing gets stored.
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -598,16 +742,9 @@ func TestByteStreamServer(t *testing.T) {
 		generator.Write(originalData)
 		actualDigest := generator.Sum()
 
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			actualDigest,
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			data, err := b.ToByteSlice(1000)
-			require.NoError(t, err)
-			require.Equal(t, originalData, data)
-			return nil
-		})
+		// An empty blob decomposes into no chunks at all, so it
+		// requires no storage.
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -630,16 +767,10 @@ func TestByteStreamServer(t *testing.T) {
 	})
 
 	t.Run("WriteSuccessWithoutFinish", func(t *testing.T) {
-		// Attempt to write without finishing properly.
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA1, "f10e562d8825ec2e17e0d9f58646f8084a658cfa", 6),
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			_, err := b.ToByteSlice(100)
-			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
-			return err
-		})
+		// Attempt to write without finishing properly. The chunking of
+		// the blob aborts while reading the stream, so nothing gets
+		// stored.
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -648,20 +779,13 @@ func TestByteStreamServer(t *testing.T) {
 			Data:         []byte("Foo"),
 		}))
 		_, err = stream.CloseAndRecv()
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream without finishing write"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to chunk write stream: Client closed stream without finishing write"), err)
 	})
 
 	t.Run("WriteFailFinishTwice", func(t *testing.T) {
-		// Attempted to write while finishing twice.
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "cbd8f7984c654c25512e3d9241ae569f", 3),
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			_, err := b.ToByteSlice(100)
-			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
-			return err
-		})
+		// Attempted to write while finishing twice. The chunking of the
+		// blob aborts while reading the stream, so nothing gets stored.
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("fedora28")).Return(singleChunkParameters, nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -676,20 +800,14 @@ func TestByteStreamServer(t *testing.T) {
 			FinishWrite: true,
 		}))
 		_, err = stream.CloseAndRecv()
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Client closed stream twice"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to chunk write stream: Client closed stream twice"), err)
 	})
 
 	t.Run("WriteFailBadOffset", func(t *testing.T) {
-		// Attempted to write with a bad write offset.
-		blobAccess.EXPECT().Put(
-			gomock.Any(),
-			digest.MustNewDigest("windows10", remoteexecution.DigestFunction_MD5, "68e109f0f40ca72a15e05cc22786f8e6", 10),
-			gomock.Any(),
-		).DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-			_, err := b.ToByteSlice(100)
-			testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
-			return err
-		})
+		// Attempted to write with a bad write offset. The chunking of
+		// the blob aborts while reading the stream, so nothing gets
+		// stored.
+		contentAddressableStorage.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("windows10")).Return(singleChunkParameters, nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -703,7 +821,7 @@ func TestByteStreamServer(t *testing.T) {
 			FinishWrite: true,
 		}))
 		_, err = stream.CloseAndRecv()
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to write at offset 4, while 5 was expected"), err)
+		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Failed to chunk write stream: Attempted to write at offset 4, while 5 was expected"), err)
 	})
 
 	t.Run("QueryWriteStatus", func(t *testing.T) {
@@ -712,4 +830,12 @@ func TestByteStreamServer(t *testing.T) {
 		})
 		testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This service does not support querying write status"), err)
 	})
+}
+
+func mustNewInstanceName(name string) digest.InstanceName {
+	instanceName, err := digest.NewInstanceName(name)
+	if err != nil {
+		panic(err)
+	}
+	return instanceName
 }
