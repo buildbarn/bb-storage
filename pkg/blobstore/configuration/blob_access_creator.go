@@ -48,7 +48,7 @@ type BlobAccessCreator interface {
 	// NewHierarchicalInstanceNamesLocalBlobAccess() creates a
 	// BlobAccess suitable for storing data on the local system that
 	// uses hierarchical instance names.
-	NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error)
+	NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess, error)
 	// NewCustomBlobAccess() can be used as a fallback to create
 	// BlobAccess instances that only apply to this storage type.
 	// For example, CompletenessCheckingBlobAccess is only

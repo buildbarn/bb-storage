@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.blobstore;
 
+import "build/bazel/remote/execution/v2/remote_execution.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto";
@@ -199,6 +200,29 @@ message BlobAccessConfiguration {
     // value. When gRPC calls are timed out a `DEADLINE_EXCEEDED` error
     // code will be returned.
     DeadlineEnforcingBlobAccess deadline_enforcing = 28;
+
+    // Validate that chunk list requests fulfill the api specification.
+    // Chunk List Storage (CLS) is used to implement the SplitBlob and
+    // SpliceBlob methods from the REv2 api. The protocol has several
+    // demands on the state of the Content Addressable Storage (CAS)
+    // after those methods have been called.
+    //
+    // SplitBlob requires that that the blob as well as all chunks of
+    // the blob are available in the CAS, they have their lifetime
+    // renewed and that the resulting chunk list composes into the blob.
+    // This is validated by the Get path by splitting the Blob on demand
+    // if required.
+    //
+    // SpliceBlob requires that the blob as well as all chunks of the
+    // blob are present in storage, they have their lifetime renewed and
+    // that the supplied chunk list composes into the blob. Notably it
+    // does not require the chunks to follow any particular chunking
+    // algorithm but our implementation ensures that after any call a
+    // proper rep max cdc chunk list is verified even if the caller
+    // supplied a different chunk list.
+    //
+    // This decorator must be placed on the CLS.
+    ChunkListValidatingBlobAccessConfiguration chunk_list_validating = 29;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -642,6 +666,18 @@ message LocalBlobAccessConfiguration {
   // level, e.g., on top of CompletenessCheckingBlobAccess. This can be
   // achieved by using HierarchicalInstanceNamesBlobAccess.
   bool hierarchical_instance_names = 14;
+
+  // The chunking parameters advertised via GetCapabilities, setting
+  // this announces support for the SplitBlob and SpliceBlob api calls.
+  //
+  // Adding the chunking parameters does not make the underlying
+  // blobstore enforce the chunking parameters or implement the split
+  // and splice blob. There must be a configured Chunk List Storage with
+  // an outer ChunkValidatingBlobAccess that has view of the entire
+  // Content Addressable Storage (CAS).
+  //
+  // This option is only supported for the CLS.
+  build.bazel.remote.execution.v2.RepMaxCdcParams chunking_parameters = 15;
 }
 
 message ExistenceCachingBlobAccessConfiguration {
@@ -936,4 +972,9 @@ message GrpcBlobAccessConfiguration {
   // used if the server supports it. Has no effect for other storage
   // types (AC, ICAS, etc.).
   bool enable_compression = 2;
+}
+
+message ChunkListValidatingBlobAccessConfiguration {
+  // The backend to which validated operations are delegated.
+  BlobAccessConfiguration backend = 1;
 }
