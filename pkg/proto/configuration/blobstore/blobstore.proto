@@ -399,7 +399,7 @@ message LocalBlobAccessConfiguration {
     //
     // Recommended value: between 2 and 10 times the expected number of
     // objects stored.
-    int64 entries = 1;
+    uint64 entries = 1;
   }
 
   // Data store for the metadata of objects. The following Prometheus

@@ -1780,7 +1780,7 @@ func (x *ShardingBlobAccessConfiguration_Shard) GetWeight() uint32 {
 
 type LocalBlobAccessConfiguration_KeyLocationMapInMemory struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entries       int64                  `protobuf:"varint,1,opt,name=entries,proto3" json:"entries,omitempty"`
+	Entries       uint64                 `protobuf:"varint,1,opt,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1815,7 +1815,7 @@ func (*LocalBlobAccessConfiguration_KeyLocationMapInMemory) Descriptor() ([]byte
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{5, 0}
 }
 
-func (x *LocalBlobAccessConfiguration_KeyLocationMapInMemory) GetEntries() int64 {
+func (x *LocalBlobAccessConfiguration_KeyLocationMapInMemory) GetEntries() uint64 {
 	if x != nil {
 		return x.Entries
 	}
@@ -2048,7 +2048,7 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"persistent\x12>\n" +
 	"\x1bhierarchical_instance_names\x18\x0e \x01(\bR\x19hierarchicalInstanceNames\x1a2\n" +
 	"\x16KeyLocationMapInMemory\x12\x18\n" +
-	"\aentries\x18\x01 \x01(\x03R\aentries\x1a:\n" +
+	"\aentries\x18\x01 \x01(\x04R\aentries\x1a:\n" +
 	"\x0eBlocksInMemory\x12(\n" +
 	"\x10block_size_bytes\x18\x01 \x01(\x03R\x0eblockSizeBytes\x1a\x89\x02\n" +
 	"\x13BlocksOnBlockDevice\x12J\n" +

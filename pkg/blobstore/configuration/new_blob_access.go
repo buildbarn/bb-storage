@@ -20,6 +20,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
+	"github.com/buildbarn/bb-storage/pkg/lossymap"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
@@ -307,15 +308,12 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		)
 
 		// Create the backing store for the key-location map.
-		var locationRecordArraySize int
+		var locationRecordArraySize uint64
 		var locationRecordArray local.LocationRecordArray
 		switch keyLocationMapBackend := backend.Local.KeyLocationMapBackend.(type) {
 		case *pb.LocalBlobAccessConfiguration_KeyLocationMapInMemory_:
-			locationRecordArraySize = int(keyLocationMapBackend.KeyLocationMapInMemory.Entries)
-			locationRecordArray = local.NewInMemoryLocationRecordArray(
-				locationRecordArraySize,
-				locationBlobMap,
-			)
+			locationRecordArraySize = keyLocationMapBackend.KeyLocationMapInMemory.Entries
+			locationRecordArray = local.NewInMemoryLocationRecordArray(locationRecordArraySize)
 		case *pb.LocalBlobAccessConfiguration_KeyLocationMapOnBlockDevice:
 			blockDevice, sectorSizeBytes, sectorCount, err := blockdevice.NewBlockDeviceFromConfiguration(
 				keyLocationMapBackend.KeyLocationMapOnBlockDevice,
@@ -324,11 +322,8 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			if err != nil {
 				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open key-location map block device")
 			}
-			locationRecordArraySize = int((int64(sectorSizeBytes) * sectorCount) / local.BlockDeviceBackedLocationRecordSize)
-			locationRecordArray = local.NewBlockDeviceBackedLocationRecordArray(
-				blockDevice,
-				locationBlobMap,
-			)
+			locationRecordArraySize = uint64((int64(sectorSizeBytes) * sectorCount) / local.BlockDeviceBackedLocationRecordSize)
+			locationRecordArray = local.NewBlockDeviceBackedLocationRecordArray(blockDevice)
 		default:
 			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Key-location map backend not specified")
 		}
@@ -338,15 +333,43 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		// to store entries in the location record array, ensure
 		// that the size that is used is prime. This causes the
 		// best dispersion of hash table entries.
-		for locationRecordArraySize > 3 && !primes.IsPrime(locationRecordArraySize) {
+		for locationRecordArraySize > 3 && !primes.IsPrime(int(locationRecordArraySize)) {
 			locationRecordArraySize--
 		}
 
-		keyLocationMap := local.NewHashingKeyLocationMap(
+		keyLocationMap := lossymap.NewHashMap(
 			locationRecordArray,
+			func(k *lossymap.RecordKey[local.Key]) uint64 {
+				h := keyLocationMapHashInitialization
+				for _, c := range k.Key {
+					h ^= uint64(c)
+					h *= 1099511628211
+				}
+				attempt := k.Attempt
+				for i := 0; i < 4; i++ {
+					h ^= uint64(attempt & 0xff)
+					h *= 1099511628211
+					attempt >>= 8
+				}
+				return h
+			},
 			locationRecordArraySize,
-			keyLocationMapHashInitialization,
-			backend.Local.KeyLocationMapMaximumGetAttempts,
+			func(a, b *local.Location) int {
+				if a.BlockIndex < b.BlockIndex {
+					return -1
+				}
+				if a.BlockIndex > b.BlockIndex {
+					return 1
+				}
+				if a.OffsetBytes < b.OffsetBytes {
+					return -1
+				}
+				if a.OffsetBytes > b.OffsetBytes {
+					return 1
+				}
+				return 0
+			},
+			uint8(backend.Local.KeyLocationMapMaximumGetAttempts),
 			int(backend.Local.KeyLocationMapMaximumPutAttempts),
 			storageTypeName,
 		)
@@ -356,6 +379,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
+				locationBlobMap,
 				&globalLock,
 			)
 			if err != nil {
@@ -364,6 +388,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		} else {
 			localBlobAccess = local.NewFlatBlobAccess(
 				keyLocationMap,
+				locationBlobMap,
 				locationBlobMap,
 				digestKeyFormat,
 				&globalLock,
