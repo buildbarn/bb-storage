@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package buildbarn.configuration.lossymap;
+
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto";
+
+option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap";
+
+message HashMapConfiguration {
+  message InMemory {
+    // The size of this hash table. It is recommended to make this map
+    // relatively large to reduce collisions.
+    //
+    // Recommended value: between 2 and 10 times the expected number of
+    // objects stored.
+    uint64 entries = 1;
+  }
+
+  // Data store for the lossy map. The following Prometheus queries may
+  // be used to determine whether insertion into the lossy map caused
+  // other entries to be displaced prematurely:
+  //
+  // bonanza_lossymap_hash_map_put_iterations_count{outcome="TooManyAttempts"}
+  // bonanza_lossymap_hash_map_put_too_many_iterations_total
+  //
+  // If this query yields values greater than zero, you may need to
+  // increase this data store's size (or in the case of object storage,
+  // reduce the size of the location-blob map).
+  //
+  // Note that restarting the process causes these metrics to be reset,
+  // meaning that you may need to run the process for a longer amount of
+  // time to get better insight in whether objects are discarded
+  // prematurely.
+  oneof backend {
+    // Store the lossy map in memory.
+    InMemory in_memory = 1;
+
+    // Store the lossy map on a block device. The size of the block
+    // device determines the number of entries stored.
+    buildbarn.configuration.blockdevice.Configuration on_block_device = 2;
+  }
+
+  // The number of indices a Get() call on the lossy map may attempt to
+  // access. The lower the utilization rate of the lossy map, the lower
+  // this value may be set. For example, if the size of the lossy map is
+  // set in such a way that it is only utilized by 10% (factor 0.1),
+  // setting this field to 16 means there is only a 0.1^16 chance that
+  // inserting an entry prematurely displaces another object from
+  // storage.
+  //
+  // Recommended value: 16
+  uint32 maximum_get_attempts = 3;
+
+  // The number of mutations that a Put() on the lossy map may perform.
+  // Because the lossy map uses a scheme similar to Robin Hood hashing,
+  // insertions may cause other entries to be displaced. Those entries
+  // may then cause even more entries to be displaced. Because of that,
+  // it is recommended to set this field to a small multiple of the
+  // maximum Get() attempts.
+  //
+  // Recommended value: 64
+  int64 maximum_put_attempts = 4;
+}

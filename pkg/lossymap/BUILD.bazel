@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "lossymap",
+    srcs = [
+        "configuration.go",
+        "hash_map.go",
+        "lower_bound_comparing_record_array.go",
+        "map.go",
+        "record_array.go",
+        "simple_record_array.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/lossymap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/blockdevice",
+        "//pkg/proto/configuration/lossymap",
+        "//pkg/util",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "lossymap_test",
+    srcs = ["hash_map_test.go"],
+    deps = [
+        ":lossymap",
+        "//internal/mock",
+        "//pkg/testutil",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_uber_go_mock//gomock",
+    ],
+)
