@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
+	"github.com/buildbarn/bb-storage/pkg/logo"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -21,7 +22,8 @@ var (
 	//go:embed active_spans.html
 	activeSpansTemplateBody string
 	activeSpansTemplate     = template.Must(template.New("ActiveSpans").Funcs(template.FuncMap{
-		"stylesheet": func() template.CSS { return stylesheet },
+		"favicon_url": func() template.URL { return logo.EmbeddedFaviconURL },
+		"stylesheet":  func() template.CSS { return stylesheet },
 		"timestamp_rfc3339": func(t time.Time) string {
 			// Converts a timestamp to RFC3339 format.
 			return t.Format("2006-01-02T15:04:05.999Z07:00")
