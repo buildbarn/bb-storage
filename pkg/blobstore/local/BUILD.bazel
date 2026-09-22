@@ -18,6 +18,7 @@ go_library(
         "key_location_map.go",
         "location.go",
         "location_blob_map.go",
+        "location_record_array_factory.go",
         "old_current_new_location_blob_map.go",
         "periodic_syncer.go",
         "persistent_block_list.go",

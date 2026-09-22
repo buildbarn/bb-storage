@@ -168,9 +168,9 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossym
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossymap_proto_rawDesc = "" +
 	"\n" +
-	"Ogithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x12#buildbarn.configuration.ds.lossymap\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\"\xec\x02\n" +
-	"\x14HashMapConfiguration\x12a\n" +
-	"\tin_memory\x18\x01 \x01(\v2B.buildbarn.configuration.ds.lossymap.HashMapConfiguration.InMemoryH\x00R\binMemory\x12\\\n" +
+	"Ogithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x12 buildbarn.configuration.lossymap\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\"\xe9\x02\n" +
+	"\x14HashMapConfiguration\x12^\n" +
+	"\tin_memory\x18\x01 \x01(\v2?.buildbarn.configuration.lossymap.HashMapConfiguration.InMemoryH\x00R\binMemory\x12\\\n" +
 	"\x0fon_block_device\x18\x02 \x01(\v22.buildbarn.configuration.blockdevice.ConfigurationH\x00R\ronBlockDevice\x120\n" +
 	"\x14maximum_get_attempts\x18\x03 \x01(\rR\x12maximumGetAttempts\x120\n" +
 	"\x14maximum_put_attempts\x18\x04 \x01(\x03R\x12maximumPutAttempts\x1a$\n" +
@@ -192,13 +192,13 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossy
 
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossymap_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossymap_proto_goTypes = []any{
-	(*HashMapConfiguration)(nil),          // 0: buildbarn.configuration.ds.lossymap.HashMapConfiguration
-	(*HashMapConfiguration_InMemory)(nil), // 1: buildbarn.configuration.ds.lossymap.HashMapConfiguration.InMemory
+	(*HashMapConfiguration)(nil),          // 0: buildbarn.configuration.lossymap.HashMapConfiguration
+	(*HashMapConfiguration_InMemory)(nil), // 1: buildbarn.configuration.lossymap.HashMapConfiguration.InMemory
 	(*blockdevice.Configuration)(nil),     // 2: buildbarn.configuration.blockdevice.Configuration
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_lossymap_lossymap_proto_depIdxs = []int32{
-	1, // 0: buildbarn.configuration.ds.lossymap.HashMapConfiguration.in_memory:type_name -> buildbarn.configuration.ds.lossymap.HashMapConfiguration.InMemory
-	2, // 1: buildbarn.configuration.ds.lossymap.HashMapConfiguration.on_block_device:type_name -> buildbarn.configuration.blockdevice.Configuration
+	1, // 0: buildbarn.configuration.lossymap.HashMapConfiguration.in_memory:type_name -> buildbarn.configuration.lossymap.HashMapConfiguration.InMemory
+	2, // 1: buildbarn.configuration.lossymap.HashMapConfiguration.on_block_device:type_name -> buildbarn.configuration.blockdevice.Configuration
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

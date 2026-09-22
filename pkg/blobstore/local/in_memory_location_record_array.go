@@ -19,7 +19,7 @@ type inMemoryLocationRecordArray struct {
 // stores its data in memory. lossymap.HashMap relies on being able to
 // store a mapping from Keys to a Location in memory or on disk. This
 // type implements a non-persistent storage of such a map in memory.
-func NewInMemoryLocationRecordArray(size uint64) LocationRecordArray {
+func NewInMemoryLocationRecordArray(size int) LocationRecordArray {
 	return &inMemoryLocationRecordArray{
 		records: make([]inMemoryLocationRecord, size),
 	}

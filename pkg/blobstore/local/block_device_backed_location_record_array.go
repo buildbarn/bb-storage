@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// BlockDeviceBackedLocationRecordSize is the size of a single
+	// blockDeviceBackedLocationRecordSize is the size of a single
 	// serialized LocationRecord in bytes. In serialized form, a
 	// LocationRecord contains the following fields:
 	//
@@ -26,7 +26,7 @@ const (
 	// just a single byte, as lossymap only permits up to 255
 	// attempts. We should change the order of fields, so that
 	// records may become smaller.
-	BlockDeviceBackedLocationRecordSize = 4 + 2 + sha256.Size + 4 + 8 + 8 + 8
+	blockDeviceBackedLocationRecordSize = 4 + 2 + sha256.Size + 4 + 8 + 8 + 8
 )
 
 type blockDeviceBackedLocationRecordArray struct {
@@ -46,7 +46,7 @@ func NewBlockDeviceBackedLocationRecordArray(device blockdevice.BlockDevice) Loc
 // computeChecksumForRecord computes an FNV-1a hash of all the fields in
 // a serialized LocationRecord, using a hash initialization that
 // corresponds to that of the epoch ID.
-func computeChecksumForRecord(record *[BlockDeviceBackedLocationRecordSize]byte, h uint64) uint64 {
+func computeChecksumForRecord(record *[blockDeviceBackedLocationRecordSize]byte, h uint64) uint64 {
 	for i := 4 + 2; i < 4+2+sha256.Size+4+8+8; i++ {
 		h ^= uint64(record[i])
 		h *= 1099511628211
@@ -55,8 +55,8 @@ func computeChecksumForRecord(record *[BlockDeviceBackedLocationRecordSize]byte,
 }
 
 func (lra *blockDeviceBackedLocationRecordArray) Get(index uint64, resolver BlockReferenceResolver) (LocationRecord, error) {
-	var record [BlockDeviceBackedLocationRecordSize]byte
-	if _, err := lra.device.ReadAt(record[:], int64(index)*BlockDeviceBackedLocationRecordSize); err != nil {
+	var record [blockDeviceBackedLocationRecordSize]byte
+	if _, err := lra.device.ReadAt(record[:], int64(index)*blockDeviceBackedLocationRecordSize); err != nil {
 		return LocationRecord{}, err
 	}
 
@@ -97,7 +97,7 @@ func (lra *blockDeviceBackedLocationRecordArray) Put(index uint64, locationRecor
 	blockReference, hashSeed := resolver.BlockIndexToBlockReference(locationRecord.Value.BlockIndex)
 
 	// Serialize the LocationRecord ready to be written to disk.
-	var record [BlockDeviceBackedLocationRecordSize]byte
+	var record [blockDeviceBackedLocationRecordSize]byte
 	binary.LittleEndian.PutUint32(record[:], blockReference.EpochID)
 	binary.LittleEndian.PutUint16(record[4:], blockReference.BlocksFromLast)
 	copy(record[4+2:], locationRecord.RecordKey.Key[:])
@@ -106,6 +106,6 @@ func (lra *blockDeviceBackedLocationRecordArray) Put(index uint64, locationRecor
 	binary.LittleEndian.PutUint64(record[4+2+sha256.Size+4+8:], uint64(locationRecord.Value.SizeBytes))
 	binary.LittleEndian.PutUint64(record[4+2+sha256.Size+4+8+8:], computeChecksumForRecord(&record, hashSeed))
 
-	_, err := lra.device.WriteAt(record[:], int64(index)*BlockDeviceBackedLocationRecordSize)
+	_, err := lra.device.WriteAt(record[:], int64(index)*blockDeviceBackedLocationRecordSize)
 	return err
 }

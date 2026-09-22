@@ -50,7 +50,6 @@ go_library(
         "//pkg/zstd",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
-        "@com_github_fxtlabs_primes//:primes",
         "@com_github_google_uuid//:uuid",
         "@com_google_cloud_go_storage//:storage",
         "@org_golang_google_grpc//codes",
