@@ -4,6 +4,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	configuration_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/fxtlabs/primes"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -57,6 +58,14 @@ func NewHashMapFromConfiguration[TKey comparable, TValue, TExpirationData any](
 		recordArray = recordArrayFactory.NewBlockDeviceBackedRecordArray(blockDevice)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "No backend provided")
+	}
+
+	// Considering that HashMap uses simple modulo arithmetic to
+	// store entries in the RecordArray, ensure that the size that
+	// is used is prime. This causes the best dispersion of hash
+	// table entries.
+	for recordCount > 3 && !primes.IsPrime(int(recordCount)) {
+		recordCount--
 	}
 
 	return NewHashMap(

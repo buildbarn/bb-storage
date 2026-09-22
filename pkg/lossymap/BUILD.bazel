@@ -16,6 +16,7 @@ go_library(
         "//pkg/blockdevice",
         "//pkg/proto/configuration/lossymap",
         "//pkg/util",
+        "@com_github_fxtlabs_primes//:primes",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
