@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ import (
 func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
 	helloDigest1 := digest.MustNewDigest("a/b", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -64,7 +64,7 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
 				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(buffer.NewChunk(nil, []byte("Hello")), nil),
+				Return(chunk.NewChunk(nil, []byte("Hello")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest1)
@@ -78,7 +78,7 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 func TestHierarchicalInstanceNamesBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewHierarchicalInstanceNamesBlobAccess(baseBlobAccess)
 
 	t.Run("InitialFailure", func(t *testing.T) {

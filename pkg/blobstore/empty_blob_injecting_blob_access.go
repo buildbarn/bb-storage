@@ -3,14 +3,14 @@ package blobstore
 import (
 	"context"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type emptyBlobInjectingBlobAccess struct {
-	BlobAccess[*buffer.Chunk]
+	BlobAccess[*chunk.Chunk]
 }
 
 // NewEmptyBlobInjectingBlobAccess is a decorator for BlobAccess that
@@ -33,13 +33,13 @@ type emptyBlobInjectingBlobAccess struct {
 // blob is always present.
 //
 // More details: https://github.com/bazelbuild/bazel/issues/11063
-func NewEmptyBlobInjectingBlobAccess(base BlobAccess[*buffer.Chunk]) BlobAccess[*buffer.Chunk] {
+func NewEmptyBlobInjectingBlobAccess(base BlobAccess[*chunk.Chunk]) BlobAccess[*chunk.Chunk] {
 	return &emptyBlobInjectingBlobAccess{
 		BlobAccess: base,
 	}
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) (*buffer.Chunk, error) {
+func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.Chunk, error) {
 	if digest.GetSizeBytes() == 0 {
 		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
 		if digest != emptyDigest {
@@ -50,12 +50,12 @@ func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.D
 				digest.GetHashString(),
 			)
 		}
-		return buffer.EmptyChunk, nil
+		return chunk.EmptyChunk, nil
 	}
 	return ba.BlobAccess.Get(ctx, digest)
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *buffer.Chunk) error {
+func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {
 	if digest.GetSizeBytes() == 0 {
 		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
 		if digest != emptyDigest {

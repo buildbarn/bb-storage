@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
@@ -16,7 +16,7 @@ import (
 
 // IntoWriter streams the chunks of a blob directly into the provided
 // io.Writer from the specified offset.
-func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunklist.Fetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
+func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return status.Errorf(codes.InvalidArgument, "Invalid offset %d for digest %s", offset, d)
 	}
@@ -36,7 +36,7 @@ func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 	if err != nil {
 		return err
 	}
-	index, chunkOffset := chunklist.FindChunkOffset(manifest, uint64(offset))
+	index, chunkOffset := chunk.FindChunkOffset(manifest, uint64(offset))
 	for ; index < len(manifest.Digests); index++ {
 		chunkData, err := chunkBytesReader.Read(ctx, manifest.Digests[index])
 		if err != nil {

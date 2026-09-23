@@ -14,9 +14,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
         "//pkg/blobstore/cdc",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/cas",
         "//pkg/digest",
         "//pkg/proto/fsac",
@@ -42,8 +41,7 @@ go_test(
     deps = [
         ":grpcservers",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/testutil",

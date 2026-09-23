@@ -6,8 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -17,7 +16,7 @@ import (
 // larger digests are looked up in the Chunk List Storage (CLS). All
 // digests must belong to the instance name that the CDC parameters were
 // fetched for.
-func FindMissing(ctx context.Context, chunkStorage blobstore.BlobAccess[*buffer.Chunk], chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], params *remoteexecution.RepMaxCdcParams, digests digest.Set) (digest.Set, error) {
+func FindMissing(ctx context.Context, chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], params *remoteexecution.RepMaxCdcParams, digests digest.Set) (digest.Set, error) {
 	smallDigests := digest.NewSetBuilder(digests.Length())
 	largeDigests := digest.NewSetBuilder(digests.Length())
 	for _, d := range digests.Items() {

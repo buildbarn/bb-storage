@@ -10,7 +10,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -22,7 +22,7 @@ import (
 func TestAuthorizingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	getAuthorizer := mock.NewMockAuthorizer(ctrl)
 	putAuthorizer := mock.NewMockAuthorizer(ctrl)
 	findMissingAuthorizer := mock.NewMockAuthorizer(ctrl)
@@ -31,7 +31,7 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 	d2 := digest.MustNewDigest("bop/bip", remoteexecution.DigestFunction_SHA256, "da95ccd92a874d2169839cd90d9045be61d17df779fb28fe520a7465c6063723", 3)
 	digests := digest.GetUnion([]digest.Set{d.ToSingletonSet(), d2.ToSingletonSet()})
 	wantBytes := []byte("European Burmese")
-	wantChunk := buffer.NewChunk(nil, wantBytes)
+	wantChunk := chunk.NewChunk(nil, wantBytes)
 
 	beep := util.Must(digest.NewInstanceName("beep"))
 	beepSlice := []digest.InstanceName{beep}

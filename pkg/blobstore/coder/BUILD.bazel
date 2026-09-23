@@ -15,8 +15,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/coder",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/util",
         "//pkg/zstd",
@@ -33,7 +32,7 @@ go_test(
     srcs = ["chunk_coder_test.go"],
     deps = [
         ":coder",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/testutil",
         "//pkg/zstd",

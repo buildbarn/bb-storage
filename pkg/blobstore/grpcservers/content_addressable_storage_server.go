@@ -9,9 +9,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -22,9 +21,9 @@ import (
 )
 
 type contentAddressableStorageServer struct {
-	chunkStorage            blobstore.BlobAccess[*buffer.Chunk]
-	chunkListStorage        blobstore.BlobAccess[chunklist.ChunkList]
-	chunkListFetcher        chunklist.Fetcher
+	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
+	chunkListStorage        blobstore.BlobAccess[chunk.List]
+	chunkListFetcher        chunk.ListFetcher
 	cdcParametersFetcher    cdc.ParametersFetcher
 	zstdPool                zstd.Pool
 	maximumMessageSizeBytes int64
@@ -33,7 +32,7 @@ type contentAddressableStorageServer struct {
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*buffer.Chunk], chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], cdcParametersFetcher cdc.ParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher cdc.ParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		chunkStorage:            chunkStorage,
 		chunkListStorage:        chunkListStorage,
@@ -86,7 +85,7 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context, blobDigest digest.Digest, params *remoteexecution.RepMaxCdcParams, compressor remoteexecution.Compressor_Value) ([]byte, error) {
-	chunkList := chunklist.ChunkList{
+	chunkList := chunk.List{
 		Digests: []digest.Digest{blobDigest},
 		Offsets: []uint64{0},
 	}
@@ -243,7 +242,7 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 	return status.Error(codes.Unimplemented, "This service does not support downloading directory trees")
 }
 
-func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, chunkList chunklist.ChunkList) error {
+func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, chunkList chunk.List) error {
 	if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
 		return util.StatusWrap(err, "Could not save chunk list for blob")
 	}
@@ -252,8 +251,8 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 
 // newChunkList constructs a chunk list from a sequence of chunk
 // digests, computing the offset at which every chunk starts.
-func newChunkList(digests []digest.Digest) chunklist.ChunkList {
-	chunkList := chunklist.ChunkList{
+func newChunkList(digests []digest.Digest) chunk.List {
+	chunkList := chunk.List{
 		Digests: digests,
 		Offsets: make([]uint64, len(digests)),
 	}
@@ -366,19 +365,19 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 	}, nil
 }
 
-func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) (chunklist.ChunkList, error) {
+func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) (chunk.List, error) {
 	if cas.IsSingleChunk(params, d) {
 		// Blobs that fit in a single chunk have no chunk lists in
 		// storage, but one may be created trivially on the fly provided
 		// the chunk exists.
 		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, d.ToSingletonSet())
 		if err != nil {
-			return chunklist.ChunkList{}, util.StatusWrap(err, "Failed to check blob existence")
+			return chunk.List{}, util.StatusWrap(err, "Failed to check blob existence")
 		}
 		if !missing.Empty() {
-			return chunklist.ChunkList{}, status.Errorf(codes.NotFound, "Blob %s not found", d)
+			return chunk.List{}, status.Errorf(codes.NotFound, "Blob %s not found", d)
 		}
-		return chunklist.ChunkList{Digests: []digest.Digest{d}, Offsets: []uint64{0}}, nil
+		return chunk.List{Digests: []digest.Digest{d}, Offsets: []uint64{0}}, nil
 	}
 
 	return s.chunkListStorage.Get(ctx, d)

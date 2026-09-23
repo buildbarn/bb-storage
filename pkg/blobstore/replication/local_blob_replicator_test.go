@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -21,17 +21,17 @@ import (
 func TestLocalBlobReplicator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	source := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	sink := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	source := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	sink := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := replication.NewLocalBlobReplicator(source, sink)
 
 	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	worldDigest := digest.MustNewDigest("world", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		source.EXPECT().Get(ctx, helloDigest).Return(buffer.NewChunk(nil, []byte("Hello")), nil)
+		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
@@ -39,9 +39,9 @@ func TestLocalBlobReplicator(t *testing.T) {
 			},
 		)
 
-		source.EXPECT().Get(ctx, worldDigest).Return(buffer.NewChunk(nil, []byte("World")), nil)
+		source.EXPECT().Get(ctx, worldDigest).Return(chunk.NewChunk(nil, []byte("World")), nil)
 		sink.EXPECT().Put(ctx, worldDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("World"), data)
@@ -76,9 +76,9 @@ func TestLocalBlobReplicator(t *testing.T) {
 	})
 
 	t.Run("SinkError", func(t *testing.T) {
-		source.EXPECT().Get(ctx, helloDigest).Return(buffer.NewChunk(nil, []byte("Hello")), nil)
+		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				return status.Error(codes.Internal, "Disk full")
 			},
 		)

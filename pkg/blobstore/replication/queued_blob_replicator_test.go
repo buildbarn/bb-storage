@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -22,7 +22,7 @@ import (
 func TestQueuedBlobReplicator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	source := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	source := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	baseReplicator := mock.NewMockBlobReplicator(ctrl)
 	clock := mock.NewMockClock(ctrl)
 	replicator := replication.NewQueuedBlobReplicator(

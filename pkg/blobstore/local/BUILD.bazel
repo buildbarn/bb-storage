@@ -30,7 +30,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/blobstore/coder",
         "//pkg/blockdevice",
         "//pkg/capabilities",
@@ -67,7 +67,7 @@ go_test(
     deps = [
         ":local",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/filesystem/path",

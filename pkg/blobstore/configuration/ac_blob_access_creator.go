@@ -3,9 +3,8 @@ package configuration
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -39,9 +38,9 @@ type acBlobAccessCreator struct {
 	protoBlobReplicatorCreator[*remoteexecution.ActionResult]
 
 	chunkBytesReader        reader.Reader[[]byte]
-	chunkStorage            blobstore.BlobAccess[*buffer.Chunk]
-	chunkListStorage        blobstore.BlobAccess[chunklist.ChunkList]
-	chunkListFetcher        chunklist.Fetcher
+	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
+	chunkListStorage        blobstore.BlobAccess[chunk.List]
+	chunkListFetcher        chunk.ListFetcher
 	cdcParametersFetcher    cdc.ParametersFetcher
 	digestKeyFormat         digest.KeyFormat
 	grpcClientFactory       grpc.ClientFactory
@@ -52,7 +51,7 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*buffer.Chunk], chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], chunkListFetcher chunklist.Fetcher, cdcParametersFetcher cdc.ParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*remoteexecution.ActionResult] {
+func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher cdc.ParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*remoteexecution.ActionResult] {
 	return &acBlobAccessCreator{
 		chunkBytesReader:        chunkBytesReader,
 		chunkStorage:            chunkStorage,

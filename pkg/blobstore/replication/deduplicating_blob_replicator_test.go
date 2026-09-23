@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -22,7 +22,7 @@ func TestDeduplicatingBlobReplicatorSingleDigest(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	base := mock.NewMockBlobReplicator(ctrl)
-	sink := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	sink := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
 
 	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -111,7 +111,7 @@ func TestDeduplicatingBlobReplicatorMultipleDigests(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	base := mock.NewMockBlobReplicator(ctrl)
-	sink := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	sink := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := replication.NewDeduplicatingBlobReplicator(base, sink, digest.KeyWithoutInstance)
 
 	helloDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)

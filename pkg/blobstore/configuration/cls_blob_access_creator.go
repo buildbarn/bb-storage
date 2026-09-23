@@ -2,8 +2,7 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -16,10 +15,10 @@ import (
 )
 
 type clsBlobAccessCreator struct {
-	protoBlobAccessCreator[chunklist.ChunkList]
-	protoBlobReplicatorCreator[chunklist.ChunkList]
+	protoBlobAccessCreator[chunk.List]
+	protoBlobReplicatorCreator[chunk.List]
 
-	chunkStorage            *BlobAccessInfo[*buffer.Chunk]
+	chunkStorage            *BlobAccessInfo[*chunk.Chunk]
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
 	zstdPool                zstd.Pool
@@ -28,7 +27,7 @@ type clsBlobAccessCreator struct {
 // NewCLSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for querying for chunk list.
-func NewCLSBlobAccessCreator(chunkStorage *BlobAccessInfo[*buffer.Chunk], grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[chunklist.ChunkList] {
+func NewCLSBlobAccessCreator(chunkStorage *BlobAccessInfo[*chunk.Chunk], grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[chunk.List] {
 	return &clsBlobAccessCreator{
 		chunkStorage:            chunkStorage,
 		grpcClientFactory:       grpcClientFactory,
@@ -45,20 +44,20 @@ func (clsBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provid
 	return nil
 }
 
-func (bac *clsBlobAccessCreator) GetBinaryCoder() coder.Coder[chunklist.ChunkList, []byte] {
+func (bac *clsBlobAccessCreator) GetBinaryCoder() coder.Coder[chunk.List, []byte] {
 	c := coder.NewChunkListCoder( /* prevalidated = */ true)
 	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 
-func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[chunklist.ChunkList]) (BlobAccessInfo[chunklist.ChunkList], string, error) {
+func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[chunk.List]) (BlobAccessInfo[chunk.List], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ChunkListValidating:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ChunkListValidating.Backend, bac)
 		if err != nil {
-			return BlobAccessInfo[chunklist.ChunkList]{}, "", err
+			return BlobAccessInfo[chunk.List]{}, "", err
 		}
-		return BlobAccessInfo[chunklist.ChunkList]{
+		return BlobAccessInfo[chunk.List]{
 			BlobAccess: chunklistvalidating.NewChunkListValidatingBlobAccess(
 				base.BlobAccess,
 				bac.chunkStorage.BlobAccess,
@@ -72,10 +71,10 @@ func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		grpc := backend.Grpc
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
-			return BlobAccessInfo[chunklist.ChunkList]{}, "", err
+			return BlobAccessInfo[chunk.List]{}, "", err
 		}
 		ba := grpcclients.NewCLSBlobAccess(client, bac.maximumMessageSizeBytes)
-		return BlobAccessInfo[chunklist.ChunkList]{
+		return BlobAccessInfo[chunk.List]{
 			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
@@ -85,6 +84,6 @@ func (bac *clsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 	}
 }
 
-func (clsBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[chunklist.ChunkList]) blobstore.BlobAccess[chunklist.ChunkList] {
+func (clsBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[chunk.List]) blobstore.BlobAccess[chunk.List] {
 	return blobAccess
 }

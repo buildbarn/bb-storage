@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -21,8 +21,8 @@ import (
 func TestMirroredBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	backendA := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	backendB := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	backendA := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	backendB := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
 	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
@@ -31,9 +31,9 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		// Requests should alternate between backends to spread
 		// the load between backends equally.
 		gomock.InOrder(
-			backendA.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil),
-			backendB.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil),
-			backendA.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil),
+			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
+			backendB.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
+			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
 		)
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
@@ -67,7 +67,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		gomock.InOrder(
 			backendA.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.NotFound, "Blob not found")),
 			replicatorBToA.EXPECT().ReplicateMultiple(ctx, blobDigest.ToSingletonSet()).Return(nil),
-			backendA.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil),
+			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
 		)
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
@@ -101,8 +101,8 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 func TestMirroredBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	backendA := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	backendB := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	backendA := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	backendB := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
 	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
@@ -110,7 +110,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		backendA.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello world"), data)
@@ -118,7 +118,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 			},
 		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello world"), data)
@@ -126,7 +126,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 			},
 		)
 
-		require.NoError(t, blobAccess.Put(ctx, blobDigest, buffer.NewChunk(nil, []byte("Hello world"))))
+		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))))
 	})
 
 	t.Run("ErrorBackendA", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend A: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewChunk(nil, []byte("Hello world"))),
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))),
 		)
 	})
 
@@ -147,7 +147,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend B: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewChunk(nil, []byte("Hello world"))),
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))),
 		)
 	})
 }
@@ -155,8 +155,8 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 func TestMirroredBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	backendA := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	backendB := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	backendA := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	backendB := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicatorAToB := mock.NewMockBlobReplicator(ctrl)
 	replicatorBToA := mock.NewMockBlobReplicator(ctrl)
 	digestNone := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)

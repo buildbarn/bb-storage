@@ -7,8 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -47,17 +46,17 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 		InstanceName: "ubuntu1804",
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	singleChunkParameters := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("ubuntu1804")).Return(singleChunkParameters, nil).Times(1)
 	a := make([]byte, 123)
-	chunkStorage.EXPECT().Get(ctx, digest1).Return(buffer.NewChunk(zstdPool, a), nil)
+	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunk(zstdPool, a), nil)
 	b := make([]byte, 234)
-	chunkStorage.EXPECT().Get(ctx, digest2).Return(buffer.NewChunk(zstdPool, b), nil)
+	chunkStorage.EXPECT().Get(ctx, digest2).Return(chunk.NewChunk(zstdPool, b), nil)
 	chunkStorage.EXPECT().Get(ctx, digest3).Return(nil, status.Error(codes.NotFound, "The object you requested could not be found"))
 
 	maximumMessageSizeBytes := 4 << 20
@@ -112,8 +111,8 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 		InstanceName: "ubuntu1804",
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -144,8 +143,8 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 		InstanceName: "ubuntu1804",
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -153,8 +152,8 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
-	chunkStorage.EXPECT().Put(ctx, digest1, buffer.NewChunk(zstdPool, []byte("Hello"))).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, digest2, buffer.NewChunk(zstdPool, []byte("World"))).Return(status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
+	chunkStorage.EXPECT().Put(ctx, digest1, chunk.NewChunk(zstdPool, []byte("Hello"))).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, digest2, chunk.NewChunk(zstdPool, []byte("World"))).Return(status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkListStorage, cdcParametersFetcher, zstdPool, 4<<20, 1000)
 
@@ -182,8 +181,8 @@ func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 	data := []byte("Hello")
 	digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -198,7 +197,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
-	chunkStorage.EXPECT().Put(ctx, digest1, buffer.NewChunk(zstdPool, data)).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, digest1, chunk.NewChunk(zstdPool, data)).Return(nil)
 
 	request := &remoteexecution.BatchUpdateBlobsRequest{
 		InstanceName: "ubuntu1804",
@@ -225,8 +224,8 @@ func TestContentAddressableStorageServerBatchUpdateBlobsCorruptZSTD(t *testing.T
 
 	// Decompression must fail before any interaction with the
 	// Content Addressable Storage takes place.
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
@@ -266,8 +265,8 @@ func TestContentAddressableStorageServerFindMissingBlobs(t *testing.T) {
 		},
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -317,8 +316,8 @@ func TestContentAddressableStorageServerSplitBlob(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
@@ -326,7 +325,7 @@ func TestContentAddressableStorageServerSplitBlob(t *testing.T) {
 		mustNewInstanceName("my_instance_name"),
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 4, HorizonSizeBytes: 8}, nil)
 	chunkListStorage.EXPECT().Get(ctx, blobDigest).Return(
-		chunklist.ChunkList{
+		chunk.List{
 			Offsets: []uint64{0, 8},
 			Digests: []digest.Digest{chunk1Digest, chunk2Digest},
 		},
@@ -354,8 +353,8 @@ func TestContentAddressableStorageServerSplitBlobSingleChunk(t *testing.T) {
 		DigestFunction: remoteexecution.DigestFunction_SHA256,
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -394,8 +393,8 @@ func TestContentAddressableStorageServerSplitBlobNotFound(t *testing.T) {
 		DigestFunction: remoteexecution.DigestFunction_SHA256,
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
@@ -448,13 +447,13 @@ func TestContentAddressableStorageServerSpliceBlob(t *testing.T) {
 	chunk2Digest, err := digestFunction.NewDigestFromProto(request.ChunkDigests[1])
 	require.NoError(t, err)
 
-	expectedChunkList := chunklist.ChunkList{
+	expectedChunkList := chunk.List{
 		Offsets: []uint64{0, 8},
 		Digests: []digest.Digest{chunk1Digest, chunk2Digest},
 	}
 
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	chunkListStorage.EXPECT().Put(ctx, blobDigest, expectedChunkList).Return(nil)

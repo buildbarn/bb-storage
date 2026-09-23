@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
@@ -27,10 +26,10 @@ func mustComputeDigest(t *testing.T, digestFunction digest.Function, data []byte
 	return generator.Sum()
 }
 
-// makeChunkList creates a chunklist.ChunkList from a list of chunk
+// makeChunkList creates a chunk.List from a list of chunk
 // digests.
-func makeChunkList(chunkDigests ...digest.Digest) chunklist.ChunkList {
-	cl := chunklist.ChunkList{
+func makeChunkList(chunkDigests ...digest.Digest) chunk.List {
+	cl := chunk.List{
 		Digests: chunkDigests,
 		Offsets: make([]uint64, len(chunkDigests)),
 	}
@@ -51,14 +50,14 @@ var maximumMessageSizeBytes = 1024 * 1024
 func TestChunkListValidatingBlobAccessGetTrivialSmallBlob(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 	chunk1Data := []byte("Small trivial blob")
-	chunk := buffer.NewChunk(zstdPool, chunk1Data)
+	chunk := chunk.NewChunk(zstdPool, chunk1Data)
 	blobDigest := mustComputeDigest(t, digestFunction, chunk1Data)
 
 	require.NoError(t, fakeCS.Put(ctx, blobDigest, chunk))
@@ -75,8 +74,8 @@ func TestChunkListValidatingBlobAccessGetTrivialSmallBlob(t *testing.T) {
 func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -85,8 +84,8 @@ func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 	blobData := bytes.Repeat([]byte("a"), 2048)
 	chunk1Data := blobData[:len(blobData)/2]
 	chunk2Data := blobData[len(blobData)/2:]
-	chunk1 := buffer.NewChunk(zstdPool, chunk1Data)
-	chunk2 := buffer.NewChunk(zstdPool, chunk2Data)
+	chunk1 := chunk.NewChunk(zstdPool, chunk1Data)
+	chunk2 := chunk.NewChunk(zstdPool, chunk2Data)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 	blobDigest := mustComputeDigest(t, digestFunction, blobData)
@@ -118,15 +117,15 @@ func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 func TestChunkListValidatingBlobAccessGetLargeBlobMissingUnderlyingChunk(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	chunk1Bytes := bytes.Repeat([]byte("A"), 1500)
-	chunk1 := buffer.NewChunk(zstdPool, chunk1Bytes)
+	chunk1 := chunk.NewChunk(zstdPool, chunk1Bytes)
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Bytes)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk1))
 	chunk2Bytes := bytes.Repeat([]byte("B"), 1500)
@@ -145,8 +144,8 @@ func TestChunkListValidatingBlobAccessGetLargeBlobMissingUnderlyingChunk(t *test
 func TestChunkListValidatingBlobAccessGetMissingBlob(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -161,20 +160,20 @@ func TestChunkListValidatingBlobAccessGetMissingBlob(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	chunk1Data := []byte("Hello, ")
-	chunk1 := buffer.NewChunk(zstdPool, chunk1Data)
+	chunk1 := chunk.NewChunk(zstdPool, chunk1Data)
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk1))
 
 	chunk2Data := []byte("World!")
-	chunk2 := buffer.NewChunk(zstdPool, chunk2Data)
+	chunk2 := chunk.NewChunk(zstdPool, chunk2Data)
 	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk2Digest, chunk2))
 
@@ -193,8 +192,8 @@ func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutCanonicalization(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -202,9 +201,9 @@ func TestChunkListValidatingBlobAccessPutCanonicalization(t *testing.T) {
 
 	blobData := bytes.Repeat([]byte("testdatafortests"), 250)
 	chunk1Data := blobData[:len(blobData)/2]
-	chunk1 := buffer.NewChunk(zstdPool, chunk1Data)
+	chunk1 := chunk.NewChunk(zstdPool, chunk1Data)
 	chunk2Data := blobData[len(blobData)/2:]
-	chunk2 := buffer.NewChunk(zstdPool, chunk2Data)
+	chunk2 := chunk.NewChunk(zstdPool, chunk2Data)
 
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk1))
@@ -228,8 +227,8 @@ func TestChunkListValidatingBlobAccessPutCanonicalization(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutMissingChunk(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -244,8 +243,8 @@ func TestChunkListValidatingBlobAccessPutMissingChunk(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutDigestMismatch(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -253,7 +252,7 @@ func TestChunkListValidatingBlobAccessPutDigestMismatch(t *testing.T) {
 
 	chunkData := []byte("Valid chunk data")
 	chunkDigest := mustComputeDigest(t, digestFunction, chunkData)
-	chunk := buffer.NewChunk(zstdPool, chunkData)
+	chunk := chunk.NewChunk(zstdPool, chunkData)
 	require.NoError(t, fakeCS.Put(ctx, chunkDigest, chunk))
 
 	wrongBlobDigest := mustComputeDigest(t, digestFunction, []byte("Different data"))
@@ -266,8 +265,8 @@ func TestChunkListValidatingBlobAccessPutDigestMismatch(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutEmptyBlob(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -281,20 +280,20 @@ func TestChunkListValidatingBlobAccessPutEmptyBlob(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	chunkAData := []byte("A")
-	chunkA := buffer.NewChunk(zstdPool, chunkAData)
+	chunkA := chunk.NewChunk(zstdPool, chunkAData)
 	digestA := mustComputeDigest(t, digestFunction, chunkAData)
 	require.NoError(t, fakeCS.Put(ctx, digestA, chunkA))
 
 	chunkBData := []byte("B")
-	chunkB := buffer.NewChunk(zstdPool, chunkBData)
+	chunkB := chunk.NewChunk(zstdPool, chunkBData)
 	digestB := mustComputeDigest(t, digestFunction, chunkBData)
 	require.NoError(t, fakeCS.Put(ctx, digestB, chunkB))
 
@@ -313,20 +312,20 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutInlineEmptyChunk(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	chunkData := []byte("Valid")
-	chunk := buffer.NewChunk(zstdPool, chunkData)
+	c := chunk.NewChunk(zstdPool, chunkData)
 	chunkDigest := mustComputeDigest(t, digestFunction, chunkData)
-	require.NoError(t, fakeCS.Put(ctx, chunkDigest, chunk))
+	require.NoError(t, fakeCS.Put(ctx, chunkDigest, c))
 
 	emptyDigest := mustComputeDigest(t, digestFunction, nil)
-	require.NoError(t, fakeCS.Put(ctx, emptyDigest, buffer.EmptyChunk))
+	require.NoError(t, fakeCS.Put(ctx, emptyDigest, chunk.EmptyChunk))
 
 	expectedDigest := mustComputeDigest(t, digestFunction, chunkData)
 
@@ -337,8 +336,8 @@ func TestChunkListValidatingBlobAccessPutInlineEmptyChunk(t *testing.T) {
 func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 	ctx := context.Background()
 
-	fakeCS := newFakeBlobAccess[*buffer.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunklist.ChunkList](nil)
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
@@ -346,11 +345,11 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 
 	chunk1Data := []byte("Hello, ")
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
-	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, buffer.NewChunk(zstdPool, chunk1Data)))
+	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk.NewChunk(zstdPool, chunk1Data)))
 
 	chunk2Data := []byte("World!")
 	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
-	require.NoError(t, fakeCS.Put(ctx, chunk2Digest, buffer.NewChunk(zstdPool, chunk2Data)))
+	require.NoError(t, fakeCS.Put(ctx, chunk2Digest, chunk.NewChunk(zstdPool, chunk2Data)))
 
 	expectedFullData := []byte("Hello, World!")
 	fullBlobDigest := mustComputeDigest(t, digestFunction, expectedFullData)

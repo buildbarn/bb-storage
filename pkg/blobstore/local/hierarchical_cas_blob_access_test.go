@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -20,21 +20,21 @@ import (
 )
 
 var (
-	brokenChunk = &buffer.Chunk{}
-	validChunk  = &buffer.Chunk{}
+	brokenChunk = &chunk.Chunk{}
+	validChunk  = &chunk.Chunk{}
 )
 
 func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	chunkCoder := mock.NewMockCoder[*buffer.Chunk, []byte](ctrl)
-	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *buffer.Chunk, d digest.Digest) ([]byte, error) {
+	chunkCoder := mock.NewMockCoder[*chunk.Chunk, []byte](ctrl)
+	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *chunk.Chunk, d digest.Digest) ([]byte, error) {
 		if val == brokenChunk {
 			return nil, status.Error(codes.Internal, "Read error")
 		}
 		return []byte("Hello"), nil
 	}).AnyTimes()
-	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*buffer.Chunk, error) {
+	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 		if string(data) == "error" {
 			return nil, status.Error(codes.Internal, "Read error")
 		}
@@ -162,14 +162,14 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	chunkCoder := mock.NewMockCoder[*buffer.Chunk, []byte](ctrl)
-	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *buffer.Chunk, d digest.Digest) ([]byte, error) {
+	chunkCoder := mock.NewMockCoder[*chunk.Chunk, []byte](ctrl)
+	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *chunk.Chunk, d digest.Digest) ([]byte, error) {
 		if val == brokenChunk {
 			return nil, status.Error(codes.Internal, "Read error")
 		}
 		return []byte("Hello"), nil
 	}).AnyTimes()
-	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*buffer.Chunk, error) {
+	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 		if string(data) == "error" {
 			return nil, status.Error(codes.Internal, "Read error")
 		}
@@ -313,14 +313,14 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	chunkCoder := mock.NewMockCoder[*buffer.Chunk, []byte](ctrl)
-	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *buffer.Chunk, d digest.Digest) ([]byte, error) {
+	chunkCoder := mock.NewMockCoder[*chunk.Chunk, []byte](ctrl)
+	chunkCoder.EXPECT().Encode(gomock.Any(), gomock.Any()).DoAndReturn(func(val *chunk.Chunk, d digest.Digest) ([]byte, error) {
 		if val == brokenChunk {
 			return nil, status.Error(codes.Internal, "Read error")
 		}
 		return []byte("Hello"), nil
 	}).AnyTimes()
-	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*buffer.Chunk, error) {
+	chunkCoder.EXPECT().Decode(gomock.Any(), gomock.Any()).DoAndReturn(func(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 		if string(data) == "error" {
 			return nil, status.Error(codes.Internal, "Read error")
 		}

@@ -10,9 +10,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -617,7 +616,7 @@ func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, confi
 // constituent parts of a Content Addressable Storage (CAS) and a
 // BlobAccess for the Action Cache. Most Buildbarn components tend to
 // require access to both these data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*buffer.Chunk], blobstore.BlobAccess[chunklist.ChunkList], chunklist.Fetcher, cdc.ParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, cdc.ParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
 	chunkBytesReader, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
@@ -648,7 +647,7 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 // NewCASFromConfiguration is a convenience function to create the
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*buffer.Chunk], blobstore.BlobAccess[chunklist.ChunkList], chunklist.Fetcher, cdc.ParametersFetcher, digest.KeyFormat, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, cdc.ParametersFetcher, digest.KeyFormat, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
@@ -668,9 +667,9 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk List Storage")
 	}
 	chunkListStorage := chunkListStorageInfo.BlobAccess
-	var chunkListFetcher chunklist.Fetcher = blobstore.NewBlobAccessChunkListFetcher(chunkListStorage)
+	var chunkListFetcher chunk.ListFetcher = blobstore.NewBlobAccessChunkListFetcher(chunkListStorage)
 	if configuration.GetChunkListCache() != nil {
-		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.Digest, chunklist.ChunkList](
+		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.Digest, chunk.List](
 			configuration.ChunkListCache,
 			clock.SystemClock,
 			"ChunkListCache",
@@ -678,7 +677,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		if err != nil {
 			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create chunk list cache")
 		}
-		chunkListFetcher = chunklist.NewCachingFetcher(chunkListFetcher, cache)
+		chunkListFetcher = chunk.NewCachingListFetcher(chunkListFetcher, cache)
 	}
 
 	// The chunking parameters are a property of the Chunk Storage

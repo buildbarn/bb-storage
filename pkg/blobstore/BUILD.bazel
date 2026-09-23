@@ -31,8 +31,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/auth",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/blobstore/coder",
         "//pkg/capabilities",
         "//pkg/clock",
@@ -67,7 +66,7 @@ go_test(
     deps = [
         ":blobstore",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/eviction",
         "//pkg/testutil",

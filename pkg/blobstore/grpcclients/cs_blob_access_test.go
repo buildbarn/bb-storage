@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -78,7 +78,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 
 		testutil.RequireEqualStatus(t,
 			status.Error(codes.Internal, "Failed to create outgoing connection"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewChunk(pool, []byte("Hello"))))
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello"))))
 	})
 
 	t.Run("ServerFailure", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 
 		testutil.RequireEqualStatus(t,
 			status.Error(codes.Unavailable, "Disk on fire"),
-			blobAccess.Put(ctx, blobDigest, buffer.NewChunk(pool, []byte("Hello"))))
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello"))))
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, blobDigest, buffer.NewChunk(pool, []byte("Hello")))
+		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello")))
 		require.NoError(t, err)
 	})
 }
@@ -367,7 +367,7 @@ func TestCSBlobAccessPutWithCompression(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, blobDigest, buffer.NewChunk(pool, largeData))
+		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, largeData))
 		require.NoError(t, err)
 	})
 }

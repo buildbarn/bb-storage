@@ -6,8 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
@@ -20,23 +19,23 @@ import (
 
 func TestContentAddressableStoragePutBytesSingleChunk(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	data := []byte("Hello")
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	chunkStorage.EXPECT().Put(ctx, d, buffer.NewChunk(zstdPool, data)).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, d, chunk.NewChunk(zstdPool, data)).Return(nil)
 
 	require.NoError(t, cas.PutBytes(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, data))
 }
 
 func TestContentAddressableStoragePutBytesMultipleChunks(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The input is slightly larger than twice the minimum chunk size,
@@ -45,7 +44,7 @@ func TestContentAddressableStoragePutBytesMultipleChunks(t *testing.T) {
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "c1df2b2b8aa945f29de62076a8f1e2d9", int64(len(data)))
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	expectedChunkList := chunklist.ChunkList{
+	expectedChunkList := chunk.List{
 		Digests: []digest.Digest{
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "9871f053ed93e778d5090e3dc038815d", 77),
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "2044d462a0be5850ee579b02a1ca3b25", 66),
@@ -54,8 +53,8 @@ func TestContentAddressableStoragePutBytesMultipleChunks(t *testing.T) {
 		Validated: true,
 	}
 
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[0], buffer.NewChunk(zstdPool, data[:77])).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], buffer.NewChunk(zstdPool, data[77:])).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[0], chunk.NewChunk(zstdPool, data[:77])).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], chunk.NewChunk(zstdPool, data[77:])).Return(nil)
 	chunkListStorage.EXPECT().Put(ctx, d, expectedChunkList).Return(nil)
 
 	require.NoError(t, cas.PutBytes(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, data))
@@ -101,8 +100,8 @@ func TestContentAddressableStoragePutBytesRejectsBadDigests(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(size.name+"/"+tc.name, func(t *testing.T) {
 				ctrl, ctx := gomock.WithContext(context.Background(), t)
-				chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-				chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+				chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+				chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 				chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 				err := cas.PutBytes(ctx, zstdPool, chunkStorage, chunkListStorage, params, tc.digest, size.data)
 				require.Equal(t, codes.InvalidArgument, status.Code(err))

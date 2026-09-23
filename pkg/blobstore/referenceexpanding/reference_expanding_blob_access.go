@@ -12,9 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	cloud_aws "github.com/buildbarn/bb-storage/pkg/cloud/aws"
@@ -31,7 +30,7 @@ import (
 type referenceExpandingBlobAccess struct {
 	indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference]
 	chunkBytesReader                  reader.Reader[[]byte]
-	chunkListFetcher                  chunklist.Fetcher
+	chunkListFetcher                  chunk.ListFetcher
 	cdcParametersFetcher              cdc.ParametersFetcher
 	httpClient                        *http.Client
 	s3Client                          cloud_aws.S3Client
@@ -54,7 +53,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunklist.Fetcher, cdcParametersFetcher cdc.ParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess[*buffer.Chunk] {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher cdc.ParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess[*chunk.Chunk] {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		chunkBytesReader:                  chunkBytesReader,
@@ -68,7 +67,7 @@ func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore
 	}
 }
 
-func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (*buffer.Chunk, error) {
+func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (*chunk.Chunk, error) {
 	// Check that the reference refers to something that can be expanded
 	// into a chunk.
 	if blobDigest.GetSizeBytes() > int64(ba.maximumMessageSizeBytes) {
@@ -230,10 +229,10 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		)
 	}
 
-	return buffer.NewChunk(ba.zstdPool, data), nil
+	return chunk.NewChunk(ba.zstdPool, data), nil
 }
 
-func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *buffer.Chunk) error {
+func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {
 	return status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data")
 }
 

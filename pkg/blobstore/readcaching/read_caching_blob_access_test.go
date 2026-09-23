@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -21,8 +21,8 @@ import (
 func TestReadCachingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	slowBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	fastBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	slowBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	fastBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobReplicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
 	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
@@ -30,7 +30,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 	t.Run("Fast", func(t *testing.T) {
 		// Provide a blob that can be served by the fast backend
 		// immediately.
-		fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil)
+		fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil)
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 		gomock.InOrder(
 			fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.NotFound, "Blob not found")),
 			blobReplicator.EXPECT().ReplicateMultiple(ctx, blobDigest.ToSingletonSet()).Return(nil),
-			fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewChunk(nil, []byte("Hello world")), nil),
+			fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
@@ -76,13 +76,13 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 func TestReadCachingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	slowBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	fastBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	slowBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	fastBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobReplicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
 	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
 
-	c := buffer.NewChunk(nil, []byte("Hello, world"))
+	c := chunk.NewChunk(nil, []byte("Hello, world"))
 
 	// Write calls should always be forwarded to the slow backend,
 	// as the slow backend acts as the source of truth. We should
@@ -97,8 +97,8 @@ func TestReadCachingBlobAccessPut(t *testing.T) {
 func TestReadCachingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	slowBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	fastBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	slowBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	fastBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobReplicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
 	digests := digest.NewSetBuilder(0).

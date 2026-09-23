@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -21,8 +21,8 @@ import (
 func TestReadFallbackBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	secondary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -30,7 +30,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 	t.Run("PrimarySuccess", func(t *testing.T) {
 		// The primary backend is able to serve the object.
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewChunk(nil, []byte("Hello")), nil)
+			Return(chunk.NewChunk(nil, []byte("Hello")), nil)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		gomock.InOrder(
 			primary.EXPECT().Get(ctx, helloDigest).Return(nil, status.Error(codes.NotFound, "Object not found")),
 			replicator.EXPECT().ReplicateMultiple(ctx, helloDigest.ToSingletonSet()).Return(nil),
-			primary.EXPECT().Get(ctx, helloDigest).Return(buffer.NewChunk(nil, []byte("Hello")), nil),
+			primary.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
@@ -99,8 +99,8 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 func TestReadFallbackBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	secondary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -108,7 +108,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		// Writes should always go to the primary backend. The
 		// secondary backend is effectively read-only.
 		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("Hello"), data)
@@ -118,7 +118,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 
 		require.NoError(
 			t,
-			blobAccess.Put(ctx, helloDigest, buffer.NewChunk(nil, []byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
 		)
 	})
 
@@ -131,7 +131,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "I/O error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewChunk(nil, []byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
 		)
 	})
 }
@@ -139,8 +139,8 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	secondary := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 

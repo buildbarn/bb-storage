@@ -24,7 +24,7 @@ go_test(
     deps = [
         ":mirrored",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/testutil",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",

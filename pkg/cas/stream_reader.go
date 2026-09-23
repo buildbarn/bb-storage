@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -20,13 +20,13 @@ type StreamReader interface {
 
 type storageBackedStreamReader struct {
 	chunkBytesReader     reader.Reader[[]byte]
-	chunkListFetcher     chunklist.Fetcher
+	chunkListFetcher     chunk.ListFetcher
 	cdcParametersFetcher cdc.ParametersFetcher
 }
 
 // NewStorageBackedStreamReader creates a stream reader that reads from
 // the provided Chunk Storage (CS) and Chunk List Storage (CLS).
-func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunklist.Fetcher, cdcParametersFetcher cdc.ParametersFetcher) StreamReader {
+func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher cdc.ParametersFetcher) StreamReader {
 	return &storageBackedStreamReader{
 		chunkBytesReader:     chunkBytesReader,
 		chunkListFetcher:     chunkListFetcher,

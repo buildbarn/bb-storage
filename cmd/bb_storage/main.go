@@ -9,9 +9,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
@@ -60,13 +59,13 @@ func main() {
 
 		// Content Addressable Storage (CAS).
 		var chunkBytesReader reader.Reader[[]byte]
-		var chunkStorage blobstore.BlobAccess[*buffer.Chunk]
-		var chunkListStorage blobstore.BlobAccess[chunklist.ChunkList]
-		var chunkListFetcher chunklist.Fetcher
+		var chunkStorage blobstore.BlobAccess[*chunk.Chunk]
+		var chunkListStorage blobstore.BlobAccess[chunk.List]
+		var chunkListFetcher chunk.ListFetcher
 		var cdcParametersFetcher cdc.ParametersFetcher
 		var digestKeyFormat digest.KeyFormat
-		var authorizedChunkStorage blobstore.BlobAccess[*buffer.Chunk]
-		var authorizedChunkListStorage blobstore.BlobAccess[chunklist.ChunkList]
+		var authorizedChunkStorage blobstore.BlobAccess[*chunk.Chunk]
+		var authorizedChunkListStorage blobstore.BlobAccess[chunk.List]
 		var maximumChunkCount int
 		if configuration.ContentAddressableStorageServer != nil {
 			maximumChunkCount = int(configuration.ContentAddressableStorageServer.MaximumChunkCount)

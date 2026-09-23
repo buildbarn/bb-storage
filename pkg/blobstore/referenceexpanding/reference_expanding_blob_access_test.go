@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/referenceexpanding"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
@@ -33,7 +33,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockFetcher(ctrl)
+	chunkListFetcher := mock.NewMockListFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
@@ -501,7 +501,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockFetcher(ctrl)
+	chunkListFetcher := mock.NewMockListFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
@@ -530,7 +530,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 					"8b1a9953c4611296a827abf8c47804d7",
 					5,
 				),
-				buffer.NewChunk(nil, []byte("Hello")),
+				chunk.NewChunk(nil, []byte("Hello")),
 			),
 		)
 	})
@@ -541,7 +541,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockFetcher(ctrl)
+	chunkListFetcher := mock.NewMockListFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)

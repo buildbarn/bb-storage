@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,14 +21,14 @@ import (
 func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 
-		expectedChunk := buffer.NewChunk(nil, []byte("A"))
+		expectedChunk := chunk.NewChunk(nil, []byte("A"))
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(expectedChunk, nil)
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
@@ -71,14 +71,14 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, blobDigest digest.Digest, c *chunk.Chunk) error {
 				data, err := c.GetBytes(ctx)
 				require.NoError(t, err)
 				require.Equal(t, []byte("A"), data)
@@ -91,7 +91,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewChunk(nil, []byte("A")),
+				chunk.NewChunk(nil, []byte("A")),
 			),
 		)
 	})
@@ -100,7 +100,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 		// Errors from the backend should be propagated.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, c *buffer.Chunk) error {
+			func(ctx context.Context, blobDigest digest.Digest, c *chunk.Chunk) error {
 				return status.Error(codes.Internal, "Server on fire")
 			},
 		)
@@ -111,7 +111,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewChunk(nil, []byte("A")),
+				chunk.NewChunk(nil, []byte("A")),
 			),
 		)
 	})
@@ -123,20 +123,20 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
-				buffer.NewChunk(nil, nil),
+				chunk.NewChunk(nil, nil),
 			),
 		)
 	})
 
 	// The "EmptyFailure" test (which tested passing a buffer initialized with NewBufferFromError)
-	// was removed here because with the new generic BlobAccess, `Put` accepts a materialized `*buffer.Chunk`.
+	// was removed here because with the new generic BlobAccess, `Put` accepts a materialized `*chunk.Chunk`.
 	// There is no longer a concept of passing a "delayed error" object into Put.
 }
 
 func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	unfilteredInputSet := digest.NewSetBuilder(0).

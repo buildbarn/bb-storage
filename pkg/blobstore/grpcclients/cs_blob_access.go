@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
@@ -32,7 +32,7 @@ type csBlobAccess struct {
 //
 // If preferCompression is true, the client will use ZSTD compression
 // for operations if the server supports it.
-func NewCSBlobAccess(client grpc.ClientConnInterface, zstdPool bb_zstd.Pool, preferCompression bool) blobstore.BlobAccess[*buffer.Chunk] {
+func NewCSBlobAccess(client grpc.ClientConnInterface, zstdPool bb_zstd.Pool, preferCompression bool) blobstore.BlobAccess[*chunk.Chunk] {
 	return &csBlobAccess{
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
 		capabilitiesClient:              remoteexecution.NewCapabilitiesClient(client),
@@ -61,7 +61,7 @@ func (ba *csBlobAccess) shouldUseZSTDCompression(ctx context.Context, digest dig
 	return slices.Contains(*supportedCompressors, remoteexecution.Compressor_ZSTD), nil
 }
 
-func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*buffer.Chunk, error) {
+func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.Chunk, error) {
 	useCompression, err := ba.shouldUseZSTDCompression(ctx, digest)
 	if err != nil {
 		return nil, err
@@ -95,15 +95,15 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*buffer.
 
 	switch r.Compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return buffer.NewChunk(ba.zstdPool, r.Data), nil
+		return chunk.NewChunk(ba.zstdPool, r.Data), nil
 	case remoteexecution.Compressor_ZSTD:
-		return buffer.NewChunkFromCompressedData(ba.zstdPool, r.Data), nil
+		return chunk.NewChunkFromCompressedData(ba.zstdPool, r.Data), nil
 	default:
 		return nil, status.Errorf(codes.Internal, "Unsupported upstream compresssion algorithm %s", r.Compressor.String())
 	}
 }
 
-func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *buffer.Chunk) error {
+func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {
 	useCompression, err := ba.shouldUseZSTDCompression(ctx, digest)
 	if err != nil {
 		return err

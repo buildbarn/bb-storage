@@ -8,7 +8,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ import (
 func TestExistenceCachingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewExistenceCachingBlobAccess(
 		baseBlobAccess,

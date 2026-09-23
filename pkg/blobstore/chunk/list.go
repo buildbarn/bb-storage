@@ -1,4 +1,4 @@
-package chunklist
+package chunk
 
 import (
 	"context"
@@ -7,21 +7,21 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
-// ChunkList represents the ordered list of chunks that compose a blob.
-type ChunkList struct {
+// List represents the ordered list of chunks that compose a blob.
+type List struct {
 	Offsets   []uint64
 	Digests   []digest.Digest
 	Validated bool
 }
 
-// Fetcher retrieves a ChunkList for a digest.
-type Fetcher interface {
-	FetchChunkList(ctx context.Context, digest digest.Digest) (ChunkList, error)
+// ListFetcher retrieves a ChunkList for a digest.
+type ListFetcher interface {
+	FetchChunkList(ctx context.Context, digest digest.Digest) (List, error)
 }
 
 // FindChunkOffset returns the index of the chunk containing the given
 // offset and the offset within that chunk.
-func FindChunkOffset(chunkList ChunkList, off uint64) (index int, chunkOffset int64) {
+func FindChunkOffset(chunkList List, off uint64) (index int, chunkOffset int64) {
 	if len(chunkList.Offsets) == 0 {
 		return 0, 0
 	}

@@ -3,7 +3,7 @@ package coder
 import (
 	"context"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"google.golang.org/grpc/codes"
@@ -16,14 +16,14 @@ type chunkCoder struct {
 }
 
 // NewChunkCoder returns a Coder that can encode and decode a
-// *buffer.Chunk into an efficient binary format.
-func NewChunkCoder(zstdPool zstd.Pool) Coder[*buffer.Chunk, []byte] {
+// *chunk.Chunk into an efficient binary format.
+func NewChunkCoder(zstdPool zstd.Pool) Coder[*chunk.Chunk, []byte] {
 	return &chunkCoder{
 		zstdPool: zstdPool,
 	}
 }
 
-func (chunkCoder) checkDigest(ctx context.Context, chunk *buffer.Chunk, d digest.Digest) error {
+func (chunkCoder) checkDigest(ctx context.Context, chunk *chunk.Chunk, d digest.Digest) error {
 	generator := d.GetDigestFunction().NewGenerator(d.GetSizeBytes())
 	bytes, err := chunk.GetBytes(ctx)
 	if err != nil {
@@ -39,7 +39,7 @@ func (chunkCoder) checkDigest(ctx context.Context, chunk *buffer.Chunk, d digest
 	return nil
 }
 
-func (c *chunkCoder) Encode(chunk *buffer.Chunk, d digest.Digest) ([]byte, error) {
+func (c *chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
 	// TODO: Should ctx be part of this signature?
 	ctx := context.Background()
 	if err := c.checkDigest(ctx, chunk, d); err != nil {
@@ -48,9 +48,9 @@ func (c *chunkCoder) Encode(chunk *buffer.Chunk, d digest.Digest) ([]byte, error
 	return chunk.GetBytesCompressed(ctx)
 }
 
-func (c *chunkCoder) Decode(data []byte, d digest.Digest) (*buffer.Chunk, error) {
+func (c *chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 	ctx := context.Background()
-	chunk := buffer.NewChunkFromCompressedData(c.zstdPool, data)
+	chunk := chunk.NewChunkFromCompressedData(c.zstdPool, data)
 	if err := c.checkDigest(ctx, chunk, d); err != nil {
 		return nil, err
 	}

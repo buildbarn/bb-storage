@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "chunk",
+    srcs = [
+        "caching_list_fetcher.go",
+        "chunk.go",
+        "list.go",
+        "new_reader_from_list.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/chunk",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cas/reader",
+        "//pkg/digest",
+        "//pkg/ttlcache",
+        "//pkg/util",
+        "//pkg/zstd",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "chunk_test",
+    srcs = ["chunk_test.go"],
+    deps = [
+        ":chunk",
+        "//pkg/testutil",
+        "//pkg/zstd",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

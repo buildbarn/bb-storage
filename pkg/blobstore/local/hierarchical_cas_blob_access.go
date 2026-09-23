@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -18,7 +18,7 @@ import (
 type hierarchicalCSBlobAccess struct {
 	capabilities.Provider
 
-	coder                  coder.Coder[*buffer.Chunk, []byte]
+	coder                  coder.Coder[*chunk.Chunk, []byte]
 	keyLocationMap         KeyLocationMap
 	blockReferenceResolver BlockReferenceResolver
 	locationBlobMap        LocationBlobMap
@@ -47,7 +47,7 @@ type hierarchicalCSBlobAccess struct {
 // exist for a different REv2 instance name don't cause any new data to
 // be ingested. This makes this implementation unsuitable for mutable
 // data sets.
-func NewHierarchicalCSBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider, coder coder.Coder[*buffer.Chunk, []byte]) blobstore.BlobAccess[*buffer.Chunk] {
+func NewHierarchicalCSBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider, coder coder.Coder[*chunk.Chunk, []byte]) blobstore.BlobAccess[*chunk.Chunk] {
 	return &hierarchicalCSBlobAccess{
 		Provider: capabilitiesProvider,
 
@@ -136,7 +136,7 @@ func (ba *hierarchicalCSBlobAccess) finalizePut(putFinalizer LocationBlobPutFina
 	return ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
 }
 
-func (ba *hierarchicalCSBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (*buffer.Chunk, error) {
+func (ba *hierarchicalCSBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (*chunk.Chunk, error) {
 	lookupKeys := getAllLookupKeys(blobDigest)
 	canonicalKey := getCanonicalKey(blobDigest)
 
@@ -220,7 +220,7 @@ func (ba *hierarchicalCSBlobAccess) Get(ctx context.Context, blobDigest digest.D
 	}
 }
 
-func (ba *hierarchicalCSBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value *buffer.Chunk) error {
+func (ba *hierarchicalCSBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value *chunk.Chunk) error {
 	// Encode data up front lock-free.
 	data, err := ba.coder.Encode(value, blobDigest)
 	if err != nil {

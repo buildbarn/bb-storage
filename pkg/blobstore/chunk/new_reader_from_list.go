@@ -1,4 +1,4 @@
-package chunklist
+package chunk
 
 import (
 	"context"
@@ -11,12 +11,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// chunkConcatenatingReadCloser is an io.ReadCloser that stitches
-// together the contents of a blob based on a ChunkList.
-type chunkConcatenatingReadCloser struct {
+// listReadCloser is an io.ReadCloser that stitches together the
+// contents of a blob based on a ChunkList.
+type listReadCloser struct {
 	ctx              context.Context
 	chunkBytesReader reader.Reader[[]byte]
-	chunkList        ChunkList
+	list             List
 
 	currentChunkIndex  int
 	currentChunkData   []byte
@@ -24,17 +24,17 @@ type chunkConcatenatingReadCloser struct {
 	closed             bool
 }
 
-// NewChunkConcatenatingReader creates an io.ReadCloser that yields the
+// NewReaderFromList creates an io.ReadCloser that yields the
 // concatenated contents of the chunks in a ChunkList.
-func NewChunkConcatenatingReader(ctx context.Context, chunkList ChunkList, chunkBytesReader reader.Reader[[]byte]) io.ReadCloser {
-	return &chunkConcatenatingReadCloser{
+func NewReaderFromList(ctx context.Context, list List, chunkBytesReader reader.Reader[[]byte]) io.ReadCloser {
+	return &listReadCloser{
 		ctx:              ctx,
 		chunkBytesReader: chunkBytesReader,
-		chunkList:        chunkList,
+		list:             list,
 	}
 }
 
-func (r *chunkConcatenatingReadCloser) Read(p []byte) (int, error) {
+func (r *listReadCloser) Read(p []byte) (int, error) {
 	if r.closed {
 		return 0, status.Error(codes.Internal, "Reader is already closed")
 	}
@@ -42,11 +42,11 @@ func (r *chunkConcatenatingReadCloser) Read(p []byte) (int, error) {
 	// Advance to the next chunk if the current one is exhausted,
 	// skipping any zero-length chunks.
 	for r.currentChunkOffset >= len(r.currentChunkData) {
-		if r.currentChunkIndex >= len(r.chunkList.Digests) {
+		if r.currentChunkIndex >= len(r.list.Digests) {
 			return 0, io.EOF
 		}
 
-		chunkDigest := r.chunkList.Digests[r.currentChunkIndex]
+		chunkDigest := r.list.Digests[r.currentChunkIndex]
 		chunkData, err := r.chunkBytesReader.Read(r.ctx, chunkDigest)
 		if err != nil {
 			return 0, util.StatusWrapf(err, "Failed to fetch chunk at index %d", r.currentChunkIndex)
@@ -67,7 +67,7 @@ func (r *chunkConcatenatingReadCloser) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func (r *chunkConcatenatingReadCloser) Close() error {
+func (r *listReadCloser) Close() error {
 	r.closed = true
 	r.currentChunkData = nil
 	return nil

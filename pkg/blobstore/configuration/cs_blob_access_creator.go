@@ -8,9 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
@@ -52,7 +51,7 @@ type csBlobAccessCreator struct {
 // NewCSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Chunk Storage.
-func NewCSBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator[*buffer.Chunk] {
+func NewCSBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator[*chunk.Chunk] {
 	return &csBlobAccessCreator{
 		csBlobReplicatorCreator: csBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,
@@ -70,7 +69,7 @@ func (csBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provide
 	return csCapabilitiesProvider
 }
 
-func (bac *csBlobAccessCreator) GetBinaryCoder() coder.Coder[*buffer.Chunk, []byte] {
+func (bac *csBlobAccessCreator) GetBinaryCoder() coder.Coder[*chunk.Chunk, []byte] {
 	return coder.NewChunkCoder(bac.zstdPool)
 }
 
@@ -78,22 +77,22 @@ func (csBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int
 	return local.NewImmutableBlockListGrowthPolicy(currentBlocks, newBlocks), nil
 }
 
-func (bac *csBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, blockReferenceResolver local.BlockReferenceResolver, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess[*buffer.Chunk], error) {
+func (bac *csBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, blockReferenceResolver local.BlockReferenceResolver, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess[*chunk.Chunk], error) {
 	return local.NewHierarchicalCSBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, globalLock, capabilitiesProvider, bac.GetBinaryCoder()), nil
 }
 
-func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[*buffer.Chunk]) (BlobAccessInfo[*buffer.Chunk], string, error) {
+func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[*chunk.Chunk]) (BlobAccessInfo[*chunk.Chunk], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ExistenceCaching:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", err
+			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
 		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, base.DigestKeyFormat, "ExistenceCachingBlobAccess")
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", err
+			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
-		return BlobAccessInfo[*buffer.Chunk]{
+		return BlobAccessInfo[*chunk.Chunk]{
 			BlobAccess:      blobstore.NewExistenceCachingBlobAccess(base.BlobAccess, existenceCache),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "existence_caching", nil
@@ -101,12 +100,12 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		grpc := backend.Grpc
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", err
+			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
 		ba := grpcclients.NewCSBlobAccess(client, bac.zstdPool, backend.Grpc.EnableCompression)
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
-		return BlobAccessInfo[*buffer.Chunk]{
+		return BlobAccessInfo[*chunk.Chunk]{
 			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
@@ -127,43 +126,43 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			),
 		)
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", err
+			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
 
 		var chunkBytesReader reader.Reader[[]byte]
-		var chunkListFetcher chunklist.Fetcher
+		var chunkListFetcher chunk.ListFetcher
 		var cdcParametersFetcher cdc.ParametersFetcher
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
 			chunkBytesReader, _, _, chunkListFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
 		} else {
 			// TODO: is an equivalent of this needed?
-			// chunkStorage = blobstore.NewErrorBlobAccess[*buffer.Chunk](status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
+			// chunkStorage = blobstore.NewErrorBlobAccess[*chunk.Chunk](status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
 		}
 
 		awsConfig, err := aws.NewConfigFromConfiguration(backend.ReferenceExpanding.AwsSession, "S3ReferenceExpandingBlobAccess")
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", util.StatusWrap(err, "Failed to create AWS config")
+			return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create AWS config")
 		}
 
 		roundTripper, err := http_client.NewRoundTripperFromConfiguration(backend.ReferenceExpanding.HttpClient)
 		if err != nil {
-			return BlobAccessInfo[*buffer.Chunk]{}, "", util.StatusWrap(err, "Failed to create HTTP client")
+			return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create HTTP client")
 		}
 
 		var gcsClient gcp.StorageClient
 		if gcpClientOptions := backend.ReferenceExpanding.GcpClientOptions; gcpClientOptions != nil {
 			clientOptions, err := gcp.NewClientOptionsFromConfiguration(gcpClientOptions, "GCSReferenceExpandingBlobAccess")
 			if err != nil {
-				return BlobAccessInfo[*buffer.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCP client options")
+				return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCP client options")
 			}
 			client, err := storage.NewClient(context.Background(), clientOptions...)
 			if err != nil {
-				return BlobAccessInfo[*buffer.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCS client")
+				return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCS client")
 			}
 			gcsClient = gcp.NewWrappedStorageClient(client)
 		}
 
-		return BlobAccessInfo[*buffer.Chunk]{
+		return BlobAccessInfo[*chunk.Chunk]{
 			BlobAccess: referenceexpanding.NewReferenceExpandingBlobAccess(
 				indirectContentAddressableStorage.BlobAccess,
 				chunkBytesReader,
@@ -180,11 +179,11 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			DigestKeyFormat: indirectContentAddressableStorage.DigestKeyFormat,
 		}, "reference_expanding", nil
 	default:
-		return BlobAccessInfo[*buffer.Chunk]{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+		return BlobAccessInfo[*chunk.Chunk]{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}
 }
 
-func (csBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[*buffer.Chunk]) blobstore.BlobAccess[*buffer.Chunk] {
+func (csBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[*chunk.Chunk]) blobstore.BlobAccess[*chunk.Chunk] {
 	// For the Content Addressable Storage it is required that the empty
 	// blob is always present. This decorator ensures that requests
 	// for the empty blob never contact the storage backend.

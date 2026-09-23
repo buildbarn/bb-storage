@@ -1,29 +1,8 @@
-load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "buffer",
-    srcs = [
-        "chunk.go",
-        "read_at_closer.go",
-    ],
+    srcs = ["read_at_closer.go"],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/buffer",
     visibility = ["//visibility:public"],
-    deps = [
-        "//pkg/util",
-        "//pkg/zstd",
-        "@org_golang_google_grpc//codes",
-    ],
-)
-
-go_test(
-    name = "buffer_test",
-    srcs = ["chunk_test.go"],
-    deps = [
-        ":buffer",
-        "//pkg/testutil",
-        "//pkg/zstd",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
-    ],
 )

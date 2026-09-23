@@ -22,9 +22,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
         "//pkg/blobstore/cdc",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/blobstore/chunklistvalidating",
         "//pkg/blobstore/coder",
         "//pkg/blobstore/completenesschecking",

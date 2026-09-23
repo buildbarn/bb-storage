@@ -8,9 +8,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -22,8 +21,8 @@ import (
 )
 
 type byteStreamServer struct {
-	chunkStorage         blobstore.BlobAccess[*buffer.Chunk]
-	chunkListStorage     blobstore.BlobAccess[chunklist.ChunkList]
+	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
+	chunkListStorage     blobstore.BlobAccess[chunk.List]
 	cdcParametersFetcher cdc.ParametersFetcher
 	zstdPool             bb_zstd.Pool
 }
@@ -31,7 +30,7 @@ type byteStreamServer struct {
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to the Chunk Storage (CS) and Chunk List Storage (CLS).
 // It is used by Bazel to access the Content Addressable Storage (CAS).
-func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*buffer.Chunk], chunkListStorage blobstore.BlobAccess[chunklist.ChunkList], cdcParametersFetcher cdc.ParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher cdc.ParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		chunkStorage:         chunkStorage,
 		chunkListStorage:     chunkListStorage,
@@ -68,7 +67,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if err != nil {
 		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
-	chunkList := chunklist.ChunkList{
+	chunkList := chunk.List{
 		Digests: []digest.Digest{d},
 		Offsets: []uint64{0},
 	}
@@ -78,7 +77,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			return err
 		}
 	}
-	i, chunkOffset := chunklist.FindChunkOffset(chunkList, uint64(in.ReadOffset))
+	i, chunkOffset := chunk.FindChunkOffset(chunkList, uint64(in.ReadOffset))
 	for ; i < len(chunkList.Digests); i++ {
 		chunk, err := s.chunkStorage.Get(ctx, chunkList.Digests[i])
 		if err != nil {

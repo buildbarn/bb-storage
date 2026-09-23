@@ -7,9 +7,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
         "//pkg/blobstore/cdc",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/cas",
         "//pkg/cas/reader",
         "//pkg/cloud/aws",
@@ -32,7 +31,7 @@ go_test(
     deps = [
         ":referenceexpanding",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/testutil",

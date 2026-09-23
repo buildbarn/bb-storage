@@ -4,9 +4,8 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -23,11 +22,11 @@ type Replicator interface {
 type replicator struct {
 	zstdPool               zstd.Pool
 	sourceChunkBytesReader reader.Reader[[]byte]
-	sourceChunkListStorage blobstore.BlobAccess[chunklist.ChunkList]
-	sourceChunkListFetcher chunklist.Fetcher
+	sourceChunkListStorage blobstore.BlobAccess[chunk.List]
+	sourceChunkListFetcher chunk.ListFetcher
 	sourceCdcParamsFetcher cdc.ParametersFetcher
-	sinkChunkStorage       blobstore.BlobAccess[*buffer.Chunk]
-	sinkChunkListStorage   blobstore.BlobAccess[chunklist.ChunkList]
+	sinkChunkStorage       blobstore.BlobAccess[*chunk.Chunk]
+	sinkChunkListStorage   blobstore.BlobAccess[chunk.List]
 	sinkCdcParamsFetcher   cdc.ParametersFetcher
 	instanceName           digest.InstanceName
 }
@@ -38,11 +37,11 @@ type replicator struct {
 func NewReplicator(
 	zstdPool zstd.Pool,
 	sourceChunkBytesReader reader.Reader[[]byte],
-	sourceChunkListStorage blobstore.BlobAccess[chunklist.ChunkList],
-	sourceChunkListFetcher chunklist.Fetcher,
+	sourceChunkListStorage blobstore.BlobAccess[chunk.List],
+	sourceChunkListFetcher chunk.ListFetcher,
 	sourceCdcParamsFetcher cdc.ParametersFetcher,
-	sinkChunkStorage blobstore.BlobAccess[*buffer.Chunk],
-	sinkChunkListStorage blobstore.BlobAccess[chunklist.ChunkList],
+	sinkChunkStorage blobstore.BlobAccess[*chunk.Chunk],
+	sinkChunkListStorage blobstore.BlobAccess[chunk.List],
 	sinkCdcParamsFetcher cdc.ParametersFetcher,
 	instanceName digest.InstanceName,
 ) Replicator {

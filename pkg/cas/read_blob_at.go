@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -24,7 +24,7 @@ import (
 // fetch. For larger blobs only the chunks covering the requested
 // range are fetched, so random access reads do not stream the full
 // blob.
-func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunklist.Fetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, buf []byte, offset int64) (int, error) {
+func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, buf []byte, offset int64) (int, error) {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return 0, status.Errorf(codes.InvalidArgument, "Offset %d is outside of blob %s", offset, d)
 	}
@@ -48,7 +48,7 @@ func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 	if err != nil {
 		return 0, util.StatusWrap(err, "Could not fetch chunk list")
 	}
-	index, chunkOffset := chunklist.FindChunkOffset(manifest, uint64(offset))
+	index, chunkOffset := chunk.FindChunkOffset(manifest, uint64(offset))
 
 	n := 0
 	for n < len(buf) && index < len(manifest.Digests) {

@@ -8,8 +8,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -26,8 +25,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	actionCache := mock.NewMockBlobAccess[*remoteexecution.ActionResult](ctrl)
-	chunkStorage := mock.NewMockBlobAccess[*buffer.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunklist.ChunkList](ctrl)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
 	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
 	treeReader := mock.NewMockStreamReader(ctrl)
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(

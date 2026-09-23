@@ -1,11 +1,11 @@
-package buffer_test
+package chunk_test
 
 import (
 	"bytes"
 	"io"
 	"testing"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ func TestChunkUncompressedToCompressed(t *testing.T) {
 	pool := zstd.NewUnboundedPool(nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
-		c := buffer.NewChunk(pool, []byte("hello world"))
+		c := chunk.NewChunk(pool, []byte("hello world"))
 
 		data, err := c.GetBytes(t.Context())
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestChunkCompressedToUncompressed(t *testing.T) {
 		enc.Write([]byte("test data"))
 		enc.Close()
 
-		c := buffer.NewChunkFromCompressedData(pool, buf.Bytes())
+		c := chunk.NewChunkFromCompressedData(pool, buf.Bytes())
 
 		compressed, err := c.GetBytesCompressed(t.Context())
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestChunkCompressedToUncompressed(t *testing.T) {
 	})
 
 	t.Run("Failure", func(t *testing.T) {
-		c := buffer.NewChunkFromCompressedData(pool, []byte("This is not valid zstd data"))
+		c := chunk.NewChunkFromCompressedData(pool, []byte("This is not valid zstd data"))
 
 		data, err := c.GetBytesCompressed(t.Context())
 		require.NoError(t, err)
@@ -72,11 +72,11 @@ func TestEmptyChunk(t *testing.T) {
 	pool := zstd.NewUnboundedPool(nil, nil)
 	ctx := t.Context()
 
-	data, err := buffer.EmptyChunk.GetBytes(ctx)
+	data, err := chunk.EmptyChunk.GetBytes(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []byte{}, data)
 
-	compressed, err := buffer.EmptyChunk.GetBytesCompressed(ctx)
+	compressed, err := chunk.EmptyChunk.GetBytesCompressed(ctx)
 	require.NoError(t, err)
 
 	decoder, err := pool.NewDecoder(t.Context(), bytes.NewReader(compressed))

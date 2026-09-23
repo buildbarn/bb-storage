@@ -2,7 +2,7 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -20,7 +20,7 @@ type csBlobReplicatorCreator struct {
 // be provided to NewBlobReplicatorFromConfiguration() to construct a
 // BlobReplicator that is suitable for replicating Chunk Storage
 // objects.
-func NewCSBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator[*buffer.Chunk] {
+func NewCSBlobReplicatorCreator(grpcClientFactory grpc.ClientFactory) BlobReplicatorCreator[*chunk.Chunk] {
 	return &csBlobReplicatorCreator{
 		grpcClientFactory: grpcClientFactory,
 	}
@@ -30,7 +30,7 @@ func (csBlobReplicatorCreator) GetStorageTypeName() string {
 	return "cs"
 }
 
-func (brc *csBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess[*buffer.Chunk], sink BlobAccessInfo[*buffer.Chunk]) (replication.BlobReplicator, error) {
+func (brc *csBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess[*chunk.Chunk], sink BlobAccessInfo[*chunk.Chunk]) (replication.BlobReplicator, error) {
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_Deduplicating:
 		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.Deduplicating, source, sink, brc)

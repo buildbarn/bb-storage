@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklist"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +18,7 @@ type chunkListCoder struct {
 }
 
 // NewChunkListCoder returns a Coder that can encode and decode a
-// chunklist.ChunkList into an efficient binary format.
+// chunk.List into an efficient binary format.
 //
 // The binary schema uses a Struct-of-Arrays (SoA) layout to group sizes
 // together which maximizes compressibility but does not itself compress
@@ -40,11 +40,11 @@ type chunkListCoder struct {
 //	  uint32_t sizes[count];            // The size of each chunk in order.
 //	  uint8_t hashes[count][hash_len];  // A contiguous array of hashes.
 //	}
-func NewChunkListCoder(prevalidated bool) Coder[chunklist.ChunkList, []byte] {
+func NewChunkListCoder(prevalidated bool) Coder[chunk.List, []byte] {
 	return &chunkListCoder{prevalidated: prevalidated}
 }
 
-func (chunkListCoder) Encode(chunkList chunklist.ChunkList, d digest.Digest) ([]byte, error) {
+func (chunkListCoder) Encode(chunkList chunk.List, d digest.Digest) ([]byte, error) {
 	hashLen := uint32(len(d.GetHashBytes()))
 	count := uint32(len(chunkList.Digests))
 	size := 1 + 1 + 4 + 4*count + hashLen*count
@@ -72,14 +72,14 @@ func (chunkListCoder) Encode(chunkList chunklist.ChunkList, d digest.Digest) ([]
 	return data, nil
 }
 
-func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunklist.ChunkList, error) {
+func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunk.List, error) {
 	hashLen := uint32(len(d.GetHashBytes()))
 	sizeBytes := len(data)
 	if sizeBytes < 6 {
-		return chunklist.ChunkList{}, status.Error(codes.InvalidArgument, "Data is less than 6 bytes which no valid chunk list can be")
+		return chunk.List{}, status.Error(codes.InvalidArgument, "Data is less than 6 bytes which no valid chunk list can be")
 	}
 	if data[0] != 0x00 {
-		return chunklist.ChunkList{}, status.Errorf(codes.InvalidArgument, "Unknown version %d", data[0])
+		return chunk.List{}, status.Errorf(codes.InvalidArgument, "Unknown version %d", data[0])
 	}
 	digestFunction := d.GetDigestFunction()
 	expectedDigestEnum := digestFunction.GetEnumValue()
@@ -87,7 +87,7 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunklist.ChunkLi
 		storedDigestStr := remoteexecution.DigestFunction_Value(data[1]).String()
 		expectedDigestStr := expectedDigestEnum.String()
 
-		return chunklist.ChunkList{}, status.Errorf(
+		return chunk.List{}, status.Errorf(
 			codes.InvalidArgument,
 			"Digest function in storage %s does not match expected digest function %s",
 			storedDigestStr,
@@ -97,9 +97,9 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunklist.ChunkLi
 	count := binary.LittleEndian.Uint32(data[2:6])
 	expectedSizeBytes := int(count)*4 + int(count)*int(hashLen) + 6
 	if expectedSizeBytes != sizeBytes {
-		return chunklist.ChunkList{}, status.Errorf(codes.InvalidArgument, "Expected binary representation to be %d bytes but it was %d bytes", expectedSizeBytes, sizeBytes)
+		return chunk.List{}, status.Errorf(codes.InvalidArgument, "Expected binary representation to be %d bytes but it was %d bytes", expectedSizeBytes, sizeBytes)
 	}
-	ret := chunklist.ChunkList{
+	ret := chunk.List{
 		Offsets:   make([]uint64, count),
 		Digests:   make([]digest.Digest, count),
 		Validated: c.prevalidated,
@@ -109,7 +109,7 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunklist.ChunkLi
 		stringHash := hex.EncodeToString(data[6+4*count+i*hashLen : 6+4*count+(i+1)*hashLen])
 		chunkDigest, err := digestFunction.NewDigest(stringHash, sizeBytes)
 		if err != nil {
-			return chunklist.ChunkList{}, err
+			return chunk.List{}, err
 		}
 		ret.Digests[i] = chunkDigest
 	}

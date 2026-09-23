@@ -24,9 +24,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
         "//pkg/blobstore/cdc",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/cas/reader",
         "//pkg/digest",
         "//pkg/util",
@@ -48,8 +47,7 @@ go_test(
     deps = [
         ":cas",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/chunklist",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/zstd",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
