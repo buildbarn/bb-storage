@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -22,7 +23,7 @@ import (
 type chunkListValidatingBlobAccess struct {
 	blobstore.BlobAccess[chunk.List]
 	zstdPool                zstd.Pool
-	cdcParametersFetcher    cdc.ParametersFetcher
+	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	chunkListFetcher        chunk.ListFetcher
 	chunkBytesFetcher       reader.Reader[[]byte]
 	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
@@ -42,7 +43,7 @@ type chunkListValidatingBlobAccess struct {
 func NewChunkListValidatingBlobAccess(chunkListStorage blobstore.BlobAccess[chunk.List], chunkStorage blobstore.BlobAccess[*chunk.Chunk], maximumMessageSizeBytes int, zstdPool zstd.Pool) blobstore.BlobAccess[chunk.List] {
 	return &chunkListValidatingBlobAccess{
 		BlobAccess:              chunkListStorage,
-		cdcParametersFetcher:    cdc.NewCapabilitiesParametersFetcher(chunkStorage),
+		cdcParametersFetcher:    capabilities.NewCDCParametersFetcher(chunkStorage),
 		chunkListFetcher:        blobstore.NewBlobAccessChunkListFetcher(chunkListStorage),
 		chunkStorage:            chunkStorage,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,

@@ -10,7 +10,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
@@ -616,7 +615,7 @@ func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, confi
 // constituent parts of a Content Addressable Storage (CAS) and a
 // BlobAccess for the Action Cache. Most Buildbarn components tend to
 // require access to both these data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, cdc.ParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
 	chunkBytesReader, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
@@ -647,7 +646,7 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 // NewCASFromConfiguration is a convenience function to create the
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, cdc.ParametersFetcher, digest.KeyFormat, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
@@ -682,7 +681,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 
 	// The chunking parameters are a property of the Chunk Storage
 	// (CS), so the CDC parameters are fetched from there.
-	cdcParametersFetcher := cdc.NewCapabilitiesParametersFetcher(chunkStorage)
+	cdcParametersFetcher := capabilities.NewCDCParametersFetcher(chunkStorage)
 	if configuration.GetCdcParameterCache() != nil {
 		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.InstanceName, *remoteexecution.RepMaxCdcParams](
 			configuration.CdcParameterCache,
@@ -692,7 +691,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		if err != nil {
 			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create cdc parameter cache")
 		}
-		cdcParametersFetcher = cdc.NewCachingParametersFetcher(cdcParametersFetcher, cache)
+		cdcParametersFetcher = capabilities.NewCachingCDCParametersFetcher(cdcParametersFetcher, cache)
 	}
 
 	var chunkBytesReader reader.Reader[[]byte] = cas.NewChunkBytesReader(chunkStorage)

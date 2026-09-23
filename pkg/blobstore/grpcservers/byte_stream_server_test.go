@@ -61,7 +61,7 @@ func TestByteStreamServer(t *testing.T) {
 	server := grpc.NewServer()
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := bb_zstd.NewUnboundedPool(
 		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},

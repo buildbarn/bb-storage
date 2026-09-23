@@ -3,8 +3,8 @@ package cas
 import (
 	"context"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -18,7 +18,7 @@ type messageReader[T any, TPtr interface {
 }] struct {
 	chunkBytesReader        reader.Reader[[]byte]
 	chunkListFetcher        chunk.ListFetcher
-	cdcParametersFetcher    cdc.ParametersFetcher
+	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	maximumMessageSizeBytes int
 }
 
@@ -27,7 +27,7 @@ type messageReader[T any, TPtr interface {
 func NewMessageReader[T any, TPtr interface {
 	*T
 	proto.Message
-}](chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher cdc.ParametersFetcher, maximumMessageSizeBytes int) reader.Reader[TPtr] {
+}](chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, maximumMessageSizeBytes int) reader.Reader[TPtr] {
 	return &messageReader[T, TPtr]{
 		chunkBytesReader:        chunkBytesReader,
 		chunkListFetcher:        chunkListFetcher,

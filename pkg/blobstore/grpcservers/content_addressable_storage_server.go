@@ -9,8 +9,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -24,7 +24,7 @@ type contentAddressableStorageServer struct {
 	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
 	chunkListStorage        blobstore.BlobAccess[chunk.List]
 	chunkListFetcher        chunk.ListFetcher
-	cdcParametersFetcher    cdc.ParametersFetcher
+	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	zstdPool                zstd.Pool
 	maximumMessageSizeBytes int64
 	maximumChunkCount       int
@@ -32,7 +32,7 @@ type contentAddressableStorageServer struct {
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher cdc.ParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		chunkStorage:            chunkStorage,
 		chunkListStorage:        chunkListStorage,

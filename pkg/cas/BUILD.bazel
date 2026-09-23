@@ -26,6 +26,7 @@ go_library(
         "//pkg/blobstore",
         "//pkg/blobstore/cdc",
         "//pkg/blobstore/chunk",
+        "//pkg/capabilities",
         "//pkg/cas/reader",
         "//pkg/digest",
         "//pkg/util",

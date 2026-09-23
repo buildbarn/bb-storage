@@ -137,9 +137,15 @@ gomock(
 gomock(
     name = "capabilities",
     out = "capabilities.go",
-    interfaces = ["Provider"],
+    interfaces = [
+        "CDCParametersFetcher",
+        "Provider",
+    ],
     library = "//pkg/capabilities",
-    mock_names = {"Provider": "MockCapabilitiesProvider"},
+    mock_names = {
+        "CDCParametersFetcher": "MockCDCParametersFetcher",
+        "Provider": "MockCapabilitiesProvider",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -179,11 +185,9 @@ gomock(
 )
 
 gomock(
-    name = "cdc",
-    out = "cdc.go",
-    interfaces = [
-        "ParametersFetcher",
-    ],
+    name = "chunker",
+    out = "chunker.go",
+    interfaces = ["Chunker"],
     library = "//pkg/blobstore/cdc",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
@@ -417,8 +421,8 @@ go_library(
         "capabilities.go",
         "cas.go",
         "cas_reader.go",
-        "cdc.go",
         "chunk.go",
+        "chunker.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",

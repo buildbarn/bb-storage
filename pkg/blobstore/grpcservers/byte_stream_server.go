@@ -8,8 +8,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -23,14 +23,14 @@ import (
 type byteStreamServer struct {
 	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
 	chunkListStorage     blobstore.BlobAccess[chunk.List]
-	cdcParametersFetcher cdc.ParametersFetcher
+	cdcParametersFetcher capabilities.CDCParametersFetcher
 	zstdPool             bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to the Chunk Storage (CS) and Chunk List Storage (CLS).
 // It is used by Bazel to access the Content Addressable Storage (CAS).
-func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher cdc.ParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		chunkStorage:         chunkStorage,
 		chunkListStorage:     chunkListStorage,

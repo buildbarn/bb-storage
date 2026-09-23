@@ -9,7 +9,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
@@ -62,7 +61,7 @@ func main() {
 		var chunkStorage blobstore.BlobAccess[*chunk.Chunk]
 		var chunkListStorage blobstore.BlobAccess[chunk.List]
 		var chunkListFetcher chunk.ListFetcher
-		var cdcParametersFetcher cdc.ParametersFetcher
+		var cdcParametersFetcher capabilities.CDCParametersFetcher
 		var digestKeyFormat digest.KeyFormat
 		var authorizedChunkStorage blobstore.BlobAccess[*chunk.Chunk]
 		var authorizedChunkListStorage blobstore.BlobAccess[chunk.List]

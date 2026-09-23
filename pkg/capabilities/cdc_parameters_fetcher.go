@@ -1,10 +1,9 @@
-package cdc
+package capabilities
 
 import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -12,29 +11,29 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// ParametersFetcher retrieves the Content Defined Chunking (CDC)
+// CDCParametersFetcher retrieves the Content Defined Chunking (CDC)
 // parameters that govern how blobs are decomposed into chunks. Unless
 // an error is returned, the returned value is guaranteed to be non-nil
 // and to have been validated, so that callers may rely on its values
 // without performing any checks.
-type ParametersFetcher interface {
+type CDCParametersFetcher interface {
 	FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.RepMaxCdcParams, error)
 }
 
-type capabilitiesParametersFetcher struct {
-	provider capabilities.Provider
+type capabilitiesCDCParametersFetcher struct {
+	provider Provider
 }
 
-// NewCapabilitiesParametersFetcher creates a ParametersFetcher that
-// obtains the CDC parameters by calling GetCapabilities() on the
-// provided capabilities.Provider.
-func NewCapabilitiesParametersFetcher(provider capabilities.Provider) ParametersFetcher {
-	return &capabilitiesParametersFetcher{
+// NewCDCParametersFetcher creates a CDCParametersFetcher that obtains
+// the CDC parameters by calling GetCapabilities() on the provided
+// capabilities.Provider.
+func NewCDCParametersFetcher(provider Provider) CDCParametersFetcher {
+	return &capabilitiesCDCParametersFetcher{
 		provider: provider,
 	}
 }
 
-func (f *capabilitiesParametersFetcher) FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.RepMaxCdcParams, error) {
+func (f *capabilitiesCDCParametersFetcher) FetchCDCParameters(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.RepMaxCdcParams, error) {
 	capabilities, err := f.provider.GetCapabilities(ctx, instanceName)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Unable to GetCapabilities to determine chunking parameters")

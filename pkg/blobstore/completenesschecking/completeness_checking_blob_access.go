@@ -6,8 +6,8 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -25,7 +25,7 @@ type findMissingQueue struct {
 	digestFunction       digest.Function
 	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
 	chunkListStorage     blobstore.BlobAccess[chunk.List]
-	cdcParametersFetcher cdc.ParametersFetcher
+	cdcParametersFetcher capabilities.CDCParametersFetcher
 	batchSize            int
 
 	pending digest.SetBuilder
@@ -83,7 +83,7 @@ type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess[*remoteexecution.ActionResult]
 	chunkStorage              blobstore.BlobAccess[*chunk.Chunk]
 	chunkListStorage          blobstore.BlobAccess[chunk.List]
-	cdcParametersFetcher      cdc.ParametersFetcher
+	cdcParametersFetcher      capabilities.CDCParametersFetcher
 	treeReader                cas.StreamReader
 	batchSize                 int
 	maximumMessageSizeBytes   int
@@ -104,7 +104,7 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess[*remoteexecution.ActionResult], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher cdc.ParametersFetcher, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess[*remoteexecution.ActionResult] {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess[*remoteexecution.ActionResult], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess[*remoteexecution.ActionResult] {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		chunkStorage:              chunkStorage,

@@ -27,7 +27,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 	actionCache := mock.NewMockBlobAccess[*remoteexecution.ActionResult](ctrl)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	treeReader := mock.NewMockStreamReader(ctrl)
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(
 		actionCache,

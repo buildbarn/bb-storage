@@ -48,7 +48,7 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	singleChunkParameters := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
@@ -113,7 +113,7 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	maximumMessageSizeBytes := 200
@@ -145,7 +145,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
@@ -197,7 +197,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	var compressed bytes.Buffer
@@ -240,7 +240,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsCorruptZSTD(t *testing.T
 	// Content Addressable Storage takes place.
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
@@ -281,7 +281,7 @@ func TestContentAddressableStorageServerFindMissingBlobs(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	digests := digest.NewSetBuilder(2)
@@ -332,7 +332,7 @@ func TestContentAddressableStorageServerSplitBlob(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
@@ -369,7 +369,7 @@ func TestContentAddressableStorageServerSplitBlobSingleChunk(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The blob is small enough to fit in a single chunk. Its chunk
@@ -409,7 +409,7 @@ func TestContentAddressableStorageServerSplitBlobNotFound(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// A single-chunk blob that does not exist.
@@ -468,7 +468,7 @@ func TestContentAddressableStorageServerSpliceBlob(t *testing.T) {
 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
-	cdcParametersFetcher := mock.NewMockParametersFetcher(ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	chunkListStorage.EXPECT().Put(ctx, blobDigest, expectedChunkList).Return(nil)
 

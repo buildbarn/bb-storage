@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/cdc"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
@@ -131,7 +130,7 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 
 		var chunkBytesReader reader.Reader[[]byte]
 		var chunkListFetcher chunk.ListFetcher
-		var cdcParametersFetcher cdc.ParametersFetcher
+		var cdcParametersFetcher capabilities.CDCParametersFetcher
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
 			chunkBytesReader, _, _, chunkListFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
 		} else {
