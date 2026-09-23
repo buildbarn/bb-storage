@@ -1,8 +1,0 @@
-load("@rules_go//go:def.bzl", "go_library")
-
-go_library(
-    name = "buffer",
-    srcs = ["read_at_closer.go"],
-    importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/buffer",
-    visibility = ["//visibility:public"],
-)

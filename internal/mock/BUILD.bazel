@@ -122,18 +122,6 @@ gomock(
 )
 
 gomock(
-    name = "buffer",
-    out = "buffer.go",
-    interfaces = [
-        "ReadAtCloser",
-    ],
-    library = "//pkg/blobstore/buffer",
-    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
-    mockgen_tool = "@org_uber_go_mock//mockgen",
-    package = "mock",
-)
-
-gomock(
     name = "builder",
     out = "builder.go",
     interfaces = [
@@ -425,7 +413,6 @@ go_library(
         "blobstore_replication.go",
         "blobstore_sharding.go",
         "blockdevice.go",
-        "buffer.go",
         "builder.go",
         "capabilities.go",
         "cas.go",
@@ -456,7 +443,6 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
         "//pkg/blobstore/cdc",
         "//pkg/blobstore/chunk",
         "//pkg/blobstore/coder",
