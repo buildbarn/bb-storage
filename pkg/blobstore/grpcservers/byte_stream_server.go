@@ -77,7 +77,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			return err
 		}
 	}
-	i, chunkOffset := chunk.FindChunkOffset(chunkList, uint64(in.ReadOffset))
+	i, chunkOffset := chunkList.FindChunkOffset(uint64(in.ReadOffset))
 	for ; i < len(chunkList.Digests); i++ {
 		chunk, err := s.chunkStorage.Get(ctx, chunkList.Digests[i])
 		if err != nil {

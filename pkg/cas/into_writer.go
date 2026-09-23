@@ -36,7 +36,7 @@ func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 	if err != nil {
 		return err
 	}
-	index, chunkOffset := chunk.FindChunkOffset(manifest, uint64(offset))
+	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
 	for ; index < len(manifest.Digests); index++ {
 		chunkData, err := chunkBytesReader.Read(ctx, manifest.Digests[index])
 		if err != nil {

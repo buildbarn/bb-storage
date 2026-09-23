@@ -21,19 +21,19 @@ type ListFetcher interface {
 
 // FindChunkOffset returns the index of the chunk containing the given
 // offset and the offset within that chunk.
-func FindChunkOffset(chunkList List, off uint64) (index int, chunkOffset int64) {
-	if len(chunkList.Offsets) == 0 {
+func (l List) FindChunkOffset(off uint64) (index int, chunkOffset int64) {
+	if len(l.Offsets) == 0 {
 		return 0, 0
 	}
 
-	i, exact := slices.BinarySearch(chunkList.Offsets, off)
+	i, exact := slices.BinarySearch(l.Offsets, off)
 	if exact {
 		return i, 0
 	}
 
-	localOffset := int64(off - chunkList.Offsets[i-1])
-	if localOffset < chunkList.Digests[i-1].GetSizeBytes() {
+	localOffset := int64(off - l.Offsets[i-1])
+	if localOffset < l.Digests[i-1].GetSizeBytes() {
 		return i - 1, localOffset
 	}
-	return len(chunkList.Offsets), 0
+	return len(l.Offsets), 0
 }

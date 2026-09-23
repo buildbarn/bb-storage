@@ -48,7 +48,7 @@ func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 	if err != nil {
 		return 0, util.StatusWrap(err, "Could not fetch chunk list")
 	}
-	index, chunkOffset := chunk.FindChunkOffset(manifest, uint64(offset))
+	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
 
 	n := 0
 	for n < len(buf) && index < len(manifest.Digests) {
