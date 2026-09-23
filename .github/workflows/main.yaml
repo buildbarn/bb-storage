@@ -5,7 +5,7 @@
          "runs-on": "${{ matrix.host.os }}",
          "steps": [
             {
-               "name": "Check out source code",
+               "name": "Check out source code, MODIFIED STEP",
                "uses": "actions/checkout@v1"
             },
             {
