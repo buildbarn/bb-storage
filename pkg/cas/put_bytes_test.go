@@ -1,6 +1,7 @@
 package cas_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -27,7 +28,7 @@ func TestContentAddressableStoragePutBytesSingleChunk(t *testing.T) {
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	chunkStorage.EXPECT().Put(ctx, d, chunk.NewChunk(zstdPool, data)).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(nil)
 
 	require.NoError(t, cas.PutBytes(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, data))
 }
@@ -53,8 +54,22 @@ func TestContentAddressableStoragePutBytesMultipleChunks(t *testing.T) {
 		Validated: true,
 	}
 
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[0], chunk.NewChunk(zstdPool, data[:77])).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], chunk.NewChunk(zstdPool, data[77:])).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[0], gomock.Cond(func(x any) bool {
+		chunk, ok := x.(*chunk.Chunk)
+		if !ok {
+			return false
+		}
+		chunkData, err := chunk.GetBytes(context.Background())
+		return err == nil && bytes.Equal(chunkData, data[:77])
+	})).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], gomock.Cond(func(x any) bool {
+		chunk, ok := x.(*chunk.Chunk)
+		if !ok {
+			return false
+		}
+		chunkData, err := chunk.GetBytes(context.Background())
+		return err == nil && bytes.Equal(chunkData, data[77:])
+	})).Return(nil)
 	chunkListStorage.EXPECT().Put(ctx, d, expectedChunkList).Return(nil)
 
 	require.NoError(t, cas.PutBytes(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, data))

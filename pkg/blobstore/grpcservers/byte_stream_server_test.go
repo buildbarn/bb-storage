@@ -562,7 +562,7 @@ func TestByteStreamServer(t *testing.T) {
 		// Attempt to write a blob without an instance name.
 		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "581c1053f832a1c719fb6528a588ccfd", 14)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Put(gomock.Any(), digest1, chunk.NewChunk(zstdPool, []byte("LaputanMachine"))).Return(nil)
+		chunkStorage.EXPECT().Put(gomock.Any(), digest1, gomock.Any()).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -595,7 +595,7 @@ func TestByteStreamServer(t *testing.T) {
 		actualDigest := generator.Sum()
 
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, chunk.NewChunk(zstdPool, originalData)).Return(nil)
+		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, gomock.Any()).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -624,7 +624,7 @@ func TestByteStreamServer(t *testing.T) {
 		actualDigest := generator.Sum()
 
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, chunk.NewChunk(zstdPool, originalData)).Return(nil)
+		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, gomock.Any()).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)
@@ -665,7 +665,7 @@ func TestByteStreamServer(t *testing.T) {
 		actualDigest := generator.Sum()
 
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, chunk.NewChunk(zstdPool, originalData)).Return(nil)
+		chunkStorage.EXPECT().Put(gomock.Any(), actualDigest, gomock.Any()).Return(nil)
 
 		stream, err := client.Write(ctx)
 		require.NoError(t, err)

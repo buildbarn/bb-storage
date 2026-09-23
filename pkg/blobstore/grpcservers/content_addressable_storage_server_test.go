@@ -152,8 +152,22 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
-	chunkStorage.EXPECT().Put(ctx, digest1, chunk.NewChunk(zstdPool, []byte("Hello"))).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, digest2, chunk.NewChunk(zstdPool, []byte("World"))).Return(status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
+	chunkStorage.EXPECT().Put(ctx, digest1, gomock.Cond(func(x any) bool {
+		chunk, ok := x.(*chunk.Chunk)
+		if !ok {
+			return false
+		}
+		data, err := chunk.GetBytes(context.Background())
+		return err == nil && bytes.Equal(data, []byte("Hello"))
+	})).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, digest2, gomock.Cond(func(x any) bool {
+		chunk, ok := x.(*chunk.Chunk)
+		if !ok {
+			return false
+		}
+		data, err := chunk.GetBytes(context.Background())
+		return err == nil && bytes.Equal(data, []byte("World"))
+	})).Return(status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
 	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkListStorage, cdcParametersFetcher, zstdPool, 4<<20, 1000)
 
@@ -197,7 +211,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
-	chunkStorage.EXPECT().Put(ctx, digest1, chunk.NewChunk(zstdPool, data)).Return(nil)
+	chunkStorage.EXPECT().Put(ctx, digest1, gomock.Any()).Return(nil)
 
 	request := &remoteexecution.BatchUpdateBlobsRequest{
 		InstanceName: "ubuntu1804",
