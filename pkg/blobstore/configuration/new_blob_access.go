@@ -633,7 +633,6 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 			digestKeyFormat,
 			grpcClientFactory,
 			maximumMessageSizeBytes,
-			zstdPool,
 		),
 	)
 	if err != nil {

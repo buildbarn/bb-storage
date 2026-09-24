@@ -11,8 +11,7 @@ import (
 )
 
 type chunkCoder struct {
-	zstdPool         zstd.Pool
-	encodeCompressed bool
+	zstdPool zstd.Pool
 }
 
 // NewChunkCoder returns a Coder that can encode and decode a
@@ -39,12 +38,9 @@ func (chunkCoder) checkDigest(ctx context.Context, chunk *chunk.Chunk, d digest.
 	return nil
 }
 
-func (c *chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
+func (chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
 	// TODO: Should ctx be part of this signature?
 	ctx := context.Background()
-	if err := c.checkDigest(ctx, chunk, d); err != nil {
-		return nil, err
-	}
 	return chunk.GetBytesCompressed(ctx)
 }
 

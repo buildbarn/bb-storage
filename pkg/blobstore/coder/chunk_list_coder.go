@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"math"
 
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"google.golang.org/grpc/codes"
@@ -18,11 +16,7 @@ type chunkListCoder struct {
 }
 
 // NewChunkListCoder returns a Coder that can encode and decode a
-// chunk.List into an efficient binary format.
-//
-// The binary schema uses a Struct-of-Arrays (SoA) layout to group sizes
-// together which maximizes compressibility but does not itself compress
-// or do integrity checks of the data.
+// chunk.List into a tightly packed binary format.
 //
 // The parameter prevalidated determines if the chunk list should be
 // marked as prevalidated when decoded from its binary format. A
@@ -34,9 +28,6 @@ type chunkListCoder struct {
 // Binary format:
 //
 //	struct ChunkList {
-//	  uint8_t version;                  // The version, currently 0x00.
-//	  uint8_t digest_function;          // The REv2 digest function enum.
-//	  uint32_t count:                   // The number of chunks.
 //	  uint32_t sizes[count];            // The size of each chunk in order.
 //	  uint8_t hashes[count][hash_len];  // A contiguous array of hashes.
 //	}
@@ -47,16 +38,9 @@ func NewChunkListCoder(prevalidated bool) Coder[chunk.List, []byte] {
 func (chunkListCoder) Encode(chunkList chunk.List, d digest.Digest) ([]byte, error) {
 	hashLen := uint32(len(d.GetHashBytes()))
 	count := uint32(len(chunkList.Digests))
-	size := 1 + 1 + 4 + 4*count + hashLen*count
+	size := 4*count + hashLen*count
 	data := make([]byte, size)
-	// version
-	data[0] = 0x00
-	// digest_function
-	data[1] = byte(d.GetDigestFunction().GetEnumValue())
-	// count
-	binary.LittleEndian.PutUint32(data[2:], count)
-	// sizes[count]
-	offset := 6
+	offset := 0
 	for _, digest := range chunkList.Digests {
 		if digest.GetSizeBytes() > math.MaxUint32 {
 			return nil, status.Errorf(codes.Internal, "Attempted to serialie digest of size %d but we can only encode up to size %d", digest.GetSizeBytes(), uint32(math.MaxUint32))
@@ -74,39 +58,20 @@ func (chunkListCoder) Encode(chunkList chunk.List, d digest.Digest) ([]byte, err
 
 func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunk.List, error) {
 	hashLen := uint32(len(d.GetHashBytes()))
-	sizeBytes := len(data)
-	if sizeBytes < 6 {
-		return chunk.List{}, status.Error(codes.InvalidArgument, "Data is less than 6 bytes which no valid chunk list can be")
+	sizeBytes := uint32(len(data))
+	if sizeBytes%(hashLen+4) != 0 {
+		return chunk.List{}, status.Error(codes.InvalidArgument, "Data does not add up to a whole number of digests")
 	}
-	if data[0] != 0x00 {
-		return chunk.List{}, status.Errorf(codes.InvalidArgument, "Unknown version %d", data[0])
-	}
+	count := sizeBytes / (hashLen + 4)
 	digestFunction := d.GetDigestFunction()
-	expectedDigestEnum := digestFunction.GetEnumValue()
-	if data[1] != byte(expectedDigestEnum) {
-		storedDigestStr := remoteexecution.DigestFunction_Value(data[1]).String()
-		expectedDigestStr := expectedDigestEnum.String()
-
-		return chunk.List{}, status.Errorf(
-			codes.InvalidArgument,
-			"Digest function in storage %s does not match expected digest function %s",
-			storedDigestStr,
-			expectedDigestStr,
-		)
-	}
-	count := binary.LittleEndian.Uint32(data[2:6])
-	expectedSizeBytes := int(count)*4 + int(count)*int(hashLen) + 6
-	if expectedSizeBytes != sizeBytes {
-		return chunk.List{}, status.Errorf(codes.InvalidArgument, "Expected binary representation to be %d bytes but it was %d bytes", expectedSizeBytes, sizeBytes)
-	}
 	ret := chunk.List{
 		Offsets:   make([]uint64, count),
 		Digests:   make([]digest.Digest, count),
 		Validated: c.prevalidated,
 	}
-	for i := uint32(0); i < count; i++ {
-		sizeBytes := int64(binary.LittleEndian.Uint32(data[6+i*4:]))
-		stringHash := hex.EncodeToString(data[6+4*count+i*hashLen : 6+4*count+(i+1)*hashLen])
+	for i := range count {
+		sizeBytes := int64(binary.LittleEndian.Uint32(data[i*4:]))
+		stringHash := hex.EncodeToString(data[4*count+i*hashLen : 4*count+(i+1)*hashLen])
 		chunkDigest, err := digestFunction.NewDigest(stringHash, sizeBytes)
 		if err != nil {
 			return chunk.List{}, err

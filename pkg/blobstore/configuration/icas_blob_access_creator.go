@@ -10,7 +10,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 )
 
 type icasBlobAccessCreator struct {
@@ -19,18 +18,16 @@ type icasBlobAccessCreator struct {
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
-	zstdPool                zstd.Pool
 }
 
 // NewICASBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Indirect Content
 // Addressable Storage.
-func NewICASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*icas.Reference] {
+func NewICASBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*icas.Reference] {
 	return &icasBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
 	}
 }
 
@@ -38,9 +35,8 @@ func (icasBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provi
 	return nil
 }
 
-func (bac *icasBlobAccessCreator) GetBinaryCoder() coder.Coder[*icas.Reference, []byte] {
+func (icasBlobAccessCreator) GetBinaryCoder() coder.Coder[*icas.Reference, []byte] {
 	c := coder.NewProtoCoder[icas.Reference]()
-	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 

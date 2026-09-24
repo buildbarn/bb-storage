@@ -10,7 +10,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/proto/iscc"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 )
 
 type isccBlobAccessCreator struct {
@@ -19,18 +18,16 @@ type isccBlobAccessCreator struct {
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
-	zstdPool                zstd.Pool
 }
 
 // NewISCCBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Initial Size Class
 // Cache.
-func NewISCCBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*iscc.PreviousExecutionStats] {
+func NewISCCBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*iscc.PreviousExecutionStats] {
 	return &isccBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
 	}
 }
 
@@ -42,9 +39,8 @@ func (isccBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provi
 	return nil
 }
 
-func (bac *isccBlobAccessCreator) GetBinaryCoder() coder.Coder[*iscc.PreviousExecutionStats, []byte] {
+func (isccBlobAccessCreator) GetBinaryCoder() coder.Coder[*iscc.PreviousExecutionStats, []byte] {
 	c := coder.NewProtoCoder[iscc.PreviousExecutionStats]()
-	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 

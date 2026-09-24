@@ -44,9 +44,8 @@ func (clsBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provid
 	return nil
 }
 
-func (bac *clsBlobAccessCreator) GetBinaryCoder() coder.Coder[chunk.List, []byte] {
+func (clsBlobAccessCreator) GetBinaryCoder() coder.Coder[chunk.List, []byte] {
 	c := coder.NewChunkListCoder( /* prevalidated = */ true)
-	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 

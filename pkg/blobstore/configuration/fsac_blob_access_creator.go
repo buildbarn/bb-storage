@@ -10,7 +10,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 )
 
 type fsacBlobAccessCreator struct {
@@ -19,18 +18,16 @@ type fsacBlobAccessCreator struct {
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
-	zstdPool                zstd.Pool
 }
 
 // NewFSACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the File System Access
 // Cache.
-func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*fsac.FileSystemAccessProfile] {
+func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*fsac.FileSystemAccessProfile] {
 	return &fsacBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
 	}
 }
 
@@ -42,9 +39,8 @@ func (fsacBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provi
 	return nil
 }
 
-func (bac *fsacBlobAccessCreator) GetBinaryCoder() coder.Coder[*fsac.FileSystemAccessProfile, []byte] {
+func (fsacBlobAccessCreator) GetBinaryCoder() coder.Coder[*fsac.FileSystemAccessProfile, []byte] {
 	c := coder.NewProtoCoder[fsac.FileSystemAccessProfile]()
-	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 

@@ -121,7 +121,6 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			NewICASBlobAccessCreator(
 				bac.grpcClientFactory,
 				bac.maximumMessageSizeBytes,
-				bac.zstdPool,
 			),
 		)
 		if err != nil {

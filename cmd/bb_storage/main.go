@@ -128,7 +128,6 @@ func main() {
 					digestKeyFormat,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
 				),
 				grpcClientFactory,
 			)
@@ -152,7 +151,6 @@ func main() {
 				blobstore_configuration.NewICASBlobAccessCreator(
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
 				),
 				grpcClientFactory,
 			)
@@ -171,7 +169,6 @@ func main() {
 				blobstore_configuration.NewISCCBlobAccessCreator(
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
 				),
 				grpcClientFactory,
 			)
@@ -190,7 +187,6 @@ func main() {
 				blobstore_configuration.NewFSACBlobAccessCreator(
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
 				),
 				grpcClientFactory,
 			)

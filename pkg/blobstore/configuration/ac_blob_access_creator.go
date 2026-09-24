@@ -16,7 +16,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,13 +43,12 @@ type acBlobAccessCreator struct {
 	digestKeyFormat         digest.KeyFormat
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
-	zstdPool                zstd.Pool
 }
 
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[*remoteexecution.ActionResult] {
+func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
 	return &acBlobAccessCreator{
 		chunkBytesReader:        chunkBytesReader,
 		chunkStorage:            chunkStorage,
@@ -60,7 +58,6 @@ func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage
 		digestKeyFormat:         digestKeyFormat,
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
 	}
 }
 
@@ -72,9 +69,8 @@ func (acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provide
 	return acCapabilitiesProvider
 }
 
-func (bac *acBlobAccessCreator) GetBinaryCoder() coder.Coder[*remoteexecution.ActionResult, []byte] {
+func (acBlobAccessCreator) GetBinaryCoder() coder.Coder[*remoteexecution.ActionResult, []byte] {
 	c := coder.NewProtoCoder[remoteexecution.ActionResult]()
-	c = coder.JoinCoders(c, coder.NewZSTDCoder(bac.zstdPool))
 	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
 }
 
