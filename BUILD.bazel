@@ -1,3 +1,4 @@
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
 load("@com_github_buildbarn_bb_storage_npm//:defs.bzl", "npm_link_all_packages")
 load("@gazelle//:def.bzl", "gazelle")
@@ -28,4 +29,10 @@ buildifier(
 
 npm_link_all_packages(
     name = "node_modules",
+)
+
+write_source_file(
+    name = "generate_workflows",
+    in_file = "//tools/github_workflows",
+    out_file = ".github/workflows",
 )

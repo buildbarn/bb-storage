@@ -10,6 +10,6 @@ jsonnet_to_json(
     name = "github_workflows",
     src = "github_workflows.jsonnet",
     out_dir = "outputs",
-    visibility = ["//.github:__pkg__"],
+    visibility = ["//:__pkg__"],
     deps = [":workflows_template"],
 )
