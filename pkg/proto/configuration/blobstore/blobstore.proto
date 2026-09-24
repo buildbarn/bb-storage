@@ -8,6 +8,7 @@ import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.pr
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
@@ -386,28 +387,22 @@ message MirroredBlobAccessConfiguration {
 // would increase redundancy in the data stored. The "current" group
 // should likely be two or three times as large as the "old" group.
 message LocalBlobAccessConfiguration {
-  // Was 'digest_location_map_size'. This option has been moved to
-  // 'key_location_map_in_memory.entries'.
-  reserved 1;
+  // Was 'digest_location_map_size', 'key_location_map_in_memory',
+  // 'key_location_map_on_block_device',
+  // 'key_location_map_maximum_get_attempts', and
+  // 'key_location_map_maximum_put_attempts'. These options has been
+  // moved into 'key_location_map'.
+  reserved 1, 2, 3, 11, 12;
 
-  message KeyLocationMapInMemory {
-    // The key-location map is a hash table that is used by this storage
-    // backend to resolve digests to locations where data is stored.
-    // This option determines the size of this hash table. Because
-    // entries are small (about 64 bytes in size), it is recommended to
-    // make this map relatively large to reduce collisions.
-    //
-    // Recommended value: between 2 and 10 times the expected number of
-    // objects stored.
-    int64 entries = 1;
-  }
-
-  // Data store for the metadata of objects. The following Prometheus
-  // queries may be used to determine whether insertion into the
-  // key-location map caused other entries to be displaced prematurely:
+  // The key-location map is a hash table that is used by this storage
+  // backend to resolve digests to locations where data is stored.
   //
-  // buildbarn_blobstore_hashing_key_location_map_put_iterations_count{outcome="TooManyAttempts"}
-  // buildbarn_blobstore_hashing_key_location_map_put_too_many_iterations_total
+  // The following Prometheus queries may be used to determine whether
+  // insertion into the key-location map caused other entries to be
+  // displaced prematurely:
+  //
+  // buildbarn_lossymap_hash_map_put_iterations_count{outcome="TooManyAttempts"}
+  // buildbarn_lossymap_hash_map_put_too_many_iterations_total
   //
   // If this query yields values greater than zero, you may need to
   // increase this data store's size (or reduce the size of the blocks
@@ -417,36 +412,7 @@ message LocalBlobAccessConfiguration {
   // meaning that you may need to run bb_storage for a longer amount of
   // time to get better insight in whether objects are discarded
   // prematurely.
-  oneof key_location_map_backend {
-    // Store the key-location map in memory.
-    KeyLocationMapInMemory key_location_map_in_memory = 11;
-
-    // Store the key-location map on a block device. The size of the
-    // block device determines the number of entries stored.
-    buildbarn.configuration.blockdevice.Configuration
-        key_location_map_on_block_device = 12;
-  }
-
-  // The number of indices a Get() call on the key-location map may
-  // attempt to access. The lower the utilization rate of the
-  // key-location map, the lower this value may be set. For example, if
-  // the size of the key-location map is set in such a way that it is
-  // only utilized by 10% (factor 0.1), setting this field to 16 means
-  // there is only a 0.1^16 chance that inserting an entry prematurely
-  // displaces another object from storage.
-  //
-  // Recommended value: 16
-  uint32 key_location_map_maximum_get_attempts = 2;
-
-  // The number of mutations that a Put() on the key-location map may
-  // perform. Because the key-location map uses a scheme similar to
-  // Robin Hood hashing, insertions may cause other entries to be
-  // displaced. Those entries may then cause even more entries to be
-  // displaced. Because of that, it is recommended to set this field to
-  // a small multiple of the maximum Get() attempts.
-  //
-  // Recommended value: 64
-  int64 key_location_map_maximum_put_attempts = 3;
+  buildbarn.configuration.lossymap.HashMapConfiguration key_location_map = 4;
 
   // The number of blocks, where attempting to access any data stored
   // within will cause it to be refreshed (i.e., copied into new
