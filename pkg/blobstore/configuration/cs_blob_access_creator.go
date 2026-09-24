@@ -33,9 +33,7 @@ import (
 
 var csCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 	CacheCapabilities: &remoteexecution.CacheCapabilities{
-		DigestFunctions:   digest.SupportedDigestFunctions,
-		SplitBlobSupport:  true,
-		SpliceBlobSupport: true,
+		DigestFunctions: digest.SupportedDigestFunctions,
 		// MaxBatchTotalSize: Not used by Bazel yet.
 	},
 })
