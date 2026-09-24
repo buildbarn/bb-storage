@@ -2,6 +2,7 @@ package grpcclients
 
 import (
 	"context"
+	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -9,6 +10,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type clsBlobAccess struct {
@@ -29,50 +32,97 @@ func NewCLSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes i
 func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chunk.List, error) {
 	digestFunction := blobDigest.GetDigestFunction()
 
-	// TODO: Replace with streaming variant
-	splitBlobsResponse, err := ba.contentAddressableStorageClient.SplitBlob(ctx, &remoteexecution.SplitBlobRequest{
-		InstanceName:   digestFunction.GetInstanceName().String(),
-		BlobDigest:     blobDigest.GetProto(),
-		DigestFunction: digestFunction.GetEnumValue(),
+	stream, err := ba.contentAddressableStorageClient.GetChunkMapping(ctx, &remoteexecution.GetChunkMappingRequest{
+		InstanceName:     digestFunction.GetInstanceName().String(),
+		BlobDigest:       blobDigest.GetProto(),
+		DigestFunction:   digestFunction.GetEnumValue(),
+		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 	})
 	if err != nil {
 		return chunk.List{}, err
 	}
 
-	// Convert wire format to chunk.List
+	// Convert wire format to chunk.List. Chunks may be spread across
+	// multiple responses, so digests are collected until the server
+	// closes the stream.
 	chunkList := chunk.List{
-		Offsets: make([]uint64, len(splitBlobsResponse.ChunkDigests)),
-		Digests: make([]digest.Digest, len(splitBlobsResponse.ChunkDigests)),
+		Digests: make([]digest.Digest, 0, blobstore.RecommendedFindMissingDigestsCount),
+		Offsets: make([]uint64, 0, blobstore.RecommendedFindMissingDigestsCount),
 	}
 	offset := uint64(0)
-	for i, proto := range splitBlobsResponse.ChunkDigests {
-		d, err := digestFunction.NewDigestFromProto(proto)
+	for {
+		response, err := stream.Recv()
 		if err != nil {
+			if err == io.EOF {
+				return chunkList, nil
+			}
 			return chunk.List{}, err
 		}
-		chunkList.Offsets[i] = offset
-		chunkList.Digests[i] = d
-		offset += uint64(d.GetSizeBytes())
+		if response.ChunkingFunction != remoteexecution.ChunkingFunction_UNKNOWN &&
+			response.ChunkingFunction != remoteexecution.ChunkingFunction_REP_MAX_CDC {
+			return chunk.List{}, status.Errorf(
+				codes.InvalidArgument,
+				"Server responded with unsupported chunking function %s",
+				response.ChunkingFunction.String(),
+			)
+		}
+		for _, proto := range response.ChunkDigests {
+			d, err := digestFunction.NewDigestFromProto(proto)
+			if err != nil {
+				return chunk.List{}, err
+			}
+			chunkList.Offsets = append(chunkList.Offsets, offset)
+			chunkList.Digests = append(chunkList.Digests, d)
+			offset += uint64(d.GetSizeBytes())
+		}
 	}
-	return chunkList, nil
 }
 
 func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value chunk.List) error {
-	// Convert chunk.List to wire format
-	chunkDigests := make([]*remoteexecution.Digest, 0, len(value.Digests))
-	for _, digest := range value.Digests {
-		chunkDigests = append(chunkDigests, digest.GetProto())
+	if len(value.Digests) == 0 {
+		return status.Error(codes.InvalidArgument, "Attempted to store an empty chunk list")
 	}
 
 	digestFunction := blobDigest.GetDigestFunction()
-	// TODO: Replace with streaming variant
-	_, err := ba.contentAddressableStorageClient.SpliceBlob(ctx, &remoteexecution.SpliceBlobRequest{
-		InstanceName:     digestFunction.GetInstanceName().String(),
-		DigestFunction:   digestFunction.GetEnumValue(),
-		ChunkDigests:     chunkDigests,
-		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
-		BlobDigest:       blobDigest.GetProto(),
-	})
+
+	stream, err := ba.contentAddressableStorageClient.RegisterChunkMapping(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Send the chunk digests in batches to stay below the maximum
+	// message size. All fields other than ChunkDigests are ignored by
+	// servers on subsequent requests.
+	numDigests := len(value.Digests)
+	i := 0
+	for {
+		n := blobstore.RecommendedFindMissingDigestsCount
+		if n > numDigests-i {
+			n = numDigests - i
+		}
+		chunkDigests := make([]*remoteexecution.Digest, 0, n)
+		for _, digest := range value.Digests[i : i+n] {
+			chunkDigests = append(chunkDigests, digest.GetProto())
+		}
+		request := remoteexecution.RegisterChunkMappingRequest{
+			ChunkDigests: chunkDigests,
+		}
+		if i == 0 {
+			request.InstanceName = digestFunction.GetInstanceName().String()
+			request.BlobDigest = blobDigest.GetProto()
+			request.DigestFunction = digestFunction.GetEnumValue()
+			request.ChunkingFunction = remoteexecution.ChunkingFunction_REP_MAX_CDC
+		}
+		if err := stream.Send(&request); err != nil {
+			return err
+		}
+		i += n
+		if i >= numDigests {
+			break
+		}
+	}
+
+	_, err = stream.CloseAndRecv()
 	return err
 }
 

@@ -89,8 +89,8 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 	}
 
 	r := resp.Responses[0]
-	if r.GetStatus().GetCode() != int32(codes.OK) {
-		return nil, status.ErrorProto(r.Status)
+	if err := status.ErrorProto(r.Status); err != nil {
+		return nil, err
 	}
 
 	switch r.Compressor {
