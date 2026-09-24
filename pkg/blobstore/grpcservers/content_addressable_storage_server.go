@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
+	"math/bits"
 	"slices"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -248,9 +250,17 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 		Offsets: make([]uint64, len(digests)),
 	}
 	offset := uint64(0)
-	for i, d := range digests {
+	for i, chunkDigest := range digests {
 		chunkList.Offsets[i] = offset
-		offset += uint64(d.GetSizeBytes())
+		var carry uint64
+		offset, carry = bits.Add64(offset, uint64(chunkDigest.GetSizeBytes()), 0)
+		if carry != 0 {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Chunk list overflows, the sum of chunk sizes exceeds %d bytes",
+				uint64(math.MaxUint64),
+			)
+		}
 	}
 	if offset != uint64(d.GetSizeBytes()) {
 		return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")

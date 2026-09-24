@@ -3,6 +3,8 @@ package grpcservers_test
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -551,4 +553,43 @@ func TestContentAddressableStorageServerRegisterChunkMappingSingleChunk(t *testi
 		require.Error(t, err)
 		require.Equal(t, codes.InvalidArgument, status.Code(err))
 	})
+}
+
+func TestContentAddressableStorageServerRegisterChunkMappingSizeOverflow(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	// The sizes of the chunks in a chunk list must add up to the size
+	// of the blob. As sizes are 64 bit values, adding them up may
+	// overflow. Three chunks of size 2^63 - 1 and one of size 18 add up
+	// to a total size of 2^64 + 16 bytes, which wraps around to 16. The
+	// server should reject such lists instead of treating them as
+	// composing into a blob of 16 bytes.
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	zstdPool := zstd.NewPoolFromConfiguration(nil)
+
+	chunkDigests := make([]*remoteexecution.Digest, 4)
+	for i := 0; i < 3; i++ {
+		chunkDigests[i] = &remoteexecution.Digest{
+			Hash:      fmt.Sprintf("%064d", i),
+			SizeBytes: math.MaxInt64,
+		}
+	}
+	chunkDigests[3] = &remoteexecution.Digest{
+		Hash:      "0000000000000000000000000000000000000000000000000000000000000012",
+		SizeBytes: 18,
+	}
+
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkListStorage, cdcParametersFetcher, zstdPool, 200, 1000)
+	_, err := contentAddressableStorageServer.SpliceBlob(ctx, &remoteexecution.SpliceBlobRequest{
+		InstanceName: "my_instance_name",
+		BlobDigest: &remoteexecution.Digest{
+			Hash:      "0000000000000000000000000000000000000000000000000000000000000010",
+			SizeBytes: 16,
+		},
+		ChunkDigests: chunkDigests,
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
