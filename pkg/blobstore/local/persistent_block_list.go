@@ -1,6 +1,8 @@
 package local
 
 import (
+	"sync"
+
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
@@ -73,7 +75,20 @@ type persistentBlockInfo struct {
 // PersistentBlockList is an implementation of BlockList whose internal
 // state can be extracted and persisted. This allows data contained in
 // its blocks to be accessed after restarts.
+//
+// Internal synchronisation: all mutable state below is protected by mu.
+// BlockReferenceResolver methods and Get() take mu.RLock so that
+// multiple concurrent readers (e.g. several FlatBlobAccess.Get callers
+// looking up a Location) can proceed in parallel. PopFront, PushBack,
+// HasSpace, Put, the BlockListPutFinalizer returned by Put, and the
+// NotifySync*/GetPersistentState/NotifyPersistentStateWritten lifecycle
+// methods take mu.Lock. This makes the BlockList contract from
+// block_list.go locally enforced — callers no longer need an external
+// write lock around the finalizer, which is the change that lets
+// FlatBlobAccess.finalizePut run under the outer RWMutex's read mode.
 type PersistentBlockList struct {
+	mu sync.RWMutex
+
 	blockAllocator BlockAllocator
 	// When closedForWriting is set, BlockList will return errClosedForWriting
 	// for all future calls to PushBack and Put. This also applies to any
@@ -180,6 +195,9 @@ var (
 // the block in the BlockList. This conversion may fail if the block has
 // already been released using PopFront().
 func (bl *PersistentBlockList) BlockReferenceToBlockIndex(blockReference BlockReference) (int, uint64, bool) {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
+
 	// Look up information for the provided epoch.
 	epochIndex := blockReference.EpochID - bl.oldestEpochID
 	if epochIndex >= uint32(len(bl.epochHashSeeds)) {
@@ -199,6 +217,9 @@ func (bl *PersistentBlockList) BlockReferenceToBlockIndex(blockReference BlockRe
 // BlockIndexToBlockReference converts the index of a block to a
 // BlockReference that uses the latest epoch ID.
 func (bl *PersistentBlockList) BlockIndexToBlockReference(blockIndex int) (BlockReference, uint64) {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
+
 	lastEpochIndex := len(bl.epochHashSeeds) - 1
 	return BlockReference{
 		EpochID:        bl.oldestEpochID + uint32(lastEpochIndex),
@@ -209,6 +230,9 @@ func (bl *PersistentBlockList) BlockIndexToBlockReference(blockIndex int) (Block
 // PopFront removes the oldest block from the BlockList, having index
 // zero.
 func (bl *PersistentBlockList) PopFront() {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	// Remove the first block, but don't release the block
 	// immediately. It needs to be removed from the persistent state
 	// first, as the BlockAllocator would otherwise start handing it
@@ -247,6 +271,9 @@ func (bl *PersistentBlockList) PopFront() {
 // PushBack appends a new block to the BlockList. The block is obtained
 // by calling into the underlying BlockAllocator.
 func (bl *PersistentBlockList) PushBack() error {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	if bl.closedForWriting {
 		return errClosedForWriting
 	}
@@ -264,19 +291,41 @@ func (bl *PersistentBlockList) PushBack() error {
 }
 
 // Get data from one of the blocks managed by this BlockList.
+//
+// bl.mu is held in read mode across both the bl.blocks[index] lookup
+// and the inner block.Get() call. Note that this does not cover the
+// data transfer: block.Get() returns a Buffer that may read lazily,
+// and BlockDeviceBackedBlockAllocator streams from the device long
+// after this function has returned and the read lock has been
+// dropped.
+//
+// What the read lock does cover is the window between resolving the
+// block and block.Get() taking its own reference on it. Blocks are
+// actually released in NotifyPersistentStateWritten, which takes
+// bl.mu exclusively and is therefore excluded here. Once block.Get()
+// has taken its reference, the Block's own refcount keeps the
+// underlying storage alive for as long as the returned Buffer is
+// open. Callers therefore no longer need the surrounding ba.lock to
+// exclude block release.
 func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
 	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
 }
 
 // HasSpace returns whether a block with a given index has sufficient
 // space to store a blob of a given size.
 func (bl *PersistentBlockList) HasSpace(index int, sizeBytes int64) bool {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
 	return bl.blocks[index].block.HasSpace(sizeBytes)
 }
 
 // Put data into a block managed by the BlockList.
 func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWriter {
+	bl.mu.Lock()
 	if bl.closedForWriting {
+		bl.mu.Unlock()
 		return func(b buffer.Buffer) BlockListPutFinalizer {
 			b.Discard()
 			return func() (int64, error) {
@@ -288,6 +337,7 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 	// Allocate space from the requested block.
 	putWriter := bl.blocks[index].block.Put(sizeBytes)
 	absoluteBlockIndex := bl.totalBlocksReleased + index
+	bl.mu.Unlock()
 	return func(b buffer.Buffer) BlockListPutFinalizer {
 		// Copy data into the block without holding any locks.
 		putFinalizer := putWriter(b)
@@ -297,6 +347,15 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 			if err != nil {
 				return 0, err
 			}
+
+			// The finalizer mutates per-block writtenOffsetBytes
+			// and may append a new epoch. Both must be serialised
+			// against other finalisers, NotifySync* and PopFront —
+			// satisfied by holding bl.mu exclusively for the
+			// remainder of the call.
+			bl.mu.Lock()
+			defer bl.mu.Unlock()
+
 			if bl.closedForWriting {
 				return 0, errClosedForWriting
 			}
@@ -347,6 +406,8 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 // one or more blocks that have been released since the last persistent
 // state was written to disk.
 func (bl *PersistentBlockList) GetBlockReleaseWakeup() <-chan struct{} {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
 	return bl.blockReleaseWakeup.channel
 }
 
@@ -354,6 +415,8 @@ func (bl *PersistentBlockList) GetBlockReleaseWakeup() <-chan struct{} {
 // stored in one of the blocks since the last persistent state was
 // written to disk.
 func (bl *PersistentBlockList) GetBlockPutWakeup() <-chan struct{} {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
 	return bl.blockPutWakeup.channel
 }
 
@@ -361,6 +424,9 @@ func (bl *PersistentBlockList) GetBlockPutWakeup() <-chan struct{} {
 // storage medium underneath the BlockAllocator is synchronized. This
 // causes the epoch ID to be increased when the next blob is stored.
 func (bl *PersistentBlockList) NotifySyncStarting(isFinalSync bool) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	if isFinalSync {
 		bl.closedForWriting = true
 	}
@@ -377,6 +443,9 @@ func (bl *PersistentBlockList) NotifySyncStarting(isFinalSync bool) {
 // causes the next call to GetPersistentState() to return information on
 // the newly synchronized data.
 func (bl *PersistentBlockList) NotifySyncCompleted() {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	// Expose the preserved epoch ID and the amount of data written
 	// into every block as part of GetPersistentState().
 	bl.synchronizedEpochs = bl.synchronizingEpochs
@@ -392,6 +461,9 @@ func (bl *PersistentBlockList) NotifySyncCompleted() {
 // disk to be able to restore the layout of the BlockList after a
 // restart.
 func (bl *PersistentBlockList) GetPersistentState() (uint32, []*pb.BlockState) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	// Create a list of all of the epochs that we've synchronized
 	// properly. Partition the epochs by the block that was the last
 	// block at the time the epoch was created. This gives a compact
@@ -430,6 +502,9 @@ func (bl *PersistentBlockList) GetPersistentState() (uint32, []*pb.BlockState) {
 // returned by GetPersistentState() is written to disk. This allows
 // PersistentBlockList to recycle blocks that were used previously.
 func (bl *PersistentBlockList) NotifyPersistentStateWritten() {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
 	// Definitively release blocks that were still referenced by the
 	// previous version of the persistent state. It is now safe to
 	// let PushBack() reuse these blocks.
