@@ -1,7 +1,0 @@
-load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
-
-write_source_file(
-    name = "generate_workflows",
-    in_file = "//tools/github_workflows",
-    out_file = "workflows",
-)
