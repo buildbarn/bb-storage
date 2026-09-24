@@ -41,9 +41,8 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 
 	// Convert wire format to chunk.List
 	chunkList := chunk.List{
-		Offsets:   make([]uint64, len(splitBlobsResponse.ChunkDigests)),
-		Digests:   make([]digest.Digest, len(splitBlobsResponse.ChunkDigests)),
-		Validated: true,
+		Offsets: make([]uint64, len(splitBlobsResponse.ChunkDigests)),
+		Digests: make([]digest.Digest, len(splitBlobsResponse.ChunkDigests)),
 	}
 	offset := uint64(0)
 	for i, proto := range splitBlobsResponse.ChunkDigests {

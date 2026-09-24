@@ -52,68 +52,36 @@ func NewChunkListValidatingBlobAccess(chunkListStorage blobstore.BlobAccess[chun
 	}
 }
 
-// Get the split result from the downstream blob access, should one
-// exist return it only if all its constituent chunks exist.
-func (ba *chunkListValidatingBlobAccess) getComplete(ctx context.Context, d digest.Digest) (chunk.List, error) {
+// Get returns a valid chunk list for the given digest.
+func (ba *chunkListValidatingBlobAccess) Get(ctx context.Context, d digest.Digest) (chunk.List, error) {
 	// Verify the existence of the blob itself against the chunk
 	// list storage. This renews the lifetime of the blob even when
 	// the chunk list is served from a caching chunk list storage's
 	// local cache, because the FindMissing is punched through to
 	// the authoritative chunk list storage.
 	missing, err := ba.BlobAccess.FindMissing(ctx, d.ToSingletonSet())
-	if err != nil || !missing.Empty() {
+	if err != nil {
+		return chunk.List{}, util.StatusWrap(err, "Failed to check for blob existence")
+	}
+	if !missing.Empty() {
 		return chunk.List{}, status.Error(codes.NotFound, "Blob could not be found")
 	}
-
 	storedChunkList, err := ba.chunkListFetcher.FetchChunkList(ctx, d)
 	if err != nil {
-		return chunk.List{}, status.Error(codes.NotFound, "Failed to get chunk list")
+		return chunk.List{}, util.StatusWrap(err, "Failed to get chunk list")
 	}
-
 	digestSetBuilder := digest.NewSetBuilder(len(storedChunkList.Digests))
 	for _, digest := range storedChunkList.Digests {
 		digestSetBuilder.Add(digest)
 	}
-
 	missing, err = ba.chunkStorage.FindMissing(ctx, digestSetBuilder.Build())
-	if err == nil && missing.Empty() {
-		return storedChunkList, nil
-	}
-	return chunk.List{}, status.Error(codes.NotFound, "Blob could not be found")
-}
-
-// Get returns a valid chunk list for the given digest, chunking the
-// blob and storing the chunk list if needed.
-func (ba *chunkListValidatingBlobAccess) Get(ctx context.Context, d digest.Digest) (chunk.List, error) {
-	params, err := ba.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
-		return chunk.List{}, err
+		return chunk.List{}, util.StatusWrap(err, "Failed to check for chunk existence")
 	}
-
-	// Check for the trivial case, the blob is small enough that it will
-	// always decompose to a single chunk of the same size as the
-	// original blob. We verify the existence of the blob in CAS and
-	// break out early.
-	blobSize := d.GetSizeBytes()
-	if blobSize < 2*int64(params.MinChunkSizeBytes) {
-		missing, err := ba.chunkStorage.FindMissing(ctx, d.ToSingletonSet())
-		if err != nil {
-			return chunk.List{}, util.StatusWrap(err, "Failed to verify blob existence")
-		}
-		if !missing.Empty() {
-			return chunk.List{}, status.Error(codes.NotFound, "Blob not found in CAS")
-		}
-
-		chunkList := chunk.List{
-			Offsets:   []uint64{0},
-			Digests:   []digest.Digest{d},
-			Validated: true,
-		}
-		return chunkList, nil
+	if !missing.Empty() {
+		return chunk.List{}, status.Error(codes.NotFound, "Blob could not be found")
 	}
-
-	// Return upstream value if complete.
-	return ba.getComplete(ctx, d)
+	return storedChunkList, nil
 }
 
 // matchesStoredChunkList checks if the user-provided chunk digests
@@ -126,7 +94,6 @@ func (ba *chunkListValidatingBlobAccess) matchesStoredChunkList(ctx context.Cont
 	if err != nil {
 		return false, util.StatusWrap(err, "Failed to retrieve stored chunk list")
 	}
-
 	return slices.Equal(userChunkList.Digests, storedChunkList.Digests), nil
 }
 
@@ -136,39 +103,28 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 		// downstream blob store.
 		return ba.BlobAccess.Put(ctx, d, value)
 	}
-
-	if len(value.Digests) == 0 {
-		// Empty chunk list, blob must be the empty blob.
-		if d.GetSizeBytes() != 0 {
-			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
-		}
-		if d.GetDigestFunction().NewGenerator(0).Sum() != d {
-			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
-		}
-		return nil
-	}
-
 	params, err := ba.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
 		return err
 	}
-
-	// Check that all referenced chunks are present in storage.
-	value, err = ba.flattenChunks(ctx, params, value)
+	// A unvalidated chunk list may consist of chunks which canonically
+	// are represented by other chunks. We therefore flatten the chunk
+	// list and verify all chunks and subchunks are present in the Chunk
+	// Storage.
+	value, err = ba.flattenAndVerifyPresence(ctx, params, value)
 	if err != nil {
-		return status.Error(codes.NotFound, "At least one chunk is missing from storage.")
+		return status.Error(codes.NotFound, "At least one chunk is missing from storage")
 	}
-
-	// Check if the chunk list is identical to what already exists in
-	// storage.
 	match, err := ba.matchesStoredChunkList(ctx, d, value)
 	if err != nil {
 		return err
 	}
 	if match {
+		// The supplied chunk list is identical to the one already in
+		// storage. We short circuit the verification and skip the rest
+		// of the work.
 		return nil
 	}
-
 	// No more shortcuts available go through the heavy path of
 	// concatenating/verifying and chunking the blobs.
 	canonicalChunkList := chunk.List{
@@ -189,16 +145,15 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 		if err != nil {
 			return err
 		}
-
 		if _, err := wholeGen.Write(c.Data); err != nil {
 			return status.Error(codes.Internal, "Could not compute digest of blob")
 		}
-
 		missing, err := ba.chunkStorage.FindMissing(ctx, c.Digest.ToSingletonSet())
 		if err != nil {
 			return err
 		}
 		if !missing.Empty() {
+			// The calculated chunk was not present in Chunk Storage.
 			if err := ba.chunkStorage.Put(ctx, c.Digest, chunk.NewChunk(ba.zstdPool, c.Data)); err != nil {
 				return util.StatusWrap(err, "Failed to save chunk")
 			}
@@ -207,12 +162,11 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 		canonicalChunkList.Digests = append(canonicalChunkList.Digests, c.Digest)
 		offset += uint64(c.Digest.GetSizeBytes())
 	}
-
-	// Verify the whole blob against the advertised digest.
 	if actual := wholeGen.Sum(); actual != d {
+		// The chunks in the supplied chunklist do not add up to its
+		// digest.
 		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
 	}
-
 	// Store the canonical chunk list.
 	if err := ba.BlobAccess.Put(ctx, d, canonicalChunkList); err != nil {
 		return util.StatusWrap(err, "Failed to save canonical chunk list")
@@ -220,7 +174,7 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 	return nil
 }
 
-func (ba *chunkListValidatingBlobAccess) flattenChunks(ctx context.Context, params *remoteexecution.RepMaxCdcParams, userChunkList chunk.List) (chunk.List, error) {
+func (ba *chunkListValidatingBlobAccess) flattenAndVerifyPresence(ctx context.Context, params *remoteexecution.RepMaxCdcParams, userChunkList chunk.List) (chunk.List, error) {
 	maxChunkSize := 2*int64(params.MinChunkSizeBytes) - 1
 	bigDigests := digest.NewSetBuilder(len(userChunkList.Digests))
 	for _, d := range userChunkList.Digests {
@@ -272,14 +226,17 @@ func (ba *chunkListValidatingBlobAccess) flattenChunks(ctx context.Context, para
 }
 
 func (ba *chunkListValidatingBlobAccess) findMissingChunks(ctx context.Context, d digest.Digest) (digest.Set, error) {
-	storedChunkList, err := ba.BlobAccess.Get(ctx, d)
+	storedChunkList, err := ba.chunkListFetcher.FetchChunkList(ctx, d)
 	if err != nil {
-		return digest.EmptySet, util.StatusWrap(err, "Failed to decode chunk list")
+		return digest.EmptySet, util.StatusWrap(err, "Failed to fetch chunk list")
 	}
 	builder := digest.NewSetBuilder(len(storedChunkList.Digests))
 	for _, digest := range storedChunkList.Digests {
 		builder.Add(digest)
 	}
+	// TODO: This causes one find missing call per chunk list but we
+	// could aggregate these into a single call with a bit of
+	// bookkeeping.
 	return ba.chunkStorage.FindMissing(ctx, builder.Build())
 }
 

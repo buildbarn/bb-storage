@@ -92,6 +92,7 @@ func (r *replicator) Replicate(ctx context.Context, digests digest.Set) error {
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to replicate blob %s", blobDigest.String())
 			}
+			continue
 		}
 		chunkList, err := r.sourceChunkListFetcher.FetchChunkList(ctx, blobDigest)
 		if err != nil {

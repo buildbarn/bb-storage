@@ -47,30 +47,6 @@ var testCDCParams = &remoteexecution.RepMaxCdcParams{
 }
 var maximumMessageSizeBytes = 1024 * 1024
 
-func TestChunkListValidatingBlobAccessGetTrivialSmallBlob(t *testing.T) {
-	ctx := context.Background()
-
-	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
-
-	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
-	chunk1Data := []byte("Small trivial blob")
-	chunk := chunk.NewChunk(zstdPool, chunk1Data)
-	blobDigest := mustComputeDigest(t, digestFunction, chunk1Data)
-
-	require.NoError(t, fakeCS.Put(ctx, blobDigest, chunk))
-
-	fakeCS.ResetTouches()
-	chunkList, err := validatingCLS.Get(ctx, blobDigest)
-	require.NoError(t, err)
-
-	require.Len(t, chunkList.Digests, 1)
-	require.Equal(t, blobDigest, chunkList.Digests[0])
-	require.Greater(t, fakeCS.GetTouches(blobDigest), 0, "Blob did not have its lifetime renewed.")
-}
-
 func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 	ctx := context.Background()
 

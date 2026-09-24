@@ -242,16 +242,7 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 	return status.Error(codes.Unimplemented, "This service does not support downloading directory trees")
 }
 
-func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, chunkList chunk.List) error {
-	if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
-		return util.StatusWrap(err, "Could not save chunk list for blob")
-	}
-	return nil
-}
-
-// newChunkList constructs a chunk list from a sequence of chunk
-// digests, computing the offset at which every chunk starts.
-func newChunkList(digests []digest.Digest) chunk.List {
+func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, digests []digest.Digest) error {
 	chunkList := chunk.List{
 		Digests: digests,
 		Offsets: make([]uint64, len(digests)),
@@ -261,7 +252,39 @@ func newChunkList(digests []digest.Digest) chunk.List {
 		chunkList.Offsets[i] = offset
 		offset += uint64(d.GetSizeBytes())
 	}
-	return chunkList
+	if offset != uint64(d.GetSizeBytes()) {
+		return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+	}
+	if len(digests) == 0 {
+		// Empty chunk list, blob must be the empty blob.
+		if d.GetDigestFunction().NewGenerator(0).Sum() != d {
+			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+		}
+		return nil
+	} else if len(digests) == 1 {
+		// Trivial chunk list, digests[0] must be the blob itself.
+		if digests[0] != d {
+			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+		}
+		// While it's the right digest it may still be missing from the
+		// CAS making the register operation invalid.
+		params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
+		if err != nil {
+			return err
+		}
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, digests[0].ToSingletonSet())
+		if err != nil {
+			return err
+		}
+		if !missing.Empty() {
+			return status.Error(codes.NotFound, "At least one chunk is missing from storage.")
+		}
+		return nil
+	}
+	if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
+		return util.StatusWrap(err, "Could not save chunk list for blob")
+	}
+	return nil
 }
 
 func (s *contentAddressableStorageServer) RegisterChunkMapping(stream remoteexecution.ContentAddressableStorage_RegisterChunkMappingServer) error {
@@ -315,7 +338,7 @@ func (s *contentAddressableStorageServer) RegisterChunkMapping(stream remoteexec
 		return err
 	}
 
-	if err := s.registerChunkMapping(ctx, blobDigest, newChunkList(chunkDigests)); err != nil {
+	if err := s.registerChunkMapping(ctx, blobDigest, chunkDigests); err != nil {
 		return err
 	}
 
@@ -356,7 +379,7 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 		chunkDigests[i] = chunkDigest
 	}
 
-	if err := s.registerChunkMapping(ctx, blobDigest, newChunkList(chunkDigests)); err != nil {
+	if err := s.registerChunkMapping(ctx, blobDigest, chunkDigests); err != nil {
 		return nil, err
 	}
 
