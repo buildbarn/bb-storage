@@ -26,7 +26,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, 0, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
@@ -197,7 +197,7 @@ func TestFlatBlobAccessGetFromComposite(t *testing.T) {
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, 0, "cas", capabilitiesProvider)
 	parentDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 11)
 	parentKey := local.NewKeyFromString("3-3e25960a79dbc69b674cd4ec67a72c62-11")
 	child1Digest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -475,7 +475,7 @@ func TestFlatBlobAccessPut(t *testing.T) {
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, 0, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location := local.Location{
@@ -553,7 +553,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider)
+	blobAccess := local.NewFlatBlobAccess(keyLocationMap, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, 0, "cas", capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{

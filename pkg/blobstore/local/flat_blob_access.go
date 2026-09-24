@@ -17,6 +17,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// refreshStripeCount is the number of per-digest stripes used to
+// serialise refresh operations. Stripe index is the first byte of the
+// SHA-256 Key, which is uniformly distributed, so 256 stripes give a
+// 1:1 mapping with no hash function needed.
+const refreshStripeCount = 256
+
+// DefaultRefreshConcurrency is the number of refreshes of distinct
+// blobs that may run concurrently when no explicit limit is configured.
+//
+// The historical value was effectively 1: a single refreshLock
+// serialised every refresh in the process, which made refresh latency
+// scale with (concurrent callers x blobs per call x copy time) and
+// could stall the read path for seconds. Bounding concurrency at 64
+// removes that serialisation while still capping how much read and
+// write bandwidth refreshing may consume at once.
+const DefaultRefreshConcurrency = 64
+
 var (
 	flatBlobAccessPrometheusMetrics sync.Once
 
@@ -61,8 +78,29 @@ type flatBlobAccess struct {
 	locationBlobMap LocationBlobMap
 	digestKeyFormat digest.KeyFormat
 
-	lock        *sync.RWMutex
-	refreshLock sync.Mutex
+	// lock protects OldCurrentNewLocationBlobMap state (block
+	// rotation and allocation counters) and coordinates with
+	// PeriodicSyncer's epoch boundaries. It is held exclusively for
+	// the brief Put/Refresh allocations that may rotate blocks, and
+	// in read mode for everything else — including the finalize
+	// step. Per-blob KeyLocationMap and PersistentBlockList
+	// invariants are now enforced inside those types themselves
+	// (hashingKeyLocationMap.mu and PersistentBlockList.mu), so
+	// multiple finalizes can run concurrently with each other and
+	// with Get readers under this outer RLock.
+	lock *sync.RWMutex
+	// refreshStripes serialises refreshes per blob digest while
+	// letting refreshes of different digests run in parallel. The
+	// stripe index is the first byte of the SHA-256 key (uniform).
+	// Replaces the prior single refreshLock, which dedup'd at the
+	// cost of single-threading the entire refresh pipeline.
+	refreshStripes [refreshStripeCount]sync.Mutex
+	// refreshSemaphore bounds how many refreshes of distinct blobs
+	// may be in flight at once, so that lifting the old
+	// single-threaded refresh limit does not let a refresh storm
+	// consume unbounded read and write bandwidth. A slot is always
+	// taken before ba.lock, never while holding it.
+	refreshSemaphore chan struct{}
 
 	refreshesBlobsGet              prometheus.Observer
 	refreshesBlobsGetFromComposite prometheus.Observer
@@ -82,20 +120,33 @@ type flatBlobAccess struct {
 // either ignores the REv2 instance name in digests entirely, or it
 // strongly partitions objects by instance name. It does not introduce
 // any hierarchy.
-func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
+//
+// refreshConcurrency bounds the number of refreshes of distinct blobs
+// that may run concurrently. Values <= 0 select
+// DefaultRefreshConcurrency; values above refreshStripeCount are
+// clamped to it, as refreshes are striped that many ways by digest.
+func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, refreshConcurrency int, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshesBlobs)
 		prometheus.MustRegister(flatBlobAccessRefreshesDurationSeconds)
 		prometheus.MustRegister(flatBlobAccessRefreshesSizeBytes)
 	})
 
+	if refreshConcurrency <= 0 {
+		refreshConcurrency = DefaultRefreshConcurrency
+	}
+	if refreshConcurrency > refreshStripeCount {
+		refreshConcurrency = refreshStripeCount
+	}
+
 	return &flatBlobAccess{
 		Provider: capabilitiesProvider,
 
-		keyLocationMap:  keyLocationMap,
-		locationBlobMap: locationBlobMap,
-		digestKeyFormat: digestKeyFormat,
-		lock:            lock,
+		keyLocationMap:   keyLocationMap,
+		locationBlobMap:  locationBlobMap,
+		digestKeyFormat:  digestKeyFormat,
+		lock:             lock,
+		refreshSemaphore: make(chan struct{}, refreshConcurrency),
 
 		refreshesBlobsGet:              flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "Get"),
 		refreshesBlobsGetFromComposite: flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "GetFromComposite"),
@@ -114,8 +165,29 @@ func (ba *flatBlobAccess) getKey(digest digest.Digest) Key {
 	return NewKeyFromString(digest.GetKey(ba.digestKeyFormat))
 }
 
-// finalizePut is called to finalize a write to the data store. This
-// method must be called while holding the write lock.
+// acquireRefreshSlot reserves one of the refresh concurrency slots,
+// blocking until one is free or ctx is done. The returned function
+// releases the slot.
+//
+// This must never be called while holding ba.lock. Slot holders need
+// ba.lock to make progress, so a caller that blocked here while holding
+// it would deadlock the refresh path. The established order is
+// stripe -> refreshSemaphore -> ba.lock -> klm.mu -> bl.mu.
+func (ba *flatBlobAccess) acquireRefreshSlot(ctx context.Context) (func(), error) {
+	select {
+	case ba.refreshSemaphore <- struct{}{}:
+		return func() { <-ba.refreshSemaphore }, nil
+	case <-ctx.Done():
+		return nil, util.StatusFromContext(ctx)
+	}
+}
+
+// finalizePut commits a Put: it calls the BlockList's finalizer (which
+// records the offset and bumps PersistentBlockList epoch metadata
+// under PersistentBlockList.mu internally) and inserts the
+// key-location-map entry (under hashingKeyLocationMap.mu internally).
+// Callers hold ba.lock in read mode — the inner types provide their
+// own exclusion, so multiple finalizePut calls can run concurrently.
 func (ba *flatBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, key Key) (Location, error) {
 	location, err := putFinalizer()
 	if err != nil {
@@ -180,17 +252,25 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 
 	// Copy the object while it's been returned. Block until copying
 	// has finished to apply back-pressure.
+	//
+	// Unlike the FindMissing() and GetFromComposite() refresh paths,
+	// this one deliberately takes neither a refresh stripe nor a
+	// refreshSemaphore slot. It is inline with a client read, so
+	// queueing it behind other refreshes would reintroduce exactly
+	// the read-path stall this change exists to remove. This matches
+	// the upstream behaviour, where the single refreshLock was not
+	// held here either (see the TODO above).
 	b1, b2 := b.CloneStream()
 	return b1.WithTask(func() error {
 		putFinalizer := putWriter(b2)
-		ba.lock.Lock()
+		ba.lock.RLock()
 		_, err := ba.finalizePut(putFinalizer, key)
 		if err == nil {
 			ba.refreshesBlobsGet.Observe(1)
 			ba.refreshesBlobsSizeGet.Observe(float64(location.SizeBytes))
 			ba.refreshesBlobsDurationGet.Observe(time.Since(refreshStart).Seconds())
 		}
-		ba.lock.Unlock()
+		ba.lock.RUnlock()
 		if err != nil {
 			return util.StatusWrap(err, "Failed to refresh blob")
 		}
@@ -231,9 +311,18 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 	// The parent object was found, but it either hasn't been sliced
 	// yet, or it needs to be refreshed to ensure it doesn't
 	// disappear. Retry the process above, but now with write locks
-	// acquired.
-	ba.refreshLock.Lock()
-	defer ba.refreshLock.Unlock()
+	// acquired. The per-digest stripe lock serialises refreshes of
+	// the same parent across concurrent GetFromComposite calls; it
+	// does not block refreshes of other parents.
+	parentRefreshStripe := &ba.refreshStripes[parentKey[0]]
+	parentRefreshStripe.Lock()
+	defer parentRefreshStripe.Unlock()
+
+	releaseRefreshSlot, err := ba.acquireRefreshSlot(ctx)
+	if err != nil {
+		return buffer.NewBufferFromError(err)
+	}
+	defer releaseRefreshSlot()
 
 	ba.lock.Lock()
 	parentLocation, err = ba.keyLocationMap.Get(parentKey)
@@ -288,14 +377,19 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 		sliceKeys = append(sliceKeys, ba.getKey(slice.Digest))
 	}
 
-	// Complete refreshing in case it was performed.
-	ba.lock.Lock()
+	// Complete refreshing in case it was performed, and insert the
+	// per-slice key-location entries. We hold ba.lock in read mode
+	// because hashingKeyLocationMap and PersistentBlockList enforce
+	// their own internal exclusion; we only need ba.lock here to
+	// keep block-state from being rotated out by a concurrent Put
+	// allocation (which takes ba.lock for writing).
+	ba.lock.RLock()
 	if needsRefresh {
 		parentLocation, err = ba.finalizePut(putFinalizer, parentKey)
 		// Add size metric before refresh
 		ba.refreshesBlbosSizeGetFromComposite.Observe(float64(parentLocation.SizeBytes))
 		if err != nil {
-			ba.lock.Unlock()
+			ba.lock.RUnlock()
 			bChild.Discard()
 			return buffer.NewBufferFromError(util.StatusWrap(err, "Failed to refresh blob"))
 		}
@@ -312,12 +406,12 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 			OffsetBytes: parentLocation.OffsetBytes + slice.OffsetBytes,
 			SizeBytes:   slice.SizeBytes,
 		}); err != nil {
-			ba.lock.Unlock()
+			ba.lock.RUnlock()
 			bChild.Discard()
 			return buffer.NewBufferFromError(util.StatusWrapf(err, "Failed to create child blob %#v", slice.Digest.String()))
 		}
 	}
-	ba.lock.Unlock()
+	ba.lock.RUnlock()
 	return bChild
 }
 
@@ -343,9 +437,9 @@ func (ba *flatBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, b b
 	putFinalizer := putWriter(b)
 
 	key := ba.getKey(blobDigest)
-	ba.lock.Lock()
+	ba.lock.RLock()
 	_, err = ba.finalizePut(putFinalizer, key)
-	ba.lock.Unlock()
+	ba.lock.RUnlock()
 	return err
 }
 
@@ -393,55 +487,91 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 
 	// One or more blobs need to be refreshed.
 	//
-	// We should prevent concurrent FindMissing() calls from
-	// refreshing the same blobs, as that would cause data to be
-	// duplicated and load to increase significantly. Pick up the
-	// refresh lock to ensure bandwidth of refreshing is limited to
-	// one thread.
-	ba.refreshLock.Lock()
-	defer ba.refreshLock.Unlock()
-	// Add refresh start time before the refresh loop
+	// Per-digest stripe locks serialise concurrent refreshes of the
+	// SAME blob (preserving the dedup property that the prior single
+	// refreshLock provided) while letting refreshes of DIFFERENT
+	// blobs run in parallel. Stripe index = key[0] (first byte of
+	// the SHA-256 Key).
+	//
+	// The old code also used that single lock to limit refresh
+	// bandwidth to one thread. That limit is preserved, but as an
+	// explicit and configurable one: refreshSemaphore caps how many
+	// refreshes of distinct blobs may be in flight, defaulting to
+	// DefaultRefreshConcurrency rather than to 1.
 	refreshStart := time.Now()
 	blobsRefreshedSuccessfully := 0
 	var blobRefreshSizeBytes int64
-	ba.lock.Lock()
+	// Re-acquire ba.lock per blob rather than holding it for the
+	// entire loop. The old behaviour pinned the outer lock across
+	// every iteration's klm.Get + locationBlobMap.Get + alloc,
+	// which during an old-to-new migration starved Get/Put on the
+	// outer lock. Per-iteration locking lets other operations
+	// interleave between refreshes.
 	for _, blobToRefresh := range blobsToRefresh {
-		if location, err := ba.keyLocationMap.Get(blobToRefresh.key); err == nil {
-			getter, needsRefresh := ba.locationBlobMap.Get(location)
-			if needsRefresh {
-				// Blob is present and still needs to be
-				// refreshed. Allocate space for a copy.
-				b := getter(blobToRefresh.digest)
-				blobRefreshSizeBytes += location.SizeBytes
-				putWriter, err := ba.locationBlobMap.Put(location.SizeBytes)
-				ba.lock.Unlock()
-				if err != nil {
-					b.Discard()
-					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-				}
+		// refreshOne returns the per-blob outcome; using a closure
+		// gives us defer-based stripe unlock without leaking any
+		// exit path.
+		refreshed, sizeBytes, isMissing, err := func() (refreshed bool, sizeBytes int64, isMissing bool, err error) {
+			stripe := &ba.refreshStripes[blobToRefresh.key[0]]
+			stripe.Lock()
+			defer stripe.Unlock()
 
-				// Copy the data while unlocked, so that
-				// concurrent requests for other data
-				// continue to be serviced.
-				putFinalizer := putWriter(b)
-
-				ba.lock.Lock()
-				if _, err := ba.finalizePut(putFinalizer, blobToRefresh.key); err != nil {
-					ba.lock.Unlock()
-					return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-				}
-				blobsRefreshedSuccessfully++
+			releaseSlot, err := ba.acquireRefreshSlot(ctx)
+			if err != nil {
+				return false, 0, false, err
 			}
-		} else if status.Code(err) == codes.NotFound {
-			// Blob disappeared between the first and second
-			// scan. Simply report it as missing.
-			missing.Add(blobToRefresh.digest)
-		} else {
+			defer releaseSlot()
+
+			ba.lock.Lock()
+			location, lookupErr := ba.keyLocationMap.Get(blobToRefresh.key)
+			if lookupErr != nil {
+				ba.lock.Unlock()
+				if status.Code(lookupErr) == codes.NotFound {
+					// Blob disappeared between the first and
+					// second scan. Simply report it as missing.
+					return false, 0, true, nil
+				}
+				return false, 0, false, util.StatusWrapf(lookupErr, "Failed to get blob %#v", blobToRefresh.digest.String())
+			}
+			getter, needsRefresh := ba.locationBlobMap.Get(location)
+			if !needsRefresh {
+				// Another concurrent refresh (same stripe) won the
+				// race and migrated the blob while we waited.
+				ba.lock.Unlock()
+				return false, 0, false, nil
+			}
+			b := getter(blobToRefresh.digest)
+			putWriter, allocErr := ba.locationBlobMap.Put(location.SizeBytes)
 			ba.lock.Unlock()
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to get blob %#v", blobToRefresh.digest.String())
+			if allocErr != nil {
+				b.Discard()
+				return false, 0, false, util.StatusWrapf(allocErr, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+
+			// Copy the data while unlocked, so that concurrent
+			// requests for other data continue to be serviced.
+			putFinalizer := putWriter(b)
+
+			ba.lock.RLock()
+			_, finErr := ba.finalizePut(putFinalizer, blobToRefresh.key)
+			ba.lock.RUnlock()
+			if finErr != nil {
+				return false, 0, false, util.StatusWrapf(finErr, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+			return true, location.SizeBytes, false, nil
+		}()
+		if err != nil {
+			return digest.EmptySet, err
+		}
+		if isMissing {
+			missing.Add(blobToRefresh.digest)
+			continue
+		}
+		if refreshed {
+			blobsRefreshedSuccessfully++
+			blobRefreshSizeBytes += sizeBytes
 		}
 	}
-	ba.lock.Unlock()
 	ba.refreshesBlobsFindMissing.Observe(float64(blobsRefreshedSuccessfully))
 	ba.refreshesBlobsDurationFindMissing.Observe(time.Since(refreshStart).Seconds())
 	ba.refreshesBlobsSizeFindMissing.Observe(float64(blobRefreshSizeBytes))
