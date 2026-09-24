@@ -184,7 +184,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 				Digest: digest2.GetProto(),
 				Status: &status_pb.Status{
 					Code:    int32(codes.Internal),
-					Message: "Hard disk has a case of the Mondays",
+					Message: "Failed to save chunk: Hard disk has a case of the Mondays",
 				},
 			},
 		},

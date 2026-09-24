@@ -167,8 +167,8 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(digests); i++ {
-		data, err := s.readBlobFromBatch(ctx, digests[i], params, compressor)
+	for i, digest := range digests {
+		data, err := s.readBlobFromBatch(ctx, digest, params, compressor)
 		response.Responses = append(
 			response.Responses,
 			&remoteexecution.BatchReadBlobsResponse_Response{
@@ -219,22 +219,19 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 func (s *contentAddressableStorageServer) updateBlob(ctx context.Context, d digest.Digest, data []byte, compressor remoteexecution.Compressor_Value, params *remoteexecution.RepMaxCdcParams) error {
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return cas.PutBytes(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, data)
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, bytes.NewReader(data))
 	case remoteexecution.Compressor_ZSTD:
 		decoder, err := s.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
 		}
+		defer decoder.Close()
 
 		// Limit the amount of data that is read to one byte beyond the
 		// advertised size, so that corrupt or malicious streams cannot
 		// trigger unbounded decompression.
-		data, err = io.ReadAll(io.LimitReader(decoder, d.GetSizeBytes()+1))
-		decoder.Close()
-		if err != nil {
-			return util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to decompress blob")
-		}
-		return cas.PutBytes(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, data)
+		r := io.LimitReader(decoder, d.GetSizeBytes()+1)
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, r)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}

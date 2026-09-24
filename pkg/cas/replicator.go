@@ -1,6 +1,7 @@
 package cas
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -84,11 +85,11 @@ func (r *replicator) Replicate(ctx context.Context, digests digest.Set) error {
 	// required.
 	for _, blobDigest := range missing.Items() {
 		if IsSingleChunk(sourceParams, blobDigest) {
-			bytes, err := r.sourceChunkBytesReader.Read(ctx, blobDigest)
+			data, err := r.sourceChunkBytesReader.Read(ctx, blobDigest)
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to fetch blob %s", blobDigest.String())
 			}
-			err = PutBytes(ctx, r.zstdPool, r.sinkChunkStorage, r.sinkChunkListStorage, sinkParams, blobDigest, bytes)
+			err = PutReader(ctx, r.zstdPool, r.sinkChunkStorage, r.sinkChunkListStorage, sinkParams, blobDigest, bytes.NewReader(data))
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to replicate blob %s", blobDigest.String())
 			}
@@ -108,11 +109,11 @@ func (r *replicator) Replicate(ctx context.Context, digests digest.Set) error {
 			return util.StatusWrap(err, "Failed to determine which missing chunks were missing")
 		}
 		for _, chunkDigest := range missingChunks.Items() {
-			bytes, err := r.sourceChunkBytesReader.Read(ctx, chunkDigest)
+			data, err := r.sourceChunkBytesReader.Read(ctx, chunkDigest)
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to fetch chunk %s of blob %s from source", chunkDigest.String(), blobDigest.String())
 			}
-			err = PutBytes(ctx, r.zstdPool, r.sinkChunkStorage, r.sinkChunkListStorage, sinkParams, chunkDigest, bytes)
+			err = PutReader(ctx, r.zstdPool, r.sinkChunkStorage, r.sinkChunkListStorage, sinkParams, chunkDigest, bytes.NewReader(data))
 			if err != nil {
 				return util.StatusWrapf(err, "Failed to replicate chunk %s of blob %s to sink", chunkDigest.String(), blobDigest.String())
 			}
