@@ -9,9 +9,7 @@ jsonnet_library(
 jsonnet_to_json(
     name = "github_workflows",
     src = "github_workflows.jsonnet",
-    outs = [
-        "main.yaml",
-        "pull-requests.yaml",
-    ],
+    out_dir = "outputs",
+    visibility = ["//.github:__pkg__"],
     deps = [":workflows_template"],
 )

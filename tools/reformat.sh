@@ -75,6 +75,3 @@ if git grep -q '^[[:space:]]*//go:embed '; then
     fi
   done
 fi
-
-# Generate GitHub workflows.
-bazel build //tools/github_workflows && cp bazel-bin/tools/github_workflows/*.yaml .github/workflows
