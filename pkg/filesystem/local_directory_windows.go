@@ -491,11 +491,12 @@ func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	defer runtime.KeepAlive(d)
 
 	var handle windows.Handle
-	defer windows.CloseHandle(handle)
 	// The argument perm is ignored like os.Mkdir on Windows.
-	err := ntCreateFile(&handle, windows.FILE_LIST_DIRECTORY, d.handle, name.String(),
-		windows.FILE_CREATE, windows.FILE_DIRECTORY_FILE|windows.FILE_OPEN_REPARSE_POINT)
-	return err
+	if err := ntCreateFile(&handle, windows.FILE_LIST_DIRECTORY, d.handle, name.String(),
+		windows.FILE_CREATE, windows.FILE_DIRECTORY_FILE|windows.FILE_OPEN_REPARSE_POINT); err != nil {
+		return err
+	}
+	return windows.CloseHandle(handle)
 }
 
 func (localDirectory) Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error {
@@ -630,6 +631,9 @@ func (d *localDirectory) Remove(name path.Component) error {
 		if err != nil {
 			return err
 		}
+	}
+	defer windows.CloseHandle(handle)
+	if isDir {
 		isReparsePoint, _, err := isReparsePointByHandle(handle)
 		if err != nil {
 			return err
@@ -644,7 +648,6 @@ func (d *localDirectory) Remove(name path.Component) error {
 			}
 		}
 	}
-	defer windows.CloseHandle(handle)
 	fileDispInfo := windowsext.FILE_DISPOSITION_INFORMATION_EX{
 		Flags: windows.FILE_DISPOSITION_DELETE | windows.FILE_DISPOSITION_POSIX_SEMANTICS,
 	}
