@@ -8,6 +8,11 @@ import (
 )
 
 // List represents the ordered list of chunks that compose a blob.
+//
+// Chunk lists must never contain chunks of size zero. Callers that
+// construct chunk lists are responsible for enforcing this, as are
+// the ingress points that reconstruct chunk lists from external
+// input.
 type List struct {
 	Offsets   []uint64
 	Digests   []digest.Digest
@@ -20,7 +25,9 @@ type ListFetcher interface {
 }
 
 // FindChunkOffset returns the index of the chunk containing the given
-// offset and the offset within that chunk.
+// offset and the offset within that chunk. Offsets at or beyond the end
+// of the blob yield an index equal to the number of chunks in the list
+// with an offset of 0.
 func (l List) FindChunkOffset(off uint64) (index int, chunkOffset int64) {
 	if len(l.Offsets) == 0 {
 		return 0, 0

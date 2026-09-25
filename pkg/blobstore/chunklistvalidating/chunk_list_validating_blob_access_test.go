@@ -285,30 +285,6 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	require.Equal(t, expectedData, composedData)
 }
 
-func TestChunkListValidatingBlobAccessPutInlineEmptyChunk(t *testing.T) {
-	ctx := context.Background()
-
-	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
-
-	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
-
-	chunkData := []byte("Valid")
-	c := chunk.NewChunk(zstdPool, chunkData)
-	chunkDigest := mustComputeDigest(t, digestFunction, chunkData)
-	require.NoError(t, fakeCS.Put(ctx, chunkDigest, c))
-
-	emptyDigest := mustComputeDigest(t, digestFunction, nil)
-	require.NoError(t, fakeCS.Put(ctx, emptyDigest, chunk.EmptyChunk))
-
-	expectedDigest := mustComputeDigest(t, digestFunction, chunkData)
-
-	err := validatingCLS.Put(ctx, expectedDigest, makeChunkList(chunkDigest, emptyDigest))
-	require.NoError(t, err)
-}
-
 func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 	ctx := context.Background()
 

@@ -5,8 +5,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type emptyBlobInjectingBlobAccess struct {
@@ -39,36 +37,18 @@ func NewEmptyBlobInjectingBlobAccess(base BlobAccess[*chunk.Chunk]) BlobAccess[*
 	}
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.Chunk, error) {
-	if digest.GetSizeBytes() == 0 {
-		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
-		if digest != emptyDigest {
-			return nil, status.Errorf(
-				codes.InvalidArgument,
-				"Empty blob has checksum %s, while %s was expected",
-				emptyDigest.GetHashString(),
-				digest.GetHashString(),
-			)
-		}
+func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, d digest.Digest) (*chunk.Chunk, error) {
+	if d.GetSizeBytes() == 0 {
 		return chunk.EmptyChunk, nil
 	}
-	return ba.BlobAccess.Get(ctx, digest)
+	return ba.BlobAccess.Get(ctx, d)
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {
-	if digest.GetSizeBytes() == 0 {
-		emptyDigest := digest.GetDigestFunction().NewGenerator(0).Sum()
-		if digest != emptyDigest {
-			return status.Errorf(
-				codes.InvalidArgument,
-				"Empty blob has checksum %s, while %s was expected",
-				emptyDigest.GetHashString(),
-				digest.GetHashString(),
-			)
-		}
+func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, d digest.Digest, value *chunk.Chunk) error {
+	if d.GetSizeBytes() == 0 {
 		return nil
 	}
-	return ba.BlobAccess.Put(ctx, digest, value)
+	return ba.BlobAccess.Put(ctx, d, value)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

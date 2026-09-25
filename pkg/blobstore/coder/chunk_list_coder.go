@@ -60,28 +60,46 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunk.List, error
 	hashLen := uint32(len(d.GetHashBytes()))
 	sizeBytes := uint32(len(data))
 	if sizeBytes%(hashLen+4) != 0 {
-		return chunk.List{}, status.Error(codes.InvalidArgument, "Data does not add up to a whole number of digests")
+		return chunk.List{}, status.Error(codes.Internal, "Data does not add up to a whole number of digests")
 	}
 	count := sizeBytes / (hashLen + 4)
 	digestFunction := d.GetDigestFunction()
 	ret := chunk.List{
-		Offsets:   make([]uint64, count),
-		Digests:   make([]digest.Digest, count),
+		Offsets:   make([]uint64, 0, count),
+		Digests:   make([]digest.Digest, 0, count),
 		Validated: c.prevalidated,
 	}
+	offset := uint64(0)
 	for i := range count {
-		sizeBytes := int64(binary.LittleEndian.Uint32(data[i*4:]))
+		size := int64(binary.LittleEndian.Uint32(data[i*4:]))
 		stringHash := hex.EncodeToString(data[4*count+i*hashLen : 4*count+(i+1)*hashLen])
-		chunkDigest, err := digestFunction.NewDigest(stringHash, sizeBytes)
+		chunkDigest, err := digestFunction.NewDigest(stringHash, size)
 		if err != nil {
 			return chunk.List{}, err
 		}
-		ret.Digests[i] = chunkDigest
+		if size == 0 {
+			// Zero length chunks carry no data, so they may simply be
+			// removed from the resulting list.
+			continue
+		}
+		ret.Offsets = append(ret.Offsets, offset)
+		ret.Digests = append(ret.Digests, chunkDigest)
+		offset += uint64(size)
 	}
-	offset := uint64(0)
-	for i, d := range ret.Digests {
-		ret.Offsets[i] = offset
-		offset += uint64(d.GetSizeBytes())
+	if offset != uint64(d.GetSizeBytes()) {
+		return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+	}
+	switch len(ret.Digests) {
+	case 0:
+		// Empty chunk list, blob must be the empty blob.
+		if d.GetSizeBytes() != 0 {
+			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+		}
+	case 1:
+		// Trivial chunk list, digests[0] must be the blob itself.
+		if ret.Digests[0] != d {
+			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+		}
 	}
 	return ret, nil
 }

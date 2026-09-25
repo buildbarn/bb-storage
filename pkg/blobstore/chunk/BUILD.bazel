@@ -26,10 +26,7 @@ go_test(
     srcs = ["chunk_test.go"],
     deps = [
         ":chunk",
-        "//pkg/testutil",
         "//pkg/zstd",
         "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
     ],
 )

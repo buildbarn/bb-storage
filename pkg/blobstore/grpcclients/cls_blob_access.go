@@ -3,6 +3,8 @@ package grpcclients
 import (
 	"context"
 	"io"
+	"math"
+	"math/bits"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -50,18 +52,19 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 		Offsets: make([]uint64, 0, blobstore.RecommendedFindMissingDigestsCount),
 	}
 	offset := uint64(0)
-	for {
+	for i := 0; ; i++ {
 		response, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				return chunkList, nil
+				break
 			}
 			return chunk.List{}, err
 		}
-		if response.ChunkingFunction != remoteexecution.ChunkingFunction_UNKNOWN &&
-			response.ChunkingFunction != remoteexecution.ChunkingFunction_REP_MAX_CDC {
+		// Servers are only required to specify the chunking function
+		// in the first response; it is omitted on subsequent ones.
+		if i == 0 && response.ChunkingFunction != remoteexecution.ChunkingFunction_REP_MAX_CDC {
 			return chunk.List{}, status.Errorf(
-				codes.InvalidArgument,
+				codes.Internal,
 				"Server responded with unsupported chunking function %s",
 				response.ChunkingFunction.String(),
 			)
@@ -71,18 +74,43 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 			if err != nil {
 				return chunk.List{}, err
 			}
+			if d.GetSizeBytes() == 0 {
+				// Zero length chunks carry no data, so they may
+				// simply be removed from the resulting list.
+				continue
+			}
 			chunkList.Offsets = append(chunkList.Offsets, offset)
 			chunkList.Digests = append(chunkList.Digests, d)
-			offset += uint64(d.GetSizeBytes())
+			var carry uint64
+			offset, carry = bits.Add64(offset, uint64(d.GetSizeBytes()), 0)
+			if carry != 0 {
+				return chunk.List{}, status.Errorf(
+					codes.Internal,
+					"Chunk list overflows, the sum of chunk sizes exceeds %d bytes",
+					uint64(math.MaxUint64),
+				)
+			}
 		}
 	}
+	if offset != uint64(blobDigest.GetSizeBytes()) {
+		return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+	}
+	switch len(chunkList.Digests) {
+	case 0:
+		// Empty chunk list; the blob must be the empty blob.
+		if blobDigest.GetSizeBytes() != 0 {
+			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+		}
+	case 1:
+		// Trivial chunk list, digests[0] must be the blob itself.
+		if chunkList.Digests[0] != blobDigest {
+			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+		}
+	}
+	return chunkList, nil
 }
 
 func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value chunk.List) error {
-	if len(value.Digests) == 0 {
-		return status.Error(codes.InvalidArgument, "Attempted to store an empty chunk list")
-	}
-
 	digestFunction := blobDigest.GetDigestFunction()
 
 	stream, err := ba.contentAddressableStorageClient.RegisterChunkMapping(ctx)
@@ -92,14 +120,13 @@ func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, valu
 
 	// Send the chunk digests in batches to stay below the maximum
 	// message size. All fields other than ChunkDigests are ignored by
-	// servers on subsequent requests.
+	// servers on subsequent requests. At least one request is always
+	// sent, so that the server can identify the blob being registered
+	// even for empty chunk lists.
 	numDigests := len(value.Digests)
 	i := 0
 	for {
-		n := blobstore.RecommendedFindMissingDigestsCount
-		if n > numDigests-i {
-			n = numDigests - i
-		}
+		n := min(blobstore.RecommendedFindMissingDigestsCount, numDigests-i)
 		chunkDigests := make([]*remoteexecution.Digest, 0, n)
 		for _, digest := range value.Digests[i : i+n] {
 			chunkDigests = append(chunkDigests, digest.GetProto())

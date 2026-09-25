@@ -39,13 +39,12 @@ func (r *listReadCloser) Read(p []byte) (int, error) {
 		return 0, status.Error(codes.Internal, "Reader is already closed")
 	}
 
-	// Advance to the next chunk if the current one is exhausted,
-	// skipping any zero-length chunks.
-	for r.currentChunkOffset >= len(r.currentChunkData) {
+	// Fetch the next chunk if the current one is exhausted. Chunk lists
+	// are guaranteed not to contain empty chunks.
+	if r.currentChunkOffset >= len(r.currentChunkData) {
 		if r.currentChunkIndex >= len(r.list.Digests) {
 			return 0, io.EOF
 		}
-
 		chunkDigest := r.list.Digests[r.currentChunkIndex]
 		chunkData, err := r.chunkBytesReader.Read(r.ctx, chunkDigest)
 		if err != nil {

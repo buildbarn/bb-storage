@@ -60,11 +60,11 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 
 	inDigests := digest.NewSetBuilder(len(in.BlobDigests))
 	for _, inDigest := range in.BlobDigests {
-		digest, err := digestFunction.NewDigestFromProto(inDigest)
+		d, err := digestFunction.NewDigestFromProto(inDigest)
 		if err != nil {
 			return nil, err
 		}
-		inDigests.Add(digest)
+		inDigests.Add(d)
 	}
 
 	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
@@ -87,16 +87,18 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context, blobDigest digest.Digest, params *remoteexecution.RepMaxCdcParams, compressor remoteexecution.Compressor_Value) ([]byte, error) {
-	chunkList := chunk.List{
-		Digests: []digest.Digest{blobDigest},
-		Offsets: []uint64{0},
-	}
+	chunkList := chunk.List{}
 	var err error
 	if !cas.IsSingleChunk(params, blobDigest) {
 		chunkList, err = s.chunkListStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
+	} else if blobDigest.GetSizeBytes() == 0 {
+	} else {
+		// Blobs that fit in a single chunk have no chunk lists in
+		// storage, but one may be created trivially on the fly.
+		chunkList = chunk.List{Digests: []digest.Digest{blobDigest}, Offsets: []uint64{0}}
 	}
 	var buf bytes.Buffer
 	buf.Grow(int(blobDigest.GetSizeBytes()))
@@ -243,12 +245,18 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 
 func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, digests []digest.Digest) error {
 	chunkList := chunk.List{
-		Digests: digests,
-		Offsets: make([]uint64, len(digests)),
+		Digests: make([]digest.Digest, 0, len(digests)),
+		Offsets: make([]uint64, 0, len(digests)),
 	}
 	offset := uint64(0)
-	for i, chunkDigest := range digests {
-		chunkList.Offsets[i] = offset
+	for _, chunkDigest := range digests {
+		if chunkDigest.GetSizeBytes() == 0 {
+			// Zero length chunks carry no data, so they may simply be
+			// removed from the resulting list.
+			continue
+		}
+		chunkList.Offsets = append(chunkList.Offsets, offset)
+		chunkList.Digests = append(chunkList.Digests, chunkDigest)
 		var carry uint64
 		offset, carry = bits.Add64(offset, uint64(chunkDigest.GetSizeBytes()), 0)
 		if carry != 0 {
@@ -262,15 +270,16 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 	if offset != uint64(d.GetSizeBytes()) {
 		return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 	}
-	if len(digests) == 0 {
+	switch len(chunkList.Digests) {
+	case 0:
 		// Empty chunk list, blob must be the empty blob.
-		if d.GetDigestFunction().NewGenerator(0).Sum() != d {
+		if d.GetSizeBytes() != 0 {
 			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 		}
 		return nil
-	} else if len(digests) == 1 {
+	case 1:
 		// Trivial chunk list, digests[0] must be the blob itself.
-		if digests[0] != d {
+		if chunkList.Digests[0] != d {
 			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 		}
 		// While it's the right digest it may still be missing from the
@@ -279,7 +288,7 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 		if err != nil {
 			return err
 		}
-		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, digests[0].ToSingletonSet())
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, chunkList.Digests[0].ToSingletonSet())
 		if err != nil {
 			return err
 		}
@@ -397,6 +406,9 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 
 func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) (chunk.List, error) {
 	if cas.IsSingleChunk(params, d) {
+		if d.GetSizeBytes() == 0 {
+			return chunk.List{}, nil
+		}
 		// Blobs that fit in a single chunk have no chunk lists in
 		// storage, but one may be created trivially on the fly provided
 		// the chunk exists.

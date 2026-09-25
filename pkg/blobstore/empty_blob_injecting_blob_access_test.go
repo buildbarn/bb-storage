@@ -55,15 +55,6 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 		data := chunk.GetBytes()
 		require.Empty(t, data)
 	})
-
-	t.Run("EmptyInvalid", func(t *testing.T) {
-		// Validation should still be performed on empty blobs.
-		// Note: The new generic BlobAccess implementations typically leave payload-vs-digest
-		// integrity checking to the calling coders or the chunk itself, but if EmptyBlobInjectingBlobAccess
-		// still explicitly validates the hash of the requested digest, this test remains relevant.
-		_, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 0))
-		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Empty blob has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
-	})
 }
 
 func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {

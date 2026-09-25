@@ -67,15 +67,17 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if err != nil {
 		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
-	chunkList := chunk.List{
-		Digests: []digest.Digest{d},
-		Offsets: []uint64{0},
-	}
+	chunkList := chunk.List{}
 	if !cas.IsSingleChunk(params, d) {
 		chunkList, err = s.chunkListStorage.Get(ctx, d)
 		if err != nil {
 			return err
 		}
+	} else if d.GetSizeBytes() == 0 {
+	} else {
+		// Blobs that fit in a single chunk have no chunk lists in
+		// storage, but one may be created trivially on the fly.
+		chunkList = chunk.List{Digests: []digest.Digest{d}, Offsets: []uint64{0}}
 	}
 	i, chunkOffset := chunkList.FindChunkOffset(uint64(in.ReadOffset))
 	for ; i < len(chunkList.Digests); i++ {

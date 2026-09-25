@@ -123,6 +123,38 @@ func TestContentAddressableStorageAPI(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("EmptyBlob", func(t *testing.T) {
+		socketPath := setupCluster(t, minChunkSizeBytes)
+		_, casClient, _, byteStreamClient := createClients(t, socketPath)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		emptyDigest := computeDigest(nil)
+
+		// The empty blob should always be considered present.
+		missing, err := findMissingBlobs(ctx, casClient, []digest.Digest{emptyDigest})
+		require.NoError(t, err, "Failed to check for empty blob existence")
+		require.Empty(t, missing, "Empty blob was unexpectedly missing")
+
+		// SplitBlob must succeed with an empty chunk mapping.
+		chunkDigests, err := splitBlob(ctx, casClient, emptyDigest)
+		require.NoError(t, err, "Failed to split empty blob")
+		require.Empty(t, chunkDigests, "Split of empty blob should yield an empty chunk list")
+
+		// Read the empty blob back through BatchReadBlobs.
+		blobs, err := batchDownloadBlobs(ctx, casClient, []digest.Digest{emptyDigest}, remoteexecution.Compressor_IDENTITY)
+		require.NoError(t, err, "Failed to download empty blob")
+		require.Equal(t, [][]byte{nil}, blobs, "Empty blob should read back as empty")
+
+		// Upload the empty blob explicitly and read it back through
+		// the ByteStream API.
+		require.NoError(t, batchUploadBlob(ctx, casClient, nil, emptyDigest, remoteexecution.Compressor_IDENTITY), "Failed to upload empty blob")
+		receivedData, err := bytestreamReadBlob(ctx, byteStreamClient, emptyDigest, remoteexecution.Compressor_IDENTITY)
+		require.NoError(t, err, "Failed to read empty blob through ByteStream")
+		require.Empty(t, receivedData, "Empty blob should read back as empty through ByteStream")
+	})
 }
 
 func TestRepMaxCDCSplitAndSpliceBehaviors(t *testing.T) {

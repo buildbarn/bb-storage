@@ -531,6 +531,36 @@ func splitBlob(ctx context.Context, client remoteexecution.ContentAddressableSto
 	return chunkDigests, nil
 }
 
+func getChunkMapping(ctx context.Context, client remoteexecution.ContentAddressableStorageClient, d digest.Digest) ([]digest.Digest, error) {
+	stream, err := client.GetChunkMapping(ctx, &remoteexecution.GetChunkMappingRequest{
+		InstanceName:     d.GetInstanceName().String(),
+		BlobDigest:       d.GetProto(),
+		DigestFunction:   d.GetDigestFunction().GetEnumValue(),
+		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	digestFunction := d.GetDigestFunction()
+	var chunkDigests []digest.Digest
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			return chunkDigests, nil
+		} else if err != nil {
+			return nil, err
+		}
+		for _, chunkProto := range res.ChunkDigests {
+			chunkDigest, err := digestFunction.NewDigestFromProto(chunkProto)
+			if err != nil {
+				return nil, util.StatusWrap(err, "Failed to parse chunk digest from proto")
+			}
+			chunkDigests = append(chunkDigests, chunkDigest)
+		}
+	}
+}
+
 func spliceBlob(ctx context.Context, client remoteexecution.ContentAddressableStorageClient, blob digest.Digest, chunks []digest.Digest) error {
 	chunkDigests := make([]*remoteexecution.Digest, 0, len(chunks))
 	for _, d := range chunks {
@@ -581,6 +611,20 @@ func bytestreamWriteBlob(ctx context.Context, client bytestream.ByteStreamClient
 	}
 	offset := int64(0)
 	dataSize := int64(len(payload))
+
+	if dataSize == 0 {
+		// An empty upload still consists of a single request that
+		// finishes the write, otherwise the server cannot even
+		// identify the resource being written.
+		if err := writeStream.Send(&bytestream.WriteRequest{
+			ResourceName: digest.GetByteStreamWritePath(uuid.New(), compressor),
+			FinishWrite:  true,
+		}); err != nil {
+			return util.StatusFromMultiple([]error{err, io.EOF})
+		}
+		_, err = writeStream.CloseAndRecv()
+		return err
+	}
 
 	for offset < dataSize {
 		end := offset + bytestreamWriteChunkSizeBytes

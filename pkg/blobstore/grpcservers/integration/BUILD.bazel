@@ -7,7 +7,7 @@ go_test(
         "bb_copy_test.go",
         "byte_stream_server_test.go",
         "content_addressable_storage_server_test.go",
-        "degenerate_upload_test.go",
+        "degenerate_blob_test.go",
         "utils_test.go",
     ],
     data = [

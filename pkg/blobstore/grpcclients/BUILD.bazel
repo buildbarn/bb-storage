@@ -30,7 +30,10 @@ go_library(
 
 go_test(
     name = "grpcclients_test",
-    srcs = ["cs_blob_access_test.go"],
+    srcs = [
+        "cls_blob_access_test.go",
+        "cs_blob_access_test.go",
+    ],
     deps = [
         ":grpcclients",
         "//internal/mock",
