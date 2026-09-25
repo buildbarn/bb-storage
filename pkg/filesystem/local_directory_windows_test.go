@@ -6,11 +6,14 @@ package filesystem_test
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
+	"unsafe"
 
 	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/windows"
 )
 
 func TestLocalDirectorySymlinkWindowsRelative(t *testing.T) {
@@ -148,4 +151,41 @@ func TestLocalDirectoryNewLocalDirectoryDriveRelativePath(t *testing.T) {
 	require.NoError(t, d.Close())
 
 	require.NoError(t, os.Chdir(originalWd))
+}
+
+var procGetProcessHandleCount = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetProcessHandleCount")
+
+func processHandleCount(t *testing.T) uint32 {
+	var n uint32
+	r, _, err := procGetProcessHandleCount.Call(uintptr(windows.CurrentProcess()), uintptr(unsafe.Pointer(&n)))
+	require.NotZero(t, r, err)
+	return n
+}
+
+func TestLocalDirectoryWindowsNoHandleLeak(t *testing.T) {
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
+	require.NoError(t, err)
+	defer d.Close()
+
+	// Warm up lazily created runtime handles before sampling.
+	require.NoError(t, d.Mkdir(path.MustNewComponent("warmup"), 0o777))
+	require.NoError(t, d.RemoveAll(path.MustNewComponent("warmup")))
+
+	const iterations = 1000
+	before := processHandleCount(t)
+	for i := 0; i < iterations; i++ {
+		dir := path.MustNewComponent("dir")
+		require.NoError(t, d.Mkdir(dir, 0o777))
+		sub, err := d.EnterDirectory(dir)
+		require.NoError(t, err)
+		require.NoError(t, sub.Mkdir(path.MustNewComponent("child"), 0o777))
+		f, err := sub.OpenWrite(path.MustNewComponent("file"), filesystem.CreateExcl(0o666))
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+		require.NoError(t, sub.Link(path.MustNewComponent("file"), sub, path.MustNewComponent("link")))
+		require.Equal(t, syscall.ENOTEMPTY, d.Remove(dir))
+		require.NoError(t, sub.Close())
+		require.NoError(t, d.RemoveAll(dir))
+	}
+	require.Less(t, int64(processHandleCount(t))-int64(before), int64(iterations/10))
 }
