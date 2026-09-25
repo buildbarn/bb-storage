@@ -32,8 +32,7 @@ func TestLocalBlobReplicator(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -42,8 +41,7 @@ func TestLocalBlobReplicator(t *testing.T) {
 		source.EXPECT().Get(ctx, worldDigest).Return(chunk.NewChunk(nil, []byte("World")), nil)
 		sink.EXPECT().Put(ctx, worldDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("World"), data)
 				return nil
 			},

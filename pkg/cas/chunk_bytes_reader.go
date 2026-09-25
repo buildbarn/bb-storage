@@ -26,5 +26,5 @@ func (r *chunkBytesReader) Read(ctx context.Context, d digest.Digest) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	return chunk.GetBytes(ctx)
+	return chunk.GetBytes(), nil
 }

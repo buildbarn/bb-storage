@@ -108,7 +108,7 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		var data []byte
 		switch compressor {
 		case remoteexecution.Compressor_IDENTITY:
-			data, err = chunk.GetBytes(ctx)
+			data = chunk.GetBytes()
 		case remoteexecution.Compressor_ZSTD:
 			data, err = chunk.GetBytesCompressed(ctx)
 		default:

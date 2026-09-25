@@ -34,8 +34,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -62,8 +61,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -109,8 +107,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		// secondary backend is effectively read-only.
 		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},

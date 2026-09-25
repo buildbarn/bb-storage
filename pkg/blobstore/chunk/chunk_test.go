@@ -6,11 +6,8 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
-	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func TestChunkUncompressedToCompressed(t *testing.T) {
@@ -19,9 +16,7 @@ func TestChunkUncompressedToCompressed(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		c := chunk.NewChunk(pool, []byte("hello world"))
 
-		data, err := c.GetBytes(t.Context())
-		require.NoError(t, err)
-		require.Equal(t, []byte("hello world"), data)
+		require.Equal(t, []byte("hello world"), c.GetBytes())
 
 		compressed, err := c.GetBytesCompressed(t.Context())
 		require.NoError(t, err)
@@ -45,26 +40,13 @@ func TestChunkCompressedToUncompressed(t *testing.T) {
 		enc.Write([]byte("test data"))
 		enc.Close()
 
-		c := chunk.NewChunkFromCompressedData(pool, buf.Bytes())
+		c := chunk.NewChunkWithCompressedData([]byte("test data"), buf.Bytes())
 
 		compressed, err := c.GetBytesCompressed(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, buf.Bytes(), compressed)
 
-		data, err := c.GetBytes(t.Context())
-		require.NoError(t, err)
-		require.Equal(t, []byte("test data"), data)
-	})
-
-	t.Run("Failure", func(t *testing.T) {
-		c := chunk.NewChunkFromCompressedData(pool, []byte("This is not valid zstd data"))
-
-		data, err := c.GetBytesCompressed(t.Context())
-		require.NoError(t, err)
-		require.Equal(t, []byte("This is not valid zstd data"), data)
-
-		_, err = c.GetBytes(t.Context())
-		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Could not decompress data: "), err)
+		require.Equal(t, []byte("test data"), c.GetBytes())
 	})
 }
 
@@ -72,9 +54,7 @@ func TestEmptyChunk(t *testing.T) {
 	pool := zstd.NewUnboundedPool(nil, nil)
 	ctx := t.Context()
 
-	data, err := chunk.EmptyChunk.GetBytes(ctx)
-	require.NoError(t, err)
-	require.Equal(t, []byte{}, data)
+	require.Equal(t, []byte{}, chunk.EmptyChunk.GetBytes())
 
 	compressed, err := chunk.EmptyChunk.GetBytesCompressed(ctx)
 	require.NoError(t, err)

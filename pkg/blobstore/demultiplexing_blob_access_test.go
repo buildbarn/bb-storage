@@ -85,8 +85,7 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 }
@@ -158,8 +157,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 		)
 		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			})

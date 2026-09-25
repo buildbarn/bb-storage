@@ -1,7 +1,6 @@
 package coder_test
 
 import (
-	"context"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -22,7 +21,6 @@ var (
 )
 
 func TestChunkCoderEncodeDecodeRoundTrip(t *testing.T) {
-	ctx := context.Background()
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	c := coder.NewChunkCoder(zstdPool)
 
@@ -31,8 +29,7 @@ func TestChunkCoderEncodeDecodeRoundTrip(t *testing.T) {
 
 	decoded, err := c.Decode(encoded, helloDigest)
 	require.NoError(t, err)
-	decodedData, err := decoded.GetBytes(ctx)
-	require.NoError(t, err)
+	decodedData := decoded.GetBytes()
 	require.Equal(t, []byte("Hello"), decodedData)
 }
 

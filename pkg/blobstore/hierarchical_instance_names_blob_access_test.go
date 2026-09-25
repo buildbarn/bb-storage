@@ -69,8 +69,7 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest1)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 }

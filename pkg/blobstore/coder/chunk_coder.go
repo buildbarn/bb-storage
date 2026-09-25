@@ -1,10 +1,13 @@
 package coder
 
 import (
+	"bytes"
 	"context"
+	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,22 +25,6 @@ func NewChunkCoder(zstdPool zstd.Pool) Coder[*chunk.Chunk, []byte] {
 	}
 }
 
-func (chunkCoder) checkDigest(ctx context.Context, chunk *chunk.Chunk, d digest.Digest) error {
-	generator := d.GetDigestFunction().NewGenerator(d.GetSizeBytes())
-	bytes, err := chunk.GetBytes(ctx)
-	if err != nil {
-		return err
-	}
-	if _, err := generator.Write(bytes); err != nil {
-		return err
-	}
-	d2 := generator.Sum()
-	if d2 != d {
-		return status.Errorf(codes.InvalidArgument, "Digest mismatch, expected %s, got %s", d, d2)
-	}
-	return nil
-}
-
 func (chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
 	// TODO: Should ctx be part of this signature?
 	ctx := context.Background()
@@ -46,9 +33,31 @@ func (chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
 
 func (c *chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 	ctx := context.Background()
-	chunk := chunk.NewChunkFromCompressedData(c.zstdPool, data)
-	if err := c.checkDigest(ctx, chunk, d); err != nil {
+
+	decoder, err := c.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
+	if err != nil {
 		return nil, err
 	}
-	return chunk, nil
+	defer decoder.Close()
+
+	decompressed := make([]byte, d.GetSizeBytes())
+	if _, err := io.ReadFull(decoder, decompressed); err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to decompress blob")
+	}
+	// The compressed representation is stored as-is, so the stream
+	// may not decompress to more than the advertised size.
+	var eofBuf [1]byte
+	if n, err := decoder.Read(eofBuf[:]); n > 0 || err != io.EOF {
+		return nil, status.Error(codes.Internal, "Decompressed stream yielded more data than expected")
+	}
+
+	generator := d.GetDigestFunction().NewGenerator(d.GetSizeBytes())
+	if _, err := generator.Write(decompressed); err != nil {
+		return nil, err
+	}
+	d2 := generator.Sum()
+	if d2 != d {
+		return nil, status.Errorf(codes.InvalidArgument, "Digest mismatch, expected %s, got %s", d, d2)
+	}
+	return chunk.NewChunkWithCompressedData(decompressed, data), nil
 }

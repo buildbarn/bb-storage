@@ -218,7 +218,9 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 
 	// Validate the checksum.
 	digestGenerator := blobDigest.GetDigestFunction().NewGenerator(blobDigest.GetSizeBytes())
-	digestGenerator.Write(data)
+	if _, err = digestGenerator.Write(data); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to compute digest of blob")
+	}
 	computedDigest := digestGenerator.Sum()
 	if blobDigest != computedDigest {
 		return nil, status.Errorf(

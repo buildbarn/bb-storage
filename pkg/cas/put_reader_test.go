@@ -60,16 +60,14 @@ func TestContentAddressableStoragePutReaderMultipleChunks(t *testing.T) {
 		if !ok {
 			return false
 		}
-		chunkData, err := chunk.GetBytes(context.Background())
-		return err == nil && bytes.Equal(chunkData, data[:77])
+		return bytes.Equal(chunk.GetBytes(), data[:77])
 	})).Return(nil)
 	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
-		chunkData, err := chunk.GetBytes(context.Background())
-		return err == nil && bytes.Equal(chunkData, data[77:])
+		return bytes.Equal(chunk.GetBytes(), data[77:])
 	})).Return(nil)
 	chunkListStorage.EXPECT().Put(ctx, d, expectedChunkList).Return(nil)
 

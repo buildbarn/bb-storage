@@ -161,7 +161,7 @@ func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
 
 	composedChunk, err := fakeCS.Get(ctx, fullBlobDigest)
 	require.NoError(t, err)
-	composedData, err := composedChunk.GetBytes(ctx)
+	composedData := composedChunk.GetBytes()
 	require.Equal(t, expectedFullData, composedData)
 }
 
@@ -281,7 +281,7 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 
 	composedChunk, err := fakeCS.Get(ctx, expectedDigest)
 	require.NoError(t, err)
-	composedData, err := composedChunk.GetBytes(ctx)
+	composedData := composedChunk.GetBytes()
 	require.Equal(t, expectedData, composedData)
 }
 

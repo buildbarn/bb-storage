@@ -91,7 +91,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			var data []byte
 			switch compressor {
 			case remoteexecution.Compressor_IDENTITY:
-				data, err = chunk.GetBytes(ctx)
+				data = chunk.GetBytes()
 			case remoteexecution.Compressor_ZSTD:
 				data, err = chunk.GetBytesCompressed(ctx)
 			default:
@@ -108,10 +108,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			// bytes we need to find the data based on that offset in
 			// its decompressed form, then compress it again before
 			// sending it back.
-			data, err := chunk.GetBytes(ctx)
-			if err != nil {
-				return err
-			}
+			data := chunk.GetBytes()
 			data = data[chunkOffset:]
 			var buf bytes.Buffer
 			buf.Grow(len(data))

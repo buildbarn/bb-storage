@@ -3,54 +3,30 @@ package chunk
 import (
 	"bytes"
 	"context"
-	"io"
 	"sync/atomic"
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Chunk is an abstraction over a single chunk in the Chunk Storage (CS)
-// that may or may not be compressed. Chunk objects are thread safe but
-// not trivially copyable refer to them by pointer.
+// that may or may not be compressed. The uncompressed data of a chunk
+// is always available, as creators of chunks are required to decompress
+// and verify the chunk against its digest prior to creation. Chunk
+// objects are thread safe but not trivially copyable, refer to them by
+// pointer.
 type Chunk struct {
-	zstdPool zstd.Pool
+	data []byte
 
-	data           atomic.Pointer[[]byte]
+	zstdPool       zstd.Pool
 	compressedData atomic.Pointer[[]byte]
 }
 
 // GetBytes gets the underlying bytes of the chunk in uncompressed
 // format.
-func (c *Chunk) GetBytes(ctx context.Context) ([]byte, error) {
-	if data := c.data.Load(); data != nil {
-		return *data, nil
-	}
-	return c.decompress(ctx)
-}
-
-func (c *Chunk) decompress(ctx context.Context) ([]byte, error) {
-	compressedData := c.compressedData.Load()
-	if compressedData == nil {
-		return nil, status.Error(codes.InvalidArgument, "Chunk does not contain compressed data")
-	}
-
-	decoder, err := c.zstdPool.NewDecoder(ctx, bytes.NewReader(*compressedData))
-	if err != nil {
-		// An error acquiring the decoder, we return the error but do
-		// not save the result.
-		return nil, err
-	}
-	defer decoder.Close()
-
-	data, err := io.ReadAll(decoder)
-	if err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.InvalidArgument, "Could not decompress data")
-	}
-	c.data.Store(&data)
-	return data, nil
+func (c *Chunk) GetBytes() []byte {
+	return c.data
 }
 
 // GetBytesCompressed gets the underlying bytes of the chunk in ZSTD
@@ -71,11 +47,7 @@ func (c *Chunk) compress(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	var data []byte
-	if p := c.data.Load(); p != nil {
-		data = *p
-	}
-	_, err = encoder.Write(data)
+	_, err = encoder.Write(c.data)
 	closeErr := encoder.Close()
 
 	if err == nil {
@@ -96,16 +68,17 @@ func (c *Chunk) compress(ctx context.Context) ([]byte, error) {
 // of the provided slice is transferred to the chunk, callers must not
 // modify or reuse it afterwards.
 func NewChunk(zstdPool zstd.Pool, data []byte) *Chunk {
-	c := &Chunk{zstdPool: zstdPool}
-	c.data.Store(&data)
+	c := &Chunk{data: data, zstdPool: zstdPool}
 	return c
 }
 
-// NewChunkFromCompressedData creates a chunk from a compressed byte
-// slice. Ownership of the provided slice is transferred to the chunk,
-// callers must not modify or reuse it afterwards.
-func NewChunkFromCompressedData(zstdPool zstd.Pool, compressedData []byte) *Chunk {
-	c := &Chunk{zstdPool: zstdPool}
+// NewChunkWithCompressedData creates a chunk that has data in both its
+// compressed and uncompressed form. It is the responsibility of the
+// caller to make sure that this chunk is valid. Ownership of the
+// provided slices are transferred to the chunk, callers must not modify
+// or reuse them afterwards.
+func NewChunkWithCompressedData(data, compressedData []byte) *Chunk {
+	c := &Chunk{data: data}
 	c.compressedData.Store(&compressedData)
 	return c
 }
@@ -118,8 +91,7 @@ var (
 // EmptyChunk is a special chunk which the REv2 API requires to be
 // present in all stores.
 var EmptyChunk = func() *Chunk {
-	c := &Chunk{}
-	c.data.Store(&emptyData)
+	c := &Chunk{data: emptyData}
 	c.compressedData.Store(&emptyZstdData)
 	return c
 }()

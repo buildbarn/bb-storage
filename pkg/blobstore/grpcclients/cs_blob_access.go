@@ -1,7 +1,9 @@
 package grpcclients
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"slices"
 	"sync/atomic"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc"
@@ -72,11 +75,12 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		compressor = remoteexecution.Compressor_ZSTD
 	}
 
+	digestFunction := digest.GetDigestFunction()
 	req := &remoteexecution.BatchReadBlobsRequest{
 		InstanceName:          digest.GetInstanceName().String(),
 		Digests:               []*remoteexecution.Digest{digest.GetProto()},
 		AcceptableCompressors: []remoteexecution.Compressor_Value{compressor},
-		DigestFunction:        digest.GetDigestFunction().GetEnumValue(),
+		DigestFunction:        digestFunction.GetEnumValue(),
 	}
 
 	resp, err := ba.contentAddressableStorageClient.BatchReadBlobs(ctx, req)
@@ -93,14 +97,43 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, err
 	}
 
+	generator := digestFunction.NewGenerator(digest.GetSizeBytes())
+	var data, compressedData []byte
 	switch r.Compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return chunk.NewChunk(ba.zstdPool, r.Data), nil
+		data = r.Data
 	case remoteexecution.Compressor_ZSTD:
-		return chunk.NewChunkFromCompressedData(ba.zstdPool, r.Data), nil
+		decoder, err := ba.zstdPool.NewDecoder(ctx, bytes.NewReader(r.Data))
+		if err != nil {
+			return nil, err
+		}
+		defer decoder.Close()
+		data = make([]byte, digest.GetSizeBytes())
+		if _, err := io.ReadFull(decoder, data); err != nil {
+			return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to decompress blob")
+		}
+		// The compressed representation is stored as-is, so the stream
+		// may not decompress to more than the advertised size.
+		var eofBuf [1]byte
+		if n, err := decoder.Read(eofBuf[:]); n > 0 || err != io.EOF {
+			return nil, status.Error(codes.Internal, "Decompressed stream yielded more data than expected")
+		}
+		compressedData = r.Data
 	default:
 		return nil, status.Errorf(codes.Internal, "Unsupported upstream compresssion algorithm %s", r.Compressor.String())
 	}
+
+	if _, err := generator.Write(data); err != nil {
+		return nil, err
+	}
+	if actualDigest := generator.Sum(); actualDigest != digest {
+		return nil, status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", digest.String(), actualDigest.String())
+	}
+
+	if compressedData == nil {
+		return chunk.NewChunk(ba.zstdPool, data), nil
+	}
+	return chunk.NewChunkWithCompressedData(data, compressedData), nil
 }
 
 func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {
@@ -114,12 +147,12 @@ func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *ch
 	if useCompression {
 		compressor = remoteexecution.Compressor_ZSTD
 		data, err = value.GetBytesCompressed(ctx)
+		if err != nil {
+			return err
+		}
 	} else {
 		compressor = remoteexecution.Compressor_IDENTITY
-		data, err = value.GetBytes(ctx)
-	}
-	if err != nil {
-		return err
+		data = value.GetBytes()
 	}
 
 	req := &remoteexecution.BatchUpdateBlobsRequest{

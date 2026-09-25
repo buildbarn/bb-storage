@@ -40,8 +40,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data, err := chunk.GetBytes(ctx)
-			require.NoError(t, err)
+			data := chunk.GetBytes()
 			require.Equal(t, []byte("Hello world"), data)
 		}
 	})
@@ -73,8 +72,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello world"), data)
 	})
 
@@ -111,16 +109,14 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		backendA.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
 			},
 		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
 			},

@@ -33,8 +33,7 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("A"), data)
 	})
 
@@ -53,8 +52,7 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 		// Requests for the empty blob should be processed directly.
 		chunk, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0))
 		require.NoError(t, err)
-		data, err := chunk.GetBytes(ctx)
-		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Empty(t, data)
 	})
 
@@ -79,8 +77,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, blobDigest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("A"), data)
 				return nil
 			},

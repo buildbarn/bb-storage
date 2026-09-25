@@ -45,8 +45,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		blobDigest := digest.MustNewDigest("put", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		sourceBackend.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data, err := c.GetBytes(ctx)
-				require.NoError(t, err)
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -78,8 +77,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data, err := chunk.GetBytes(ctx)
-			require.NoError(t, err)
+			data := chunk.GetBytes()
 			require.Equal(t, []byte("Hello"), data)
 		}
 
@@ -94,8 +92,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data, err := chunk.GetBytes(ctx)
-			require.NoError(t, err)
+			data := chunk.GetBytes()
 			require.Equal(t, []byte("Hello"), data)
 		}
 
