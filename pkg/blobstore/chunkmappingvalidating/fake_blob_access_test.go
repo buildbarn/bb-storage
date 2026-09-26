@@ -1,4 +1,4 @@
-package chunklistvalidating_test
+package chunkmappingvalidating_test
 
 import (
 	"context"

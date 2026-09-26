@@ -141,7 +141,7 @@ func TestContentAddressableStorageAPI(t *testing.T) {
 		// SplitBlob must succeed with an empty chunk mapping.
 		chunkDigests, err := splitBlob(ctx, casClient, emptyDigest)
 		require.NoError(t, err, "Failed to split empty blob")
-		require.Empty(t, chunkDigests, "Split of empty blob should yield an empty chunk list")
+		require.Empty(t, chunkDigests, "Split of empty blob should yield an empty chunk mapping")
 
 		// Read the empty blob back through BatchReadBlobs.
 		blobs, err := batchDownloadBlobs(ctx, casClient, []digest.Digest{emptyDigest}, remoteexecution.Compressor_IDENTITY)

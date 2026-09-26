@@ -14,22 +14,22 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type clsBlobAccess struct {
+type cmsBlobAccess struct {
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
 	maximumMessageSizeBytes         int
 }
 
-// NewCLSBlobAccess creates a BlobAccess that relays any requests to a
+// NewCMSBlobAccess creates a BlobAccess that relays any requests to a
 // gRPC server that implements the split and splice API calls of a
 // remoteexecution.ContentAddressableStorage service.
-func NewCLSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess[chunk.List] {
-	return &clsBlobAccess{
+func NewCMSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess[chunk.Mapping] {
+	return &cmsBlobAccess{
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
 		maximumMessageSizeBytes:         maximumMessageSizeBytes,
 	}
 }
 
-func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chunk.List, error) {
+func (ba *cmsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chunk.Mapping, error) {
 	digestFunction := blobDigest.GetDigestFunction()
 
 	stream, err := ba.contentAddressableStorageClient.GetChunkMapping(ctx, &remoteexecution.GetChunkMappingRequest{
@@ -39,10 +39,10 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 	})
 	if err != nil {
-		return chunk.List{}, err
+		return chunk.Mapping{}, err
 	}
 
-	// Convert wire format to chunk.List. Chunks may be spread across
+	// Convert wire format to chunk.Mapping. Chunks may be spread across
 	// multiple responses, so digests are collected until the server
 	// closes the stream.
 	chunkDigests := make([]digest.Digest, 0, blobstore.RecommendedFindMissingDigestsCount)
@@ -52,12 +52,12 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 			if err == io.EOF {
 				break
 			}
-			return chunk.List{}, err
+			return chunk.Mapping{}, err
 		}
 		// Servers are only required to specify the chunking function
 		// in the first response; it is omitted on subsequent ones.
 		if i == 0 && response.ChunkingFunction != remoteexecution.ChunkingFunction_REP_MAX_CDC {
-			return chunk.List{}, status.Errorf(
+			return chunk.Mapping{}, status.Errorf(
 				codes.Internal,
 				"Server responded with unsupported chunking function %s",
 				response.ChunkingFunction.String(),
@@ -66,7 +66,7 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 		for _, proto := range response.ChunkDigests {
 			d, err := digestFunction.NewDigestFromProto(proto)
 			if err != nil {
-				return chunk.List{}, err
+				return chunk.Mapping{}, err
 			}
 			if d.GetSizeBytes() == 0 {
 				// Zero length chunks carry no data, so they may
@@ -77,24 +77,24 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 		}
 	}
 	// A mapping of fewer than two chunks does not constitute a chunk
-	// list, as blobs of fewer chunks have no chunk list in storage. If
+	// list, as blobs of fewer chunks have no chunk mapping in storage. If
 	// the mapping composes the blob (a single chunk equal to the blob
 	// itself, or no chunks at all for the empty blob), the blob simply
-	// has no chunk list. Any other mapping is the result of server
+	// has no chunk mapping. Any other mapping is the result of server
 	// misbehavior.
 	if len(chunkDigests) == 1 && chunkDigests[0] == blobDigest {
-		return chunk.List{}, status.Error(codes.NotFound, "Blob has no chunk list in storage")
+		return chunk.Mapping{}, status.Error(codes.NotFound, "Blob has no chunk mapping in storage")
 	}
 	if len(chunkDigests) == 0 && blobDigest.GetSizeBytes() == 0 {
-		return chunk.List{}, status.Error(codes.NotFound, "Blob has no chunk list in storage")
+		return chunk.Mapping{}, status.Error(codes.NotFound, "Blob has no chunk mapping in storage")
 	}
 	if len(chunkDigests) < 2 {
-		return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+		return chunk.Mapping{}, status.Error(codes.Internal, "Chunk mapping does not compose to blob")
 	}
-	return chunk.NewList(chunkDigests, uint64(blobDigest.GetSizeBytes()), false)
+	return chunk.NewMapping(chunkDigests, uint64(blobDigest.GetSizeBytes()), false)
 }
 
-func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value chunk.List) error {
+func (ba *cmsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value chunk.Mapping) error {
 	digestFunction := blobDigest.GetDigestFunction()
 
 	stream, err := ba.contentAddressableStorageClient.RegisterChunkMapping(ctx)
@@ -106,7 +106,7 @@ func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, valu
 	// message size. All fields other than ChunkDigests are ignored by
 	// servers on subsequent requests. At least one request is always
 	// sent, so that the server can identify the blob being registered
-	// even for empty chunk lists.
+	// even for empty chunk mappings.
 	numDigests := len(value.Digests)
 	i := 0
 	for {
@@ -137,21 +137,21 @@ func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, valu
 	return err
 }
 
-func (ba *clsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *cmsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Semantically an REv2 server which supports the Split and Splice
 	// apis should be able to answer the SplitBlob call for any blob
 	// which it has in its storage. Thus we can safely say that we are
-	// able to Get a chunk list from an upstream server as long as it
+	// able to Get a chunk mapping from an upstream server as long as it
 	// has the blob. We can therefore reuse the existing
 	// FindMissingBlobs API for this purpose.
 	//
 	// In Buildbarn we implement this on the server side by segregating
 	// FMB requests for blobs larger than the maximum chunk size to the
-	// Chunk List Storage (CLS) and to the Chunk Storage (CS) for other
+	// Chunk Mapping Storage (CMS) and to the Chunk Storage (CS) for other
 	// blobs.
 	return findMissingBlobsInternal(ctx, digests, ba.contentAddressableStorageClient)
 }
 
-func (clsBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+func (cmsBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	panic("GetCapabilities() should only be called against BlobAccess instances for the Content Addressable Storage and Action Cache")
 }

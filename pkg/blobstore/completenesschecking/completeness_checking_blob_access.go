@@ -24,7 +24,7 @@ type findMissingQueue struct {
 	context              context.Context
 	digestFunction       digest.Function
 	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
-	chunkListStorage     blobstore.BlobAccess[chunk.List]
+	chunkMappingStorage  blobstore.BlobAccess[chunk.Mapping]
 	cdcParametersFetcher capabilities.CDCParametersFetcher
 	batchSize            int
 
@@ -69,7 +69,7 @@ func (q *findMissingQueue) finalize() error {
 	if err != nil {
 		return util.StatusWrap(err, "Failed to fetch CDC parameters")
 	}
-	missing, err := cas.FindMissing(q.context, q.chunkStorage, q.chunkListStorage, params, q.pending.Build())
+	missing, err := cas.FindMissing(q.context, q.chunkStorage, q.chunkMappingStorage, params, q.pending.Build())
 	if err != nil {
 		return util.StatusWrap(err, "Failed to determine existence of child objects")
 	}
@@ -82,7 +82,7 @@ func (q *findMissingQueue) finalize() error {
 type completenessCheckingBlobAccess struct {
 	blobstore.BlobAccess[*remoteexecution.ActionResult]
 	chunkStorage              blobstore.BlobAccess[*chunk.Chunk]
-	chunkListStorage          blobstore.BlobAccess[chunk.List]
+	chunkMappingStorage       blobstore.BlobAccess[chunk.Mapping]
 	cdcParametersFetcher      capabilities.CDCParametersFetcher
 	treeReader                cas.StreamReader
 	batchSize                 int
@@ -104,11 +104,11 @@ type completenessCheckingBlobAccess struct {
 // needs to be rebuilt. By calling it, Bazel indicates that all
 // associated output files must remain present during the build for
 // forward progress to be made.
-func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess[*remoteexecution.ActionResult], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess[*remoteexecution.ActionResult] {
+func NewCompletenessCheckingBlobAccess(actionCache blobstore.BlobAccess[*remoteexecution.ActionResult], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, treeReader cas.StreamReader, batchSize, maximumMessageSizeBytes int, maximumTotalTreeSizeBytes int64) blobstore.BlobAccess[*remoteexecution.ActionResult] {
 	return &completenessCheckingBlobAccess{
 		BlobAccess:                actionCache,
 		chunkStorage:              chunkStorage,
-		chunkListStorage:          chunkListStorage,
+		chunkMappingStorage:       chunkMappingStorage,
 		cdcParametersFetcher:      cdcParametersFetcher,
 		treeReader:                treeReader,
 		batchSize:                 batchSize,
@@ -122,7 +122,7 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 		context:              ctx,
 		digestFunction:       digestFunction,
 		chunkStorage:         ba.chunkStorage,
-		chunkListStorage:     ba.chunkListStorage,
+		chunkMappingStorage:  ba.chunkMappingStorage,
 		cdcParametersFetcher: ba.cdcParametersFetcher,
 		batchSize:            ba.batchSize,
 		pending:              digest.NewSetBuilder(ba.batchSize),

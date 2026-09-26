@@ -177,7 +177,7 @@ gomock(
 gomock(
     name = "chunk",
     out = "chunk.go",
-    interfaces = ["ListFetcher"],
+    interfaces = ["MappingFetcher"],
     library = "//pkg/blobstore/chunk",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",

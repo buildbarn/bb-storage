@@ -26,7 +26,7 @@ func TestDegenerateUploadRejections(t *testing.T) {
 		blobSize int
 	}{
 		// Blobs smaller than twice the minimum chunk size are stored
-		// as a single chunk and never obtain a chunk list.
+		// as a single chunk and never obtain a chunk mapping.
 		{name: "SingleChunk", blobSize: 2*minChunkSizeBytes - 128},
 		{name: "MultiChunk", blobSize: 2*minChunkSizeBytes + 128},
 	} {

@@ -1,4 +1,4 @@
-package chunklistvalidating_test
+package chunkmappingvalidating_test
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunklistvalidating"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunkmappingvalidating"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
@@ -26,10 +26,10 @@ func mustComputeDigest(t *testing.T, digestFunction digest.Function, data []byte
 	return generator.Sum()
 }
 
-// makeChunkList creates a chunk.List from a list of chunk
+// makeChunkMapping creates a chunk.Mapping from a list of chunk
 // digests.
-func makeChunkList(chunkDigests ...digest.Digest) chunk.List {
-	cl := chunk.List{
+func makeChunkMapping(chunkDigests ...digest.Digest) chunk.Mapping {
+	cl := chunk.Mapping{
 		Digests: chunkDigests,
 		Offsets: make([]uint64, len(chunkDigests)),
 	}
@@ -47,16 +47,16 @@ var testCDCParams = &remoteexecution.RepMaxCdcParams{
 }
 var maximumMessageSizeBytes = 1024 * 1024
 
-func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	// The blob must be at least 2*MinChunkSizeBytes, so that Get
-	// goes down the path of returning the stored chunk list.
+	// goes down the path of returning the stored chunk mapping.
 	blobData := bytes.Repeat([]byte("a"), 2048)
 	chunk1Data := blobData[:len(blobData)/2]
 	chunk2Data := blobData[len(blobData)/2:]
@@ -69,34 +69,34 @@ func TestChunkListValidatingBlobAccessGetExtendsLifetimes(t *testing.T) {
 	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk1))
 	require.NoError(t, fakeCS.Put(ctx, chunk2Digest, chunk2))
-	require.NoError(t, fakeCLS.Put(ctx, blobDigest, makeChunkList(chunk1Digest, chunk2Digest)))
+	require.NoError(t, fakeCMS.Put(ctx, blobDigest, makeChunkMapping(chunk1Digest, chunk2Digest)))
 
 	// Reset touches.
-	fakeCLS.ResetTouches()
+	fakeCMS.ResetTouches()
 	fakeCS.ResetTouches()
 
 	// Perform a cached split.
-	chunkList, err := validatingCLS.Get(ctx, blobDigest)
+	chunkMapping, err := validatingCMS.Get(ctx, blobDigest)
 	require.NoError(t, err)
-	require.Equal(t, []digest.Digest{chunk1Digest, chunk2Digest}, chunkList.Digests)
+	require.Equal(t, []digest.Digest{chunk1Digest, chunk2Digest}, chunkMapping.Digests)
 
-	// The original blob's chunk list MUST have had its lifetime
+	// The original blob's chunk mapping MUST have had its lifetime
 	// extended.
-	require.Greater(t, fakeCLS.GetTouches(blobDigest), 0, "Original blob's chunk list lifetime was not extended during call to Get")
+	require.Greater(t, fakeCMS.GetTouches(blobDigest), 0, "Original blob's chunk mapping lifetime was not extended during call to Get")
 
 	// Every chunk MUST have had its lifetime extended.
-	for _, chunkDigest := range chunkList.Digests {
+	for _, chunkDigest := range chunkMapping.Digests {
 		require.Greater(t, fakeCS.GetTouches(chunkDigest), 0, "Chunk's lifetime was not extended during call to Get")
 	}
 }
 
-func TestChunkListValidatingBlobAccessGetLargeBlobMissingUnderlyingChunk(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessGetLargeBlobMissingUnderlyingChunk(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
@@ -110,36 +110,36 @@ func TestChunkListValidatingBlobAccessGetLargeBlobMissingUnderlyingChunk(t *test
 
 	expectedFullData := append(chunk1Bytes, chunk2Bytes...)
 	blobDigest := mustComputeDigest(t, digestFunction, expectedFullData)
-	require.NoError(t, fakeCLS.Put(ctx, blobDigest, makeChunkList(chunk1Digest, chunk2Digest)))
+	require.NoError(t, fakeCMS.Put(ctx, blobDigest, makeChunkMapping(chunk1Digest, chunk2Digest)))
 
-	_, err := validatingCLS.Get(ctx, blobDigest)
+	_, err := validatingCMS.Get(ctx, blobDigest)
 	require.Error(t, err)
 	require.Equal(t, codes.NotFound, status.Code(err), "Incorrect error code from Get request: %s", err.Error())
 }
 
-func TestChunkListValidatingBlobAccessGetMissingBlob(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessGetMissingBlob(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 	ghostDigest := mustComputeDigest(t, digestFunction, []byte("ghost"))
 
-	_, err := validatingCLS.Get(ctx, ghostDigest)
+	_, err := validatingCMS.Get(ctx, ghostDigest)
 	require.Error(t, err)
 	require.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutManualSplice(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
@@ -156,7 +156,7 @@ func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
 	expectedFullData := []byte("Hello, World!")
 	fullBlobDigest := mustComputeDigest(t, digestFunction, expectedFullData)
 
-	err := validatingCLS.Put(ctx, fullBlobDigest, makeChunkList(chunk1Digest, chunk2Digest))
+	err := validatingCMS.Put(ctx, fullBlobDigest, makeChunkMapping(chunk1Digest, chunk2Digest))
 	require.NoError(t, err)
 
 	composedChunk, err := fakeCS.Get(ctx, fullBlobDigest)
@@ -165,13 +165,13 @@ func TestChunkListValidatingBlobAccessPutManualSplice(t *testing.T) {
 	require.Equal(t, expectedFullData, composedData)
 }
 
-func TestChunkListValidatingBlobAccessPutCanonicalization(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutCanonicalization(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
@@ -189,40 +189,40 @@ func TestChunkListValidatingBlobAccessPutCanonicalization(t *testing.T) {
 
 	fullBlobDigest := mustComputeDigest(t, digestFunction, blobData)
 
-	err := validatingCLS.Put(ctx, fullBlobDigest, makeChunkList(chunk1Digest, chunk2Digest))
+	err := validatingCMS.Put(ctx, fullBlobDigest, makeChunkMapping(chunk1Digest, chunk2Digest))
 	require.NoError(t, err)
 
-	// The stored chunk list should be the canonical CDC chunking,
+	// The stored chunk mapping should be the canonical CDC chunking,
 	// not the non-standard chunks that were provided.
-	canonicalDigests, err := fakeCLS.Get(ctx, fullBlobDigest)
+	canonicalDigests, err := fakeCMS.Get(ctx, fullBlobDigest)
 	require.NoError(t, err)
 	require.Greater(t, len(canonicalDigests.Digests), 0)
 	require.NotEqual(t, chunk1Digest, canonicalDigests.Digests[0], "Server should not have echoed back the non-standard chunks")
 }
 
-func TestChunkListValidatingBlobAccessPutMissingChunk(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutMissingChunk(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 	chunkDigest := mustComputeDigest(t, digestFunction, []byte("ghost"))
 
-	err := validatingCLS.Put(ctx, chunkDigest, makeChunkList(chunkDigest))
+	err := validatingCMS.Put(ctx, chunkDigest, makeChunkMapping(chunkDigest))
 	require.Error(t, err)
 	require.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestChunkListValidatingBlobAccessPutDigestMismatch(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutDigestMismatch(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
@@ -233,33 +233,33 @@ func TestChunkListValidatingBlobAccessPutDigestMismatch(t *testing.T) {
 
 	wrongBlobDigest := mustComputeDigest(t, digestFunction, []byte("Different data"))
 
-	err := validatingCLS.Put(ctx, wrongBlobDigest, makeChunkList(chunkDigest))
+	err := validatingCMS.Put(ctx, wrongBlobDigest, makeChunkMapping(chunkDigest))
 	require.Error(t, err)
 	require.Equal(t, codes.InvalidArgument, status.Code(err), "Incorrect error code from Put request: %s", err.Error())
 }
 
-func TestChunkListValidatingBlobAccessPutEmptyBlob(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutEmptyBlob(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 	emptyDigest := mustComputeDigest(t, digestFunction, nil)
 
-	err := validatingCLS.Put(ctx, emptyDigest, makeChunkList())
+	err := validatingCMS.Put(ctx, emptyDigest, makeChunkMapping())
 	require.NoError(t, err)
 }
 
-func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
@@ -276,7 +276,7 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	expectedData := []byte("AABA")
 	expectedDigest := mustComputeDigest(t, digestFunction, expectedData)
 
-	err := validatingCLS.Put(ctx, expectedDigest, makeChunkList(digestA, digestA, digestB, digestA))
+	err := validatingCMS.Put(ctx, expectedDigest, makeChunkMapping(digestA, digestA, digestB, digestA))
 	require.NoError(t, err)
 
 	composedChunk, err := fakeCS.Get(ctx, expectedDigest)
@@ -285,20 +285,20 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	require.Equal(t, expectedData, composedData)
 }
 
-func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfBlob(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutExtendsLifetimeOfBlob(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	// Splicing small chunks must extend the lifetime of the chunk
 	// that the blob canonically decomposes into, which is the blob
-	// itself as it fits in a single chunk. The chunk list storage is
-	// not involved, as no chunk list exists.
+	// itself as it fits in a single chunk. The chunk mapping storage is
+	// not involved, as no chunk mapping exists.
 	chunk1Data := []byte("Hello, ")
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk.NewChunk(zstdPool, chunk1Data)))
@@ -312,7 +312,7 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfBlob(t *testing.T) {
 
 	fakeCS.ResetTouches()
 
-	err := validatingCLS.Put(ctx, fullBlobDigest, makeChunkList(chunk1Digest, chunk2Digest))
+	err := validatingCMS.Put(ctx, fullBlobDigest, makeChunkMapping(chunk1Digest, chunk2Digest))
 
 	// From the REAPI, the server may either process the splice and
 	// return OK, OR it may return ALREADY_EXISTS if the blob is
@@ -335,19 +335,19 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfBlob(t *testing.T) {
 	}
 }
 
-func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfChunkList(t *testing.T) {
+func TestChunkMappingValidatingBlobAccessPutExtendsLifetimeOfChunkMapping(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
-	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	fakeCMS := newFakeBlobAccess[chunk.Mapping](nil)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(fakeCMS, fakeCS, maximumMessageSizeBytes, zstdPool)
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
 	// Splicing chunks that compose a blob which canonically
 	// decomposes into at least two chunks must extend the lifetime
-	// of the blob's chunk list. The blob itself is never stored as a
+	// of the blob's chunk mapping. The blob itself is never stored as a
 	// chunk, so the chunk storage is not involved.
 	chunk1Data := bytes.Repeat([]byte("Hello, "), 220)
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
@@ -362,7 +362,7 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfChunkList(t *testing.T
 
 	fakeCS.ResetTouches()
 
-	err := validatingCLS.Put(ctx, fullBlobDigest, makeChunkList(chunk1Digest, chunk2Digest))
+	err := validatingCMS.Put(ctx, fullBlobDigest, makeChunkMapping(chunk1Digest, chunk2Digest))
 
 	// From the REAPI, the server may either process the splice and
 	// return OK, OR it may return ALREADY_EXISTS if the blob is
@@ -372,7 +372,7 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfChunkList(t *testing.T
 		// The server is free not to touch the user's chunks.
 		// However, it MUST still have verified/touched the original
 		// blob.
-		require.Greater(t, fakeCLS.GetTouches(fullBlobDigest), 0, "Composed blob chunk list lifetime was not extended during SpliceBlob")
+		require.Greater(t, fakeCMS.GetTouches(fullBlobDigest), 0, "Composed blob chunk mapping lifetime was not extended during SpliceBlob")
 	} else {
 		// Because the server accepted the Splice request, it is
 		// strictly obligated to extend the lifetimes of BOTH the
@@ -381,6 +381,6 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfChunkList(t *testing.T
 
 		require.Greater(t, fakeCS.GetTouches(chunk1Digest), 0, "Chunk 1 lifetime was not extended during SpliceBlob")
 		require.Greater(t, fakeCS.GetTouches(chunk2Digest), 0, "Chunk 2 lifetime was not extended during SpliceBlob")
-		require.Greater(t, fakeCLS.GetTouches(fullBlobDigest), 0, "Composed blob chunk list lifetime was not extended during SpliceBlob")
+		require.Greater(t, fakeCMS.GetTouches(fullBlobDigest), 0, "Composed blob chunk mapping lifetime was not extended during SpliceBlob")
 	}
 }

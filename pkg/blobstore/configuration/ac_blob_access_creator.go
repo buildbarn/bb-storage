@@ -37,8 +37,8 @@ type acBlobAccessCreator struct {
 
 	chunkBytesReader        reader.Reader[[]byte]
 	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
-	chunkListStorage        blobstore.BlobAccess[chunk.List]
-	chunkListFetcher        chunk.ListFetcher
+	chunkMappingStorage     blobstore.BlobAccess[chunk.Mapping]
+	chunkMappingFetcher     chunk.MappingFetcher
 	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	digestKeyFormat         digest.KeyFormat
 	grpcClientFactory       grpc.ClientFactory
@@ -48,12 +48,12 @@ type acBlobAccessCreator struct {
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
+func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
 	return &acBlobAccessCreator{
 		chunkBytesReader:        chunkBytesReader,
 		chunkStorage:            chunkStorage,
-		chunkListStorage:        chunkListStorage,
-		chunkListFetcher:        chunkListFetcher,
+		chunkMappingStorage:     chunkMappingStorage,
+		chunkMappingFetcher:     chunkMappingFetcher,
 		cdcParametersFetcher:    cdcParametersFetcher,
 		digestKeyFormat:         digestKeyFormat,
 		grpcClientFactory:       grpcClientFactory,
@@ -116,9 +116,9 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
 				bac.chunkStorage,
-				bac.chunkListStorage,
+				bac.chunkMappingStorage,
 				bac.cdcParametersFetcher,
-				cas.NewStorageBackedStreamReader(bac.chunkBytesReader, bac.chunkListFetcher, bac.cdcParametersFetcher),
+				cas.NewStorageBackedStreamReader(bac.chunkBytesReader, bac.chunkMappingFetcher, bac.cdcParametersFetcher),
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
 				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,

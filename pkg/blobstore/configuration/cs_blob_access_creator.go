@@ -126,10 +126,10 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		}
 
 		var chunkBytesReader reader.Reader[[]byte]
-		var chunkListFetcher chunk.ListFetcher
+		var chunkMappingFetcher chunk.MappingFetcher
 		var cdcParametersFetcher capabilities.CDCParametersFetcher
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
-			chunkBytesReader, _, _, chunkListFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
+			chunkBytesReader, _, _, chunkMappingFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
 		} else {
 			// TODO: is an equivalent of this needed?
 			// chunkStorage = blobstore.NewErrorBlobAccess[*chunk.Chunk](status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
@@ -162,7 +162,7 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			BlobAccess: referenceexpanding.NewReferenceExpandingBlobAccess(
 				indirectContentAddressableStorage.BlobAccess,
 				chunkBytesReader,
-				chunkListFetcher,
+				chunkMappingFetcher,
 				cdcParametersFetcher,
 				&http.Client{
 					Transport: http_client.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),

@@ -615,8 +615,8 @@ func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, confi
 // constituent parts of a Content Addressable Storage (CAS) and a
 // BlobAccess for the Action Cache. Most Buildbarn components tend to
 // require access to both these data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
-	chunkBytesReader, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+	chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
@@ -627,8 +627,8 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 		NewACBlobAccessCreator(
 			chunkBytesReader,
 			chunkStorage,
-			chunkListStorage,
-			chunkListFetcher,
+			chunkMappingStorage,
+			chunkMappingFetcher,
 			cdcParametersFetcher,
 			digestKeyFormat,
 			grpcClientFactory,
@@ -639,13 +639,13 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Action Cache")
 	}
 
-	return chunkBytesReader, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, digestKeyFormat, actionCache.BlobAccess, nil
+	return chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, actionCache.BlobAccess, nil
 }
 
 // NewCASFromConfiguration is a convenience function to create the
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.List], chunk.ListFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
@@ -656,26 +656,26 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 	}
 	chunkStorage := chunkStorageInfo.BlobAccess
 
-	chunkListStorageInfo, err := NewBlobAccessFromConfiguration(
+	chunkMappingStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
-		configuration.GetChunkListStorage(),
-		NewCLSBlobAccessCreator(&chunkStorageInfo, grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+		configuration.GetChunkMappingStorage(),
+		NewCMSBlobAccessCreator(&chunkStorageInfo, grpcClientFactory, maximumMessageSizeBytes, zstdPool),
 	)
 	if err != nil {
-		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk List Storage")
+		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
 	}
-	chunkListStorage := chunkListStorageInfo.BlobAccess
-	var chunkListFetcher chunk.ListFetcher = blobstore.NewBlobAccessChunkListFetcher(chunkListStorage)
-	if configuration.GetChunkListCache() != nil {
-		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.Digest, chunk.List](
-			configuration.ChunkListCache,
+	chunkMappingStorage := chunkMappingStorageInfo.BlobAccess
+	var chunkMappingFetcher chunk.MappingFetcher = blobstore.NewBlobAccessMappingFetcher(chunkMappingStorage)
+	if configuration.GetChunkMappingCache() != nil {
+		cache, err := ttlcache.NewTTLCacheFromConfiguration[digest.Digest, chunk.Mapping](
+			configuration.ChunkMappingCache,
 			clock.SystemClock,
-			"ChunkListCache",
+			"ChunkMappingCache",
 		)
 		if err != nil {
-			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create chunk list cache")
+			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create chunk mapping cache")
 		}
-		chunkListFetcher = chunk.NewCachingListFetcher(chunkListFetcher, cache)
+		chunkMappingFetcher = chunk.NewCachingMappingFetcher(chunkMappingFetcher, cache)
 	}
 
 	// The chunking parameters are a property of the Chunk Storage
@@ -706,5 +706,5 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		chunkBytesReader = reader.NewCachingReader(chunkBytesReader, cache)
 	}
 
-	return chunkBytesReader, chunkStorage, chunkListStorage, chunkListFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkListStorageInfo.DigestKeyFormat), nil
+	return chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat), nil
 }

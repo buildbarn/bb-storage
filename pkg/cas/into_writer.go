@@ -16,7 +16,7 @@ import (
 
 // IntoWriter streams the chunks of a blob directly into the provided
 // io.Writer from the specified offset.
-func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
+func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return status.Errorf(codes.InvalidArgument, "Invalid offset %d for digest %s", offset, d)
 	}
@@ -32,13 +32,13 @@ func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 		return nil
 	}
 
-	manifest, err := chunkListFetcher.FetchChunkList(ctx, d)
+	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
 	if err != nil {
 		return err
 	}
-	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
-	for ; index < len(manifest.Digests); index++ {
-		chunkData, err := chunkBytesReader.Read(ctx, manifest.Digests[index])
+	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
+	for ; index < len(mapping.Digests); index++ {
+		chunkData, err := chunkBytesReader.Read(ctx, mapping.Digests[index])
 		if err != nil {
 			return err
 		}

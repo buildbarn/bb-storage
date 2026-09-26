@@ -30,7 +30,7 @@ import (
 type referenceExpandingBlobAccess struct {
 	indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference]
 	chunkBytesReader                  reader.Reader[[]byte]
-	chunkListFetcher                  chunk.ListFetcher
+	chunkMappingFetcher               chunk.MappingFetcher
 	cdcParametersFetcher              capabilities.CDCParametersFetcher
 	httpClient                        *http.Client
 	s3Client                          cloud_aws.S3Client
@@ -53,11 +53,11 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess[*chunk.Chunk] {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess[*chunk.Chunk] {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		chunkBytesReader:                  chunkBytesReader,
-		chunkListFetcher:                  chunkListFetcher,
+		chunkMappingFetcher:               chunkMappingFetcher,
 		cdcParametersFetcher:              cdcParametersFetcher,
 		httpClient:                        httpClient,
 		s3Client:                          s3Client,
@@ -151,7 +151,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		if err != nil {
 			return nil, err
 		}
-		r, err = cas.GetReadCloserAt(ctx, ba.chunkBytesReader, ba.chunkListFetcher, params, referenceDigest, 0)
+		r, err = cas.GetReadCloserAt(ctx, ba.chunkBytesReader, ba.chunkMappingFetcher, params, referenceDigest, 0)
 		if err != nil {
 			return nil, err
 		}

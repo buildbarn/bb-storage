@@ -26,13 +26,13 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 
 	actionCache := mock.NewMockBlobAccess[*remoteexecution.ActionResult](ctrl)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	treeReader := mock.NewMockStreamReader(ctrl)
 	completenessCheckingBlobAccess := completenesschecking.NewCompletenessCheckingBlobAccess(
 		actionCache,
 		chunkStorage,
-		chunkListStorage,
+		chunkMappingStorage,
 		cdcParametersFetcher,
 		treeReader,
 		/* batchSize = */ 5,
@@ -101,7 +101,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5).ToSingletonSet(),
 			nil,
 		)
-		chunkListStorage.EXPECT().FindMissing(
+		chunkMappingStorage.EXPECT().FindMissing(
 			ctx,
 			digest.EmptySet,
 		).Return(digest.EmptySet, nil)
@@ -287,7 +287,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "136de6de72514772b9302d4776e5c3d2", 4)).
 				Build(),
 		).Return(digest.EmptySet, nil)
-		chunkListStorage.EXPECT().FindMissing(
+		chunkMappingStorage.EXPECT().FindMissing(
 			ctx,
 			digest.EmptySet,
 		).Return(digest.EmptySet, nil)
@@ -303,7 +303,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).
 				Build(),
 		).Return(digest.EmptySet, nil)
-		chunkListStorage.EXPECT().FindMissing(
+		chunkMappingStorage.EXPECT().FindMissing(
 			ctx,
 			digest.EmptySet,
 		).Return(digest.EmptySet, nil)

@@ -24,8 +24,8 @@ import (
 
 type contentAddressableStorageServer struct {
 	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
-	chunkListStorage        blobstore.BlobAccess[chunk.List]
-	chunkListFetcher        chunk.ListFetcher
+	chunkMappingStorage     blobstore.BlobAccess[chunk.Mapping]
+	chunkMappingFetcher     chunk.MappingFetcher
 	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	zstdPool                zstd.Pool
 	maximumMessageSizeBytes int64
@@ -34,10 +34,10 @@ type contentAddressableStorageServer struct {
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		chunkStorage:            chunkStorage,
-		chunkListStorage:        chunkListStorage,
+		chunkMappingStorage:     chunkMappingStorage,
 		cdcParametersFetcher:    cdcParametersFetcher,
 		zstdPool:                zstdPool,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
@@ -71,7 +71,7 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, inDigests.Build())
+	missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, inDigests.Build())
 	if err != nil {
 		return nil, err
 	}
@@ -89,11 +89,11 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context, blobDigest digest.Digest, params *remoteexecution.RepMaxCdcParams, compressor remoteexecution.Compressor_Value) ([]byte, error) {
 	var chunkDigests []digest.Digest
 	if !cas.IsSingleChunk(params, blobDigest) {
-		chunkList, err := s.chunkListStorage.Get(ctx, blobDigest)
+		chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
-		chunkDigests = chunkList.Digests
+		chunkDigests = chunkMapping.Digests
 	} else {
 		// Blobs fits in a single chunk.
 		chunkDigests = []digest.Digest{blobDigest}
@@ -219,7 +219,7 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 func (s *contentAddressableStorageServer) updateBlob(ctx context.Context, d digest.Digest, data []byte, compressor remoteexecution.Compressor_Value, params *remoteexecution.RepMaxCdcParams) error {
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, bytes.NewReader(data))
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, bytes.NewReader(data))
 	case remoteexecution.Compressor_ZSTD:
 		decoder, err := s.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
 		if err != nil {
@@ -231,7 +231,7 @@ func (s *contentAddressableStorageServer) updateBlob(ctx context.Context, d dige
 		// advertised size, so that corrupt or malicious streams cannot
 		// trigger unbounded decompression.
 		r := io.LimitReader(decoder, d.GetSizeBytes()+1)
-		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, r)
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, r)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
@@ -256,32 +256,32 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 		if carry != 0 {
 			return status.Errorf(
 				codes.InvalidArgument,
-				"Chunk list overflows, the sum of chunk sizes exceeds %d bytes",
+				"Chunk mapping overflows, the sum of chunk sizes exceeds %d bytes",
 				uint64(math.MaxUint64),
 			)
 		}
 	}
 	if offset != uint64(d.GetSizeBytes()) {
-		return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+		return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
 	}
 	switch len(chunkDigests) {
 	case 0:
 		// No chunks, just check that it's the empty blob.
 		if d.GetSizeBytes() != 0 {
-			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+			return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
 		}
 		return nil
 	case 1:
 		// Single chunk blob, check that the chunk digest matches the
 		// blob digest and that the chunk is present in storage.
 		if chunkDigests[0] != d {
-			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
+			return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
 		}
 		params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 		if err != nil {
 			return err
 		}
-		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, chunkDigests[0].ToSingletonSet())
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, chunkDigests[0].ToSingletonSet())
 		if err != nil {
 			return err
 		}
@@ -290,13 +290,13 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 		}
 		return nil
 	default:
-		// Store the chunk list.
-		chunkList, err := chunk.NewList(chunkDigests, uint64(d.GetSizeBytes()), false)
+		// Store the chunk mapping.
+		chunkMapping, err := chunk.NewMapping(chunkDigests, uint64(d.GetSizeBytes()), false)
 		if err != nil {
 			return err
 		}
-		if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
-			return util.StatusWrap(err, "Could not save chunk list for blob")
+		if err := s.chunkMappingStorage.Put(ctx, d, chunkMapping); err != nil {
+			return util.StatusWrap(err, "Could not save chunk mapping for blob")
 		}
 		return nil
 	}
@@ -405,14 +405,14 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 
 func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) ([]digest.Digest, error) {
 	if cas.IsSingleChunk(params, d) {
-		// Blobs that fit in a single chunk have no chunk lists in
+		// Blobs that fit in a single chunk have no chunk mappings in
 		// storage, but one may be created trivially on the fly provided
 		// the chunk exists.
 		if d.GetSizeBytes() == 0 {
 			// The empty blob has the empty chunk mapping.
 			return nil, nil
 		}
-		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, d.ToSingletonSet())
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, d.ToSingletonSet())
 		if err != nil {
 			return nil, util.StatusWrap(err, "Failed to check blob existence")
 		}
@@ -421,12 +421,13 @@ func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, p
 		}
 		return []digest.Digest{d}, nil
 	}
-	chunkList, err := s.chunkListStorage.Get(ctx, d)
+	chunkMapping, err := s.chunkMappingStorage.Get(ctx, d)
 	if err != nil {
 		return nil, err
 	}
-	return chunkList.Digests, nil
+	return chunkMapping.Digests, nil
 }
+
 func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {

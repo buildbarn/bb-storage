@@ -3,10 +3,10 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "chunk",
     srcs = [
-        "caching_list_fetcher.go",
+        "caching_mapping_fetcher.go",
         "chunk.go",
-        "list.go",
-        "new_reader_from_list.go",
+        "mapping.go",
+        "new_reader_from_mapping.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/chunk",
     visibility = ["//visibility:public"],

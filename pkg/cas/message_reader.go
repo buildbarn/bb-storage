@@ -17,7 +17,7 @@ type messageReader[T any, TPtr interface {
 	proto.Message
 }] struct {
 	chunkBytesReader        reader.Reader[[]byte]
-	chunkListFetcher        chunk.ListFetcher
+	chunkMappingFetcher     chunk.MappingFetcher
 	cdcParametersFetcher    capabilities.CDCParametersFetcher
 	maximumMessageSizeBytes int
 }
@@ -27,10 +27,10 @@ type messageReader[T any, TPtr interface {
 func NewMessageReader[T any, TPtr interface {
 	*T
 	proto.Message
-}](chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, maximumMessageSizeBytes int) reader.Reader[TPtr] {
+}](chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, maximumMessageSizeBytes int) reader.Reader[TPtr] {
 	return &messageReader[T, TPtr]{
 		chunkBytesReader:        chunkBytesReader,
-		chunkListFetcher:        chunkListFetcher,
+		chunkMappingFetcher:     chunkMappingFetcher,
 		cdcParametersFetcher:    cdcParametersFetcher,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
@@ -42,7 +42,7 @@ func (mr *messageReader[T, TPtr]) Read(ctx context.Context, d digest.Digest) (TP
 		return nil, util.StatusWrap(err, "Could not fetch CDC parameters")
 	}
 	msg := TPtr(new(T))
-	bytes, err := GetBytes(ctx, mr.chunkBytesReader, mr.chunkListFetcher, params, d, int64(mr.maximumMessageSizeBytes))
+	bytes, err := GetBytes(ctx, mr.chunkBytesReader, mr.chunkMappingFetcher, params, d, int64(mr.maximumMessageSizeBytes))
 	if err != nil {
 		return nil, err
 	}

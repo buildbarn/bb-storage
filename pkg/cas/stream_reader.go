@@ -20,16 +20,16 @@ type StreamReader interface {
 
 type storageBackedStreamReader struct {
 	chunkBytesReader     reader.Reader[[]byte]
-	chunkListFetcher     chunk.ListFetcher
+	chunkMappingFetcher  chunk.MappingFetcher
 	cdcParametersFetcher capabilities.CDCParametersFetcher
 }
 
 // NewStorageBackedStreamReader creates a stream reader that reads from
-// the provided Chunk Storage (CS) and Chunk List Storage (CLS).
-func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher) StreamReader {
+// the provided Chunk Storage (CS) and Chunk Mapping Storage (CMS).
+func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher) StreamReader {
 	return &storageBackedStreamReader{
 		chunkBytesReader:     chunkBytesReader,
-		chunkListFetcher:     chunkListFetcher,
+		chunkMappingFetcher:  chunkMappingFetcher,
 		cdcParametersFetcher: cdcParametersFetcher,
 	}
 }
@@ -39,5 +39,5 @@ func (r *storageBackedStreamReader) ReadStream(ctx context.Context, d digest.Dig
 	if err != nil {
 		return nil, util.StatusWrap(err, "Could not fetch CDC parameters")
 	}
-	return GetReadCloserAt(ctx, r.chunkBytesReader, r.chunkListFetcher, params, d, 0)
+	return GetReadCloserAt(ctx, r.chunkBytesReader, r.chunkMappingFetcher, params, d, 0)
 }

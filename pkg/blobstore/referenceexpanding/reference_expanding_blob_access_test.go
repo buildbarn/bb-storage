@@ -33,7 +33,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockListFetcher(ctrl)
+	chunkMappingFetcher := mock.NewMockMappingFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
@@ -41,7 +41,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		chunkBytesReader,
-		chunkListFetcher,
+		chunkMappingFetcher,
 		cdcParametersFetcher,
 		&http.Client{Transport: roundTripper},
 		s3Client,
@@ -495,7 +495,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockListFetcher(ctrl)
+	chunkMappingFetcher := mock.NewMockMappingFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
@@ -503,7 +503,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		chunkBytesReader,
-		chunkListFetcher,
+		chunkMappingFetcher,
 		cdcParametersFetcher,
 		&http.Client{Transport: roundTripper},
 		s3Client,
@@ -535,7 +535,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 
 	indirectContentAddressableStorage := mock.NewMockBlobAccess[*icas.Reference](ctrl)
 	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
-	chunkListFetcher := mock.NewMockListFetcher(ctrl)
+	chunkMappingFetcher := mock.NewMockMappingFetcher(ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	roundTripper := mock.NewMockRoundTripper(ctrl)
 	s3Client := mock.NewMockS3Client(ctrl)
@@ -543,7 +543,7 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 	blobAccess := referenceexpanding.NewReferenceExpandingBlobAccess(
 		indirectContentAddressableStorage,
 		chunkBytesReader,
-		chunkListFetcher,
+		chunkMappingFetcher,
 		cdcParametersFetcher,
 		&http.Client{Transport: roundTripper},
 		s3Client,

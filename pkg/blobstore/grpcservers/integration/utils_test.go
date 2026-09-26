@@ -69,7 +69,7 @@ local inMemoryStorage = {
 			chunkStorage: {
 				'local': inMemoryStorage + { chunkingParameters: { minChunkSizeBytes: minChunkSizeBytes, horizonSizeBytes: 8*minChunkSizeBytes } },
 			},
-			chunkListStorage: {
+			chunkMappingStorage: {
 				'local': inMemoryStorage,
 			},
 		},
@@ -194,7 +194,7 @@ local simpleReplicator = { 'local': {} };
 	contentAddressableStorageServer: {
 		contentAddressableStorage: {
 			chunkStorage: readCaching(topology, csReplicator),
-			chunkListStorage: readCaching({ chunkListValidating: { backend: topology } }, simpleReplicator),
+			chunkMappingStorage: readCaching({ chunkMappingValidating: { backend: topology } }, simpleReplicator),
 			cdcParameterCache: {
 				cacheSize: 1,
 				cacheDuration: '60s',

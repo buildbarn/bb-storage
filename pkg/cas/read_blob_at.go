@@ -24,7 +24,7 @@ import (
 // fetch. For larger blobs only the chunks covering the requested
 // range are fetched, so random access reads do not stream the full
 // blob.
-func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, buf []byte, offset int64) (int, error) {
+func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, buf []byte, offset int64) (int, error) {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return 0, status.Errorf(codes.InvalidArgument, "Offset %d is outside of blob %s", offset, d)
 	}
@@ -44,15 +44,15 @@ func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 		return n, nil
 	}
 
-	manifest, err := chunkListFetcher.FetchChunkList(ctx, d)
+	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
 	if err != nil {
-		return 0, util.StatusWrap(err, "Could not fetch chunk list")
+		return 0, util.StatusWrap(err, "Could not fetch chunk mapping")
 	}
-	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
+	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
 
 	n := 0
-	for n < len(buf) && index < len(manifest.Digests) {
-		chunkBytes, err := chunkBytesReader.Read(ctx, manifest.Digests[index])
+	for n < len(buf) && index < len(mapping.Digests) {
+		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.Digests[index])
 		if err != nil {
 			return n, util.StatusWrap(err, "Could not fetch chunk")
 		}

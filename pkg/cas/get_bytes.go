@@ -16,24 +16,24 @@ import (
 
 // GetBytes returns the bytes of a digest from the CAS as a byteslice.
 // An error is returned if the digest is larger than maximumSizeBytes.
-func GetBytes(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, maximumSizeBytes int64) ([]byte, error) {
+func GetBytes(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, maximumSizeBytes int64) ([]byte, error) {
 	if d.GetSizeBytes() > maximumSizeBytes {
 		return nil, status.Errorf(codes.InvalidArgument, "Digest size of %d bytes exceeds maximum size of %d bytes", d.GetSizeBytes(), maximumSizeBytes)
 	}
 	if IsSingleChunk(params, d) {
 		return chunkBytesReader.Read(ctx, d)
 	}
-	manifest, err := chunkListFetcher.FetchChunkList(ctx, d)
+	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Could not fetch chunk list")
+		return nil, util.StatusWrap(err, "Could not fetch chunk mapping")
 	}
 	ret := make([]byte, d.GetSizeBytes())
-	for i := range manifest.Digests {
-		chunkBytes, err := chunkBytesReader.Read(ctx, manifest.Digests[i])
+	for i := range mapping.Digests {
+		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.Digests[i])
 		if err != nil {
 			return nil, util.StatusWrap(err, "Could not fetch chunk")
 		}
-		copy(ret[manifest.Offsets[i]:], chunkBytes)
+		copy(ret[mapping.Offsets[i]:], chunkBytes)
 	}
 	return ret, nil
 }

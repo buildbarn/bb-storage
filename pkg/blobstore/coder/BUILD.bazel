@@ -6,7 +6,7 @@ go_library(
     name = "coder",
     srcs = [
         "chunk_coder.go",
-        "chunk_list_coder.go",
+        "chunk_mapping_coder.go",
         "coder.go",
         "proto_coder.go",
         "xxh64_suffix_coder.go",

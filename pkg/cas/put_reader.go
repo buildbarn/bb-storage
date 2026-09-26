@@ -18,7 +18,7 @@ import (
 )
 
 // PutReader inserts all chunks for a digest from an io.Reader.
-func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], params *remoteexecution.RepMaxCdcParams, d digest.Digest, r io.Reader) error {
+func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], params *remoteexecution.RepMaxCdcParams, d digest.Digest, r io.Reader) error {
 	digestFunction := d.GetDigestFunction()
 	chunker := cdc.NewReaderChunker(digestFunction, r, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
 	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
@@ -55,17 +55,17 @@ func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.B
 	}
 
 	// A single chunk is the trivial case: it already lives in the
-	// chunk storage and needs no chunk list.
+	// chunk storage and needs no chunk mapping.
 	if len(chunkDigests) <= 1 {
 		return nil
 	}
 
-	chunkList, err := chunk.NewList(chunkDigests, uint64(d.GetSizeBytes()), true)
+	chunkMapping, err := chunk.NewMapping(chunkDigests, uint64(d.GetSizeBytes()), true)
 	if err != nil {
 		return err
 	}
-	if err := chunkListStorage.Put(ctx, d, chunkList); err != nil {
-		return util.StatusWrap(err, "Could not save chunk list for blob")
+	if err := chunkMappingStorage.Put(ctx, d, chunkMapping); err != nil {
+		return util.StatusWrap(err, "Could not save chunk mapping for blob")
 	}
 	return nil
 }

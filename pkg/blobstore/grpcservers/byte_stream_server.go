@@ -22,18 +22,18 @@ import (
 
 type byteStreamServer struct {
 	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
-	chunkListStorage     blobstore.BlobAccess[chunk.List]
+	chunkMappingStorage  blobstore.BlobAccess[chunk.Mapping]
 	cdcParametersFetcher capabilities.CDCParametersFetcher
 	zstdPool             bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
-// writing blobs to the Chunk Storage (CS) and Chunk List Storage (CLS).
+// writing blobs to the Chunk Storage (CS) and Chunk Mapping Storage (CMS).
 // It is used by Bazel to access the Content Addressable Storage (CAS).
-func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		chunkStorage:         chunkStorage,
-		chunkListStorage:     chunkListStorage,
+		chunkMappingStorage:  chunkMappingStorage,
 		cdcParametersFetcher: cdcParametersFetcher,
 		zstdPool:             zstdPool,
 	}
@@ -68,13 +68,13 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
 	if !cas.IsSingleChunk(params, d) {
-		chunkList, err := s.chunkListStorage.Get(ctx, d)
+		chunkMapping, err := s.chunkMappingStorage.Get(ctx, d)
 		if err != nil {
 			return err
 		}
-		i, chunkOffset := chunkList.FindChunkOffset(uint64(in.ReadOffset))
-		for ; i < len(chunkList.Digests); i++ {
-			chunk, err := s.chunkStorage.Get(ctx, chunkList.Digests[i])
+		i, chunkOffset := chunkMapping.FindChunkOffset(uint64(in.ReadOffset))
+		for ; i < len(chunkMapping.Digests); i++ {
+			chunk, err := s.chunkStorage.Get(ctx, chunkMapping.Digests[i])
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		return nil
 	}
 	if d.GetSizeBytes() != 0 {
-		// Blobs that fit in a single chunk have no chunk lists in
+		// Blobs that fit in a single chunk have no chunk mappings in
 		// storage; the blob is stored as the chunk itself. The empty
 		// blob is always present and yields no data.
 		chunk, err := s.chunkStorage.Get(ctx, d)
@@ -188,7 +188,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	if err != nil {
 		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
-	if err := cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkListStorage, params, d, r); err != nil {
+	if err := cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, r); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{

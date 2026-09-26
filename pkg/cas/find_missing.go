@@ -13,10 +13,10 @@ import (
 // FindMissing returns the digests from the given set that are not
 // present in the CAS. Digests smaller than twice the minimum chunk size
 // of the CDC parameters are looked up in the Chunk Storage (CS), while
-// larger digests are looked up in the Chunk List Storage (CLS). All
+// larger digests are looked up in the Chunk Mapping Storage (CMS). All
 // digests must belong to the instance name that the CDC parameters were
 // fetched for.
-func FindMissing(ctx context.Context, chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkListStorage blobstore.BlobAccess[chunk.List], params *remoteexecution.RepMaxCdcParams, digests digest.Set) (digest.Set, error) {
+func FindMissing(ctx context.Context, chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], params *remoteexecution.RepMaxCdcParams, digests digest.Set) (digest.Set, error) {
 	smallDigests := digest.NewSetBuilder(digests.Length())
 	largeDigests := digest.NewSetBuilder(digests.Length())
 	for _, d := range digests.Items() {
@@ -30,7 +30,7 @@ func FindMissing(ctx context.Context, chunkStorage blobstore.BlobAccess[*chunk.C
 	if err != nil {
 		return digest.EmptySet, err
 	}
-	largeMissing, err := chunkListStorage.FindMissing(ctx, largeDigests.Build())
+	largeMissing, err := chunkMappingStorage.FindMissing(ctx, largeDigests.Build())
 	if err != nil {
 		return digest.EmptySet, err
 	}

@@ -34,14 +34,14 @@ const (
 )
 
 type ContentAddressableStorageConfiguration struct {
-	state             protoimpl.MessageState              `protogen:"open.v1"`
-	ChunkStorage      *BlobAccessConfiguration            `protobuf:"bytes,1,opt,name=chunk_storage,json=chunkStorage,proto3" json:"chunk_storage,omitempty"`
-	ChunkListStorage  *BlobAccessConfiguration            `protobuf:"bytes,2,opt,name=chunk_list_storage,json=chunkListStorage,proto3" json:"chunk_list_storage,omitempty"`
-	ChunkListCache    *digest.ExistenceCacheConfiguration `protobuf:"bytes,3,opt,name=chunk_list_cache,json=chunkListCache,proto3" json:"chunk_list_cache,omitempty"`
-	CdcParameterCache *digest.ExistenceCacheConfiguration `protobuf:"bytes,4,opt,name=cdc_parameter_cache,json=cdcParameterCache,proto3" json:"cdc_parameter_cache,omitempty"`
-	ChunkCache        *digest.ExistenceCacheConfiguration `protobuf:"bytes,5,opt,name=chunk_cache,json=chunkCache,proto3" json:"chunk_cache,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state               protoimpl.MessageState              `protogen:"open.v1"`
+	ChunkStorage        *BlobAccessConfiguration            `protobuf:"bytes,1,opt,name=chunk_storage,json=chunkStorage,proto3" json:"chunk_storage,omitempty"`
+	ChunkMappingStorage *BlobAccessConfiguration            `protobuf:"bytes,2,opt,name=chunk_mapping_storage,json=chunkMappingStorage,proto3" json:"chunk_mapping_storage,omitempty"`
+	ChunkMappingCache   *digest.ExistenceCacheConfiguration `protobuf:"bytes,3,opt,name=chunk_mapping_cache,json=chunkMappingCache,proto3" json:"chunk_mapping_cache,omitempty"`
+	CdcParameterCache   *digest.ExistenceCacheConfiguration `protobuf:"bytes,4,opt,name=cdc_parameter_cache,json=cdcParameterCache,proto3" json:"cdc_parameter_cache,omitempty"`
+	ChunkCache          *digest.ExistenceCacheConfiguration `protobuf:"bytes,5,opt,name=chunk_cache,json=chunkCache,proto3" json:"chunk_cache,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ContentAddressableStorageConfiguration) Reset() {
@@ -81,16 +81,16 @@ func (x *ContentAddressableStorageConfiguration) GetChunkStorage() *BlobAccessCo
 	return nil
 }
 
-func (x *ContentAddressableStorageConfiguration) GetChunkListStorage() *BlobAccessConfiguration {
+func (x *ContentAddressableStorageConfiguration) GetChunkMappingStorage() *BlobAccessConfiguration {
 	if x != nil {
-		return x.ChunkListStorage
+		return x.ChunkMappingStorage
 	}
 	return nil
 }
 
-func (x *ContentAddressableStorageConfiguration) GetChunkListCache() *digest.ExistenceCacheConfiguration {
+func (x *ContentAddressableStorageConfiguration) GetChunkMappingCache() *digest.ExistenceCacheConfiguration {
 	if x != nil {
-		return x.ChunkListCache
+		return x.ChunkMappingCache
 	}
 	return nil
 }
@@ -184,7 +184,7 @@ type BlobAccessConfiguration struct {
 	//	*BlobAccessConfiguration_WithLabels
 	//	*BlobAccessConfiguration_Label
 	//	*BlobAccessConfiguration_DeadlineEnforcing
-	//	*BlobAccessConfiguration_ChunkListValidating
+	//	*BlobAccessConfiguration_ChunkMappingValidating
 	Backend       isBlobAccessConfiguration_Backend `protobuf_oneof:"backend"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -398,10 +398,10 @@ func (x *BlobAccessConfiguration) GetDeadlineEnforcing() *DeadlineEnforcingBlobA
 	return nil
 }
 
-func (x *BlobAccessConfiguration) GetChunkListValidating() *ChunkListValidatingBlobAccessConfiguration {
+func (x *BlobAccessConfiguration) GetChunkMappingValidating() *ChunkMappingValidatingBlobAccessConfiguration {
 	if x != nil {
-		if x, ok := x.Backend.(*BlobAccessConfiguration_ChunkListValidating); ok {
-			return x.ChunkListValidating
+		if x, ok := x.Backend.(*BlobAccessConfiguration_ChunkMappingValidating); ok {
+			return x.ChunkMappingValidating
 		}
 	}
 	return nil
@@ -487,8 +487,8 @@ type BlobAccessConfiguration_DeadlineEnforcing struct {
 	DeadlineEnforcing *DeadlineEnforcingBlobAccess `protobuf:"bytes,28,opt,name=deadline_enforcing,json=deadlineEnforcing,proto3,oneof"`
 }
 
-type BlobAccessConfiguration_ChunkListValidating struct {
-	ChunkListValidating *ChunkListValidatingBlobAccessConfiguration `protobuf:"bytes,29,opt,name=chunk_list_validating,json=chunkListValidating,proto3,oneof"`
+type BlobAccessConfiguration_ChunkMappingValidating struct {
+	ChunkMappingValidating *ChunkMappingValidatingBlobAccessConfiguration `protobuf:"bytes,29,opt,name=chunk_mapping_validating,json=chunkMappingValidating,proto3,oneof"`
 }
 
 func (*BlobAccessConfiguration_ReadCaching) isBlobAccessConfiguration_Backend() {}
@@ -529,7 +529,7 @@ func (*BlobAccessConfiguration_Label) isBlobAccessConfiguration_Backend() {}
 
 func (*BlobAccessConfiguration_DeadlineEnforcing) isBlobAccessConfiguration_Backend() {}
 
-func (*BlobAccessConfiguration_ChunkListValidating) isBlobAccessConfiguration_Backend() {}
+func (*BlobAccessConfiguration_ChunkMappingValidating) isBlobAccessConfiguration_Backend() {}
 
 type ReadCachingBlobAccessConfiguration struct {
 	state         protoimpl.MessageState       `protogen:"open.v1"`
@@ -1764,27 +1764,27 @@ func (x *GrpcBlobAccessConfiguration) GetEnableCompression() bool {
 	return false
 }
 
-type ChunkListValidatingBlobAccessConfiguration struct {
+type ChunkMappingValidatingBlobAccessConfiguration struct {
 	state         protoimpl.MessageState   `protogen:"open.v1"`
 	Backend       *BlobAccessConfiguration `protobuf:"bytes,1,opt,name=backend,proto3" json:"backend,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ChunkListValidatingBlobAccessConfiguration) Reset() {
-	*x = ChunkListValidatingBlobAccessConfiguration{}
+func (x *ChunkMappingValidatingBlobAccessConfiguration) Reset() {
+	*x = ChunkMappingValidatingBlobAccessConfiguration{}
 	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChunkListValidatingBlobAccessConfiguration) String() string {
+func (x *ChunkMappingValidatingBlobAccessConfiguration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChunkListValidatingBlobAccessConfiguration) ProtoMessage() {}
+func (*ChunkMappingValidatingBlobAccessConfiguration) ProtoMessage() {}
 
-func (x *ChunkListValidatingBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
+func (x *ChunkMappingValidatingBlobAccessConfiguration) ProtoReflect() protoreflect.Message {
 	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1796,12 +1796,12 @@ func (x *ChunkListValidatingBlobAccessConfiguration) ProtoReflect() protoreflect
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChunkListValidatingBlobAccessConfiguration.ProtoReflect.Descriptor instead.
-func (*ChunkListValidatingBlobAccessConfiguration) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChunkMappingValidatingBlobAccessConfiguration.ProtoReflect.Descriptor instead.
+func (*ChunkMappingValidatingBlobAccessConfiguration) Descriptor() ([]byte, []int) {
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDescGZIP(), []int{22}
 }
 
-func (x *ChunkListValidatingBlobAccessConfiguration) GetBackend() *BlobAccessConfiguration {
+func (x *ChunkMappingValidatingBlobAccessConfiguration) GetBackend() *BlobAccessConfiguration {
 	if x != nil {
 		return x.Backend
 	}
@@ -2012,17 +2012,17 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc = "" +
 	"\n" +
-	"Qgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xa5\x04\n" +
+	"Qgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xb1\x04\n" +
 	"&ContentAddressableStorageConfiguration\x12_\n" +
-	"\rchunk_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\fchunkStorage\x12h\n" +
-	"\x12chunk_list_storage\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x10chunkListStorage\x12e\n" +
-	"\x10chunk_list_cache\x18\x03 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x0echunkListCache\x12k\n" +
+	"\rchunk_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\fchunkStorage\x12n\n" +
+	"\x15chunk_mapping_storage\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x13chunkMappingStorage\x12k\n" +
+	"\x13chunk_mapping_cache\x18\x03 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x11chunkMappingCache\x12k\n" +
 	"\x13cdc_parameter_cache\x18\x04 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x11cdcParameterCache\x12\\\n" +
 	"\vchunk_cache\x18\x05 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\n" +
 	"chunkCache\"\x83\x02\n" +
 	"\x16BlobstoreConfiguration\x12\x89\x01\n" +
 	"\x1bcontent_addressable_storage\x18\x01 \x01(\v2I.buildbarn.configuration.blobstore.ContentAddressableStorageConfigurationR\x19contentAddressableStorage\x12]\n" +
-	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xe9\x10\n" +
+	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xf2\x10\n" +
 	"\x17BlobAccessConfiguration\x12j\n" +
 	"\fread_caching\x18\x04 \x01(\v2E.buildbarn.configuration.blobstore.ReadCachingBlobAccessConfigurationH\x00R\vreadCaching\x12T\n" +
 	"\x04grpc\x18\a \x01(\v2>.buildbarn.configuration.blobstore.GrpcBlobAccessConfigurationH\x00R\x04grpc\x12*\n" +
@@ -2045,8 +2045,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\vwith_labels\x18\x1a \x01(\v2D.buildbarn.configuration.blobstore.WithLabelsBlobAccessConfigurationH\x00R\n" +
 	"withLabels\x12\x16\n" +
 	"\x05label\x18\x1b \x01(\tH\x00R\x05label\x12o\n" +
-	"\x12deadline_enforcing\x18\x1c \x01(\v2>.buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccessH\x00R\x11deadlineEnforcing\x12\x83\x01\n" +
-	"\x15chunk_list_validating\x18\x1d \x01(\v2M.buildbarn.configuration.blobstore.ChunkListValidatingBlobAccessConfigurationH\x00R\x13chunkListValidatingB\t\n" +
+	"\x12deadline_enforcing\x18\x1c \x01(\v2>.buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccessH\x00R\x11deadlineEnforcing\x12\x8c\x01\n" +
+	"\x18chunk_mapping_validating\x18\x1d \x01(\v2P.buildbarn.configuration.blobstore.ChunkMappingValidatingBlobAccessConfigurationH\x00R\x16chunkMappingValidatingB\t\n" +
 	"\abackendJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\n" +
 	"\x10\v\"\xa4\x02\n" +
 	"\"ReadCachingBlobAccessConfiguration\x12N\n" +
@@ -2158,8 +2158,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\abackend\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\"\x97\x01\n" +
 	"\x1bGrpcBlobAccessConfiguration\x12I\n" +
 	"\x06client\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\x06client\x12-\n" +
-	"\x12enable_compression\x18\x02 \x01(\bR\x11enableCompression\"\x82\x01\n" +
-	"*ChunkListValidatingBlobAccessConfiguration\x12T\n" +
+	"\x12enable_compression\x18\x02 \x01(\bR\x11enableCompression\"\x85\x01\n" +
+	"-ChunkMappingValidatingBlobAccessConfiguration\x12T\n" +
 	"\abackend\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackendBCZAgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstoreb\x06proto3"
 
 var (
@@ -2198,7 +2198,7 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 	(*WithLabelsBlobAccessConfiguration)(nil),              // 19: buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
 	(*DeadlineEnforcingBlobAccess)(nil),                    // 20: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
 	(*GrpcBlobAccessConfiguration)(nil),                    // 21: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration
-	(*ChunkListValidatingBlobAccessConfiguration)(nil),     // 22: buildbarn.configuration.blobstore.ChunkListValidatingBlobAccessConfiguration
+	(*ChunkMappingValidatingBlobAccessConfiguration)(nil),  // 22: buildbarn.configuration.blobstore.ChunkMappingValidatingBlobAccessConfiguration
 	(*ShardingBlobAccessConfiguration_Shard)(nil),          // 23: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
 	nil, // 24: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry
 	(*LocalBlobAccessConfiguration_BlocksInMemory)(nil),      // 25: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksInMemory
@@ -2221,8 +2221,8 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_depIdxs = []int32{
 	2,  // 0: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	2,  // 1: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_list_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
-	30, // 2: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_list_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
+	2,  // 1: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_mapping_storage:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	30, // 2: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_mapping_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
 	30, // 3: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.cdc_parameter_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
 	30, // 4: buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration.chunk_cache:type_name -> buildbarn.configuration.digest.ExistenceCacheConfiguration
 	0,  // 5: buildbarn.configuration.blobstore.BlobstoreConfiguration.content_addressable_storage:type_name -> buildbarn.configuration.blobstore.ContentAddressableStorageConfiguration
@@ -2245,7 +2245,7 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 	18, // 22: buildbarn.configuration.blobstore.BlobAccessConfiguration.zip_writing:type_name -> buildbarn.configuration.blobstore.ZIPBlobAccessConfiguration
 	19, // 23: buildbarn.configuration.blobstore.BlobAccessConfiguration.with_labels:type_name -> buildbarn.configuration.blobstore.WithLabelsBlobAccessConfiguration
 	20, // 24: buildbarn.configuration.blobstore.BlobAccessConfiguration.deadline_enforcing:type_name -> buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess
-	22, // 25: buildbarn.configuration.blobstore.BlobAccessConfiguration.chunk_list_validating:type_name -> buildbarn.configuration.blobstore.ChunkListValidatingBlobAccessConfiguration
+	22, // 25: buildbarn.configuration.blobstore.BlobAccessConfiguration.chunk_mapping_validating:type_name -> buildbarn.configuration.blobstore.ChunkMappingValidatingBlobAccessConfiguration
 	2,  // 26: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.slow:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	2,  // 27: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.fast:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	11, // 28: buildbarn.configuration.blobstore.ReadCachingBlobAccessConfiguration.replicator:type_name -> buildbarn.configuration.blobstore.BlobReplicatorConfiguration
@@ -2293,7 +2293,7 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 	39, // 70: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.timeout:type_name -> google.protobuf.Duration
 	2,  // 71: buildbarn.configuration.blobstore.DeadlineEnforcingBlobAccess.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	38, // 72: buildbarn.configuration.blobstore.GrpcBlobAccessConfiguration.client:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	2,  // 73: buildbarn.configuration.blobstore.ChunkListValidatingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
+	2,  // 73: buildbarn.configuration.blobstore.ChunkMappingValidatingBlobAccessConfiguration.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	2,  // 74: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard.backend:type_name -> buildbarn.configuration.blobstore.BlobAccessConfiguration
 	23, // 75: buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.ShardsEntry.value:type_name -> buildbarn.configuration.blobstore.ShardingBlobAccessConfiguration.Shard
 	41, // 76: buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.BlocksOnBlockDevice.source:type_name -> buildbarn.configuration.blockdevice.Configuration
@@ -2334,7 +2334,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blob
 		(*BlobAccessConfiguration_WithLabels)(nil),
 		(*BlobAccessConfiguration_Label)(nil),
 		(*BlobAccessConfiguration_DeadlineEnforcing)(nil),
-		(*BlobAccessConfiguration_ChunkListValidating)(nil),
+		(*BlobAccessConfiguration_ChunkMappingValidating)(nil),
 	}
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_msgTypes[6].OneofWrappers = []any{
 		(*LocalBlobAccessConfiguration_BlocksInMemory_)(nil),

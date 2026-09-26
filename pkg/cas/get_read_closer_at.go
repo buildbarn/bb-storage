@@ -18,7 +18,7 @@ import (
 
 // GetReadCloserAt returns an io.ReadCloser that reads contents of a
 // blob in seeked to a specific offset.
-func GetReadCloserAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkListFetcher chunk.ListFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64) (io.ReadCloser, error) {
+func GetReadCloserAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64) (io.ReadCloser, error) {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return nil, status.Errorf(codes.InvalidArgument, "Offset %d is outside of blob of size %s", offset, d)
 	}
@@ -31,13 +31,13 @@ func GetReadCloserAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte]
 		return io.NopCloser(bytes.NewReader(chunkBytes[offset:])), nil
 	}
 
-	manifest, err := chunkListFetcher.FetchChunkList(ctx, d)
+	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Could not fetch chunk list")
+		return nil, util.StatusWrap(err, "Could not fetch chunk mapping")
 	}
-	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
-	offsetDigests := manifest.Digests[index:]
-	r := chunk.NewReaderFromList(ctx, offsetDigests, chunkBytesReader)
+	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
+	offsetDigests := mapping.Digests[index:]
+	r := chunk.NewReaderFromMapping(ctx, offsetDigests, chunkBytesReader)
 	if chunkOffset > 0 {
 		if _, err := io.CopyN(io.Discard, r, chunkOffset); err != nil {
 			return nil, util.StatusWrap(err, "Failed to skip to read offset")

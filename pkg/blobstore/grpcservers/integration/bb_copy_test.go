@@ -51,8 +51,8 @@ local inMemoryStorage = {
 					}
 				},
 			},
-			chunkListStorage: {
-				chunkListValidating: {
+			chunkMappingStorage: {
+				chunkMappingValidating: {
 					backend: { 'local': inMemoryStorage }
 				}
 			},
@@ -123,7 +123,7 @@ local maximumMessageSizeBytes = %d;
 				client: { address: "unix:" + sourcePath },
 			},
 		},
-		chunkListStorage:  {
+		chunkMappingStorage:  {
 			grpc: {
 				client: { address: "unix:" + sourcePath },
 			},
@@ -140,7 +140,7 @@ local maximumMessageSizeBytes = %d;
 				client: { address: "unix:" + sinkPath },
 			},
 		},
-		chunkListStorage:  {
+		chunkMappingStorage:  {
 			grpc: {
 				client: { address: "unix:" + sinkPath },
 			},

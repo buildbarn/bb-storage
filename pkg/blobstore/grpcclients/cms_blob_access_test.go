@@ -20,11 +20,11 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestCLSBlobAccessGet(t *testing.T) {
+func TestCMSBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCLSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkDigest1 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "2b58e59caab73fafd9ae2f465c60db5b", 3)
@@ -70,17 +70,17 @@ func TestCLSBlobAccessGet(t *testing.T) {
 				ChunkDigests: []*remoteexecution.Digest{chunkDigest2.GetProto()},
 			},
 		})
-		chunkList, err := blobAccess.Get(ctx, blobDigest)
+		chunkMapping, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		require.Equal(t, chunk.List{
+		require.Equal(t, chunk.Mapping{
 			Digests: []digest.Digest{chunkDigest1, chunkDigest2},
 			Offsets: []uint64{0, 3},
-		}, chunkList)
+		}, chunkMapping)
 	})
 
 	t.Run("SuccessSingletonList", func(t *testing.T) {
 		// The upstream server reports the blob itself as the single
-		// chunk of its mapping. Such blobs have no chunk list in
+		// chunk of its mapping. Such blobs have no chunk mapping in
 		// storage, so this maps to NotFound.
 		expectGetChunkMappingStream([]*remoteexecution.GetChunkMappingResponse{
 			{
@@ -90,7 +90,7 @@ func TestCLSBlobAccessGet(t *testing.T) {
 		})
 		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t,
-			status.Error(codes.NotFound, "Blob has no chunk list in storage"),
+			status.Error(codes.NotFound, "Blob has no chunk mapping in storage"),
 			err)
 	})
 
@@ -130,7 +130,7 @@ func TestCLSBlobAccessGet(t *testing.T) {
 		})
 		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t,
-			status.Error(codes.Internal, "Chunk list does not compose to blob"),
+			status.Error(codes.Internal, "Chunk mapping does not compose to blob"),
 			err)
 	})
 
@@ -140,7 +140,7 @@ func TestCLSBlobAccessGet(t *testing.T) {
 		})
 		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t,
-			status.Error(codes.Internal, "Chunk list does not compose to blob"),
+			status.Error(codes.Internal, "Chunk mapping does not compose to blob"),
 			err)
 	})
 
@@ -153,21 +153,21 @@ func TestCLSBlobAccessGet(t *testing.T) {
 		})
 		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t,
-			status.Error(codes.Internal, "Chunk list does not compose to blob"),
+			status.Error(codes.Internal, "Chunk mapping does not compose to blob"),
 			err)
 	})
 }
 
-func TestCLSBlobAccessGetEmptyBlob(t *testing.T) {
+func TestCMSBlobAccessGetEmptyBlob(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCLSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
 
 	emptyBlobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 
 	t.Run("EmptyListForEmptyBlob", func(t *testing.T) {
-		// The empty blob has no chunk list in storage, so an empty
+		// The empty blob has no chunk mapping in storage, so an empty
 		// mapping composes it and maps to NotFound.
 		clientStream := mock.NewMockClientStream(ctrl)
 		client.EXPECT().NewStream(
@@ -193,16 +193,16 @@ func TestCLSBlobAccessGetEmptyBlob(t *testing.T) {
 
 		_, err := blobAccess.Get(ctx, emptyBlobDigest)
 		testutil.RequireEqualStatus(t,
-			status.Error(codes.NotFound, "Blob has no chunk list in storage"),
+			status.Error(codes.NotFound, "Blob has no chunk mapping in storage"),
 			err)
 	})
 }
 
-func TestCLSBlobAccessPut(t *testing.T) {
+func TestCMSBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCLSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkDigest1 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "2b58e59caab73fafd9ae2f465c60db5b", 3)
@@ -232,7 +232,7 @@ func TestCLSBlobAccessPut(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, blobDigest, chunk.List{
+		err := blobAccess.Put(ctx, blobDigest, chunk.Mapping{
 			Digests: []digest.Digest{chunkDigest1, chunkDigest2},
 			Offsets: []uint64{0, 3},
 		})
@@ -262,7 +262,7 @@ func TestCLSBlobAccessPut(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, emptyBlobDigest, chunk.List{})
+		err := blobAccess.Put(ctx, emptyBlobDigest, chunk.Mapping{})
 		require.NoError(t, err)
 	})
 }

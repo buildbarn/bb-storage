@@ -60,13 +60,13 @@ func TestByteStreamServer(t *testing.T) {
 	l := bufconn.Listen(1 << 20)
 	server := grpc.NewServer()
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	zstdPool := bb_zstd.NewUnboundedPool(
 		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
 	)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(chunkStorage, chunkListStorage, cdcParametersFetcher, zstdPool))
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool))
 	go func() {
 		require.NoError(t, server.Serve(l))
 	}()
@@ -145,11 +145,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "1538d378083b9afa5ffad767f7269509", 10)
 		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "2538d378083b9afa5ffad767f7269509", 2)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
-		chunkListStorage.EXPECT().Get(
+		chunkMappingStorage.EXPECT().Get(
 			gomock.Any(),
 			digest1,
 		).Return(
-			chunk.List{
+			chunk.Mapping{
 				Offsets: []uint64{0, 10, 20},
 				Digests: []digest.Digest{chunkDigest1, chunkDigest2, chunkDigest3},
 			},
@@ -367,11 +367,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269507", 10)
 		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "4538d378083b9afa5ffad767f7269506", 2)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
-		chunkListStorage.EXPECT().Get(
+		chunkMappingStorage.EXPECT().Get(
 			gomock.Any(),
 			digest1,
 		).Return(
-			chunk.List{
+			chunk.Mapping{
 				Offsets: []uint64{0, 10, 20},
 				Digests: []digest.Digest{chunkDigest1, chunkDigest2, chunkDigest3},
 			},
@@ -411,11 +411,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269507", 10)
 		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "5538d378083b9afa5ffad767f7269506", 2)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
-		chunkListStorage.EXPECT().Get(
+		chunkMappingStorage.EXPECT().Get(
 			gomock.Any(),
 			digest1,
 		).Return(
-			chunk.List{
+			chunk.Mapping{
 				Offsets: []uint64{0, 10, 20},
 				Digests: []digest.Digest{chunkDigest1, chunkDigest2, chunkDigest3},
 			},
@@ -453,11 +453,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269507", 10)
 		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "6538d378083b9afa5ffad767f7269506", 2)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
-		chunkListStorage.EXPECT().Get(
+		chunkMappingStorage.EXPECT().Get(
 			gomock.Any(),
 			digest1,
 		).Return(
-			chunk.List{
+			chunk.Mapping{
 				Offsets: []uint64{0, 10, 20},
 				Digests: []digest.Digest{chunkDigest1, chunkDigest2, chunkDigest3},
 			},
@@ -481,11 +481,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkDigest2 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269507", 10)
 		chunkDigest3 := digest.MustNewDigest("debian8", remoteexecution.DigestFunction_MD5, "7538d378083b9afa5ffad767f7269506", 2)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("debian8")).Return(twoChunksParameters, nil)
-		chunkListStorage.EXPECT().Get(
+		chunkMappingStorage.EXPECT().Get(
 			gomock.Any(),
 			digest1,
 		).Return(
-			chunk.List{
+			chunk.Mapping{
 				Offsets: []uint64{0, 10, 20},
 				Digests: []digest.Digest{chunkDigest1, chunkDigest2, chunkDigest3},
 			},

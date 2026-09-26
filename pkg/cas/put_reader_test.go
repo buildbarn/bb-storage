@@ -22,7 +22,7 @@ import (
 func TestContentAddressableStoragePutReaderSingleChunk(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	data := []byte("Hello")
@@ -31,13 +31,13 @@ func TestContentAddressableStoragePutReaderSingleChunk(t *testing.T) {
 
 	chunkStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(nil)
 
-	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(data)))
+	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(data)))
 }
 
 func TestContentAddressableStoragePutReaderMultipleChunks(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The input is slightly larger than twice the minimum chunk size,
@@ -46,7 +46,7 @@ func TestContentAddressableStoragePutReaderMultipleChunks(t *testing.T) {
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "c1df2b2b8aa945f29de62076a8f1e2d9", int64(len(data)))
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	expectedChunkList := chunk.List{
+	expectedChunkMapping := chunk.Mapping{
 		Digests: []digest.Digest{
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "9871f053ed93e778d5090e3dc038815d", 77),
 			digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "2044d462a0be5850ee579b02a1ca3b25", 66),
@@ -55,23 +55,23 @@ func TestContentAddressableStoragePutReaderMultipleChunks(t *testing.T) {
 		Validated: true,
 	}
 
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[0], gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.Digests[0], gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
 		return bytes.Equal(chunk.GetBytes(), data[:77])
 	})).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkList.Digests[1], gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.Digests[1], gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
 		return bytes.Equal(chunk.GetBytes(), data[77:])
 	})).Return(nil)
-	chunkListStorage.EXPECT().Put(ctx, d, expectedChunkList).Return(nil)
+	chunkMappingStorage.EXPECT().Put(ctx, d, expectedChunkMapping).Return(nil)
 
-	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(data)))
+	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(data)))
 }
 
 func TestContentAddressableStoragePutReaderRejectsBadDigests(t *testing.T) {
@@ -115,9 +115,9 @@ func TestContentAddressableStoragePutReaderRejectsBadDigests(t *testing.T) {
 			t.Run(size.name+"/"+tc.name, func(t *testing.T) {
 				ctrl, ctx := gomock.WithContext(context.Background(), t)
 				chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-				chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+				chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 				chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, tc.digest, bytes.NewReader(size.data))
+				err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, tc.digest, bytes.NewReader(size.data))
 				require.Equal(t, codes.InvalidArgument, status.Code(err))
 			})
 		}
@@ -127,21 +127,21 @@ func TestContentAddressableStoragePutReaderRejectsBadDigests(t *testing.T) {
 func TestContentAddressableStoragePutReaderEmptyStream(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// An empty stream contains no chunks at all, so neither the Chunk
-	// Storage nor the Chunk List Storage may be touched.
+	// Storage nor the Chunk Mapping Storage may be touched.
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(nil)))
+	require.NoError(t, cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(nil)))
 }
 
 func TestContentAddressableStoragePutReaderPropagatesChunkStorageErrors(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	data := []byte("Hello")
@@ -150,34 +150,34 @@ func TestContentAddressableStoragePutReaderPropagatesChunkStorageErrors(t *testi
 
 	chunkStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire"))
 
-	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(data))
+	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(data))
 	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to save chunk: Disk on fire"), err)
 }
 
-func TestContentAddressableStoragePutReaderPropagatesChunkListStorageErrors(t *testing.T) {
+func TestContentAddressableStoragePutReaderPropagatesChunkMappingStorageErrors(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The input is slightly larger than twice the minimum chunk size,
-	// so that it decomposes into exactly two chunks and a chunk list
+	// so that it decomposes into exactly two chunks and a chunk mapping
 	// needs to be stored.
 	data := []byte("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The end.")
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "c1df2b2b8aa945f29de62076a8f1e2d9", int64(len(data)))
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
 	chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
-	chunkListStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire"))
+	chunkMappingStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire"))
 
-	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(data))
-	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Could not save chunk list for blob: Disk on fire"), err)
+	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(data))
+	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Could not save chunk mapping for blob: Disk on fire"), err)
 }
 
 func TestContentAddressableStoragePutReaderOversizedStream(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
-	chunkListStorage := mock.NewMockBlobAccess[chunk.List](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The stream contains more data than the digest accounts for. The
@@ -189,6 +189,6 @@ func TestContentAddressableStoragePutReaderOversizedStream(t *testing.T) {
 
 	chunkStorage.EXPECT().Put(ctx, digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).Return(nil)
 
-	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkListStorage, params, d, bytes.NewReader(data))
+	err := cas.PutReader(ctx, zstdPool, chunkStorage, chunkMappingStorage, params, d, bytes.NewReader(data))
 	testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be 3 bytes but have already received 5 bytes"), err)
 }
