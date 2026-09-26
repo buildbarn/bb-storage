@@ -7,14 +7,11 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-// mappingReadCloser is an io.ReadCloser that stitches together the
+// mappingReader is an io.Reader that stitches together the
 // contents of a blob based on an ordered mapping of chunk digests.
-type mappingReadCloser struct {
+type mappingReader struct {
 	ctx              context.Context
 	chunkBytesReader reader.Reader[[]byte]
 	chunkDigests     []digest.Digest
@@ -22,27 +19,21 @@ type mappingReadCloser struct {
 	currentChunkIndex  int
 	currentChunkData   []byte
 	currentChunkOffset int
-	closed             bool
 }
 
-// NewReaderFromMapping creates an io.ReadCloser that yields the
+// NewReaderFromMapping creates an io.Reader that yields the
 // concatenated contents of the chunks identified by the provided
 // digests.
-func NewReaderFromMapping(ctx context.Context, chunkDigests []digest.Digest, chunkBytesReader reader.Reader[[]byte]) io.ReadCloser {
-	return &mappingReadCloser{
+func NewReaderFromMapping(ctx context.Context, chunkDigests []digest.Digest, chunkBytesReader reader.Reader[[]byte]) io.Reader {
+	return &mappingReader{
 		ctx:              ctx,
 		chunkBytesReader: chunkBytesReader,
 		chunkDigests:     chunkDigests,
 	}
 }
 
-func (r *mappingReadCloser) Read(p []byte) (int, error) {
-	if r.closed {
-		return 0, status.Error(codes.Internal, "Reader is already closed")
-	}
-
-	// Fetch the next chunk if the current one is exhausted. Chunk mappings
-	// are guaranteed not to contain empty chunks.
+func (r *mappingReader) Read(p []byte) (int, error) {
+	// Fetch the next chunk if the current one is exhausted.
 	if r.currentChunkOffset >= len(r.currentChunkData) {
 		if r.currentChunkIndex >= len(r.chunkDigests) {
 			return 0, io.EOF
@@ -66,10 +57,4 @@ func (r *mappingReadCloser) Read(p []byte) (int, error) {
 	}
 
 	return n, nil
-}
-
-func (r *mappingReadCloser) Close() error {
-	r.closed = true
-	r.currentChunkData = nil
-	return nil
 }

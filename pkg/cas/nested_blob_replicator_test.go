@@ -3,7 +3,6 @@ package cas_test
 import (
 	"bytes"
 	"context"
-	"io"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -168,7 +167,7 @@ func TestNestedBlobReplicator(t *testing.T) {
 		directoryReader.EXPECT().Read(ctx, emptyDirectoryDigest).Return(emptyDir, nil)
 
 		replicator.EXPECT().Replicate(ctx, treeDigest.ToSingletonSet()).Return(nil)
-		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(io.NopCloser(bytes.NewReader(treeBytes)), nil)
+		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(bytes.NewReader(treeBytes), nil)
 		replicator.EXPECT().Replicate(ctx, digest.NewSetBuilder(2).Add(file4Digest).Add(file5Digest).Build()).Return(nil)
 
 		replicator.EXPECT().Replicate(ctx, inputRootDirectoryDigest.ToSingletonSet()).Return(nil)

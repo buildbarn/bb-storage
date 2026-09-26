@@ -25,6 +25,9 @@ type IntTreeDirectoryVisitor = blobstore.TreeDirectoryVisitor[int]
 // ReadCloser is an alias of io.ReadCloser.
 type ReadCloser = io.ReadCloser
 
+// IOReader is an alias of io.Reader.
+type IOReader = io.Reader
+
 // RecordArray is declared for unit testing the hash map.
 type RecordArray = lossymap.RecordArray[int, int, int]
 

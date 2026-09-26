@@ -15,7 +15,7 @@ import (
 // in a streaming fashion.
 type StreamReader interface {
 	// Read a blob from the CAS with the specific digest.
-	ReadStream(ctx context.Context, d digest.Digest) (io.ReadCloser, error)
+	ReadStream(ctx context.Context, d digest.Digest) (io.Reader, error)
 }
 
 type storageBackedStreamReader struct {
@@ -34,10 +34,10 @@ func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkM
 	}
 }
 
-func (r *storageBackedStreamReader) ReadStream(ctx context.Context, d digest.Digest) (io.ReadCloser, error) {
+func (r *storageBackedStreamReader) ReadStream(ctx context.Context, d digest.Digest) (io.Reader, error) {
 	params, err := r.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
 		return nil, util.StatusWrap(err, "Could not fetch CDC parameters")
 	}
-	return GetReadCloserAt(ctx, r.chunkBytesReader, r.chunkMappingFetcher, params, d, 0)
+	return GetReader(ctx, r.chunkBytesReader, r.chunkMappingFetcher, params, d, 0)
 }

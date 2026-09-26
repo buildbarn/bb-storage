@@ -7,6 +7,7 @@ go_library(
         "chunk.go",
         "mapping.go",
         "new_reader_from_mapping.go",
+        "new_validating_reader_from_mapping.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/chunk",
     visibility = ["//visibility:public"],
@@ -23,10 +24,20 @@ go_library(
 
 go_test(
     name = "chunk_test",
-    srcs = ["chunk_test.go"],
+    srcs = [
+        "chunk_test.go",
+        "new_validating_reader_from_mapping_test.go",
+    ],
     deps = [
         ":chunk",
+        "//internal/mock",
+        "//pkg/digest",
+        "//pkg/testutil",
         "//pkg/zstd",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_uber_go_mock//gomock",
     ],
 )

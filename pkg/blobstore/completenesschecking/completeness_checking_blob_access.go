@@ -203,10 +203,8 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			}
 			return nil
 		}); err != nil {
-			r.Close()
 			return util.StatusWrapf(err, "Output directory %#v", outputDirectory.Path)
 		}
-		r.Close()
 	}
 	return findMissingQueue.finalize()
 }

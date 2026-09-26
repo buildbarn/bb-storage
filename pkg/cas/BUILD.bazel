@@ -8,7 +8,7 @@ go_library(
         "chunk_bytes_reader.go",
         "find_missing.go",
         "get_bytes.go",
-        "get_read_closer_at.go",
+        "get_reader.go",
         "into_writer.go",
         "is_single_chunk.go",
         "message_reader.go",
@@ -40,6 +40,7 @@ go_library(
 go_test(
     name = "cas_test",
     srcs = [
+        "get_validating_reader_test.go",
         "nested_blob_replicator_test.go",
         "put_reader_test.go",
     ],

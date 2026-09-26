@@ -120,13 +120,14 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		if reference.SizeBytes > 0 {
 			sizeBytes = reference.SizeBytes
 		}
-		r, err = ba.gcsClient.
+		gcsReader, err := ba.gcsClient.
 			Bucket(medium.Gcs.Bucket).
 			Object(medium.Gcs.Object).
 			NewRangeReader(ctx, reference.OffsetBytes, sizeBytes)
 		if err != nil {
 			return nil, util.StatusWrap(errToStatus(err), "Google Cloud Storage request failed")
 		}
+		r = gcsReader
 	case *icas.Reference_ContentAddressableStorage_:
 		if reference.OffsetBytes != 0 || reference.SizeBytes != 0 {
 			return nil, status.Error(codes.Unimplemented, "Partial reads are not supported by the Content Addressable Storage backend")
@@ -151,10 +152,14 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		if err != nil {
 			return nil, err
 		}
-		r, err = cas.GetReadCloserAt(ctx, ba.chunkBytesReader, ba.chunkMappingFetcher, params, referenceDigest, 0)
+		// The CAS backed reader does not require closing, as all
+		// data is stored in memory and no resources are held.
+		// Wrap it to unify the handling of all media below.
+		casReader, err := cas.GetReader(ctx, ba.chunkBytesReader, ba.chunkMappingFetcher, params, referenceDigest, 0)
 		if err != nil {
 			return nil, err
 		}
+		r = io.NopCloser(casReader)
 	default:
 		return nil, status.Error(codes.Unimplemented, "Reference uses an unsupported medium")
 	}

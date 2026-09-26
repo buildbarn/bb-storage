@@ -3,7 +3,6 @@ package completenesschecking_test
 import (
 	"bytes"
 	"context"
-	"io"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -147,9 +146,8 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 			nil,
 		)
 
-		errReader := mock.NewMockReadCloser(ctrl)
+		errReader := mock.NewMockIOReader(ctrl)
 		errReader.EXPECT().Read(gomock.Any()).Return(0, status.Error(codes.Internal, "Hard disk has a case of the Mondays")).AnyTimes()
-		errReader.EXPECT().Close()
 
 		treeReader.EXPECT().ReadStream(
 			ctx,
@@ -273,7 +271,7 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		treeReader.EXPECT().ReadStream(
 			ctx,
 			digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 200),
-		).Return(io.NopCloser(bytes.NewReader(treeBytes)), nil)
+		).Return(bytes.NewReader(treeBytes), nil)
 
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), gomock.Any()).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
 		chunkStorage.EXPECT().FindMissing(

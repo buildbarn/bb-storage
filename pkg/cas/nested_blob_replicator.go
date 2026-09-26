@@ -148,7 +148,6 @@ func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 		if err != nil {
 			return err
 		}
-		defer r.Close()
 
 		// Gather digests of files contained in the directories.
 		childFileDigests := digest.NewSetBuilder(0)
