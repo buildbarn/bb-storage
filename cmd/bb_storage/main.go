@@ -9,10 +9,13 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/auth"
 	auth_configuration "github.com/buildbarn/bb-storage/pkg/auth/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -54,44 +57,75 @@ func main() {
 		var cacheCapabilitiesAuthorizers []auth.Authorizer
 
 		// Content Addressable Storage (CAS).
-		var contentAddressableStorageInfo *blobstore_configuration.BlobAccessInfo
-		var contentAddressableStorage blobstore.BlobAccess
-		if configuration.ContentAddressableStorage != nil {
-			info, authorizedBackend, allAuthorizers, err := newScannableBlobAccess(
+		var chunkBytesReader reader.Reader[[]byte]
+		var chunkStorage blobstore.BlobAccess[*chunk.Chunk]
+		var chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
+		var chunkMappingFetcher chunk.MappingFetcher
+		var cdcParametersFetcher capabilities.CDCParametersFetcher
+		var digestKeyFormat digest.KeyFormat
+		var authorizedChunkStorage blobstore.BlobAccess[*chunk.Chunk]
+		var authorizedChunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
+		var maximumChunkCount int
+		if configuration.ContentAddressableStorageServer != nil {
+			maximumChunkCount = int(configuration.ContentAddressableStorageServer.MaximumChunkCount)
+
+			var err error
+			chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err = blobstore_configuration.NewCASFromConfiguration(
 				dependenciesGroup,
-				configuration.ContentAddressableStorage,
-				blobstore_configuration.NewCASBlobAccessCreator(
-					grpcClientFactory,
-					int(configuration.MaximumMessageSizeBytes),
-					zstdPool,
-				),
+				configuration.ContentAddressableStorageServer.ContentAddressableStorage,
 				grpcClientFactory,
+				int(configuration.MaximumMessageSizeBytes),
+				zstdPool,
 			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
+
+			// Create authorizers.
+			getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.GetAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Get() authorizer for Content Addressable Storage")
+			}
+			putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.PutAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create Put() authorizer for Content Addressable Storage")
+			}
+			findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.FindMissingAuthorizer, dependenciesGroup, grpcClientFactory)
+			if err != nil {
+				return util.StatusWrap(err, "Failed to create FindMissing() authorizer for Content Addressable Storage")
+			}
+
+			// Create authorized versions of the backends.
+			authorizedChunkStorage = blobstore.NewAuthorizingBlobAccess(chunkStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			authorizedChunkMappingStorage = blobstore.NewAuthorizingBlobAccess(chunkMappingStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			// Create the Chunk Storage (CS).
 			cacheCapabilitiesProviders = append(
 				cacheCapabilitiesProviders,
-				info.BlobAccess,
+				chunkStorage,
 				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 					CacheCapabilities: &remoteexecution.CacheCapabilities{
 						SupportedCompressors: configuration.SupportedCompressors,
+						SpliceBlobSupport:    true,
+						SplitBlobSupport:     true,
 					},
 				}),
 			)
-			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, allAuthorizers...)
-			contentAddressableStorageInfo = &info
-			contentAddressableStorage = authorizedBackend
+			cacheCapabilitiesAuthorizers = append(cacheCapabilitiesAuthorizers, getAuthorizer, putAuthorizer, findMissingAuthorizer)
 		}
 
 		// Action Cache (AC).
-		var actionCache blobstore.BlobAccess
+		var actionCache blobstore.BlobAccess[*remoteexecution.ActionResult]
 		if configuration.ActionCache != nil {
 			info, authorizedBackend, allAuthorizers, putAuthorizer, err := newNonScannableBlobAccess(
 				dependenciesGroup,
 				configuration.ActionCache,
 				blobstore_configuration.NewACBlobAccessCreator(
-					contentAddressableStorageInfo,
+					chunkBytesReader,
+					chunkStorage,
+					chunkMappingStorage,
+					chunkMappingFetcher,
+					cdcParametersFetcher,
+					digestKeyFormat,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
 				),
@@ -109,7 +143,7 @@ func main() {
 		}
 
 		// Buildbarn extension: Indirect Content Addressable Storage (ICAS).
-		var indirectContentAddressableStorage blobstore.BlobAccess
+		var indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference]
 		if configuration.IndirectContentAddressableStorage != nil {
 			_, authorizedBackend, _, err := newScannableBlobAccess(
 				dependenciesGroup,
@@ -127,7 +161,7 @@ func main() {
 		}
 
 		// Buildbarn extension: Initial Size Class Cache (ISCC).
-		var initialSizeClassCache blobstore.BlobAccess
+		var initialSizeClassCache blobstore.BlobAccess[*iscc.PreviousExecutionStats]
 		if configuration.InitialSizeClassCache != nil {
 			_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
 				dependenciesGroup,
@@ -145,7 +179,7 @@ func main() {
 		}
 
 		// Buildbarn extension: File System Access Cache (FSAC).
-		var fileSystemAccessCache blobstore.BlobAccess
+		var fileSystemAccessCache blobstore.BlobAccess[*fsac.FileSystemAccessProfile]
 		if configuration.FileSystemAccessCache != nil {
 			_, authorizedBackend, _, _, err := newNonScannableBlobAccess(
 				dependenciesGroup,
@@ -192,19 +226,25 @@ func main() {
 		if err := bb_grpc.NewServersFromConfigurationAndServe(
 			configuration.GrpcServers,
 			func(s grpc.ServiceRegistrar) {
-				if contentAddressableStorage != nil {
+				if authorizedChunkStorage != nil {
+					contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(
+						authorizedChunkStorage,
+						authorizedChunkMappingStorage,
+						cdcParametersFetcher,
+						zstdPool,
+						configuration.MaximumMessageSizeBytes,
+						maximumChunkCount,
+					)
 					remoteexecution.RegisterContentAddressableStorageServer(
 						s,
-						grpcservers.NewContentAddressableStorageServer(
-							contentAddressableStorage,
-							configuration.MaximumMessageSizeBytes,
-						),
+						contentAddressableStorageServer,
 					)
 					bytestream.RegisterByteStreamServer(
 						s,
 						grpcservers.NewByteStreamServer(
-							contentAddressableStorage,
-							1<<16,
+							authorizedChunkStorage,
+							authorizedChunkMappingStorage,
+							cdcParametersFetcher,
 							zstdPool,
 						),
 					)
@@ -214,7 +254,6 @@ func main() {
 						s,
 						grpcservers.NewActionCacheServer(
 							actionCache,
-							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -223,7 +262,6 @@ func main() {
 						s,
 						grpcservers.NewIndirectContentAddressableStorageServer(
 							indirectContentAddressableStorage,
-							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -232,7 +270,6 @@ func main() {
 						s,
 						grpcservers.NewInitialSizeClassCacheServer(
 							initialSizeClassCache,
-							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -241,7 +278,6 @@ func main() {
 						s,
 						grpcservers.NewFileSystemAccessCacheServer(
 							fileSystemAccessCache,
-							int(configuration.MaximumMessageSizeBytes),
 						),
 					)
 				}
@@ -276,19 +312,19 @@ func main() {
 	})
 }
 
-func newNonScannableBlobAccess(dependenciesGroup program.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator, grpcClientFactory bb_grpc.ClientFactory) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, auth.Authorizer, error) {
+func newNonScannableBlobAccess[T any](dependenciesGroup program.Group, configuration *bb_storage.NonScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator[T], grpcClientFactory bb_grpc.ClientFactory) (blobstore_configuration.BlobAccessInfo[T], blobstore.BlobAccess[T], []auth.Authorizer, auth.Authorizer, error) {
 	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(dependenciesGroup, configuration.Backend, creator)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, err
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, nil, err
 	}
 
 	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
 	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
 
 	return info,
@@ -298,23 +334,23 @@ func newNonScannableBlobAccess(dependenciesGroup program.Group, configuration *b
 		nil
 }
 
-func newScannableBlobAccess(dependenciesGroup program.Group, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator, grpcClientFactory bb_grpc.ClientFactory) (blobstore_configuration.BlobAccessInfo, blobstore.BlobAccess, []auth.Authorizer, error) {
+func newScannableBlobAccess[T any](dependenciesGroup program.Group, configuration *bb_storage.ScannableBlobAccessConfiguration, creator blobstore_configuration.BlobAccessCreator[T], grpcClientFactory bb_grpc.ClientFactory) (blobstore_configuration.BlobAccessInfo[T], blobstore.BlobAccess[T], []auth.Authorizer, error) {
 	info, err := blobstore_configuration.NewBlobAccessFromConfiguration(dependenciesGroup, configuration.Backend, creator)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, err
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, err
 	}
 
 	getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.GetAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, util.StatusWrap(err, "Failed to create Get() authorizer")
 	}
 	putAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.PutAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, util.StatusWrap(err, "Failed to create Put() authorizer")
 	}
 	findMissingAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.FindMissingAuthorizer, dependenciesGroup, grpcClientFactory)
 	if err != nil {
-		return blobstore_configuration.BlobAccessInfo{}, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
+		return blobstore_configuration.BlobAccessInfo[T]{}, nil, nil, util.StatusWrap(err, "Failed to create FindMissing() authorizer")
 	}
 
 	return info,

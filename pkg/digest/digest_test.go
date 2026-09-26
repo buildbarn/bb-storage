@@ -650,6 +650,31 @@ func TestDigestToSingletonSet(t *testing.T) {
 	)
 }
 
+func TestEmptyBlobDigestValidation(t *testing.T) {
+	for _, digestFunctionEnum := range digest.SupportedDigestFunctions {
+		t.Run(digestFunctionEnum.String(), func(t *testing.T) {
+			digestFunction := digest.MustNewFunction("hello", digestFunctionEnum)
+			emptyDigest := digestFunction.NewGenerator(0).Sum()
+			// Any other hash with a size of zero is rejected.
+			hasher := digestFunction.NewGenerator(8)
+			hasher.Write([]byte("nonempty"))
+			bogusHash := hasher.Sum().GetHashString()
+			_, err := digestFunction.NewDigest(bogusHash, 0)
+			require.Error(t, err, "Digest with hash %s and size zero should have been rejected", bogusHash)
+			testutil.RequireEqualStatus(
+				t,
+				err,
+				status.Errorf(
+					codes.InvalidArgument,
+					"Empty blob has checksum %s, while %s was expected",
+					emptyDigest.GetHashString(),
+					bogusHash,
+				),
+			)
+		})
+	}
+}
+
 func TestKeyFormatCombine(t *testing.T) {
 	// If one of the two backends requires that digests are keyed
 	// with instance names in place, that format should be used

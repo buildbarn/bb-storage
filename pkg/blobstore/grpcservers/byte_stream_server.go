@@ -1,13 +1,16 @@
 package grpcservers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
@@ -18,26 +21,34 @@ import (
 )
 
 type byteStreamServer struct {
-	blobAccess    blobstore.BlobAccess
-	readChunkSize int
-	zstdPool      bb_zstd.Pool
+	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
+	chunkMappingStorage  blobstore.BlobAccess[chunk.Mapping]
+	cdcParametersFetcher capabilities.CDCParametersFetcher
+	zstdPool             bb_zstd.Pool
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
-// writing blobs to a BlobAccess. It is used by Bazel to access the
-// Content Addressable Storage (CAS).
-func NewByteStreamServer(blobAccess blobstore.BlobAccess, readChunkSize int, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
+// writing blobs to the Chunk Storage (CS) and Chunk Mapping Storage (CMS).
+// It is used by Bazel to access the Content Addressable Storage (CAS).
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool bb_zstd.Pool) bytestream.ByteStreamServer {
 	return &byteStreamServer{
-		blobAccess:    blobAccess,
-		readChunkSize: readChunkSize,
-		zstdPool:      zstdPool,
+		chunkStorage:         chunkStorage,
+		chunkMappingStorage:  chunkMappingStorage,
+		cdcParametersFetcher: cdcParametersFetcher,
+		zstdPool:             zstdPool,
 	}
 }
 
 func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteStream_ReadServer) error {
-	digest, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
+	d, compressor, err := digest.NewDigestFromByteStreamReadPath(in.ResourceName)
 	if err != nil {
 		return err
+	}
+	if in.ReadOffset < 0 {
+		return status.Errorf(codes.InvalidArgument, "Negative read offset: %d", in.ReadOffset)
+	}
+	if in.ReadOffset > d.GetSizeBytes() {
+		return status.Errorf(codes.InvalidArgument, "Buffer is %d bytes in size, while a read at offset %d was requested", d.GetSizeBytes(), in.ReadOffset)
 	}
 	if in.ReadLimit != 0 {
 		if compressor != remoteexecution.Compressor_IDENTITY {
@@ -48,107 +59,93 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 		}
 		return status.Error(codes.Unimplemented, "This service does not support downloading partial files")
 	}
+	if compressor != remoteexecution.Compressor_IDENTITY && compressor != remoteexecution.Compressor_ZSTD {
+		return status.Errorf(codes.InvalidArgument, "This service does not support compression type: %s", compressor.String())
+	}
 	ctx := out.Context()
-	switch compressor {
-	case remoteexecution.Compressor_IDENTITY:
-		r := s.blobAccess.Get(ctx, digest).ToChunkReader(in.ReadOffset, s.readChunkSize)
-		defer r.Close()
-
-		for {
-			readBuf, readErr := r.Read()
-			if readErr == io.EOF {
-				return nil
-			}
-			if readErr != nil {
-				return readErr
-			}
-			if writeErr := out.Send(&bytestream.ReadResponse{Data: readBuf}); writeErr != nil {
-				return writeErr
-			}
-		}
-
-	case remoteexecution.Compressor_ZSTD:
-		b := s.blobAccess.Get(ctx, digest)
-		encoder, err := s.zstdPool.NewEncoder(ctx, &readStreamWriter{out: out})
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
+	if err != nil {
+		return util.StatusWrap(err, "Could not determine cdc parameters")
+	}
+	if !cas.IsSingleChunk(params, d) {
+		chunkMapping, err := s.chunkMappingStorage.Get(ctx, d)
 		if err != nil {
-			b.Discard()
-			return status.Errorf(codes.ResourceExhausted, "Failed to acquire ZSTD encoder: %v", err)
+			return err
 		}
-		defer encoder.Close()
-
-		r := b.ToChunkReader(in.ReadOffset, s.readChunkSize)
-		defer r.Close()
-		for {
-			chunk, err := r.Read()
-			if err == io.EOF {
-				return nil
-			}
+		i, chunkOffset := chunkMapping.FindChunkOffset(uint64(in.ReadOffset))
+		for ; i < len(chunkMapping.Digests); i++ {
+			chunk, err := s.chunkStorage.Get(ctx, chunkMapping.Digests[i])
 			if err != nil {
 				return err
 			}
-			if _, err := encoder.Write(chunk); err != nil {
+			if err := s.sendChunk(ctx, out, chunk, chunkOffset, compressor); err != nil {
 				return err
 			}
+			chunkOffset = 0
 		}
-	default:
-		return status.Errorf(codes.Unimplemented, "This service does not support downloading compression type: %s", compressor)
+		return nil
 	}
-}
-
-// readStreamWriter adapts the ByteStream_ReadServer to an io.Writer.
-type readStreamWriter struct {
-	out bytestream.ByteStream_ReadServer
-}
-
-func (w *readStreamWriter) Write(p []byte) (int, error) {
-	if err := w.out.Send(&bytestream.ReadResponse{Data: p}); err != nil {
-		return 0, err
+	if d.GetSizeBytes() != 0 {
+		// Blobs that fit in a single chunk have no chunk mappings in
+		// storage; the blob is stored as the chunk itself. The empty
+		// blob is always present and yields no data.
+		chunk, err := s.chunkStorage.Get(ctx, d)
+		if err != nil {
+			return err
+		}
+		if err := s.sendChunk(ctx, out, chunk, int64(in.ReadOffset), compressor); err != nil {
+			return err
+		}
 	}
-	return len(p), nil
-}
-
-type byteStreamWriteServerChunkReader struct {
-	stream        bytestream.ByteStream_WriteServer
-	writeOffset   int64
-	data          []byte
-	finishedWrite bool
-}
-
-func (r *byteStreamWriteServerChunkReader) setRequest(request *bytestream.WriteRequest) error {
-	if r.finishedWrite {
-		return status.Error(codes.InvalidArgument, "Client closed stream twice")
-	}
-	if request.WriteOffset != r.writeOffset {
-		return status.Errorf(codes.InvalidArgument, "Attempted to write at offset %d, while %d was expected", request.WriteOffset, r.writeOffset)
-	}
-
-	r.writeOffset += int64(len(request.Data))
-	r.data = request.Data
-	r.finishedWrite = request.FinishWrite
 	return nil
 }
 
-func (r *byteStreamWriteServerChunkReader) Read() ([]byte, error) {
-	// Read next chunk if no data is present.
-	if len(r.data) == 0 {
-		request, err := r.stream.Recv()
+func (s *byteStreamServer) sendChunk(ctx context.Context, out bytestream.ByteStream_ReadServer, chunk *chunk.Chunk, chunkOffset int64, compressor remoteexecution.Compressor_Value) error {
+	if chunkOffset == 0 || compressor == remoteexecution.Compressor_IDENTITY {
+		// ZSTD has the neat property that we can simply send
+		// multiple ZSTD encoded chunks and their concatenated byte
+		// representation is a valid ZSTD representation of their
+		// concatenated underlying bytes.
+		var data []byte
+		var err error
+		switch compressor {
+		case remoteexecution.Compressor_IDENTITY:
+			data = chunk.GetBytes()
+		case remoteexecution.Compressor_ZSTD:
+			data, err = chunk.GetBytesCompressed(ctx)
+		default:
+			panic("Unsupported compression algorithm should not be reachable")
+		}
 		if err != nil {
-			if err == io.EOF && !r.finishedWrite {
-				return nil, status.Error(codes.InvalidArgument, "Client closed stream without finishing write")
-			}
-			return nil, err
+			return err
 		}
-		if err := r.setRequest(request); err != nil {
-			return nil, err
-		}
+		return out.SendMsg(&bytestream.ReadResponse{
+			Data: data[chunkOffset:],
+		})
 	}
-
-	data := r.data
-	r.data = nil
-	return data, nil
+	// If we have a chunk offset and are sending back compressed
+	// bytes we need to find the data based on that offset in
+	// its decompressed form, then compress it again before
+	// sending it back.
+	data := chunk.GetBytes()
+	data = data[chunkOffset:]
+	var buf bytes.Buffer
+	buf.Grow(len(data))
+	encoder, err := s.zstdPool.NewEncoder(ctx, &buf)
+	if err != nil {
+		return err
+	}
+	if _, err := encoder.Write(data); err != nil {
+		encoder.Close()
+		return err
+	}
+	if err := encoder.Close(); err != nil {
+		return err
+	}
+	return out.SendMsg(&bytestream.ReadResponse{
+		Data: buf.Bytes(),
+	})
 }
-
-func (byteStreamWriteServerChunkReader) Close() {}
 
 func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error {
 	request, err := stream.Recv()
@@ -158,45 +155,55 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 		}
 		return err
 	}
-	digest, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
+
+	d, compressor, err := digest.NewDigestFromByteStreamWritePath(request.ResourceName)
 	if err != nil {
 		return err
 	}
+
+	ctx := stream.Context()
+	rawReader := &writeStreamReader{
+		stream:      stream,
+		nextOffset:  int64(len(request.Data)),
+		finished:    request.FinishWrite,
+		pendingData: request.Data,
+	}
+
+	var r io.Reader
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return s.writeIdentity(stream, request, digest)
+		r = rawReader
 	case remoteexecution.Compressor_ZSTD:
-		return s.writeZstd(stream, request, digest)
+		zr, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, rawReader)
+		if err != nil {
+			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
+		}
+		defer zr.Close()
+		r = zr
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
-}
 
-func (s *byteStreamServer) writeIdentity(stream bytestream.ByteStream_WriteServer, request *bytestream.WriteRequest, digest digest.Digest) error {
-	r := &byteStreamWriteServerChunkReader{stream: stream}
-	if err := r.setRequest(request); err != nil {
-		return err
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
+	if err != nil {
+		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
-	if err := s.blobAccess.Put(
-		stream.Context(),
-		digest,
-		buffer.NewCASBufferFromChunkReader(digest, r, buffer.UserProvided),
-	); err != nil {
+	if err := cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, r); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&bytestream.WriteResponse{
-		CommittedSize: digest.GetSizeBytes(),
+		CommittedSize: rawReader.nextOffset,
 	})
 }
 
-type zstdWriteStreamReader struct {
+type writeStreamReader struct {
 	stream      bytestream.ByteStream_WriteServer
 	nextOffset  int64
 	finished    bool
 	pendingData []byte
 }
 
-func (r *zstdWriteStreamReader) Read(p []byte) (n int, err error) {
+func (r *writeStreamReader) Read(p []byte) (n int, err error) {
 	if len(r.pendingData) > 0 {
 		n = copy(p, r.pendingData)
 		r.pendingData = r.pendingData[n:]
@@ -204,7 +211,18 @@ func (r *zstdWriteStreamReader) Read(p []byte) (n int, err error) {
 	}
 
 	if r.finished {
-		return 0, io.EOF
+		// The client indicated the write was finished. Check for trailing garbage.
+		req, err := r.stream.Recv()
+		if err == nil {
+			if req.FinishWrite {
+				return 0, status.Error(codes.InvalidArgument, "Client closed stream twice")
+			}
+			return 0, status.Error(codes.InvalidArgument, "Client sent extra data after finishing write")
+		}
+		if errors.Is(err, io.EOF) {
+			return 0, io.EOF
+		}
+		return 0, err
 	}
 
 	req, err := r.stream.Recv()
@@ -227,34 +245,8 @@ func (r *zstdWriteStreamReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (zstdWriteStreamReader) Close() error {
+func (writeStreamReader) Close() error {
 	return nil
-}
-
-func (s *byteStreamServer) writeZstd(stream bytestream.ByteStream_WriteServer, request *bytestream.WriteRequest, digest digest.Digest) error {
-	ctx := stream.Context()
-	streamReader := &zstdWriteStreamReader{
-		stream:      stream,
-		nextOffset:  int64(len(request.Data)),
-		finished:    request.FinishWrite,
-		pendingData: request.Data,
-	}
-
-	zstdReader, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, streamReader)
-	if err != nil {
-		return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
-	}
-
-	if err := s.blobAccess.Put(
-		ctx,
-		digest,
-		buffer.NewCASBufferFromReader(digest, zstdReader, buffer.UserProvided),
-	); err != nil {
-		return err
-	}
-	return stream.SendAndClose(&bytestream.WriteResponse{
-		CommittedSize: streamReader.nextOffset,
-	})
 }
 
 func (byteStreamServer) QueryWriteStatus(ctx context.Context, in *bytestream.QueryWriteStatusRequest) (*bytestream.QueryWriteStatusResponse, error) {

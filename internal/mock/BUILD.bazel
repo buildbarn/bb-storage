@@ -7,9 +7,13 @@ gomock(
     interfaces = [
         "AEAD",
         "IntTreeDirectoryVisitor",
+        "IOReader",
         "ReadCloser",
+        "RecordArray",
+        "RecordKeyHasher",
         "ResponseWriter",
         "RoundTripper",
+        "ValueComparator",
         "Writer",
     ],
     library = "//internal/mock/aliases",
@@ -34,16 +38,31 @@ gomock(
 gomock(
     name = "blobstore",
     out = "blobstore.go",
-    interfaces = [
-        "BlobAccess",
-        "DemultiplexedBlobAccessGetter",
-        "ReadBufferFactory",
-        "ReadWriterAt",
-    ],
+    interfaces = ["ReadWriterAt"],
     library = "//pkg/blobstore",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
+)
+
+gomock(
+    name = "blobstore_blobaccess",
+    out = "blobstore_blobaccess.go",
+    interfaces = ["BlobAccess"],
+    library = "//pkg/blobstore",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore:blob_access.go",
+)
+
+gomock(
+    name = "blobstore_demultiplexing",
+    out = "blobstore_demultiplexing.go",
+    interfaces = ["DemultiplexedBlobAccessGetter"],
+    library = "//pkg/blobstore",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore:demultiplexing_blob_access.go",
 )
 
 gomock(
@@ -94,35 +113,10 @@ gomock(
 )
 
 gomock(
-    name = "blobstore_slicing",
-    out = "blobstore_slicing.go",
-    interfaces = ["BlobSlicer"],
-    library = "//pkg/blobstore/slicing",
-    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
-    mockgen_tool = "@org_uber_go_mock//mockgen",
-    package = "mock",
-)
-
-gomock(
     name = "blockdevice",
     out = "blockdevice.go",
     interfaces = ["BlockDevice"],
     library = "//pkg/blockdevice",
-    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
-    mockgen_tool = "@org_uber_go_mock//mockgen",
-    package = "mock",
-)
-
-gomock(
-    name = "buffer",
-    out = "buffer.go",
-    interfaces = [
-        "ChunkReader",
-        "DataIntegrityCallback",
-        "ErrorHandler",
-        "ReadAtCloser",
-    ],
-    library = "//pkg/blobstore/buffer",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -144,9 +138,16 @@ gomock(
 gomock(
     name = "capabilities",
     out = "capabilities.go",
-    interfaces = ["Provider"],
+    interfaces = [
+        "CDCParametersFetcher",
+        "Provider",
+    ],
     library = "//pkg/capabilities",
-    mock_names = {"Provider": "MockCapabilitiesProvider"},
+    mock_names = {
+        "IOReader": "MockIOReader",
+        "CDCParametersFetcher": "MockCDCParametersFetcher",
+        "Provider": "MockCapabilitiesProvider",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -156,8 +157,8 @@ gomock(
     name = "cas",
     out = "cas.go",
     interfaces = [
-        "StreamReader",
         "Replicator",
+        "StreamReader",
     ],
     library = "//pkg/cas",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -165,17 +166,34 @@ gomock(
     package = "mock",
 )
 
-# Normally we would put the mocks of this interface in cas.go but as it
-# is generic it needs to be supplied as a source file which we therefore
-# put in cas_message_reader.go.
 gomock(
-    name = "cas_message_reader",
-    out = "cas_message_reader.go",
-    interfaces = ["MessageReader"],
-    library = "//pkg/cas",
+    name = "cas_reader",
+    out = "cas_reader.go",
+    interfaces = ["Reader"],
+    library = "//pkg/cas/reader",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
-    source = "//pkg/cas:message_reader.go",
+    source = "//pkg/cas/reader:reader.go",
+)
+
+gomock(
+    name = "chunk",
+    out = "chunk.go",
+    interfaces = ["MappingFetcher"],
+    library = "//pkg/blobstore/chunk",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+)
+
+gomock(
+    name = "chunker",
+    out = "chunker.go",
+    interfaces = ["Chunker"],
+    library = "//pkg/blobstore/cdc",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
 )
 
 gomock(
@@ -214,6 +232,16 @@ gomock(
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
+)
+
+gomock(
+    name = "coder",
+    out = "coder.go",
+    interfaces = ["Coder"],
+    library = "//pkg/blobstore/coder",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
+    package = "mock",
+    source = "//pkg/blobstore/coder:coder.go",
 )
 
 gomock(
@@ -263,7 +291,10 @@ gomock(
         "ClientFactory",
     ],
     library = "//pkg/grpc",
-    mock_names = {"Authenticator": "MockGRPCAuthenticator"},
+    mock_names = {
+        "IOReader": "MockIOReader",
+        "Authenticator": "MockGRPCAuthenticator",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -293,7 +324,10 @@ gomock(
     out = "http_server.go",
     interfaces = ["Authenticator"],
     library = "//pkg/http/server",
-    mock_names = {"Authenticator": "MockHTTPAuthenticator"},
+    mock_names = {
+        "IOReader": "MockIOReader",
+        "Authenticator": "MockHTTPAuthenticator",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -317,7 +351,10 @@ gomock(
     out = "prometheus.go",
     interfaces = ["Gatherer"],
     library = "@com_github_prometheus_client_golang//prometheus",
-    mock_names = {"Gatherer": "MockPrometheusGatherer"},
+    mock_names = {
+        "IOReader": "MockIOReader",
+        "Gatherer": "MockPrometheusGatherer",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -356,6 +393,7 @@ gomock(
     ],
     library = "@io_opentelemetry_go_otel_trace//:trace",
     mock_names = {
+        "IOReader": "MockIOReader",
         "Span": "BareMockSpan",
         "Tracer": "BareMockTracer",
         "TracerProvider": "BareMockTracerProvider",
@@ -385,19 +423,22 @@ go_library(
         "aliases.go",
         "auth.go",
         "blobstore.go",
+        "blobstore_blobaccess.go",
+        "blobstore_demultiplexing.go",
         "blobstore_local.go",
         "blobstore_replication.go",
         "blobstore_sharding.go",
-        "blobstore_slicing.go",
         "blockdevice.go",
-        "buffer.go",
         "builder.go",
         "capabilities.go",
         "cas.go",
-        "cas_message_reader.go",
+        "cas_reader.go",
+        "chunk.go",
+        "chunker.go",
         "clock.go",
         "cloud_aws.go",
         "cloud_gcp.go",
+        "coder.go",
         "digest.go",
         "filesystem.go",
         "filesystem_path.go",
@@ -418,16 +459,19 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/cdc",
+        "//pkg/blobstore/chunk",
+        "//pkg/blobstore/coder",
         "//pkg/blobstore/local",
         "//pkg/blobstore/sharding",
-        "//pkg/blobstore/slicing",
         "//pkg/builder",
+        "//pkg/cas",
         "//pkg/clock",
         "//pkg/cloud/gcp",
         "//pkg/digest",
         "//pkg/filesystem",
         "//pkg/filesystem/path",
+        "//pkg/lossymap",
         "//pkg/program",
         "//pkg/proto/blobstore/local",
         "//pkg/proto/configuration/grpc",

@@ -6,7 +6,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
@@ -22,8 +21,8 @@ import (
 func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	blobAccess := mock.NewMockBlobAccess[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess)
 
 	t.Run("BadDigest", func(t *testing.T) {
 		// Malformed requests cannot be executed.
@@ -106,8 +105,8 @@ func TestIndirectContentAddressableStorageServerFindMissingReferences(t *testing
 func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	blobAccess := mock.NewMockBlobAccess[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess)
 
 	t.Run("Mixed", func(t *testing.T) {
 		// Send a single batch update request containing three
@@ -119,8 +118,7 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 			gomock.Any(),
 		).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				b.Discard()
+			func(ctx context.Context, digest digest.Digest, val *icas.Reference) error {
 				return status.Error(codes.Internal, "Disk I/O failure")
 			},
 		)
@@ -129,14 +127,12 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "6fc422233a40a75a1f028e11c3cd1140", 7),
 			gomock.Any(),
 		).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				m, err := b.ToProto(&icas.Reference{}, 1000)
-				require.NoError(t, err)
+			func(ctx context.Context, digest digest.Digest, val *icas.Reference) error {
 				testutil.RequireEqualProto(t, &icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file3.txt",
 					},
-				}, m)
+				}, val)
 				return nil
 			},
 		)
@@ -211,8 +207,8 @@ func TestIndirectContentAddressableStorageServerBatchUpdateReferences(t *testing
 func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	blobAccess := mock.NewMockBlobAccess(ctrl)
-	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess, 1000)
+	blobAccess := mock.NewMockBlobAccess[*icas.Reference](ctrl)
+	s := grpcservers.NewIndirectContentAddressableStorageServer(blobAccess)
 
 	t.Run("BadDigest", func(t *testing.T) {
 		// Malformed requests cannot be executed.
@@ -232,7 +228,7 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 			ctx,
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).
-			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Hardware failure")))
+			Return(nil, status.Error(codes.Internal, "Hardware failure"))
 
 		_, err := s.GetReference(ctx, &icas.GetReferenceRequest{
 			InstanceName:   "example",
@@ -246,20 +242,18 @@ func TestIndirectContentAddressableStorageServerGetReference(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
-		dataIntegrityCallback.EXPECT().Call(true)
 		blobAccess.EXPECT().Get(
 			ctx,
 			digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
 		).
-			Return(buffer.NewProtoBufferFromProto(
+			Return(
 				&icas.Reference{
 					Medium: &icas.Reference_HttpUrl{
 						HttpUrl: "http://example.com/file3.txt",
 					},
 				},
-				buffer.BackendProvided(dataIntegrityCallback.Call),
-			))
+				nil,
+			)
 
 		resp, err := s.GetReference(ctx, &icas.GetReferenceRequest{
 			InstanceName:   "example",

@@ -4,14 +4,12 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/auth"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
 
-type authorizingBlobAccess struct {
-	BlobAccess
+type authorizingBlobAccess[T any] struct {
+	BlobAccess[T]
 
 	getAuthorizer         auth.Authorizer
 	putAuthorizer         auth.Authorizer
@@ -22,8 +20,8 @@ type authorizingBlobAccess struct {
 // accesses by checks with Authorizers. Calls to GetCapabilities() are
 // not checked, for the reason that the exact logic for this differs
 // between the Action Cache (AC) and Content Addressable Storage (CAS).
-func NewAuthorizingBlobAccess(base BlobAccess, getAuthorizer, putAuthorizer, findMissingAuthorizer auth.Authorizer) BlobAccess {
-	return &authorizingBlobAccess{
+func NewAuthorizingBlobAccess[T any](base BlobAccess[T], getAuthorizer, putAuthorizer, findMissingAuthorizer auth.Authorizer) BlobAccess[T] {
+	return &authorizingBlobAccess[T]{
 		BlobAccess:            base,
 		getAuthorizer:         getAuthorizer,
 		putAuthorizer:         putAuthorizer,
@@ -31,28 +29,22 @@ func NewAuthorizingBlobAccess(base BlobAccess, getAuthorizer, putAuthorizer, fin
 	}
 }
 
-func (ba *authorizingBlobAccess) Get(ctx context.Context, d digest.Digest) buffer.Buffer {
+func (ba *authorizingBlobAccess[T]) Get(ctx context.Context, d digest.Digest) (T, error) {
+	var zero T
 	if err := auth.AuthorizeSingleInstanceName(ctx, ba.getAuthorizer, d.GetInstanceName()); err != nil {
-		return buffer.NewBufferFromError(util.StatusWrap(err, "Authorization"))
+		return zero, util.StatusWrap(err, "Authorization")
 	}
 	return ba.BlobAccess.Get(ctx, d)
 }
 
-func (ba *authorizingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	if err := auth.AuthorizeSingleInstanceName(ctx, ba.getAuthorizer, parentDigest.GetInstanceName()); err != nil {
-		return buffer.NewBufferFromError(util.StatusWrap(err, "Authorization"))
-	}
-	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
-}
-
-func (ba *authorizingBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {
+func (ba *authorizingBlobAccess[T]) Put(ctx context.Context, d digest.Digest, value T) error {
 	if err := auth.AuthorizeSingleInstanceName(ctx, ba.putAuthorizer, d.GetInstanceName()); err != nil {
 		return util.StatusWrap(err, "Authorization")
 	}
-	return ba.BlobAccess.Put(ctx, d, b)
+	return ba.BlobAccess.Put(ctx, d, value)
 }
 
-func (ba *authorizingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *authorizingBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	instanceNamesSet := make(map[digest.InstanceName]struct{})
 	for _, digest := range digests.Items() {
 		instanceNamesSet[digest.GetInstanceName()] = struct{}{}

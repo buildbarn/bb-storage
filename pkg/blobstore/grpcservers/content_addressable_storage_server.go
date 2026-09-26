@@ -1,29 +1,47 @@
 package grpcservers
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
+	"math"
+	"math/bits"
+	"slices"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type contentAddressableStorageServer struct {
-	contentAddressableStorage blobstore.BlobAccess
-	maximumMessageSizeBytes   int64
+	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
+	chunkMappingStorage     blobstore.BlobAccess[chunk.Mapping]
+	chunkMappingFetcher     chunk.MappingFetcher
+	cdcParametersFetcher    capabilities.CDCParametersFetcher
+	zstdPool                zstd.Pool
+	maximumMessageSizeBytes int64
+	maximumChunkCount       int
 }
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(contentAddressableStorage blobstore.BlobAccess, maximumMessageSizeBytes int64) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
-		contentAddressableStorage: contentAddressableStorage,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		chunkStorage:            chunkStorage,
+		chunkMappingStorage:     chunkMappingStorage,
+		cdcParametersFetcher:    cdcParametersFetcher,
+		zstdPool:                zstdPool,
+		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		maximumChunkCount:       maximumChunkCount,
 	}
 }
 
@@ -41,24 +59,67 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 	}
 
 	inDigests := digest.NewSetBuilder(len(in.BlobDigests))
-	for _, partialDigest := range in.BlobDigests {
-		digest, err := digestFunction.NewDigestFromProto(partialDigest)
+	for _, inDigest := range in.BlobDigests {
+		d, err := digestFunction.NewDigestFromProto(inDigest)
 		if err != nil {
 			return nil, err
 		}
-		inDigests.Add(digest)
+		inDigests.Add(d)
 	}
-	outDigests, err := s.contentAddressableStorage.FindMissing(ctx, inDigests.Build())
+
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
 	if err != nil {
 		return nil, err
 	}
-	partialDigests := make([]*remoteexecution.Digest, 0, outDigests.Length())
-	for _, outDigest := range outDigests.Items() {
-		partialDigests = append(partialDigests, outDigest.GetProto())
+	missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, inDigests.Build())
+	if err != nil {
+		return nil, err
 	}
+
+	outDigests := make([]*remoteexecution.Digest, 0, missing.Length())
+	for _, outDigest := range missing.Items() {
+		outDigests = append(outDigests, outDigest.GetProto())
+	}
+
 	return &remoteexecution.FindMissingBlobsResponse{
-		MissingBlobDigests: partialDigests,
+		MissingBlobDigests: outDigests,
 	}, nil
+}
+
+func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context, blobDigest digest.Digest, params *remoteexecution.RepMaxCdcParams, compressor remoteexecution.Compressor_Value) ([]byte, error) {
+	var chunkDigests []digest.Digest
+	if !cas.IsSingleChunk(params, blobDigest) {
+		chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
+		if err != nil {
+			return nil, err
+		}
+		chunkDigests = chunkMapping.Digests
+	} else {
+		// Blobs fits in a single chunk.
+		chunkDigests = []digest.Digest{blobDigest}
+	}
+	var buf bytes.Buffer
+	buf.Grow(int(blobDigest.GetSizeBytes()))
+	for _, chunkDigest := range chunkDigests {
+		chunk, err := s.chunkStorage.Get(ctx, chunkDigest)
+		if err != nil {
+			return nil, err
+		}
+		var data []byte
+		switch compressor {
+		case remoteexecution.Compressor_IDENTITY:
+			data = chunk.GetBytes()
+		case remoteexecution.Compressor_ZSTD:
+			data, err = chunk.GetBytesCompressed(ctx)
+		default:
+			panic("Unsupported compression algorithm should not be reachable")
+		}
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(data)
+	}
+	return buf.Bytes(), nil
 }
 
 func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in *remoteexecution.BatchReadBlobsRequest) (*remoteexecution.BatchReadBlobsResponse, error) {
@@ -74,6 +135,7 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 		return nil, err
 	}
 
+	// TODO: Compensate for message overhead.
 	bytesRemaining := s.maximumMessageSizeBytes
 	digests := make([]digest.Digest, 0, len(in.Digests))
 	for _, reqDigest := range in.Digests {
@@ -97,16 +159,24 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 	response := &remoteexecution.BatchReadBlobsResponse{
 		Responses: make([]*remoteexecution.BatchReadBlobsResponse_Response, 0, len(in.Digests)),
 	}
-	for i, reqDigest := range in.Digests {
-		data, err := s.contentAddressableStorage.Get(
-			ctx,
-			digests[i],
-		).ToByteSlice(int(digests[i].GetSizeBytes()))
-		response.Responses = append(response.Responses, &remoteexecution.BatchReadBlobsResponse_Response{
-			Digest: reqDigest,
-			Data:   data,
-			Status: status.Convert(err).Proto(),
-		})
+	compressor := remoteexecution.Compressor_IDENTITY
+	if slices.Contains(in.AcceptableCompressors, remoteexecution.Compressor_ZSTD) {
+		compressor = remoteexecution.Compressor_ZSTD
+	}
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
+	if err != nil {
+		return nil, err
+	}
+	for i, digest := range digests {
+		data, err := s.readBlobFromBatch(ctx, digest, params, compressor)
+		response.Responses = append(
+			response.Responses,
+			&remoteexecution.BatchReadBlobsResponse_Response{
+				Digest: in.Digests[i],
+				Data:   data,
+				Status: status.Convert(err).Proto(),
+			},
+		)
 	}
 
 	return response, nil
@@ -128,14 +198,14 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 	response := &remoteexecution.BatchUpdateBlobsResponse{
 		Responses: make([]*remoteexecution.BatchUpdateBlobsResponse_Response, 0, len(in.Requests)),
 	}
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
+	if err != nil {
+		return nil, err
+	}
 	for _, request := range in.Requests {
 		digest, err := digestFunction.NewDigestFromProto(request.Digest)
 		if err == nil {
-			err = s.contentAddressableStorage.Put(
-				ctx,
-				digest,
-				buffer.NewCASBufferFromByteSlice(digest, request.Data, buffer.UserProvided),
-			)
+			err = s.updateBlob(ctx, digest, request.Data, request.Compressor, params)
 		}
 		response.Responses = append(response.Responses,
 			&remoteexecution.BatchUpdateBlobsResponse_Response{
@@ -146,14 +216,290 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 	return response, nil
 }
 
+func (s *contentAddressableStorageServer) updateBlob(ctx context.Context, d digest.Digest, data []byte, compressor remoteexecution.Compressor_Value, params *remoteexecution.RepMaxCdcParams) error {
+	switch compressor {
+	case remoteexecution.Compressor_IDENTITY:
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, bytes.NewReader(data))
+	case remoteexecution.Compressor_ZSTD:
+		decoder, err := s.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
+		if err != nil {
+			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
+		}
+		defer decoder.Close()
+
+		// Limit the amount of data that is read to one byte beyond the
+		// advertised size, so that corrupt or malicious streams cannot
+		// trigger unbounded decompression.
+		r := io.LimitReader(decoder, d.GetSizeBytes()+1)
+		return cas.PutReader(ctx, s.zstdPool, s.chunkStorage, s.chunkMappingStorage, params, d, r)
+	default:
+		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
+	}
+}
+
 func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeRequest, stream remoteexecution.ContentAddressableStorage_GetTreeServer) error {
 	return status.Error(codes.Unimplemented, "This service does not support downloading directory trees")
 }
 
-func (contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support splicing blobs")
+func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, digests []digest.Digest) error {
+	chunkDigests := make([]digest.Digest, 0, len(digests))
+	offset := uint64(0)
+	for _, chunkDigest := range digests {
+		if chunkDigest.GetSizeBytes() == 0 {
+			// Zero length chunks carry no data, so they may simply be
+			// removed from the resulting list.
+			continue
+		}
+		chunkDigests = append(chunkDigests, chunkDigest)
+		var carry uint64
+		offset, carry = bits.Add64(offset, uint64(chunkDigest.GetSizeBytes()), 0)
+		if carry != 0 {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Chunk mapping overflows, the sum of chunk sizes exceeds %d bytes",
+				uint64(math.MaxUint64),
+			)
+		}
+	}
+	if offset != uint64(d.GetSizeBytes()) {
+		return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
+	}
+	switch len(chunkDigests) {
+	case 0:
+		// No chunks, just check that it's the empty blob.
+		if d.GetSizeBytes() != 0 {
+			return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
+		}
+		return nil
+	case 1:
+		// Single chunk blob, check that the chunk digest matches the
+		// blob digest and that the chunk is present in storage.
+		if chunkDigests[0] != d {
+			return status.Error(codes.InvalidArgument, "Chunk mapping does not compose to blob")
+		}
+		params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
+		if err != nil {
+			return err
+		}
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, chunkDigests[0].ToSingletonSet())
+		if err != nil {
+			return err
+		}
+		if !missing.Empty() {
+			return status.Error(codes.NotFound, "At least one chunk is missing from storage.")
+		}
+		return nil
+	default:
+		// Store the chunk mapping.
+		chunkMapping, err := chunk.NewMapping(chunkDigests, uint64(d.GetSizeBytes()), false)
+		if err != nil {
+			return err
+		}
+		if err := s.chunkMappingStorage.Put(ctx, d, chunkMapping); err != nil {
+			return util.StatusWrap(err, "Could not save chunk mapping for blob")
+		}
+		return nil
+	}
 }
 
-func (contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "This service does not support splitting blobs")
+func (s *contentAddressableStorageServer) RegisterChunkMapping(stream remoteexecution.ContentAddressableStorage_RegisterChunkMappingServer) error {
+	ctx := stream.Context()
+	var digestFunction digest.Function
+	var blobDigestProto *remoteexecution.Digest
+	var chunkDigests []digest.Digest
+	for i := 0; ; i++ {
+		in, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		if i == 0 {
+			if in.BlobDigest == nil {
+				return status.Error(codes.InvalidArgument, "The first request does not contain a blob digest")
+			}
+			instanceName, err := digest.NewInstanceName(in.InstanceName)
+			if err != nil {
+				return util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+			}
+			digestFunction, err = instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+			if err != nil {
+				return err
+			}
+			blobDigestProto = in.BlobDigest
+		}
+		for _, digestProto := range in.ChunkDigests {
+			chunkDigest, err := digestFunction.NewDigestFromProto(digestProto)
+			if err != nil {
+				return err
+			}
+			chunkDigests = append(chunkDigests, chunkDigest)
+		}
+		if len(chunkDigests) > s.maximumChunkCount {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Attempted to splice a total of at least %d chunks, while a maximum of %d chunks is permitted",
+				len(chunkDigests),
+				s.maximumChunkCount,
+			)
+		}
+	}
+	if blobDigestProto == nil {
+		return status.Error(codes.InvalidArgument, "The stream did not contain any requests")
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(blobDigestProto)
+	if err != nil {
+		return err
+	}
+
+	if err := s.registerChunkMapping(ctx, blobDigest, chunkDigests); err != nil {
+		return err
+	}
+
+	return stream.SendAndClose(&remoteexecution.RegisterChunkMappingResponse{
+		BlobDigest: blobDigestProto,
+	})
+}
+
+func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *remoteexecution.SpliceBlobRequest) (*remoteexecution.SpliceBlobResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(in.BlobDigest)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(in.ChunkDigests) > s.maximumChunkCount {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"Attempted to splice a total of at least %d chunks, while a maximum of %d chunks is permitted",
+			len(in.ChunkDigests),
+			s.maximumChunkCount,
+		)
+	}
+
+	chunkDigests := make([]digest.Digest, len(in.ChunkDigests))
+	for i, digestProto := range in.ChunkDigests {
+		chunkDigest, err := digestFunction.NewDigestFromProto(digestProto)
+		if err != nil {
+			return nil, err
+		}
+		chunkDigests[i] = chunkDigest
+	}
+
+	if err := s.registerChunkMapping(ctx, blobDigest, chunkDigests); err != nil {
+		return nil, err
+	}
+
+	return &remoteexecution.SpliceBlobResponse{
+		BlobDigest: in.BlobDigest,
+	}, nil
+}
+
+func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) ([]digest.Digest, error) {
+	if cas.IsSingleChunk(params, d) {
+		// Blobs that fit in a single chunk have no chunk mappings in
+		// storage, but one may be created trivially on the fly provided
+		// the chunk exists.
+		if d.GetSizeBytes() == 0 {
+			// The empty blob has the empty chunk mapping.
+			return nil, nil
+		}
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkMappingStorage, params, d.ToSingletonSet())
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to check blob existence")
+		}
+		if !missing.Empty() {
+			return nil, status.Errorf(codes.NotFound, "Blob %s not found", d)
+		}
+		return []digest.Digest{d}, nil
+	}
+	chunkMapping, err := s.chunkMappingStorage.Get(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	return chunkMapping.Digests, nil
+}
+
+func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return nil, util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+	if err != nil {
+		return nil, err
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(in.BlobDigest)
+	if err != nil {
+		return nil, err
+	}
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, instanceName)
+	if err != nil {
+		return nil, err
+	}
+
+	chunkDigests, err := s.getChunkMapping(ctx, params, blobDigest)
+	if err != nil {
+		return nil, err
+	}
+
+	protoDigests := make([]*remoteexecution.Digest, len(chunkDigests))
+	for i, chunkDigest := range chunkDigests {
+		protoDigests[i] = chunkDigest.GetProto()
+	}
+
+	return &remoteexecution.SplitBlobResponse{
+		ChunkDigests:     protoDigests,
+		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+	}, nil
+}
+
+func (s *contentAddressableStorageServer) GetChunkMapping(in *remoteexecution.GetChunkMappingRequest, stream remoteexecution.ContentAddressableStorage_GetChunkMappingServer) error {
+	instanceName, err := digest.NewInstanceName(in.InstanceName)
+	if err != nil {
+		return util.StatusWrapf(err, "Invalid instance name %#v", in.InstanceName)
+	}
+	digestFunction, err := instanceName.GetDigestFunction(in.DigestFunction, len(in.BlobDigest.GetHash()))
+	if err != nil {
+		return err
+	}
+	blobDigest, err := digestFunction.NewDigestFromProto(in.BlobDigest)
+	if err != nil {
+		return err
+	}
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(stream.Context(), instanceName)
+	if err != nil {
+		return err
+	}
+
+	chunkDigests, err := s.getChunkMapping(stream.Context(), params, blobDigest)
+	if err != nil {
+		return err
+	}
+
+	protoDigests := make([]*remoteexecution.Digest, len(chunkDigests))
+	for i, chunkDigest := range chunkDigests {
+		protoDigests[i] = chunkDigest.GetProto()
+	}
+
+	batchSize := int(blobstore.RecommendedFindMissingDigestsCount)
+	for len(protoDigests) > 0 {
+		n := min(len(protoDigests), batchSize)
+		if err := stream.Send(&remoteexecution.GetChunkMappingResponse{
+			ChunkDigests:     protoDigests[:n],
+			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
+		}); err != nil {
+			return err
+		}
+		protoDigests = protoDigests[n:]
+	}
+	return nil
 }

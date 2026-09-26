@@ -18,9 +18,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/bazelbuild/buildtools v0.0.0-20260527135131-3b47c424ecf5
-	github.com/bazelbuild/remote-apis v0.0.0-20260331222004-becdd8f9ff81
+	github.com/bazelbuild/remote-apis v0.0.0-20260908115904-76ddd98e1f92
 	github.com/bazelbuild/rules_go v0.63.0
+	github.com/buildbarn/go-cdc v0.0.9
 	github.com/buildbarn/go-sha256tree v0.0.0-20250310211320-0f70f20e855b
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/google/go-jsonnet v0.22.0
@@ -86,7 +88,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.0 // indirect
 	github.com/aws/smithy-go v1.25.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect

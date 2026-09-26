@@ -7,11 +7,14 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 type blobToReplicate struct {
@@ -27,8 +30,8 @@ type NestedBlobReplicator struct {
 	replicator              Replicator
 	digestKeyFormat         digest.KeyFormat
 	maximumMessageSizeBytes int
-	actionReader            MessageReader[*remoteexecution.Action]
-	directoryReader         MessageReader[*remoteexecution.Directory]
+	actionReader            reader.Reader[*remoteexecution.Action]
+	directoryReader         reader.Reader[*remoteexecution.Directory]
 	treeReader              StreamReader
 
 	lock             sync.Mutex
@@ -40,7 +43,7 @@ type NestedBlobReplicator struct {
 
 // NewNestedBlobReplicator creates a new NestedBlobReplicator that does
 // not have any objects to be replicated queued.
-func NewNestedBlobReplicator(replicator Replicator, maximumMessageSizeBytes int, actionReader MessageReader[*remoteexecution.Action], directoryReader MessageReader[*remoteexecution.Directory], treeReader StreamReader, digestKeyFormat digest.KeyFormat) *NestedBlobReplicator {
+func NewNestedBlobReplicator(replicator Replicator, maximumMessageSizeBytes int, actionReader reader.Reader[*remoteexecution.Action], directoryReader reader.Reader[*remoteexecution.Directory], treeReader StreamReader, digestKeyFormat digest.KeyFormat) *NestedBlobReplicator {
 	return &NestedBlobReplicator{
 		replicator:              replicator,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
@@ -80,7 +83,7 @@ func (nr *NestedBlobReplicator) maybeWakeUpLocked() {
 func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 	digestFunction := actionDigest.GetDigestFunction()
 	nr.enqueue(actionDigest, func(ctx context.Context, d digest.Digest) error {
-		action, err := nr.actionReader.ReadMessage(ctx, d)
+		action, err := nr.actionReader.Read(ctx, d)
 		if err != nil {
 			return err
 		}
@@ -108,7 +111,7 @@ func (nr *NestedBlobReplicator) EnqueueAction(actionDigest digest.Digest) {
 func (nr *NestedBlobReplicator) EnqueueDirectory(directoryDigest digest.Digest) {
 	digestFunction := directoryDigest.GetDigestFunction()
 	nr.enqueue(directoryDigest, func(ctx context.Context, d digest.Digest) error {
-		directory, err := nr.directoryReader.ReadMessage(ctx, d)
+		directory, err := nr.directoryReader.Read(ctx, d)
 		if err != nil {
 			return err
 		}
@@ -145,21 +148,22 @@ func (nr *NestedBlobReplicator) EnqueueTree(treeDigest digest.Digest) {
 		if err != nil {
 			return err
 		}
-		defer r.Close()
 
 		// Gather digests of files contained in the directories.
 		childFileDigests := digest.NewSetBuilder(0)
 		if err := util.VisitProtoBytesFields(r, func(fieldNumber protowire.Number, offsetBytes, sizeBytes int64, fieldReader io.Reader) error {
 			if fieldNumber == blobstore.TreeRootFieldNumber || fieldNumber == blobstore.TreeChildrenFieldNumber {
-				directoryMessage, err := buffer.NewProtoBufferFromReader(
-					&remoteexecution.Directory{},
-					io.NopCloser(fieldReader),
-					buffer.UserProvided,
-				).ToProto(&remoteexecution.Directory{}, nr.maximumMessageSizeBytes)
-				if err != nil {
-					return err
+				if sizeBytes > int64(nr.maximumMessageSizeBytes) {
+					return status.Errorf(codes.InvalidArgument, "Directory size %d exceeds maximum of %d", sizeBytes, nr.maximumMessageSizeBytes)
 				}
-				directory := directoryMessage.(*remoteexecution.Directory)
+				directoryBytes := make([]byte, sizeBytes)
+				if _, err := io.ReadFull(fieldReader, directoryBytes); err != nil {
+					return util.StatusWrap(err, "Failed to read directory bytes")
+				}
+				directory := &remoteexecution.Directory{}
+				if err := proto.Unmarshal(directoryBytes, directory); err != nil {
+					return util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal directory")
+				}
 				for i, childFile := range directory.Files {
 					childFileDigest, err := digestFunction.NewDigestFromProto(childFile.Digest)
 					if err != nil {

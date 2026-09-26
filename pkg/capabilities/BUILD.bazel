@@ -5,6 +5,8 @@ go_library(
     srcs = [
         "action_cache_update_enabled_clearing_provider.go",
         "authorizing_provider.go",
+        "caching_cdc_parameters_fetcher.go",
+        "cdc_parameters_fetcher.go",
         "merging_provider.go",
         "provider.go",
         "server.go",
@@ -15,6 +17,7 @@ go_library(
     deps = [
         "//pkg/auth",
         "//pkg/digest",
+        "//pkg/ttlcache",
         "//pkg/util",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@bazel_remote_apis//build/bazel/semver:semver_go_proto",

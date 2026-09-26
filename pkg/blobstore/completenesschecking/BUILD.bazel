@@ -7,8 +7,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
-        "//pkg/blobstore/slicing",
+        "//pkg/blobstore/chunk",
+        "//pkg/capabilities",
         "//pkg/cas",
         "//pkg/digest",
         "//pkg/util",
@@ -16,6 +16,7 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protowire",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 
@@ -25,7 +26,7 @@ go_test(
     deps = [
         ":completenesschecking",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/testutil",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",

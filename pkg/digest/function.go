@@ -80,6 +80,13 @@ func (f Function) NewDigest(hash string, sizeBytes int64) (Digest, error) {
 		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid digest size: %d bytes", sizeBytes)
 	}
 
+	// Validate degenerate empty blobs. The empty blob is the only blob
+	// of size zero, and its hash is fully determined by the digest
+	// function.
+	if sizeBytes == 0 && hash != f.bareFunction.emptyHash {
+		return BadDigest, status.Errorf(codes.InvalidArgument, "Empty blob has checksum %s, while %s was expected", f.bareFunction.emptyHash, hash)
+	}
+
 	return f.newDigestUnchecked(hash, sizeBytes), nil
 }
 

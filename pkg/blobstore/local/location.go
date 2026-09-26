@@ -8,10 +8,3 @@ type Location struct {
 	OffsetBytes int64
 	SizeBytes   int64
 }
-
-// IsOlder returns true if the receiving Location is stored in Block
-// that is older than the Location argument, or if it is stored prior to
-// the Location argument within the same Block.
-func (a Location) IsOlder(b Location) bool {
-	return a.BlockIndex < b.BlockIndex || (a.BlockIndex == b.BlockIndex && a.OffsetBytes < b.OffsetBytes)
-}
