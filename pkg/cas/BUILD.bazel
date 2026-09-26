@@ -40,9 +40,9 @@ go_library(
 go_test(
     name = "cas_test",
     srcs = [
-        "get_validating_reader_test.go",
         "nested_blob_replicator_test.go",
         "put_reader_test.go",
+        "stream_reader_test.go",
     ],
     deps = [
         ":cas",

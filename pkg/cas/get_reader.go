@@ -45,27 +45,3 @@ func GetReader(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chun
 	}
 	return r, nil
 }
-
-// GetValidatingReader returns an io.Reader that reads contents of a
-// blob from the very beginning. The concatenated contents of the
-// chunks of the blob are expected to hash to the digest under which
-// the blob is stored. An error is returned as soon as this cannot
-// hold, which is no later than when the final chunk is fetched.
-func GetValidatingReader(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest) (io.Reader, error) {
-	if IsSingleChunk(params, d) {
-		// The digest of a blob stored as a single chunk is the
-		// key under which it is stored, so its contents cannot
-		// mismatch.
-		chunkBytes, err := chunkBytesReader.Read(ctx, d)
-		if err != nil {
-			return nil, err
-		}
-		return bytes.NewReader(chunkBytes), nil
-	}
-
-	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
-	if err != nil {
-		return nil, util.StatusWrap(err, "Could not fetch chunk mapping")
-	}
-	return chunk.NewValidatingReaderFromMapping(ctx, mapping.Digests, d, chunkBytesReader), nil
-}
