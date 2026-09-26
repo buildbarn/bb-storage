@@ -96,7 +96,7 @@ func TestGetValidatingReaderDigestMismatch(t *testing.T) {
 	require.Equal(t, []byte("hello"), data)
 
 	_, err = r.Read(data)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch: advertised 3-23d39d0efc1654475821e6e4601aedb5-10-instance, actual 3-fc5e038d38a57032085441e7fe7010b0-10-instance"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch, advertised 3-23d39d0efc1654475821e6e4601aedb5-10-instance, actual 3-fc5e038d38a57032085441e7fe7010b0-10-instance"), err)
 }
 
 func TestGetValidatingReaderFetchChunkMappingError(t *testing.T) {

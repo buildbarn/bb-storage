@@ -203,6 +203,13 @@ func (ba *completenessCheckingBlobAccess) checkCompleteness(ctx context.Context,
 			}
 			return nil
 		}); err != nil {
+			// Any errors generated above may be caused by data
+			// corruption on the Tree object. Force reading the
+			// Tree until completion, and prefer read errors over
+			// any errors generated above.
+			if _, copyErr := io.Copy(io.Discard, r); copyErr != nil {
+				err = copyErr
+			}
 			return util.StatusWrapf(err, "Output directory %#v", outputDirectory.Path)
 		}
 	}

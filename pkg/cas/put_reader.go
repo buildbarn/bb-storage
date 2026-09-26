@@ -51,7 +51,7 @@ func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.B
 
 	// Verify the whole blob against the advertised digest.
 	if actual := wholeGen.Sum(); actual != d {
-		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
+		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 	}
 
 	// A single chunk is the trivial case: it already lives in the

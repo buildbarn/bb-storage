@@ -39,7 +39,8 @@ func TestValidatingReaderFromMappingSuccess(t *testing.T) {
 		ctx,
 		[]digest.Digest{helloDigest, worldDigest},
 		helloWorldDigest,
-		chunkBytesReader)
+		chunkBytesReader,
+	)
 	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	require.Equal(t, []byte("helloworld"), data)
@@ -57,7 +58,8 @@ func TestValidatingReaderFromMappingDigestMismatch(t *testing.T) {
 		ctx,
 		[]digest.Digest{helloDigest, worldDigest},
 		helloWorldDigest,
-		chunkBytesReader)
+		chunkBytesReader,
+	)
 
 	// The first chunk may be read, as it does not trigger
 	// verification.
@@ -70,13 +72,13 @@ func TestValidatingReaderFromMappingDigestMismatch(t *testing.T) {
 	// Reading the second chunk must yield an error, as the
 	// concatenated contents cannot hash to the advertised digest.
 	_, err = r.Read(data)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch: advertised 3-fc5e038d38a57032085441e7fe7010b0-10-test, actual 3-23d39d0efc1654475821e6e4601aedb5-10-test"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch, advertised 3-fc5e038d38a57032085441e7fe7010b0-10-test, actual 3-23d39d0efc1654475821e6e4601aedb5-10-test"), err)
 
 	// The error must be sticky, as the contents of the final chunk
 	// have been revealed to be untrustworthy.
 	n, err = r.Read(data)
 	require.Equal(t, 0, n)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch: advertised 3-fc5e038d38a57032085441e7fe7010b0-10-test, actual 3-23d39d0efc1654475821e6e4601aedb5-10-test"), err)
+	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Blob digest mismatch, advertised 3-fc5e038d38a57032085441e7fe7010b0-10-test, actual 3-23d39d0efc1654475821e6e4601aedb5-10-test"), err)
 }
 
 func TestValidatingReaderFromMappingChunkFetchError(t *testing.T) {
@@ -91,7 +93,8 @@ func TestValidatingReaderFromMappingChunkFetchError(t *testing.T) {
 		ctx,
 		[]digest.Digest{helloDigest, worldDigest},
 		helloWorldDigest,
-		chunkBytesReader)
+		chunkBytesReader,
+	)
 
 	data := make([]byte, 5)
 	n, err := r.Read(data)

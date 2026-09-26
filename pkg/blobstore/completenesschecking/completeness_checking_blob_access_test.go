@@ -158,6 +158,101 @@ func TestCompletenessCheckingBlobAccess(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Output directory \"bazel-out/foo\": Hard disk has a case of the Mondays"), err)
 	})
 
+	t.Run("GetTreeDataCorruption", func(t *testing.T) {
+		// Because Tree objects are processed in a streaming
+		// fashion, it may be the case that we call
+		// FindMissing() against the CAS, even though we later
+		// discover that the Tree object was corrupted.
+		//
+		// This means that even if FindMissing() reports objects
+		// as being absent, we cannot terminate immediately. We
+		// must process the Tree object in its entirety.
+		actionCache.EXPECT().Get(ctx, actionDigest).Return(
+			&remoteexecution.ActionResult{
+				OutputDirectories: []*remoteexecution.OutputDirectory{
+					{
+						Path: "bazel-out/foo",
+						TreeDigest: &remoteexecution.Digest{
+							Hash:      "8f0450aa5f4602d93968daba6f2e7611",
+							SizeBytes: 4000,
+						},
+					},
+				},
+			},
+			nil,
+		)
+
+		mockStream := mock.NewMockIOReader(ctrl)
+		gomock.InOrder(
+			mockStream.EXPECT().Read(gomock.Any()).
+				DoAndReturn(func(p []byte) (int, error) {
+					treeData, err := proto.Marshal(&remoteexecution.Tree{
+						Root: &remoteexecution.Directory{
+							Files: []*remoteexecution.FileNode{
+								{
+									Digest: &remoteexecution.Digest{
+										Hash:      "024ced29f1fdef2f644f34a071ade5be",
+										SizeBytes: 1,
+									},
+								},
+								{
+									Digest: &remoteexecution.Digest{
+										Hash:      "8b3b146b1c4df062a2dc35168cbf4ce6",
+										SizeBytes: 2,
+									},
+								},
+								{
+									Digest: &remoteexecution.Digest{
+										Hash:      "4a4a6ebb3f8b062653cb957cbdc047d9",
+										SizeBytes: 3,
+									},
+								},
+								{
+									Digest: &remoteexecution.Digest{
+										Hash:      "69778ed3e4dcf4e0c40df49e4ca5bd37",
+										SizeBytes: 4,
+									},
+								},
+								{
+									Digest: &remoteexecution.Digest{
+										Hash:      "ff7816e0353299e801a30e37aee1758c",
+										SizeBytes: 5,
+									},
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+					return copy(p, treeData), nil
+				}),
+			mockStream.EXPECT().Read(gomock.Any()).
+				DoAndReturn(func(p []byte) (int, error) {
+					return copy(p, "Garbage"), status.Error(codes.Internal, "Some internal data corruption error discovered later in the stream.")
+				}),
+		)
+
+		treeDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8f0450aa5f4602d93968daba6f2e7611", 4000)
+		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(mockStream, nil)
+		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), gomock.Any()).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
+		chunkStorage.EXPECT().FindMissing(
+			ctx,
+			digest.NewSetBuilder(0).
+				Add(treeDigest).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "024ced29f1fdef2f644f34a071ade5be", 1)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b3b146b1c4df062a2dc35168cbf4ce6", 2)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3)).
+				Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "69778ed3e4dcf4e0c40df49e4ca5bd37", 4)).
+				Build(),
+		).Return(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "4a4a6ebb3f8b062653cb957cbdc047d9", 3).ToSingletonSet(), nil)
+		chunkMappingStorage.EXPECT().FindMissing(
+			ctx,
+			digest.EmptySet,
+		).Return(digest.EmptySet, nil)
+
+		_, err := completenessCheckingBlobAccess.Get(ctx, actionDigest)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Output directory \"bazel-out/foo\": Some internal data corruption error discovered later in the stream."), err)
+	})
+
 	t.Run("GetTreeTooLarge", func(t *testing.T) {
 		// ActionResult entries that reference Tree objects that
 		// are too big to load should be treated as being

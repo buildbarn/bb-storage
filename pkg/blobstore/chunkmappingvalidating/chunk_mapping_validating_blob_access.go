@@ -160,7 +160,7 @@ func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Di
 	if actual := wholeGen.Sum(); actual != d {
 		// The chunks in the supplied chunkmapping do not add up to its
 		// digest.
-		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
+		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 	}
 	if len(canonicalDigests) < 2 {
 		// Blobs that fit in a single chunk have no chunk mappings in
