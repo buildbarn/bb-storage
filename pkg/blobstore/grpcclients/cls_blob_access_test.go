@@ -78,19 +78,20 @@ func TestCLSBlobAccessGet(t *testing.T) {
 		}, chunkList)
 	})
 
-	t.Run("SuccessSingleChunk", func(t *testing.T) {
+	t.Run("SuccessSingletonList", func(t *testing.T) {
+		// The upstream server reports the blob itself as the single
+		// chunk of its mapping. Such blobs have no chunk list in
+		// storage, so this maps to NotFound.
 		expectGetChunkMappingStream([]*remoteexecution.GetChunkMappingResponse{
 			{
 				ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 				ChunkDigests:     []*remoteexecution.Digest{blobDigest.GetProto()},
 			},
 		})
-		chunkList, err := blobAccess.Get(ctx, blobDigest)
-		require.NoError(t, err)
-		require.Equal(t, chunk.List{
-			Digests: []digest.Digest{blobDigest},
-			Offsets: []uint64{0},
-		}, chunkList)
+		_, err := blobAccess.Get(ctx, blobDigest)
+		testutil.RequireEqualStatus(t,
+			status.Error(codes.NotFound, "Blob has no chunk list in storage"),
+			err)
 	})
 
 	t.Run("ChunkingFunctionMismatch", func(t *testing.T) {
@@ -166,6 +167,8 @@ func TestCLSBlobAccessGetEmptyBlob(t *testing.T) {
 	emptyBlobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 
 	t.Run("EmptyListForEmptyBlob", func(t *testing.T) {
+		// The empty blob has no chunk list in storage, so an empty
+		// mapping composes it and maps to NotFound.
 		clientStream := mock.NewMockClientStream(ctrl)
 		client.EXPECT().NewStream(
 			gomock.Any(),
@@ -188,12 +191,10 @@ func TestCLSBlobAccessGetEmptyBlob(t *testing.T) {
 		})
 		clientStream.EXPECT().RecvMsg(gomock.Any()).Return(io.EOF)
 
-		chunkList, err := blobAccess.Get(ctx, emptyBlobDigest)
-		require.NoError(t, err)
-		require.Equal(t, chunk.List{
-			Digests: []digest.Digest{},
-			Offsets: []uint64{},
-		}, chunkList)
+		_, err := blobAccess.Get(ctx, emptyBlobDigest)
+		testutil.RequireEqualStatus(t,
+			status.Error(codes.NotFound, "Blob has no chunk list in storage"),
+			err)
 	})
 }
 

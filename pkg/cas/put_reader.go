@@ -23,11 +23,7 @@ func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.B
 	chunker := cdc.NewReaderChunker(digestFunction, r, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
 	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
 
-	chunkList := chunk.List{
-		Digests:   make([]digest.Digest, 0),
-		Offsets:   make([]uint64, 0),
-		Validated: true,
-	}
+	chunkDigests := make([]digest.Digest, 0)
 	var offset uint64
 	for {
 		c, err := chunker.NextChunk()
@@ -46,8 +42,7 @@ func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.B
 			return util.StatusWrap(err, "Failed to save chunk")
 		}
 
-		chunkList.Digests = append(chunkList.Digests, c.Digest)
-		chunkList.Offsets = append(chunkList.Offsets, offset)
+		chunkDigests = append(chunkDigests, c.Digest)
 		offset += uint64(c.Digest.GetSizeBytes())
 		if offset > uint64(d.GetSizeBytes()) {
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), offset)
@@ -61,10 +56,14 @@ func PutReader(ctx context.Context, zstdPool zstd.Pool, chunkStorage blobstore.B
 
 	// A single chunk is the trivial case: it already lives in the
 	// chunk storage and needs no chunk list.
-	if len(chunkList.Digests) <= 1 {
+	if len(chunkDigests) <= 1 {
 		return nil
 	}
 
+	chunkList, err := chunk.NewList(chunkDigests, uint64(d.GetSizeBytes()), true)
+	if err != nil {
+		return err
+	}
 	if err := chunkListStorage.Put(ctx, d, chunkList); err != nil {
 		return util.StatusWrap(err, "Could not save chunk list for blob")
 	}

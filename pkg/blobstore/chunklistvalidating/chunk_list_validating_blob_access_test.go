@@ -285,7 +285,7 @@ func TestChunkListValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	require.Equal(t, expectedData, composedData)
 }
 
-func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
+func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfBlob(t *testing.T) {
 	ctx := context.Background()
 
 	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
@@ -295,6 +295,10 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 
 	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
 
+	// Splicing small chunks must extend the lifetime of the chunk
+	// that the blob canonically decomposes into, which is the blob
+	// itself as it fits in a single chunk. The chunk list storage is
+	// not involved, as no chunk list exists.
 	chunk1Data := []byte("Hello, ")
 	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
 	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk.NewChunk(zstdPool, chunk1Data)))
@@ -319,7 +323,6 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 		// However, it MUST still have verified/touched the original
 		// blob.
 		require.Greater(t, fakeCS.GetTouches(fullBlobDigest), 0, "Composed blob lifetime was not extended during SpliceBlob")
-		require.Greater(t, fakeCLS.GetTouches(fullBlobDigest), 0, "Composed blob chunk list lifetime was not extended during SpliceBlob")
 	} else {
 		// Because the server accepted the Splice request, it is
 		// strictly obligated to extend the lifetimes of BOTH the
@@ -329,6 +332,55 @@ func TestChunkListValidatingBlobAccessPutExtendsLifetimes(t *testing.T) {
 		require.Greater(t, fakeCS.GetTouches(chunk1Digest), 0, "Chunk 1 lifetime was not extended during SpliceBlob")
 		require.Greater(t, fakeCS.GetTouches(chunk2Digest), 0, "Chunk 2 lifetime was not extended during SpliceBlob")
 		require.Greater(t, fakeCS.GetTouches(fullBlobDigest), 0, "Composed blob lifetime was not extended during SpliceBlob")
+	}
+}
+
+func TestChunkListValidatingBlobAccessPutExtendsLifetimeOfChunkList(t *testing.T) {
+	ctx := context.Background()
+
+	fakeCS := newFakeBlobAccess[*chunk.Chunk](testCDCParams)
+	fakeCLS := newFakeBlobAccess[chunk.List](nil)
+	zstdPool := zstd.NewPoolFromConfiguration(nil)
+	validatingCLS := chunklistvalidating.NewChunkListValidatingBlobAccess(fakeCLS, fakeCS, maximumMessageSizeBytes, zstdPool)
+
+	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
+
+	// Splicing chunks that compose a blob which canonically
+	// decomposes into at least two chunks must extend the lifetime
+	// of the blob's chunk list. The blob itself is never stored as a
+	// chunk, so the chunk storage is not involved.
+	chunk1Data := bytes.Repeat([]byte("Hello, "), 220)
+	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
+	require.NoError(t, fakeCS.Put(ctx, chunk1Digest, chunk.NewChunk(zstdPool, chunk1Data)))
+
+	chunk2Data := bytes.Repeat([]byte("World! And so on. "), 90)
+	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
+	require.NoError(t, fakeCS.Put(ctx, chunk2Digest, chunk.NewChunk(zstdPool, chunk2Data)))
+
+	expectedFullData := append(chunk1Data, chunk2Data...)
+	fullBlobDigest := mustComputeDigest(t, digestFunction, expectedFullData)
+
+	fakeCS.ResetTouches()
+
+	err := validatingCLS.Put(ctx, fullBlobDigest, makeChunkList(chunk1Digest, chunk2Digest))
+
+	// From the REAPI, the server may either process the splice and
+	// return OK, OR it may return ALREADY_EXISTS if the blob is
+	// already composed and the server chooses not to extend the
+	// lifetime of the user's specific chunks.
+	if status.Code(err) == codes.AlreadyExists {
+		// The server is free not to touch the user's chunks.
+		// However, it MUST still have verified/touched the original
+		// blob.
+		require.Greater(t, fakeCLS.GetTouches(fullBlobDigest), 0, "Composed blob chunk list lifetime was not extended during SpliceBlob")
+	} else {
+		// Because the server accepted the Splice request, it is
+		// strictly obligated to extend the lifetimes of BOTH the
+		// provided chunks and the composed blob.
+		require.NoError(t, err)
+
+		require.Greater(t, fakeCS.GetTouches(chunk1Digest), 0, "Chunk 1 lifetime was not extended during SpliceBlob")
+		require.Greater(t, fakeCS.GetTouches(chunk2Digest), 0, "Chunk 2 lifetime was not extended during SpliceBlob")
 		require.Greater(t, fakeCLS.GetTouches(fullBlobDigest), 0, "Composed blob chunk list lifetime was not extended during SpliceBlob")
 	}
 }

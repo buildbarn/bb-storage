@@ -64,12 +64,7 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunk.List, error
 	}
 	count := sizeBytes / (hashLen + 4)
 	digestFunction := d.GetDigestFunction()
-	ret := chunk.List{
-		Offsets:   make([]uint64, 0, count),
-		Digests:   make([]digest.Digest, 0, count),
-		Validated: c.prevalidated,
-	}
-	offset := uint64(0)
+	chunkDigests := make([]digest.Digest, 0, count)
 	for i := range count {
 		size := int64(binary.LittleEndian.Uint32(data[i*4:]))
 		stringHash := hex.EncodeToString(data[4*count+i*hashLen : 4*count+(i+1)*hashLen])
@@ -82,24 +77,13 @@ func (c *chunkListCoder) Decode(data []byte, d digest.Digest) (chunk.List, error
 			// removed from the resulting list.
 			continue
 		}
-		ret.Offsets = append(ret.Offsets, offset)
-		ret.Digests = append(ret.Digests, chunkDigest)
-		offset += uint64(size)
+		chunkDigests = append(chunkDigests, chunkDigest)
 	}
-	if offset != uint64(d.GetSizeBytes()) {
-		return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
+	// Chunk lists only exist for blobs composed of at least two
+	// chunks. Blobs of fewer chunks have no chunk list in storage,
+	// so lists of fewer chunks are invalid.
+	if len(chunkDigests) < 2 {
+		return chunk.List{}, status.Error(codes.Internal, "Chunk list contains fewer than two chunks")
 	}
-	switch len(ret.Digests) {
-	case 0:
-		// Empty chunk list, blob must be the empty blob.
-		if d.GetSizeBytes() != 0 {
-			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
-		}
-	case 1:
-		// Trivial chunk list, digests[0] must be the blob itself.
-		if ret.Digests[0] != d {
-			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
-		}
-	}
-	return ret, nil
+	return chunk.NewList(chunkDigests, uint64(d.GetSizeBytes()), c.prevalidated)
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"google.golang.org/grpc/codes"
@@ -12,11 +13,11 @@ import (
 )
 
 // listReadCloser is an io.ReadCloser that stitches together the
-// contents of a blob based on a ChunkList.
+// contents of a blob based on an ordered list of chunk digests.
 type listReadCloser struct {
 	ctx              context.Context
 	chunkBytesReader reader.Reader[[]byte]
-	list             List
+	chunkDigests     []digest.Digest
 
 	currentChunkIndex  int
 	currentChunkData   []byte
@@ -25,12 +26,13 @@ type listReadCloser struct {
 }
 
 // NewReaderFromList creates an io.ReadCloser that yields the
-// concatenated contents of the chunks in a ChunkList.
-func NewReaderFromList(ctx context.Context, list List, chunkBytesReader reader.Reader[[]byte]) io.ReadCloser {
+// concatenated contents of the chunks identified by the provided
+// digests.
+func NewReaderFromList(ctx context.Context, chunkDigests []digest.Digest, chunkBytesReader reader.Reader[[]byte]) io.ReadCloser {
 	return &listReadCloser{
 		ctx:              ctx,
 		chunkBytesReader: chunkBytesReader,
-		list:             list,
+		chunkDigests:     chunkDigests,
 	}
 }
 
@@ -42,10 +44,10 @@ func (r *listReadCloser) Read(p []byte) (int, error) {
 	// Fetch the next chunk if the current one is exhausted. Chunk lists
 	// are guaranteed not to contain empty chunks.
 	if r.currentChunkOffset >= len(r.currentChunkData) {
-		if r.currentChunkIndex >= len(r.list.Digests) {
+		if r.currentChunkIndex >= len(r.chunkDigests) {
 			return 0, io.EOF
 		}
-		chunkDigest := r.list.Digests[r.currentChunkIndex]
+		chunkDigest := r.chunkDigests[r.currentChunkIndex]
 		chunkData, err := r.chunkBytesReader.Read(r.ctx, chunkDigest)
 		if err != nil {
 			return 0, util.StatusWrapf(err, "Failed to fetch chunk at index %d", r.currentChunkIndex)

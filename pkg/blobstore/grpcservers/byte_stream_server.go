@@ -67,71 +67,84 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if err != nil {
 		return util.StatusWrap(err, "Could not determine cdc parameters")
 	}
-	chunkList := chunk.List{}
 	if !cas.IsSingleChunk(params, d) {
-		chunkList, err = s.chunkListStorage.Get(ctx, d)
+		chunkList, err := s.chunkListStorage.Get(ctx, d)
 		if err != nil {
 			return err
 		}
-	} else if d.GetSizeBytes() == 0 {
-	} else {
-		// Blobs that fit in a single chunk have no chunk lists in
-		// storage, but one may be created trivially on the fly.
-		chunkList = chunk.List{Digests: []digest.Digest{d}, Offsets: []uint64{0}}
+		i, chunkOffset := chunkList.FindChunkOffset(uint64(in.ReadOffset))
+		for ; i < len(chunkList.Digests); i++ {
+			chunk, err := s.chunkStorage.Get(ctx, chunkList.Digests[i])
+			if err != nil {
+				return err
+			}
+			if err := s.sendChunk(ctx, out, chunk, chunkOffset, compressor); err != nil {
+				return err
+			}
+			chunkOffset = 0
+		}
+		return nil
 	}
-	i, chunkOffset := chunkList.FindChunkOffset(uint64(in.ReadOffset))
-	for ; i < len(chunkList.Digests); i++ {
-		chunk, err := s.chunkStorage.Get(ctx, chunkList.Digests[i])
+	if d.GetSizeBytes() != 0 {
+		// Blobs that fit in a single chunk have no chunk lists in
+		// storage; the blob is stored as the chunk itself. The empty
+		// blob is always present and yields no data.
+		chunk, err := s.chunkStorage.Get(ctx, d)
 		if err != nil {
 			return err
 		}
-		if chunkOffset == 0 || compressor == remoteexecution.Compressor_IDENTITY {
-			// ZSTD has the neat property that we can simply send
-			// multiple ZSTD encoded chunks and their concatenated byte
-			// representation is a valid ZSTD representation of their
-			// concatenated underlying bytes.
-			var data []byte
-			switch compressor {
-			case remoteexecution.Compressor_IDENTITY:
-				data = chunk.GetBytes()
-			case remoteexecution.Compressor_ZSTD:
-				data, err = chunk.GetBytesCompressed(ctx)
-			default:
-				panic("Unsupported compression algorithm should not be reachable")
-			}
-			if err != nil {
-				return err
-			}
-			out.SendMsg(&bytestream.ReadResponse{
-				Data: data[chunkOffset:],
-			})
-		} else {
-			// If we have a chunk offset and are sending back compressed
-			// bytes we need to find the data based on that offset in
-			// its decompressed form, then compress it again before
-			// sending it back.
-			data := chunk.GetBytes()
-			data = data[chunkOffset:]
-			var buf bytes.Buffer
-			buf.Grow(len(data))
-			encoder, err := s.zstdPool.NewEncoder(ctx, &buf)
-			if err != nil {
-				return err
-			}
-			if _, err := encoder.Write(data); err != nil {
-				encoder.Close()
-				return err
-			}
-			if err := encoder.Close(); err != nil {
-				return err
-			}
-			out.SendMsg(&bytestream.ReadResponse{
-				Data: buf.Bytes(),
-			})
+		if err := s.sendChunk(ctx, out, chunk, int64(in.ReadOffset), compressor); err != nil {
+			return err
 		}
-		chunkOffset = 0
 	}
 	return nil
+}
+
+func (s *byteStreamServer) sendChunk(ctx context.Context, out bytestream.ByteStream_ReadServer, chunk *chunk.Chunk, chunkOffset int64, compressor remoteexecution.Compressor_Value) error {
+	if chunkOffset == 0 || compressor == remoteexecution.Compressor_IDENTITY {
+		// ZSTD has the neat property that we can simply send
+		// multiple ZSTD encoded chunks and their concatenated byte
+		// representation is a valid ZSTD representation of their
+		// concatenated underlying bytes.
+		var data []byte
+		var err error
+		switch compressor {
+		case remoteexecution.Compressor_IDENTITY:
+			data = chunk.GetBytes()
+		case remoteexecution.Compressor_ZSTD:
+			data, err = chunk.GetBytesCompressed(ctx)
+		default:
+			panic("Unsupported compression algorithm should not be reachable")
+		}
+		if err != nil {
+			return err
+		}
+		return out.SendMsg(&bytestream.ReadResponse{
+			Data: data[chunkOffset:],
+		})
+	}
+	// If we have a chunk offset and are sending back compressed
+	// bytes we need to find the data based on that offset in
+	// its decompressed form, then compress it again before
+	// sending it back.
+	data := chunk.GetBytes()
+	data = data[chunkOffset:]
+	var buf bytes.Buffer
+	buf.Grow(len(data))
+	encoder, err := s.zstdPool.NewEncoder(ctx, &buf)
+	if err != nil {
+		return err
+	}
+	if _, err := encoder.Write(data); err != nil {
+		encoder.Close()
+		return err
+	}
+	if err := encoder.Close(); err != nil {
+		return err
+	}
+	return out.SendMsg(&bytestream.ReadResponse{
+		Data: buf.Bytes(),
+	})
 }
 
 func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error {

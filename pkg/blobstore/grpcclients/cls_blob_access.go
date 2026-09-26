@@ -3,8 +3,6 @@ package grpcclients
 import (
 	"context"
 	"io"
-	"math"
-	"math/bits"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
@@ -47,11 +45,7 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 	// Convert wire format to chunk.List. Chunks may be spread across
 	// multiple responses, so digests are collected until the server
 	// closes the stream.
-	chunkList := chunk.List{
-		Digests: make([]digest.Digest, 0, blobstore.RecommendedFindMissingDigestsCount),
-		Offsets: make([]uint64, 0, blobstore.RecommendedFindMissingDigestsCount),
-	}
-	offset := uint64(0)
+	chunkDigests := make([]digest.Digest, 0, blobstore.RecommendedFindMissingDigestsCount)
 	for i := 0; ; i++ {
 		response, err := stream.Recv()
 		if err != nil {
@@ -79,35 +73,25 @@ func (ba *clsBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) (chu
 				// simply be removed from the resulting list.
 				continue
 			}
-			chunkList.Offsets = append(chunkList.Offsets, offset)
-			chunkList.Digests = append(chunkList.Digests, d)
-			var carry uint64
-			offset, carry = bits.Add64(offset, uint64(d.GetSizeBytes()), 0)
-			if carry != 0 {
-				return chunk.List{}, status.Errorf(
-					codes.Internal,
-					"Chunk list overflows, the sum of chunk sizes exceeds %d bytes",
-					uint64(math.MaxUint64),
-				)
-			}
+			chunkDigests = append(chunkDigests, d)
 		}
 	}
-	if offset != uint64(blobDigest.GetSizeBytes()) {
+	// A mapping of fewer than two chunks does not constitute a chunk
+	// list, as blobs of fewer chunks have no chunk list in storage. If
+	// the mapping composes the blob (a single chunk equal to the blob
+	// itself, or no chunks at all for the empty blob), the blob simply
+	// has no chunk list. Any other mapping is the result of server
+	// misbehavior.
+	if len(chunkDigests) == 1 && chunkDigests[0] == blobDigest {
+		return chunk.List{}, status.Error(codes.NotFound, "Blob has no chunk list in storage")
+	}
+	if len(chunkDigests) == 0 && blobDigest.GetSizeBytes() == 0 {
+		return chunk.List{}, status.Error(codes.NotFound, "Blob has no chunk list in storage")
+	}
+	if len(chunkDigests) < 2 {
 		return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
 	}
-	switch len(chunkList.Digests) {
-	case 0:
-		// Empty chunk list; the blob must be the empty blob.
-		if blobDigest.GetSizeBytes() != 0 {
-			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
-		}
-	case 1:
-		// Trivial chunk list, digests[0] must be the blob itself.
-		if chunkList.Digests[0] != blobDigest {
-			return chunk.List{}, status.Error(codes.Internal, "Chunk list does not compose to blob")
-		}
-	}
-	return chunkList, nil
+	return chunk.NewList(chunkDigests, uint64(blobDigest.GetSizeBytes()), false)
 }
 
 func (ba *clsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, value chunk.List) error {

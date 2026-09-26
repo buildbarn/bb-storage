@@ -36,15 +36,8 @@ func GetReadCloserAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte]
 		return nil, util.StatusWrap(err, "Could not fetch chunk list")
 	}
 	index, chunkOffset := manifest.FindChunkOffset(uint64(offset))
-	if index >= len(manifest.Digests) {
-		// Offset at the end of the blob.
-		return io.NopCloser(bytes.NewReader(nil)), nil
-	}
-	offsetManifest := chunk.List{
-		Digests: manifest.Digests[index:],
-		Offsets: manifest.Offsets[index:],
-	}
-	r := chunk.NewReaderFromList(ctx, offsetManifest, chunkBytesReader)
+	offsetDigests := manifest.Digests[index:]
+	r := chunk.NewReaderFromList(ctx, offsetDigests, chunkBytesReader)
 	if chunkOffset > 0 {
 		if _, err := io.CopyN(io.Discard, r, chunkOffset); err != nil {
 			return nil, util.StatusWrap(err, "Failed to skip to read offset")

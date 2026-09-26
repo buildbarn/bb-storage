@@ -87,22 +87,20 @@ func (s *contentAddressableStorageServer) FindMissingBlobs(ctx context.Context, 
 }
 
 func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context, blobDigest digest.Digest, params *remoteexecution.RepMaxCdcParams, compressor remoteexecution.Compressor_Value) ([]byte, error) {
-	chunkList := chunk.List{}
-	var err error
+	var chunkDigests []digest.Digest
 	if !cas.IsSingleChunk(params, blobDigest) {
-		chunkList, err = s.chunkListStorage.Get(ctx, blobDigest)
+		chunkList, err := s.chunkListStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
-	} else if blobDigest.GetSizeBytes() == 0 {
+		chunkDigests = chunkList.Digests
 	} else {
-		// Blobs that fit in a single chunk have no chunk lists in
-		// storage, but one may be created trivially on the fly.
-		chunkList = chunk.List{Digests: []digest.Digest{blobDigest}, Offsets: []uint64{0}}
+		// Blobs fits in a single chunk.
+		chunkDigests = []digest.Digest{blobDigest}
 	}
 	var buf bytes.Buffer
 	buf.Grow(int(blobDigest.GetSizeBytes()))
-	for _, chunkDigest := range chunkList.Digests {
+	for _, chunkDigest := range chunkDigests {
 		chunk, err := s.chunkStorage.Get(ctx, chunkDigest)
 		if err != nil {
 			return nil, err
@@ -244,10 +242,7 @@ func (contentAddressableStorageServer) GetTree(in *remoteexecution.GetTreeReques
 }
 
 func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Context, d digest.Digest, digests []digest.Digest) error {
-	chunkList := chunk.List{
-		Digests: make([]digest.Digest, 0, len(digests)),
-		Offsets: make([]uint64, 0, len(digests)),
-	}
+	chunkDigests := make([]digest.Digest, 0, len(digests))
 	offset := uint64(0)
 	for _, chunkDigest := range digests {
 		if chunkDigest.GetSizeBytes() == 0 {
@@ -255,8 +250,7 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 			// removed from the resulting list.
 			continue
 		}
-		chunkList.Offsets = append(chunkList.Offsets, offset)
-		chunkList.Digests = append(chunkList.Digests, chunkDigest)
+		chunkDigests = append(chunkDigests, chunkDigest)
 		var carry uint64
 		offset, carry = bits.Add64(offset, uint64(chunkDigest.GetSizeBytes()), 0)
 		if carry != 0 {
@@ -270,25 +264,24 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 	if offset != uint64(d.GetSizeBytes()) {
 		return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 	}
-	switch len(chunkList.Digests) {
+	switch len(chunkDigests) {
 	case 0:
-		// Empty chunk list, blob must be the empty blob.
+		// No chunks, just check that it's the empty blob.
 		if d.GetSizeBytes() != 0 {
 			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 		}
 		return nil
 	case 1:
-		// Trivial chunk list, digests[0] must be the blob itself.
-		if chunkList.Digests[0] != d {
+		// Single chunk blob, check that the chunk digest matches the
+		// blob digest and that the chunk is present in storage.
+		if chunkDigests[0] != d {
 			return status.Error(codes.InvalidArgument, "Chunk list does not compose to blob")
 		}
-		// While it's the right digest it may still be missing from the
-		// CAS making the register operation invalid.
 		params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 		if err != nil {
 			return err
 		}
-		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, chunkList.Digests[0].ToSingletonSet())
+		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, chunkDigests[0].ToSingletonSet())
 		if err != nil {
 			return err
 		}
@@ -296,11 +289,17 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 			return status.Error(codes.NotFound, "At least one chunk is missing from storage.")
 		}
 		return nil
+	default:
+		// Store the chunk list.
+		chunkList, err := chunk.NewList(chunkDigests, uint64(d.GetSizeBytes()), false)
+		if err != nil {
+			return err
+		}
+		if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
+			return util.StatusWrap(err, "Could not save chunk list for blob")
+		}
+		return nil
 	}
-	if err := s.chunkListStorage.Put(ctx, d, chunkList); err != nil {
-		return util.StatusWrap(err, "Could not save chunk list for blob")
-	}
-	return nil
 }
 
 func (s *contentAddressableStorageServer) RegisterChunkMapping(stream remoteexecution.ContentAddressableStorage_RegisterChunkMappingServer) error {
@@ -404,27 +403,30 @@ func (s *contentAddressableStorageServer) SpliceBlob(ctx context.Context, in *re
 	}, nil
 }
 
-func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) (chunk.List, error) {
+func (s *contentAddressableStorageServer) getChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest) ([]digest.Digest, error) {
 	if cas.IsSingleChunk(params, d) {
-		if d.GetSizeBytes() == 0 {
-			return chunk.List{}, nil
-		}
 		// Blobs that fit in a single chunk have no chunk lists in
 		// storage, but one may be created trivially on the fly provided
 		// the chunk exists.
+		if d.GetSizeBytes() == 0 {
+			// The empty blob has the empty chunk mapping.
+			return nil, nil
+		}
 		missing, err := cas.FindMissing(ctx, s.chunkStorage, s.chunkListStorage, params, d.ToSingletonSet())
 		if err != nil {
-			return chunk.List{}, util.StatusWrap(err, "Failed to check blob existence")
+			return nil, util.StatusWrap(err, "Failed to check blob existence")
 		}
 		if !missing.Empty() {
-			return chunk.List{}, status.Errorf(codes.NotFound, "Blob %s not found", d)
+			return nil, status.Errorf(codes.NotFound, "Blob %s not found", d)
 		}
-		return chunk.List{Digests: []digest.Digest{d}, Offsets: []uint64{0}}, nil
+		return []digest.Digest{d}, nil
 	}
-
-	return s.chunkListStorage.Get(ctx, d)
+	chunkList, err := s.chunkListStorage.Get(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	return chunkList.Digests, nil
 }
-
 func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *remoteexecution.SplitBlobRequest) (*remoteexecution.SplitBlobResponse, error) {
 	instanceName, err := digest.NewInstanceName(in.InstanceName)
 	if err != nil {
@@ -443,18 +445,18 @@ func (s *contentAddressableStorageServer) SplitBlob(ctx context.Context, in *rem
 		return nil, err
 	}
 
-	chunkList, err := s.getChunkMapping(ctx, params, blobDigest)
+	chunkDigests, err := s.getChunkMapping(ctx, params, blobDigest)
 	if err != nil {
 		return nil, err
 	}
 
-	chunkDigests := make([]*remoteexecution.Digest, len(chunkList.Digests))
-	for i, chunkDigest := range chunkList.Digests {
-		chunkDigests[i] = chunkDigest.GetProto()
+	protoDigests := make([]*remoteexecution.Digest, len(chunkDigests))
+	for i, chunkDigest := range chunkDigests {
+		protoDigests[i] = chunkDigest.GetProto()
 	}
 
 	return &remoteexecution.SplitBlobResponse{
-		ChunkDigests:     chunkDigests,
+		ChunkDigests:     protoDigests,
 		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 	}, nil
 }
@@ -477,29 +479,26 @@ func (s *contentAddressableStorageServer) GetChunkMapping(in *remoteexecution.Ge
 		return err
 	}
 
-	chunkList, err := s.getChunkMapping(stream.Context(), params, blobDigest)
+	chunkDigests, err := s.getChunkMapping(stream.Context(), params, blobDigest)
 	if err != nil {
 		return err
 	}
 
-	chunkDigests := make([]*remoteexecution.Digest, len(chunkList.Digests))
-	for i, chunkDigest := range chunkList.Digests {
-		chunkDigests[i] = chunkDigest.GetProto()
+	protoDigests := make([]*remoteexecution.Digest, len(chunkDigests))
+	for i, chunkDigest := range chunkDigests {
+		protoDigests[i] = chunkDigest.GetProto()
 	}
 
 	batchSize := int(blobstore.RecommendedFindMissingDigestsCount)
-	for len(chunkDigests) > 0 {
-		n := batchSize
-		if len(chunkDigests) < n {
-			n = len(chunkDigests)
-		}
+	for len(protoDigests) > 0 {
+		n := min(len(protoDigests), batchSize)
 		if err := stream.Send(&remoteexecution.GetChunkMappingResponse{
-			ChunkDigests:     chunkDigests[:n],
+			ChunkDigests:     protoDigests[:n],
 			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 		}); err != nil {
 			return err
 		}
-		chunkDigests = chunkDigests[n:]
+		protoDigests = protoDigests[n:]
 	}
 	return nil
 }

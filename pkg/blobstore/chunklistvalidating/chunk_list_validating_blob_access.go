@@ -127,13 +127,9 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 	}
 	// No more shortcuts available go through the heavy path of
 	// concatenating/verifying and chunking the blobs.
-	canonicalChunkList := chunk.List{
-		Offsets:   make([]uint64, 0, len(value.Offsets)),
-		Digests:   make([]digest.Digest, 0, len(value.Offsets)),
-		Validated: true,
-	}
+	canonicalDigests := make([]digest.Digest, 0, len(value.Offsets))
 	offset := uint64(0)
-	reader := chunk.NewReaderFromList(ctx, value, ba.chunkBytesFetcher)
+	reader := chunk.NewReaderFromList(ctx, value.Digests, ba.chunkBytesFetcher)
 	digestFunction := d.GetDigestFunction()
 	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
 	chunker := cdc.NewReaderChunker(d.GetDigestFunction(), reader, int64(params.MinChunkSizeBytes), int64(params.HorizonSizeBytes))
@@ -158,8 +154,7 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 				return util.StatusWrap(err, "Failed to save chunk")
 			}
 		}
-		canonicalChunkList.Offsets = append(canonicalChunkList.Offsets, offset)
-		canonicalChunkList.Digests = append(canonicalChunkList.Digests, c.Digest)
+		canonicalDigests = append(canonicalDigests, c.Digest)
 		offset += uint64(c.Digest.GetSizeBytes())
 	}
 	if actual := wholeGen.Sum(); actual != d {
@@ -167,7 +162,16 @@ func (ba *chunkListValidatingBlobAccess) Put(ctx context.Context, d digest.Diges
 		// digest.
 		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch: advertised %s, actual %s", d, actual)
 	}
+	if len(canonicalDigests) < 2 {
+		// Blobs that fit in a single chunk have no chunk lists in
+		// storage, as the blob is stored as the chunk itself.
+		return nil
+	}
 	// Store the canonical chunk list.
+	canonicalChunkList, err := chunk.NewList(canonicalDigests, uint64(d.GetSizeBytes()), true)
+	if err != nil {
+		return err
+	}
 	if err := ba.BlobAccess.Put(ctx, d, canonicalChunkList); err != nil {
 		return util.StatusWrap(err, "Failed to save canonical chunk list")
 	}
