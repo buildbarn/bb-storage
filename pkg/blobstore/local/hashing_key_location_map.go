@@ -63,6 +63,16 @@ var (
 )
 
 type hashingKeyLocationMap struct {
+	// mu protects every record-array access. Allows concurrent
+	// callers of Get() (which now only contend if a Put() is
+	// concurrent), and serialises Put() against all other Put() and
+	// Get() callers. Previously the caller (FlatBlobAccess) provided
+	// this guarantee via an external write lock; that lock is being
+	// downgraded to a read lock for the finalize/klm-Put path so
+	// concurrent Get readers no longer block on it, which requires
+	// hashingKeyLocationMap to enforce hash-table safety itself.
+	mu sync.RWMutex
+
 	recordArray        LocationRecordArray
 	recordsCount       int
 	hashInitialization uint64
@@ -137,6 +147,9 @@ func (klm *hashingKeyLocationMap) getSlot(k *LocationRecordKey) int {
 }
 
 func (klm *hashingKeyLocationMap) Get(key Key) (Location, error) {
+	klm.mu.RLock()
+	defer klm.mu.RUnlock()
+
 	recordKey := LocationRecordKey{Key: key}
 	for {
 		slot := klm.getSlot(&recordKey)
@@ -164,6 +177,9 @@ func (klm *hashingKeyLocationMap) Get(key Key) (Location, error) {
 }
 
 func (klm *hashingKeyLocationMap) Put(key Key, location Location) error {
+	klm.mu.Lock()
+	defer klm.mu.Unlock()
+
 	record := LocationRecord{
 		RecordKey: LocationRecordKey{Key: key},
 		Location:  location,

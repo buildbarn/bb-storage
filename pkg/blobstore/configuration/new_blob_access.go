@@ -367,6 +367,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				locationBlobMap,
 				digestKeyFormat,
 				&globalLock,
+				int(backend.Local.RefreshConcurrency),
 				storageTypeName,
 				creator.GetDefaultCapabilitiesProvider(),
 			)

@@ -628,6 +628,7 @@ type LocalBlobAccessConfiguration struct {
 	BlocksBackend             isLocalBlobAccessConfiguration_BlocksBackend `protobuf_oneof:"blocks_backend"`
 	Persistent                *LocalBlobAccessConfiguration_Persistent     `protobuf:"bytes,13,opt,name=persistent,proto3" json:"persistent,omitempty"`
 	HierarchicalInstanceNames bool                                         `protobuf:"varint,14,opt,name=hierarchical_instance_names,json=hierarchicalInstanceNames,proto3" json:"hierarchical_instance_names,omitempty"`
+	RefreshConcurrency        uint32                                       `protobuf:"varint,15,opt,name=refresh_concurrency,json=refreshConcurrency,proto3" json:"refresh_concurrency,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -759,6 +760,13 @@ func (x *LocalBlobAccessConfiguration) GetHierarchicalInstanceNames() bool {
 		return x.HierarchicalInstanceNames
 	}
 	return false
+}
+
+func (x *LocalBlobAccessConfiguration) GetRefreshConcurrency() uint32 {
+	if x != nil {
+		return x.RefreshConcurrency
+	}
+	return 0
 }
 
 type isLocalBlobAccessConfiguration_KeyLocationMapBackend interface {
@@ -2029,7 +2037,7 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\tbackend_a\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\bbackendA\x12W\n" +
 	"\tbackend_b\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\bbackendB\x12i\n" +
 	"\x11replicator_a_to_b\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorAToB\x12i\n" +
-	"\x11replicator_b_to_a\x18\x04 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorBToA\"\xb6\f\n" +
+	"\x11replicator_b_to_a\x18\x04 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorBToA\"\xe7\f\n" +
 	"\x1cLocalBlobAccessConfiguration\x12\x94\x01\n" +
 	"\x1akey_location_map_in_memory\x18\v \x01(\v2V.buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.KeyLocationMapInMemoryH\x00R\x16keyLocationMapInMemory\x12{\n" +
 	" key_location_map_on_block_device\x18\f \x01(\v22.buildbarn.configuration.blockdevice.ConfigurationH\x00R\x1bkeyLocationMapOnBlockDevice\x12O\n" +
@@ -2046,7 +2054,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\n" +
 	"persistent\x18\r \x01(\v2J.buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.PersistentR\n" +
 	"persistent\x12>\n" +
-	"\x1bhierarchical_instance_names\x18\x0e \x01(\bR\x19hierarchicalInstanceNames\x1a2\n" +
+	"\x1bhierarchical_instance_names\x18\x0e \x01(\bR\x19hierarchicalInstanceNames\x12/\n" +
+	"\x13refresh_concurrency\x18\x0f \x01(\rR\x12refreshConcurrency\x1a2\n" +
 	"\x16KeyLocationMapInMemory\x12\x18\n" +
 	"\aentries\x18\x01 \x01(\x03R\aentries\x1a:\n" +
 	"\x0eBlocksInMemory\x12(\n" +

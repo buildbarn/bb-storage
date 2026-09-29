@@ -29,9 +29,17 @@ type BlockListPutFinalizer = BlockPutFinalizer
 // BlockList is only partially thread-safe. The BlockReferenceResolver
 // methods and BlockList.Get() can be invoked in parallel (e.g., under a
 // read lock), while BlockList.PopFront(), BlockList.PushBack(),
-// BlockList.HasSpace(), BlockList.Put() and BlockListPutFinalizer must
-// run exclusively (e.g., under a write lock). BlockListPutWriter is
-// safe to call without holding any locks.
+// BlockList.HasSpace() and BlockList.Put() must run exclusively (e.g.,
+// under a write lock). BlockListPutWriter is safe to call without
+// holding any locks.
+//
+// BlockListPutFinalizer may be invoked concurrently with other
+// finalizers and with the parallel-safe methods above (e.g., under a
+// read lock). Implementations are responsible for serialising the
+// finalizer's own mutations internally; PersistentBlockList does this
+// with a private mutex, while volatileBlockList relies on its
+// finalizer being a pass-through to the Block, which mutates no
+// shared state.
 type BlockList interface {
 	BlockReferenceResolver
 

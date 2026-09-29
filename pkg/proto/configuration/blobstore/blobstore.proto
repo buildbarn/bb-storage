@@ -642,6 +642,30 @@ message LocalBlobAccessConfiguration {
   // level, e.g., on top of CompletenessCheckingBlobAccess. This can be
   // achieved by using HierarchicalInstanceNamesBlobAccess.
   bool hierarchical_instance_names = 14;
+
+  // The number of blob refreshes that may be in flight concurrently. A
+  // refresh copies a blob out of an old block into a new one so that it
+  // does not disappear while it is still being accessed.
+  //
+  // Refreshes of the same blob are always deduplicated, regardless of
+  // this option: concurrent FindMissing() and GetFromComposite() calls
+  // that need to refresh the same blob are serialised, and all but the
+  // first observe the committed copy and skip. This option only bounds
+  // how many refreshes of *distinct* blobs may proceed in parallel, and
+  // thereby the amount of read and write bandwidth that refreshing may
+  // consume at once.
+  //
+  // Setting this to 1 restores the historical behaviour, where all
+  // refreshing was limited to a single thread. That is safe with
+  // respect to bandwidth, but it makes refresh latency scale with the
+  // number of blobs to refresh times the number of concurrent callers,
+  // which can stall the read path for seconds under load.
+  //
+  // Values above 256 have no additional effect, as refreshes are
+  // striped 256 ways by digest.
+  //
+  // Recommended value: 64 (the default when left unset)
+  uint32 refresh_concurrency = 15;
 }
 
 message ExistenceCachingBlobAccessConfiguration {

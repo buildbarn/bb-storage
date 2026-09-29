@@ -26,7 +26,8 @@ type LocationBlobPutWriter func(b buffer.Buffer) LocationBlobPutFinalizer
 
 // LocationBlobPutFinalizer is returned by LocationBlobPutWriter after
 // writing of data has finished. This function returns the location at
-// which the blob was stored.
+// which the blob was stored. It may be called concurrently with other
+// finalizers; see the LocationBlobMap documentation below.
 //
 // The Location returned by this function must still be valid at the
 // time it is returned. If the write takes such a long time that the
@@ -42,9 +43,15 @@ type LocationBlobPutFinalizer func() (Location, error)
 //
 // LocationBlobMap is only partially thread-safe. LocationBlobMap.Get()
 // and LocationBlobGetter can be invoked in parallel (e.g., under a read
-// lock), while LocationBlobMap.Put() and LocationBlobPutFinalizer must
-// run exclusively (e.g., under a write lock). LocationBlobPutWriter is
-// safe to call without holding any locks.
+// lock), while LocationBlobMap.Put() must run exclusively (e.g., under
+// a write lock). LocationBlobPutWriter is safe to call without holding
+// any locks.
+//
+// LocationBlobPutFinalizer may be invoked concurrently with other
+// finalizers (e.g., under a read lock), so that commits do not
+// serialise against each other. Implementations must therefore
+// serialise their own mutations internally, and may only read state
+// that is guarded by the caller's write lock.
 type LocationBlobMap interface {
 	// Get information about a blob stored in the map.
 	//
