@@ -24,9 +24,10 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("some/instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	lookupKey1 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
 	lookupKey2 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
@@ -47,13 +48,13 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 	t.Run("NoRefreshNotFound", func(t *testing.T) {
 		// Multiple lookups should be performed against the
 		// key-location map. Let each of those fail.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey3).
+		keyLocationMap.EXPECT().Get(lookupKey3, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey4).
+		keyLocationMap.EXPECT().Get(lookupKey4, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
@@ -62,7 +63,7 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 
 	t.Run("NoRefreshFailure", func(t *testing.T) {
 		// Errors other than NotFound should be propagated.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
@@ -72,7 +73,7 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 	t.Run("NoRefreshSuccess", func(t *testing.T) {
 		// The blob is not expected to disappear from storage
 		// soon, so no refreshing needs to take place.
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, false)
 		reader := mock.NewMockReadCloser(ctrl)
@@ -94,16 +95,16 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 		// key-location map doesn't need to be refreshed, so we
 		// can simply copy that entry and return the contents of
 		// that object.
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location2, nil)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location2, nil)
 		getter3 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location2).Return(getter3.Call, false)
-		keyLocationMap.EXPECT().Put(lookupKey1, location2)
+		keyLocationMap.EXPECT().Put(lookupKey1, location2, blockReferenceResolver)
 		reader := mock.NewMockReadCloser(ctrl)
 		getter3.EXPECT().Call(helloDigest).
 			Return(buffer.NewCASBufferFromReader(helloDigest, reader, buffer.UserProvided))
@@ -126,13 +127,13 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 		// Upon completion, both key-location map entries for
 		// the lookup key and the canonical key need to be
 		// updated.
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		reader := mock.NewMockReadCloser(ctrl)
 		getter2.EXPECT().Call(helloDigest).
@@ -151,8 +152,8 @@ func TestHierarchicalCASBlobAccessGet(t *testing.T) {
 				return location2, nil
 			}
 		})
-		keyLocationMap.EXPECT().Put(canonicalKey, location2)
-		keyLocationMap.EXPECT().Put(lookupKey1, location2)
+		keyLocationMap.EXPECT().Put(canonicalKey, location2, blockReferenceResolver)
+		keyLocationMap.EXPECT().Put(lookupKey1, location2, blockReferenceResolver)
 
 		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(10)
 		require.NoError(t, err)
@@ -164,9 +165,10 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	canonicalKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	mostSpecificLookupKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-example")
@@ -195,7 +197,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		// To prevent redundant storage of the same object, we
 		// always do a lookup to see if an object with the same
 		// contents already exists. Let that lookup fail.
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.Internal, "Disk failure"))
 		reader := mock.NewMockReadCloser(ctrl)
 		reader.EXPECT().Close()
@@ -217,7 +219,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		// contents provided by the caller and validate them.
 		// This ensures that the client isn't capable of gaining
 		// access to arbitrary blobs.
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location1, nil)
 		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, false)
 		reader := mock.NewMockReadCloser(ctrl)
@@ -242,7 +244,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		// a different instance name. We don't ingest the data,
 		// but simply create an additional entry for it in the
 		// key-location map.
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location1, nil)
 		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, false)
 		reader := mock.NewMockReadCloser(ctrl)
@@ -250,8 +252,8 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 			return copy(p, "Hello"), io.EOF
 		})
 		reader.EXPECT().Close()
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location2, nil)
-		keyLocationMap.EXPECT().Put(mostSpecificLookupKey, location2)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location2, nil)
+		keyLocationMap.EXPECT().Put(mostSpecificLookupKey, location2, blockReferenceResolver)
 
 		require.NoError(
 			t,
@@ -266,7 +268,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 	t.Run("SpaceAllocationFailure", func(t *testing.T) {
 		// In case the object isn't present yet, we should try
 		// to allocate space to store a copy. Let allocation fail.
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		locationBlobMap.EXPECT().Put(int64(5)).Return(nil, status.Error(codes.Internal, "Disk failure"))
 		reader := mock.NewMockReadCloser(ctrl)
@@ -287,7 +289,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		// Let space allocation succeed, but the ingestion of
 		// data fail. This should not cause us to write any
 		// key-location map entries.
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
 		locationBlobMap.EXPECT().Put(int64(5)).Return(putWriter.Call, nil)
@@ -318,7 +320,7 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 		// key-location map entries should be written. One that
 		// purely identifies the contents, and one that contains
 		// the instance name.
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		putWriter := mock.NewMockLocationBlobPutWriter(ctrl)
 		locationBlobMap.EXPECT().Put(int64(5)).Return(putWriter.Call, nil)
@@ -335,8 +337,8 @@ func TestHierarchicalCASBlobAccessPut(t *testing.T) {
 				return location1, nil
 			}
 		})
-		keyLocationMap.EXPECT().Put(canonicalKey, location1)
-		keyLocationMap.EXPECT().Put(mostSpecificLookupKey, location1)
+		keyLocationMap.EXPECT().Put(canonicalKey, location1, blockReferenceResolver)
+		keyLocationMap.EXPECT().Put(mostSpecificLookupKey, location1, blockReferenceResolver)
 
 		require.NoError(
 			t,
@@ -353,9 +355,10 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
+	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
+	blobAccess := local.NewHierarchicalCASBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, &sync.RWMutex{}, capabilitiesProvider)
 	helloDigest := digest.MustNewDigest("some/instance/name", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	lookupKey1 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-")
 	lookupKey2 := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5-some")
@@ -374,7 +377,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	}
 
 	t.Run("Phase1GetFailure", func(t *testing.T) {
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -384,13 +387,13 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	t.Run("Phase1NotFound", func(t *testing.T) {
 		// Only after scanning the key-location map for all four
 		// instance names should we return a NotFound error.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey3).
+		keyLocationMap.EXPECT().Get(lookupKey3, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey4).
+		keyLocationMap.EXPECT().Get(lookupKey4, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -401,11 +404,11 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	t.Run("Phase1Found", func(t *testing.T) {
 		// We may stop scanning the key-location map once we've
 		// found a valid entry.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey3).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey3, blockReferenceResolver).Return(location1, nil)
 		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, false)
 
@@ -417,13 +420,13 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	t.Run("Phase2GetLookupFailure", func(t *testing.T) {
 		// Failure to read the key-location map entry during a
 		// refresh. The error should be propagated.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -434,14 +437,14 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 		// Successfully read the key-location map entry for the
 		// object itself, but failed to read the canonical entry
 		// that is also stored in the key-location map.
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -452,21 +455,21 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 		// The lookup entry needs to be refreshed, while the
 		// canonical entry doesn't. This should trigger a simple
 		// copy of the canonical entry. Let that fail.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location2, nil)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location2, nil)
 		getter3 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location2).Return(getter3.Call, false)
-		keyLocationMap.EXPECT().Put(lookupKey2, location2).
+		keyLocationMap.EXPECT().Put(lookupKey2, location2, blockReferenceResolver).
 			Return(status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -475,21 +478,21 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("Phase2SyncWithCanonicalSuccess", func(t *testing.T) {
 		// Let copying of the canonical entry succeed.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).Return(location2, nil)
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).Return(location2, nil)
 		getter3 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location2).Return(getter3.Call, false)
-		keyLocationMap.EXPECT().Put(lookupKey2, location2)
+		keyLocationMap.EXPECT().Put(lookupKey2, location2, blockReferenceResolver)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)
@@ -499,18 +502,18 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	t.Run("Phase2RefreshFailure1", func(t *testing.T) {
 		// Simulate the case where we need to refresh the
 		// object, but fail to allocate space for it.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		reader := mock.NewMockReadCloser(ctrl)
 		getter2.EXPECT().Call(helloDigest).
@@ -525,18 +528,18 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("Phase2RefreshFailure2", func(t *testing.T) {
 		// Let copying of the object from old to new fail.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		reader := mock.NewMockReadCloser(ctrl)
 		getter2.EXPECT().Call(helloDigest).
@@ -560,18 +563,18 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 	t.Run("Phase2RefreshFailure3", func(t *testing.T) {
 		// Copying succeeds, but we can't write the updated
 		// key-location map entry.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		reader := mock.NewMockReadCloser(ctrl)
 		getter2.EXPECT().Call(helloDigest).
@@ -590,7 +593,7 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 				return location2, nil
 			}
 		})
-		keyLocationMap.EXPECT().Put(canonicalKey, location2).
+		keyLocationMap.EXPECT().Put(canonicalKey, location2, blockReferenceResolver).
 			Return(status.Error(codes.Internal, "Disk on fire"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -601,18 +604,18 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 		// Let copying of the data and writing of both the
 		// canonical and lookup key-location map entries
 		// succeed. The blob should be reported as present.
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter1 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter1.Call, true)
 
-		keyLocationMap.EXPECT().Get(lookupKey1).
+		keyLocationMap.EXPECT().Get(lookupKey1, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
-		keyLocationMap.EXPECT().Get(lookupKey2).Return(location1, nil)
+		keyLocationMap.EXPECT().Get(lookupKey2, blockReferenceResolver).Return(location1, nil)
 		getter2 := mock.NewMockLocationBlobGetter(ctrl)
 		locationBlobMap.EXPECT().Get(location1).Return(getter2.Call, true)
-		keyLocationMap.EXPECT().Get(canonicalKey).
+		keyLocationMap.EXPECT().Get(canonicalKey, blockReferenceResolver).
 			Return(local.Location{}, status.Error(codes.NotFound, "Object not found"))
 		reader := mock.NewMockReadCloser(ctrl)
 		getter2.EXPECT().Call(helloDigest).
@@ -631,8 +634,8 @@ func TestHierarchicalCASBlobAccessFindMissing(t *testing.T) {
 				return location2, nil
 			}
 		})
-		keyLocationMap.EXPECT().Put(canonicalKey, location2)
-		keyLocationMap.EXPECT().Put(lookupKey2, location2)
+		keyLocationMap.EXPECT().Put(canonicalKey, location2, blockReferenceResolver)
+		keyLocationMap.EXPECT().Put(lookupKey2, location2, blockReferenceResolver)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
 		require.NoError(t, err)

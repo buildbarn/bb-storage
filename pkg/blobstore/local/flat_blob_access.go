@@ -57,9 +57,10 @@ var (
 type flatBlobAccess struct {
 	capabilities.Provider
 
-	keyLocationMap  KeyLocationMap
-	locationBlobMap LocationBlobMap
-	digestKeyFormat digest.KeyFormat
+	keyLocationMap         KeyLocationMap
+	blockReferenceResolver BlockReferenceResolver
+	locationBlobMap        LocationBlobMap
+	digestKeyFormat        digest.KeyFormat
 
 	lock        *sync.RWMutex
 	refreshLock sync.Mutex
@@ -82,7 +83,7 @@ type flatBlobAccess struct {
 // either ignores the REv2 instance name in digests entirely, or it
 // strongly partitions objects by instance name. It does not introduce
 // any hierarchy.
-func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
+func NewFlatBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshesBlobs)
 		prometheus.MustRegister(flatBlobAccessRefreshesDurationSeconds)
@@ -92,10 +93,11 @@ func NewFlatBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBl
 	return &flatBlobAccess{
 		Provider: capabilitiesProvider,
 
-		keyLocationMap:  keyLocationMap,
-		locationBlobMap: locationBlobMap,
-		digestKeyFormat: digestKeyFormat,
-		lock:            lock,
+		keyLocationMap:         keyLocationMap,
+		blockReferenceResolver: blockReferenceResolver,
+		locationBlobMap:        locationBlobMap,
+		digestKeyFormat:        digestKeyFormat,
+		lock:                   lock,
 
 		refreshesBlobsGet:              flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "Get"),
 		refreshesBlobsGetFromComposite: flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "GetFromComposite"),
@@ -121,7 +123,7 @@ func (ba *flatBlobAccess) finalizePut(putFinalizer LocationBlobPutFinalizer, key
 	if err != nil {
 		return Location{}, err
 	}
-	return location, ba.keyLocationMap.Put(key, location)
+	return location, ba.keyLocationMap.Put(key, location, ba.blockReferenceResolver)
 }
 
 func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
@@ -129,7 +131,7 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 
 	// Look up the blob in storage while holding a read lock.
 	ba.lock.RLock()
-	location, err := ba.keyLocationMap.Get(key)
+	location, err := ba.keyLocationMap.Get(key, ba.blockReferenceResolver)
 	if err != nil {
 		ba.lock.RUnlock()
 		return buffer.NewBufferFromError(err)
@@ -156,7 +158,7 @@ func (ba *flatBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buf
 	refreshStart := time.Now()
 
 	ba.lock.Lock()
-	location, err = ba.keyLocationMap.Get(key)
+	location, err = ba.keyLocationMap.Get(key, ba.blockReferenceResolver)
 	if err != nil {
 		ba.lock.Unlock()
 		return buffer.NewBufferFromError(err)
@@ -207,13 +209,13 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 	// the parent object controls whether it needs to be refreshed.
 	// We therefore look up both unconditionally.
 	ba.lock.RLock()
-	parentLocation, err := ba.keyLocationMap.Get(parentKey)
+	parentLocation, err := ba.keyLocationMap.Get(parentKey, ba.blockReferenceResolver)
 	if err != nil {
 		ba.lock.RUnlock()
 		return buffer.NewBufferFromError(err)
 	}
 	if _, needsRefresh := ba.locationBlobMap.Get(parentLocation); !needsRefresh {
-		if childLocation, err := ba.keyLocationMap.Get(childKey); err == nil {
+		if childLocation, err := ba.keyLocationMap.Get(childKey, ba.blockReferenceResolver); err == nil {
 			// The parent object doesn't need to be
 			// refreshed, and the child object exists.
 			// Return the child object immediately.
@@ -236,7 +238,7 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 	defer ba.refreshLock.Unlock()
 
 	ba.lock.Lock()
-	parentLocation, err = ba.keyLocationMap.Get(parentKey)
+	parentLocation, err = ba.keyLocationMap.Get(parentKey, ba.blockReferenceResolver)
 	if err != nil {
 		ba.lock.Unlock()
 		return buffer.NewBufferFromError(err)
@@ -264,7 +266,7 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 			return nil
 		})
 	} else {
-		if childLocation, err := ba.keyLocationMap.Get(childKey); err == nil {
+		if childLocation, err := ba.keyLocationMap.Get(childKey, ba.blockReferenceResolver); err == nil {
 			// The parent object was refreshed and sliced in
 			// the meantime.
 			childGetter, _ := ba.locationBlobMap.Get(childLocation)
@@ -311,7 +313,7 @@ func (ba *flatBlobAccess) GetFromComposite(ctx context.Context, parentDigest, ch
 			BlockIndex:  parentLocation.BlockIndex,
 			OffsetBytes: parentLocation.OffsetBytes + slice.OffsetBytes,
 			SizeBytes:   slice.SizeBytes,
-		}); err != nil {
+		}, ba.blockReferenceResolver); err != nil {
 			ba.lock.Unlock()
 			bChild.Discard()
 			return buffer.NewBufferFromError(util.StatusWrapf(err, "Failed to create child blob %#v", slice.Digest.String()))
@@ -367,7 +369,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	ba.lock.RLock()
 	for i, blobDigest := range digests.Items() {
 		key := keys[i]
-		if location, err := ba.keyLocationMap.Get(key); err == nil {
+		if location, err := ba.keyLocationMap.Get(key, ba.blockReferenceResolver); err == nil {
 			_, needsRefresh := ba.locationBlobMap.Get(location)
 			if needsRefresh {
 				// Blob is present, but it must be
@@ -406,7 +408,7 @@ func (ba *flatBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	var blobRefreshSizeBytes int64
 	ba.lock.Lock()
 	for _, blobToRefresh := range blobsToRefresh {
-		if location, err := ba.keyLocationMap.Get(blobToRefresh.key); err == nil {
+		if location, err := ba.keyLocationMap.Get(blobToRefresh.key, ba.blockReferenceResolver); err == nil {
 			getter, needsRefresh := ba.locationBlobMap.Get(location)
 			if needsRefresh {
 				// Blob is present and still needs to be

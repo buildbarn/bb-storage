@@ -19,8 +19,9 @@ import (
 type hierarchicalCASBlobAccess struct {
 	capabilities.Provider
 
-	keyLocationMap  KeyLocationMap
-	locationBlobMap LocationBlobMap
+	keyLocationMap         KeyLocationMap
+	blockReferenceResolver BlockReferenceResolver
+	locationBlobMap        LocationBlobMap
 
 	lock        *sync.RWMutex
 	refreshLock sync.Mutex
@@ -46,13 +47,14 @@ type hierarchicalCASBlobAccess struct {
 // that already exist for a different REv2 instance name don't cause any
 // new data to be ingested. This makes this implementation unsuitable
 // for mutable data sets.
-func NewHierarchicalCASBlobAccess(keyLocationMap KeyLocationMap, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
+func NewHierarchicalCASBlobAccess(keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, lock *sync.RWMutex, capabilitiesProvider capabilities.Provider) blobstore.BlobAccess {
 	return &hierarchicalCASBlobAccess{
 		Provider: capabilitiesProvider,
 
-		keyLocationMap:  keyLocationMap,
-		locationBlobMap: locationBlobMap,
-		lock:            lock,
+		keyLocationMap:         keyLocationMap,
+		blockReferenceResolver: blockReferenceResolver,
+		locationBlobMap:        locationBlobMap,
+		lock:                   lock,
 	}
 }
 
@@ -81,13 +83,15 @@ func getCanonicalKey(blobDigest digest.Digest) Key {
 	return NewKeyFromString(blobDigest.GetKey(digest.KeyWithoutInstance))
 }
 
+var errKeyLocationMapNotFound = status.Error(codes.NotFound, "Object not found")
+
 // getLeastSpecificLookupEntry searches the key-location for an object,
 // given a list of lookup Keys. It returns the first Key (with the
 // shortest instance name) for which a match occurred, together with a
 // Location at which the object is stored.
 func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Key) (Key, Location, error) {
 	for _, lookupKey := range lookupKeys {
-		if location, err := ba.keyLocationMap.Get(lookupKey); err == nil {
+		if location, err := ba.keyLocationMap.Get(lookupKey, ba.blockReferenceResolver); err == nil {
 			return lookupKey, location, nil
 		} else if status.Code(err) != codes.NotFound {
 			return Key{}, Location{}, err
@@ -103,7 +107,7 @@ func (ba *hierarchicalCASBlobAccess) getLeastSpecificLookupEntry(lookupKeys []Ke
 // This method can be used to refresh a key-location map without
 // necessarily copying the data of the underlying object.
 func (ba *hierarchicalCASBlobAccess) syncFromCanonicalEntry(canonicalKey, lookupKey Key) (LocationBlobGetter, error) {
-	canonicalLocation, err := ba.keyLocationMap.Get(canonicalKey)
+	canonicalLocation, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +115,7 @@ func (ba *hierarchicalCASBlobAccess) syncFromCanonicalEntry(canonicalKey, lookup
 	if needsRefresh {
 		return nil, status.Error(codes.NotFound, "Canonical entry needs to be refreshed")
 	}
-	return getter, ba.keyLocationMap.Put(lookupKey, canonicalLocation)
+	return getter, ba.keyLocationMap.Put(lookupKey, canonicalLocation, ba.blockReferenceResolver)
 }
 
 // finalizePut is called to finalize a write to the data store. This
@@ -125,10 +129,10 @@ func (ba *hierarchicalCASBlobAccess) finalizePut(putFinalizer LocationBlobPutFin
 
 	// Store two key-location map entries: one for the canonical key
 	// and one for the lookup key.
-	if err := ba.keyLocationMap.Put(canonicalKey, location); err != nil {
+	if err := ba.keyLocationMap.Put(canonicalKey, location, ba.blockReferenceResolver); err != nil {
 		return err
 	}
-	return ba.keyLocationMap.Put(lookupKey, location)
+	return ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
 }
 
 func (ba *hierarchicalCASBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
@@ -231,7 +235,7 @@ func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.
 	canonicalKey := getCanonicalKey(blobDigest)
 	lookupKey := getMostSpecificLookupKey(blobDigest)
 	ba.lock.Lock()
-	if location, err := ba.keyLocationMap.Get(canonicalKey); err == nil {
+	if location, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver); err == nil {
 		if _, needsRefresh := ba.locationBlobMap.Get(location); !needsRefresh {
 			ba.lock.Unlock()
 
@@ -251,14 +255,14 @@ func (ba *hierarchicalCASBlobAccess) Put(ctx context.Context, blobDigest digest.
 			// lock invalidated it.
 			ba.lock.Lock()
 			defer ba.lock.Unlock()
-			location, err := ba.keyLocationMap.Get(canonicalKey)
+			location, err := ba.keyLocationMap.Get(canonicalKey, ba.blockReferenceResolver)
 			if err != nil {
 				if status.Code(err) == codes.NotFound {
 					return status.Error(codes.Internal, "Existing object disappeared while buffer was read")
 				}
 				return err
 			}
-			return ba.keyLocationMap.Put(lookupKey, location)
+			return ba.keyLocationMap.Put(lookupKey, location, ba.blockReferenceResolver)
 		}
 	} else if status.Code(err) != codes.NotFound {
 		ba.lock.Unlock()
