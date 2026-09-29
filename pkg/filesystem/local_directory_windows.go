@@ -29,6 +29,10 @@ func convertNtStatus(ntstatus error) error {
 		return syscall.EISDIR
 	case windows.STATUS_OBJECT_NAME_EXISTS:
 		return os.ErrExist
+	case windows.STATUS_DELETE_PENDING, windows.STATUS_FILE_DELETED:
+		// Preserve deletion states so cleanup can distinguish them from
+		// permission errors after conversion to a Win32 error code.
+		return ntstatus
 	default:
 		return ntstatus.(windows.NTStatus).Errno()
 	}
@@ -647,6 +651,10 @@ func (d *localDirectory) Remove(name path.Component) error {
 	return nil
 }
 
+func isRemovalComplete(err error) bool {
+	return err == nil || os.IsNotExist(err) || err == windows.STATUS_DELETE_PENDING || err == windows.STATUS_FILE_DELETED
+}
+
 // On NTFS a mount point is a reparse point, so only the link is removed.
 func (d *localDirectory) RemoveAllChildren() error {
 	return d.removeAllChildren(nil)
@@ -657,7 +665,7 @@ func (d *localDirectory) removeAllChildren(dPath *path.Trace) error {
 
 	handle, err := d.createUpgradedHandle(windows.FILE_LIST_DIRECTORY | windows.FILE_READ_ATTRIBUTES | windows.SYNCHRONIZE)
 	if err != nil {
-		if dPath != nil && !os.IsNotExist(err) {
+		if dPath != nil && !isRemovalComplete(err) {
 			return util.StatusWrapf(err, "Failed to read contents of directory %#v", dPath.GetUNIXString())
 		}
 		return err
@@ -675,16 +683,16 @@ func (d *localDirectory) removeAllChildren(dPath *path.Trace) error {
 		if subdirectory, err := d.enter(component, rejectReparsePoints); err == nil {
 			err := subdirectory.removeAllChildren(childPath)
 			subdirectory.Close()
-			if err != nil && !os.IsNotExist(err) {
+			if !isRemovalComplete(err) {
 				return err
 			}
 		} else if err != syscall.ENOTDIR {
-			if os.IsNotExist(err) {
+			if isRemovalComplete(err) {
 				continue
 			}
 			return util.StatusWrapf(err, "Failed to enter directory %#v", childPath.GetUNIXString())
 		}
-		if err := d.Remove(component); err != nil && !os.IsNotExist(err) {
+		if err := d.Remove(component); !isRemovalComplete(err) {
 			return util.StatusWrapf(err, "Failed to remove %#v", childPath.GetUNIXString())
 		}
 	}
@@ -697,16 +705,16 @@ func (d *localDirectory) RemoveAll(name path.Component) error {
 	if subdirectory, err := d.enter(name, rejectReparsePoints); err == nil {
 		err := subdirectory.RemoveAllChildren()
 		subdirectory.Close()
-		if err != nil && !os.IsNotExist(err) {
+		if !isRemovalComplete(err) {
 			return err
 		}
 	} else if err != syscall.ENOTDIR {
-		if os.IsNotExist(err) {
+		if isRemovalComplete(err) {
 			return nil
 		}
 		return err
 	}
-	if err := d.Remove(name); !os.IsNotExist(err) {
+	if err := d.Remove(name); !isRemovalComplete(err) {
 		return err
 	}
 	return nil

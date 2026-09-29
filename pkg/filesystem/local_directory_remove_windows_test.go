@@ -123,6 +123,55 @@ func TestLocalDirectoryRemoveAllChildrenConcurrentWindows(t *testing.T) {
 	require.Equal(t, "untouched", string(data))
 }
 
+func TestLocalDirectoryWindowsDeletePending(t *testing.T) {
+	for _, kind := range []string{"file", "directory"} {
+		for _, operation := range []string{"RemoveAll", "RemoveAllChildren"} {
+			t.Run(kind+"/"+operation, func(t *testing.T) {
+				root := t.TempDir()
+				d := openRemovalDirectory(t, root)
+				pending := filepath.Join(root, "pending")
+				if kind == "file" {
+					require.NoError(t, os.WriteFile(pending, nil, 0o600))
+				} else {
+					require.NoError(t, os.Mkdir(pending, 0o700))
+				}
+				require.NoError(t, os.WriteFile(filepath.Join(root, "surviving"), nil, 0o600))
+				name, err := windows.UTF16PtrFromString(pending)
+				require.NoError(t, err)
+				handle, err := windows.CreateFile(name, windows.DELETE,
+					windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+					nil, windows.OPEN_EXISTING, windows.FILE_FLAG_BACKUP_SEMANTICS, 0)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					if handle != windows.InvalidHandle {
+						require.NoError(t, windows.CloseHandle(handle))
+					}
+				})
+				// Defer deletion until the handle closes, without POSIX
+				// semantics. This keeps the test independent of scheduling.
+				deleteFile := byte(1)
+				var iosb windows.IO_STATUS_BLOCK
+				require.NoError(t, windows.NtSetInformationFile(handle, &iosb, &deleteFile, 1, windows.FileDispositionInformation))
+				if operation == "RemoveAll" {
+					require.NoError(t, d.RemoveAll(path.MustNewComponent("pending")))
+				} else {
+					require.NoError(t, d.RemoveAllChildren())
+				}
+				require.NoError(t, windows.CloseHandle(handle))
+				handle = windows.InvalidHandle
+				remaining, err := os.ReadDir(root)
+				require.NoError(t, err)
+				if operation == "RemoveAll" {
+					require.Len(t, remaining, 1)
+					require.Equal(t, "surviving", remaining[0].Name())
+				} else {
+					require.Empty(t, remaining)
+				}
+			})
+		}
+	}
+}
+
 func TestLocalDirectoryEnterWindowsLinks(t *testing.T) {
 	for _, kind := range []string{"junction", "symlink"} {
 		t.Run(kind, func(t *testing.T) {
@@ -200,8 +249,9 @@ func TestLocalDirectoryWindowsNestedReopenPermissionDenied(t *testing.T) {
 	file := filepath.Join(parent, "file")
 	require.NoError(t, os.WriteFile(file, []byte("protected"), 0o600))
 	d := openRemovalDirectory(t, root)
-	denyRemovalAccess(t, parent, "0x00000001")
+	restoreAccess := denyRemovalAccess(t, parent, "0x00000001")
 	require.EqualError(t, d.RemoveAllChildren(), fmt.Sprintf("rpc error: code = Unknown desc = Failed to read contents of directory %q: %s", "first/second", windows.ERROR_ACCESS_DENIED))
+	restoreAccess()
 	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	require.Equal(t, "protected", string(data))
@@ -256,7 +306,7 @@ func openRemovalDirectory(t *testing.T, root string) filesystem.DirectoryCloser 
 	return directory
 }
 
-func denyRemovalAccess(t *testing.T, name, rights string) {
+func denyRemovalAccess(t *testing.T, name, rights string) func() {
 	t.Helper()
 	original, err := windows.GetNamedSecurityInfo(name, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 	require.NoError(t, err)
@@ -268,10 +318,11 @@ func denyRemovalAccess(t *testing.T, name, rights string) {
 	if control&windows.SE_DACL_PROTECTED != 0 {
 		protection = windows.PROTECTED_DACL_SECURITY_INFORMATION
 	}
-	t.Cleanup(func() {
+	restoreAccess := func() {
 		require.NoError(t, windows.SetNamedSecurityInfo(name, windows.SE_FILE_OBJECT,
 			windows.DACL_SECURITY_INFORMATION|protection, nil, nil, acl, nil))
-	})
+	}
+	t.Cleanup(restoreAccess)
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	require.NoError(t, err)
 	sid := user.User.Sid.String()
@@ -281,6 +332,7 @@ func denyRemovalAccess(t *testing.T, name, rights string) {
 	require.NoError(t, err)
 	require.NoError(t, windows.SetNamedSecurityInfo(name, windows.SE_FILE_OBJECT,
 		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, denied, nil))
+	return restoreAccess
 }
 
 func createRemovalJunction(t *testing.T, link, target string) {
