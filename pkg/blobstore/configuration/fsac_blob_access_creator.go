@@ -2,17 +2,19 @@ package configuration
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/proto/fsac"
 )
 
 type fsacBlobAccessCreator struct {
-	protoBlobAccessCreator
-	protoBlobReplicatorCreator
+	protoBlobAccessCreator[*fsac.FileSystemAccessProfile]
+	protoBlobReplicatorCreator[*fsac.FileSystemAccessProfile]
 
 	grpcClientFactory       grpc.ClientFactory
 	maximumMessageSizeBytes int
@@ -22,15 +24,11 @@ type fsacBlobAccessCreator struct {
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the File System Access
 // Cache.
-func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewFSACBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*fsac.FileSystemAccessProfile] {
 	return &fsacBlobAccessCreator{
 		grpcClientFactory:       grpcClientFactory,
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
 	}
-}
-
-func (fsacBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
-	return blobstore.FSACReadBufferFactory
 }
 
 func (fsacBlobAccessCreator) GetStorageTypeName() string {
@@ -41,14 +39,19 @@ func (fsacBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provi
 	return nil
 }
 
-func (bac *fsacBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (fsacBlobAccessCreator) GetBinaryCoder() coder.Coder[*fsac.FileSystemAccessProfile, []byte] {
+	c := coder.NewProtoCoder[fsac.FileSystemAccessProfile]()
+	return coder.JoinCoders(c, coder.NewXXH64SuffixCoder())
+}
+
+func (bac *fsacBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[*fsac.FileSystemAccessProfile]) (BlobAccessInfo[*fsac.FileSystemAccessProfile], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[*fsac.FileSystemAccessProfile]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[*fsac.FileSystemAccessProfile]{
 			BlobAccess:      grpcclients.NewFSACBlobAccess(client, bac.maximumMessageSizeBytes),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
@@ -57,6 +60,6 @@ func (bac *fsacBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.G
 	}
 }
 
-func (fsacBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (fsacBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[*fsac.FileSystemAccessProfile]) blobstore.BlobAccess[*fsac.FileSystemAccessProfile] {
 	return blobAccess
 }

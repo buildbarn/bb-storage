@@ -2,12 +2,9 @@ package local
 
 import (
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
@@ -60,10 +57,9 @@ var (
 )
 
 type blockDeviceBackedBlockAllocator struct {
-	blockDevice       blockdevice.BlockDevice
-	readBufferFactory blobstore.ReadBufferFactory
-	sectorSizeBytes   int
-	blockSectorCount  int64
+	blockDevice      blockdevice.BlockDevice
+	sectorSizeBytes  int
+	blockSectorCount int64
 
 	blockAllocatorAllocations   prometheus.Counter
 	blockAllocatorReleases      prometheus.Counter
@@ -87,7 +83,7 @@ type blockDeviceBackedBlockAllocator struct {
 // This implementation also ensures that writes against underlying
 // storage are all performed at sector boundaries and sizes. This
 // ensures that no unnecessary reads are performed.
-func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, readBufferFactory blobstore.ReadBufferFactory, sectorSizeBytes int, blockSectorCount int64, blockCount int, storageType string) BlockAllocator {
+func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, sectorSizeBytes int, blockSectorCount int64, blockCount int, storageType string) BlockAllocator {
 	blockDeviceBackedBlockAllocatorPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(blockDeviceBackedBlockAllocatorAllocations)
 		prometheus.MustRegister(blockDeviceBackedBlockAllocatorReleases)
@@ -97,10 +93,9 @@ func NewBlockDeviceBackedBlockAllocator(blockDevice blockdevice.BlockDevice, rea
 	})
 
 	pa := &blockDeviceBackedBlockAllocator{
-		blockDevice:       blockDevice,
-		readBufferFactory: readBufferFactory,
-		sectorSizeBytes:   sectorSizeBytes,
-		blockSectorCount:  blockSectorCount,
+		blockDevice:      blockDevice,
+		sectorSizeBytes:  sectorSizeBytes,
+		blockSectorCount: blockSectorCount,
 
 		blockAllocatorAllocations:   blockDeviceBackedBlockAllocatorAllocations.WithLabelValues(storageType),
 		blockAllocatorReleases:      blockDeviceBackedBlockAllocatorReleases.WithLabelValues(storageType),
@@ -193,25 +188,21 @@ func (pb *blockDeviceBackedBlock) Release() {
 	}
 }
 
-func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
+func (pb *blockDeviceBackedBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64) ([]byte, error) {
 	if c := pb.usecount.Add(1); c <= 1 {
 		panic(fmt.Sprintf("Get(): Block has invalid reference count %d", c))
 	}
-	pb.blockAllocator.blockAllocatorGetsStarted.Inc()
+	defer pb.Release()
 
-	return pb.blockAllocator.readBufferFactory.NewBufferFromReaderAt(
-		digest,
-		&blockDeviceBackedBlockReader{
-			SectionReader: *io.NewSectionReader(
-				pb.blockAllocator.blockDevice,
-				pb.deviceOffsetSectors*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes,
-				sizeBytes,
-			),
-			block: pb,
-		},
-		sizeBytes,
-		dataIntegrityCallback,
-	)
+	pb.blockAllocator.blockAllocatorGetsStarted.Inc()
+	defer pb.blockAllocator.blockAllocatorGetsCompleted.Inc()
+
+	data := make([]byte, sizeBytes)
+	_, err := pb.blockAllocator.blockDevice.ReadAt(data, pb.deviceOffsetSectors*int64(pb.blockAllocator.sectorSizeBytes)+offsetBytes)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func (pb *blockDeviceBackedBlock) HasSpace(sizeBytes int64) bool {
@@ -269,9 +260,9 @@ func (pb *blockDeviceBackedBlock) Put(sizeBytes int64) BlockPutWriter {
 	}
 	w.lastSector = pb.sharedSector
 
-	return func(b buffer.Buffer) BlockPutFinalizer {
+	return func(data []byte) BlockPutFinalizer {
 		// Ingest the data.
-		err := b.IntoWriter(w)
+		_, err := w.Write(data)
 		if err == nil {
 			err = w.flush()
 		}
@@ -281,22 +272,6 @@ func (pb *blockDeviceBackedBlock) Put(sizeBytes int64) BlockPutWriter {
 			return writeOffsetBytes, err
 		}
 	}
-}
-
-// blockDeviceBackedBlockReader reads a blob from underlying storage at
-// the right offset. When released, it drops the use count on the
-// containing block, so that can be freed when unreferenced.
-type blockDeviceBackedBlockReader struct {
-	io.SectionReader
-	block *blockDeviceBackedBlock
-}
-
-func (r *blockDeviceBackedBlockReader) Close() error {
-	pa := r.block.blockAllocator
-	r.block.Release()
-	r.block = nil
-	pa.blockAllocatorGetsCompleted.Inc()
-	return nil
 }
 
 // blockDeviceBackedBlockWriter writes a blob to underlying storage at

@@ -1,28 +1,32 @@
 package local
 
 import (
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
+// IntegrityErrorCallback is a callback function which may be invoked if
+// the data returned does not respect some integrity check. Doing so
+// marks the block, and all blocks older than the returned block as
+// corrupted allowing the storage function to quickly purge corrupted
+// data.
+type IntegrityErrorCallback func()
+
 // LocationBlobGetter is a callback that is returned by
-// LocationBlobMap.Get(). It can be used to obtain a Buffer that gives
-// access to the data associated with the blob.
+// LocationBlobMap.Get(). It can be used to obtain the data of a blob.
 //
 // Calls to LocationBlobMap.Put() and LocationBlobPutFinalizer
 // invalidate any of the LocationBlobGetters returned by
 // LocationBlobMap.Get(). Calling them is a programming mistake.
-type LocationBlobGetter func(digest digest.Digest) buffer.Buffer
+type LocationBlobGetter func(digest digest.Digest) ([]byte, IntegrityErrorCallback, error)
 
 // LocationBlobPutWriter is a callback that is returned by
 // LocationBlobMap.Put(). It can be used to store data corresponding to
 // a blob in space that has been allocated. It is safe to call this
 // function without holding any locks.
 //
-// This function blocks until all data contained in the Buffer has been
-// processed or an error occurs. A LocationBlobPutFinalizer is returned
-// that the caller must invoke while locked.
-type LocationBlobPutWriter func(b buffer.Buffer) LocationBlobPutFinalizer
+// A LocationBlobPutFinalizer is returned that the caller must invoke
+// while locked.
+type LocationBlobPutWriter func(data []byte) LocationBlobPutFinalizer
 
 // LocationBlobPutFinalizer is returned by LocationBlobPutWriter after
 // writing of data has finished. This function returns the location at

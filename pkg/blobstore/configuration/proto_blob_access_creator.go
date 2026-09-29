@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
@@ -12,38 +13,38 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type protoBlobAccessCreator struct{}
+type protoBlobAccessCreator[T any] struct{}
 
-func (protoBlobAccessCreator) GetBaseDigestKeyFormat() digest.KeyFormat {
+func (protoBlobAccessCreator[T]) GetBaseDigestKeyFormat() digest.KeyFormat {
 	return digest.KeyWithInstance
 }
 
-func (protoBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
+func (protoBlobAccessCreator[T]) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
 	if newBlocks != 1 {
 		return nil, status.Error(codes.InvalidArgument, "The number of \"new\" blocks must be set to 1 for this storage type, as objects cannot be updated reliably otherwise")
 	}
 	return local.NewMutableBlockListGrowthPolicy(currentBlocks), nil
 }
 
-func (protoBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex) (blobstore.BlobAccess, error) {
+func (protoBlobAccessCreator[T]) NewHierarchicalInstanceNamesLocalBlobAccess(keyLocationMap local.KeyLocationMap, blockReferenceResolver local.BlockReferenceResolver, locationBlobMap local.LocationBlobMap, globalLock *sync.RWMutex, capabilitiesProvider capabilities.Provider) (blobstore.BlobAccess[T], error) {
 	return nil, status.Error(codes.InvalidArgument, "The hierarchical instance names option can only be used for the Content Addressable Storage")
 }
 
 // newProtoCustomBlobAccess is a common implementation of
 // BlobAccessCreator.NewCustomBlobAccess() for all types derived from
 // protoBlobAccessCreator.
-func newProtoCustomBlobAccess(configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator, bac BlobAccessCreator) (BlobAccessInfo, string, error) {
+func newProtoCustomBlobAccess[T any](configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[T], bac BlobAccessCreator[T]) (BlobAccessInfo[T], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_HierarchicalInstanceNames:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.HierarchicalInstanceNames, bac)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      blobstore.NewHierarchicalInstanceNamesBlobAccess(base.BlobAccess),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "hierarchical_instance_names", nil
 	default:
-		return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
+		return BlobAccessInfo[T]{}, "", status.Error(codes.InvalidArgument, "Configuration did not contain a supported storage backend")
 	}
 }

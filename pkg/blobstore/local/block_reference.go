@@ -4,7 +4,7 @@ package local
 //
 // BlockList uses simple integer indices to refer to blocks. This is
 // useful, because these can be bounds checked and compared for
-// (in)equality, which is a requirement for HashingKeyLocationMap and
+// (in)equality, which is a requirement for lossymap.HashMap and
 // OldNewCurrentLocationBlobMap to function properly.
 //
 // What is problematic about these integer indices is that they become

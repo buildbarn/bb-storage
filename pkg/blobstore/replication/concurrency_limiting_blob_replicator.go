@@ -4,17 +4,15 @@ import (
 	"context"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sync/semaphore"
 )
 
-type concurrencyLimitingBlobReplicator struct {
+type concurrencyLimitingBlobReplicator[T any] struct {
 	base      BlobReplicator
-	sink      blobstore.BlobAccess
+	sink      blobstore.BlobAccess[T]
 	semaphore *semaphore.Weighted
 }
 
@@ -25,39 +23,15 @@ type concurrencyLimitingBlobReplicator struct {
 //
 // The semaphore.Weighted type retains the original request order,
 // meaning that starvation is prevented.
-func NewConcurrencyLimitingBlobReplicator(base BlobReplicator, sink blobstore.BlobAccess, semaphore *semaphore.Weighted) BlobReplicator {
-	return &concurrencyLimitingBlobReplicator{
+func NewConcurrencyLimitingBlobReplicator[T any](base BlobReplicator, sink blobstore.BlobAccess[T], semaphore *semaphore.Weighted) BlobReplicator {
+	return &concurrencyLimitingBlobReplicator[T]{
 		base:      base,
 		sink:      sink,
 		semaphore: semaphore,
 	}
 }
 
-func (br *concurrencyLimitingBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
-	// Replicate the object from the source to the sink before
-	// returning a copy to the caller. Because this replicator
-	// performs queueing, we can't allow the caller to influence the
-	// speed at which the object is replicated.
-	if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
-		return buffer.NewBufferFromError(err)
-	}
-	return buffer.WithErrorHandler(
-		br.sink.Get(ctx, blobDigest),
-		notFoundToInternalErrorHandler{},
-	)
-}
-
-func (br *concurrencyLimitingBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
-		return buffer.NewBufferFromError(err)
-	}
-	return buffer.WithErrorHandler(
-		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		notFoundToInternalErrorHandler{},
-	)
-}
-
-func (br *concurrencyLimitingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (br *concurrencyLimitingBlobReplicator[T]) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	if err := util.AcquireSemaphore(ctx, br.semaphore, 1); err != nil {
 		return err
 	}

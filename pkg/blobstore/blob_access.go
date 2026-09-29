@@ -3,21 +3,31 @@ package blobstore
 import (
 	"context"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
-// BlobAccess is an abstraction for a data store that can be used to
-// hold an Action Cache (AC), Content Addressable Storage (CAS), or any
-// other data store that uses keys in the form of digests.
-type BlobAccess interface {
-	capabilities.Provider
+// capablitiesProvider is a copy of the capabilities.Provider interface
+// which must be written inline for go mockgen to function in source
+// mode.
+type capabilitiesProvider interface {
+	GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error)
+}
 
-	Get(ctx context.Context, digest digest.Digest) buffer.Buffer
-	GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer
-	Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error
+var (
+	_ capabilitiesProvider  = capabilities.Provider(nil)
+	_ capabilities.Provider = capabilitiesProvider(nil)
+)
+
+// BlobAccess is an abstraction for a data store that can be used to
+// hold an Action Cache (AC), Chunk Storage (CS), or any other data
+// store that uses keys in the form of digests.
+type BlobAccess[T any] interface {
+	capabilitiesProvider
+
+	Get(ctx context.Context, digest digest.Digest) (T, error)
+	Put(ctx context.Context, digest digest.Digest, value T) error
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)
 }
 

@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -16,9 +14,9 @@ type replicatingBlob struct {
 	success  bool
 }
 
-type deduplicatingBlobReplicator struct {
+type deduplicatingBlobReplicator[T any] struct {
 	base                BlobReplicator
-	sink                blobstore.BlobAccess
+	sink                blobstore.BlobAccess[T]
 	sinkDigestKeyFormat digest.KeyFormat
 
 	lock                 sync.Mutex
@@ -45,8 +43,8 @@ type deduplicatingBlobReplicator struct {
 // replicator when the sink is an instance of LocalBlobAccess that is
 // embedded into the same process, and blobs are expected to be consumed
 // locally.
-func NewDeduplicatingBlobReplicator(base BlobReplicator, sink blobstore.BlobAccess, sinkDigestKeyFormat digest.KeyFormat) BlobReplicator {
-	return &deduplicatingBlobReplicator{
+func NewDeduplicatingBlobReplicator[T any](base BlobReplicator, sink blobstore.BlobAccess[T], sinkDigestKeyFormat digest.KeyFormat) BlobReplicator {
+	return &deduplicatingBlobReplicator[T]{
 		base:                 base,
 		sink:                 sink,
 		sinkDigestKeyFormat:  sinkDigestKeyFormat,
@@ -54,27 +52,7 @@ func NewDeduplicatingBlobReplicator(base BlobReplicator, sink blobstore.BlobAcce
 	}
 }
 
-func (br *deduplicatingBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
-	if err := br.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
-		return buffer.NewBufferFromError(err)
-	}
-	return buffer.WithErrorHandler(
-		br.sink.Get(ctx, blobDigest),
-		notFoundToInternalErrorHandler{},
-	)
-}
-
-func (br *deduplicatingBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	if err := br.ReplicateMultiple(ctx, parentDigest.ToSingletonSet()); err != nil {
-		return buffer.NewBufferFromError(err)
-	}
-	return buffer.WithErrorHandler(
-		br.sink.GetFromComposite(ctx, parentDigest, childDigest, slicer),
-		notFoundToInternalErrorHandler{},
-	)
-}
-
-func (br *deduplicatingBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (br *deduplicatingBlobReplicator[T]) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 NextDigest:
 	for _, digest := range digests.Items() {
 		// Register that we're about to replicate the blob.

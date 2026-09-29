@@ -8,7 +8,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ import (
 func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*remoteexecution.ActionResult](ctrl)
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewActionResultTimestampInjectingBlobAccess(baseBlobAccess, clock, 1000)
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "d3b7ed68c99422eaa8ab8184949cba84dd46ddb1b7cf8c777547866d54ebb081", 123)
@@ -32,9 +31,7 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 		// completed timestamp.
 		clock.EXPECT().Now().Return(time.Unix(123, 456))
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-				actionResult, err := b.ToProto(&remoteexecution.ActionResult{}, 1000)
-				require.NoError(t, err)
+			func(ctx context.Context, blobDigest digest.Digest, actionResult *remoteexecution.ActionResult) error {
 				testutil.RequireEqualProto(t, &remoteexecution.ActionResult{
 					ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
 						WorkerCompletedTimestamp: &timestamppb.Timestamp{
@@ -53,12 +50,9 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewProtoBufferFromProto(
-					&remoteexecution.ActionResult{
-						ExitCode: 123,
-					},
-					buffer.UserProvided,
-				),
+				&remoteexecution.ActionResult{
+					ExitCode: 123,
+				},
 			),
 		)
 	})
@@ -69,9 +63,7 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 		// should be added to the existing metadata.
 		clock.EXPECT().Now().Return(time.Unix(1400, 0))
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-				actionResult, err := b.ToProto(&remoteexecution.ActionResult{}, 1000)
-				require.NoError(t, err)
+			func(ctx context.Context, blobDigest digest.Digest, actionResult *remoteexecution.ActionResult) error {
 				testutil.RequireEqualProto(t, &remoteexecution.ActionResult{
 					ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
 						WorkerStartTimestamp:     &timestamppb.Timestamp{Seconds: 1300},
@@ -87,14 +79,11 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewProtoBufferFromProto(
-					&remoteexecution.ActionResult{
-						ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
-							WorkerStartTimestamp: &timestamppb.Timestamp{Seconds: 1300},
-						},
+				&remoteexecution.ActionResult{
+					ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
+						WorkerStartTimestamp: &timestamppb.Timestamp{Seconds: 1300},
 					},
-					buffer.UserProvided,
-				),
+				},
 			),
 		)
 	})
@@ -104,9 +93,7 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 		// worker_completed_timestamp set, the request should be
 		// forwared in literal form.
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-				actionResult, err := b.ToProto(&remoteexecution.ActionResult{}, 1000)
-				require.NoError(t, err)
+			func(ctx context.Context, blobDigest digest.Digest, actionResult *remoteexecution.ActionResult) error {
 				testutil.RequireEqualProto(t, &remoteexecution.ActionResult{
 					ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
 						WorkerStartTimestamp:     &timestamppb.Timestamp{Seconds: 2000},
@@ -122,15 +109,12 @@ func TestActionResultTimestampInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewProtoBufferFromProto(
-					&remoteexecution.ActionResult{
-						ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
-							WorkerStartTimestamp:     &timestamppb.Timestamp{Seconds: 2000},
-							WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 2100},
-						},
+				&remoteexecution.ActionResult{
+					ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
+						WorkerStartTimestamp:     &timestamppb.Timestamp{Seconds: 2000},
+						WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 2100},
 					},
-					buffer.UserProvided,
-				),
+				},
 			),
 		)
 	})

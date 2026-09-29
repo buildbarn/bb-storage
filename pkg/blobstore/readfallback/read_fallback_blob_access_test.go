@@ -6,7 +6,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -21,8 +21,8 @@ import (
 func TestReadFallbackBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess(ctrl)
-	secondary := mock.NewMockBlobAccess(ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
@@ -30,10 +30,11 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 	t.Run("PrimarySuccess", func(t *testing.T) {
 		// The primary backend is able to serve the object.
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			Return(chunk.NewChunk(nil, []byte("Hello")), nil)
 
-		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -42,22 +43,25 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// not cause it to access the secondary backend, as that
 		// would introduce non-determinism.
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
+			Return(nil, status.Error(codes.Internal, "I/O error"))
 
-		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, helloDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
 	})
 
 	t.Run("SecondarySuccess", func(t *testing.T) {
 		// The primary backend does not have the object. This
-		// causes it to read it from the secondary backend.
-		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+		// causes it to replicate it from the secondary backend,
+		// and then fetch it from the primary.
+		gomock.InOrder(
+			primary.EXPECT().Get(ctx, helloDigest).Return(nil, status.Error(codes.NotFound, "Object not found")),
+			replicator.EXPECT().ReplicateMultiple(ctx, helloDigest.ToSingletonSet()).Return(nil),
+			primary.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil),
+		)
 
-		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -66,11 +70,11 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// causes it to read from the secondary backend, which
 		// subsequently fails.
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "I/O error")))
+			Return(nil, status.Error(codes.NotFound, "Object not found"))
+		replicator.EXPECT().ReplicateMultiple(ctx, helloDigest.ToSingletonSet()).
+			Return(status.Error(codes.Internal, "I/O error"))
 
-		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, helloDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
 	})
 
@@ -78,47 +82,23 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// Both backends don't have the data. There is no need
 		// to prefix the error message with 'Primary' or
 		// 'Secondary' to disambiguate.
-		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		// Note: we expect a second Get to the primary due to the fallback logic.
+		gomock.InOrder(
+			primary.EXPECT().Get(ctx, helloDigest).Return(nil, status.Error(codes.NotFound, "Object not found")),
+			replicator.EXPECT().ReplicateMultiple(ctx, helloDigest.ToSingletonSet()).Return(status.Error(codes.NotFound, "Object not found")),
+			primary.EXPECT().Get(ctx, helloDigest).Return(nil, status.Error(codes.NotFound, "Object not found")),
+		)
 
-		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		_, err := blobAccess.Get(ctx, helloDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Object not found"), err)
-	})
-}
-
-func TestReadFallbackBlobAccessGetFromComposite(t *testing.T) {
-	ctrl, ctx := gomock.WithContext(context.Background(), t)
-
-	primary := mock.NewMockBlobAccess(ctrl)
-	secondary := mock.NewMockBlobAccess(ctrl)
-	replicator := mock.NewMockBlobReplicator(ctrl)
-	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
-	parentDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d20fb8dfa347cf895b38649410aeb3f8", 100)
-	childDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	slicer := mock.NewMockBlobSlicer(ctrl)
-
-	// We assume that tests for Get() provides coverage for other
-	// scenarios.
-
-	t.Run("SecondarySuccess", func(t *testing.T) {
-		primary.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		replicator.EXPECT().ReplicateComposite(ctx, parentDigest, childDigest, slicer).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-
-		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(100)
-		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), data)
 	})
 }
 
 func TestReadFallbackBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess(ctrl)
-	secondary := mock.NewMockBlobAccess(ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, nil)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -126,9 +106,8 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		// Writes should always go to the primary backend. The
 		// secondary backend is effectively read-only.
 		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				data, err := b.ToByteSlice(100)
-				require.NoError(t, err)
+			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -136,7 +115,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 
 		require.NoError(
 			t,
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
 		)
 	})
 
@@ -144,17 +123,12 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		// There is no need to prefix anything to error messages
 		// returned by the primary backend, as there is no
 		// ambiguity which backend returned the error.
-		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				b.Discard()
-				return status.Error(codes.Internal, "I/O error")
-			},
-		)
+		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).Return(status.Error(codes.Internal, "I/O error"))
 
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "I/O error"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
 		)
 	})
 }
@@ -162,8 +136,8 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess(ctrl)
-	secondary := mock.NewMockBlobAccess(ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	replicator := mock.NewMockBlobReplicator(ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, replicator)
 

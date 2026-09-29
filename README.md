@@ -45,14 +45,16 @@ $ cat config/bb_storage.jsonnet
   contentAddressableStorage: {
     backend: {
       'local': {
-        keyLocationMapOnBlockDevice: {
-          file: {
-            path: '/storage-cas/key_location_map',
-            sizeBytes: 16 * 1024 * 1024,
+        keyLocationMap: {
+          onBlockDevice: {
+            file: {
+              path: '/storage-cas/key_location_map',
+              sizeBytes: 16 * 1024 * 1024,
+            },
           },
+          maximumGetAttempts: 16,
+          maximumPutAttempts: 64,
         },
-        keyLocationMapMaximumGetAttempts: 16,
-        keyLocationMapMaximumPutAttempts: 64,
         oldBlocks: 8,
         currentBlocks: 24,
         newBlocks: 3,
@@ -80,14 +82,16 @@ $ cat config/bb_storage.jsonnet
       completenessChecking: {
         backend: {
           'local': {
-            keyLocationMapOnBlockDevice: {
-              file: {
-                path: '/storage-ac/key_location_map',
-                sizeBytes: 1024 * 1024,
+            keyLocationMap: {
+              onBlockDevice: {
+                file: {
+                  path: '/storage-ac/key_location_map',
+                  sizeBytes: 1024 * 1024,
+                },
               },
+              maximumGetAttempts: 16,
+              maximumPutAttempts: 64,
             },
-            keyLocationMapMaximumGetAttempts: 16,
-            keyLocationMapMaximumPutAttempts: 64,
             oldBlocks: 8,
             currentBlocks: 24,
             newBlocks: 1,

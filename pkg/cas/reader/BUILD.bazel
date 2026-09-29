@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+exports_files(["reader.go"])
+
+go_library(
+    name = "reader",
+    srcs = [
+        "caching_reader.go",
+        "reader.go",
+    ],
+    importpath = "github.com/buildbarn/bb-storage/pkg/cas/reader",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/digest",
+        "//pkg/ttlcache",
+    ],
+)

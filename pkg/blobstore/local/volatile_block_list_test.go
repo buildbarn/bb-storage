@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -106,20 +105,17 @@ func TestVolatileBlockList(t *testing.T) {
 	// Attempt to write some data into the block. Let one of the
 	// writes fail, while another one succeeds. Even for failed
 	// writes, the resulting space is wasted.
-	block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
-		b.Discard()
+	block1.EXPECT().Put(int64(5)).Return(func(data []byte) local.BlockPutFinalizer {
 		return func() (int64, error) { return 0, status.Error(codes.Internal, "Disk on fire") }
 	})
-	_, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	_, err := blockList.Put(0, 5)([]byte("Hello"))()
 	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
 
-	block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
-		data, err := b.ToByteSlice(10)
-		require.NoError(t, err)
+	block1.EXPECT().Put(int64(5)).Return(func(data []byte) local.BlockPutFinalizer {
 		require.Equal(t, []byte("Hello"), data)
 		return func() (int64, error) { return 16, nil }
 	})
-	offsetBytes, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	offsetBytes, err := blockList.Put(0, 5)([]byte("Hello"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(16), offsetBytes)
 

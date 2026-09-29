@@ -3,13 +3,12 @@ package blobstore
 import (
 	"context"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
 type emptyBlobInjectingBlobAccess struct {
-	BlobAccess
+	BlobAccess[*chunk.Chunk]
 }
 
 // NewEmptyBlobInjectingBlobAccess is a decorator for BlobAccess that
@@ -32,32 +31,24 @@ type emptyBlobInjectingBlobAccess struct {
 // blob is always present.
 //
 // More details: https://github.com/bazelbuild/bazel/issues/11063
-func NewEmptyBlobInjectingBlobAccess(base BlobAccess) BlobAccess {
+func NewEmptyBlobInjectingBlobAccess(base BlobAccess[*chunk.Chunk]) BlobAccess[*chunk.Chunk] {
 	return &emptyBlobInjectingBlobAccess{
 		BlobAccess: base,
 	}
 }
 
-func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	if digest.GetSizeBytes() == 0 {
-		return buffer.NewCASBufferFromByteSlice(digest, nil, buffer.UserProvided)
+func (ba *emptyBlobInjectingBlobAccess) Get(ctx context.Context, d digest.Digest) (*chunk.Chunk, error) {
+	if d.GetSizeBytes() == 0 {
+		return chunk.EmptyChunk, nil
 	}
-	return ba.BlobAccess.Get(ctx, digest)
+	return ba.BlobAccess.Get(ctx, d)
 }
 
-func (ba *emptyBlobInjectingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	if childDigest.GetSizeBytes() == 0 {
-		return buffer.NewCASBufferFromByteSlice(childDigest, nil, buffer.UserProvided)
+func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, d digest.Digest, value *chunk.Chunk) error {
+	if d.GetSizeBytes() == 0 {
+		return nil
 	}
-	return ba.BlobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer)
-}
-
-func (ba *emptyBlobInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	if digest.GetSizeBytes() == 0 {
-		_, err := b.ToByteSlice(0)
-		return err
-	}
-	return ba.BlobAccess.Put(ctx, digest, b)
+	return ba.BlobAccess.Put(ctx, d, value)
 }
 
 func (ba *emptyBlobInjectingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

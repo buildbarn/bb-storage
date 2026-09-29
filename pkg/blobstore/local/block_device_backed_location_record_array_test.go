@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
+	"github.com/buildbarn/bb-storage/pkg/lossymap"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +26,7 @@ var (
 			},
 			Attempt: 5,
 		},
-		Location: local.Location{
+		Value: local.Location{
 			BlockIndex:  12,
 			OffsetBytes: 128451493,
 			SizeBytes:   59184,
@@ -57,14 +58,14 @@ func TestBlockDeviceBackedLocationRecordArrayGet(t *testing.T) {
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
 	blockIndexResolver := mock.NewMockBlockReferenceResolver(ctrl)
-	lra := local.NewBlockDeviceBackedLocationRecordArray(blockDevice, blockIndexResolver)
+	lra := local.NewBlockDeviceBackedLocationRecordArray(blockDevice)
 
 	t.Run("IOError", func(t *testing.T) {
 		// I/O errors should be propagated.
 		blockDevice.EXPECT().ReadAt(gomock.Len(len(exampleBlockDeviceBackedLocationRecordBytes)), int64(6600)).
 			Return(0, status.Error(codes.Internal, "Disk failure"))
 
-		_, err := lra.Get(100)
+		_, err := lra.Get(100, blockIndexResolver)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk failure"), err)
 	})
 
@@ -82,8 +83,8 @@ func TestBlockDeviceBackedLocationRecordArrayGet(t *testing.T) {
 			BlocksFromLast: 9271,
 		}).Return(0, uint64(0), false)
 
-		_, err := lra.Get(100)
-		require.Equal(t, local.ErrLocationRecordInvalid, err)
+		_, err := lra.Get(100, blockIndexResolver)
+		require.Equal(t, lossymap.ErrRecordInvalidOrExpired, err)
 	})
 
 	t.Run("ChecksumMismatch", func(t *testing.T) {
@@ -96,8 +97,8 @@ func TestBlockDeviceBackedLocationRecordArrayGet(t *testing.T) {
 			BlocksFromLast: 9271,
 		}).Return(12, uint64(2930434209123), true)
 
-		_, err := lra.Get(100)
-		require.Equal(t, local.ErrLocationRecordInvalid, err)
+		_, err := lra.Get(100, blockIndexResolver)
+		require.Equal(t, lossymap.ErrRecordInvalidOrExpired, err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -109,7 +110,7 @@ func TestBlockDeviceBackedLocationRecordArrayGet(t *testing.T) {
 			BlocksFromLast: 9271,
 		}).Return(12, uint64(90384039284213), true)
 
-		record, err := lra.Get(100)
+		record, err := lra.Get(100, blockIndexResolver)
 		require.NoError(t, err)
 		require.Equal(t, exampleBlockDeviceBackedLocationRecord, record)
 	})
@@ -120,7 +121,7 @@ func TestBlockDeviceBackedLocationRecordArrayPut(t *testing.T) {
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
 	blockIndexResolver := mock.NewMockBlockReferenceResolver(ctrl)
-	lra := local.NewBlockDeviceBackedLocationRecordArray(blockDevice, blockIndexResolver)
+	lra := local.NewBlockDeviceBackedLocationRecordArray(blockDevice)
 
 	blockIndexResolver.EXPECT().BlockIndexToBlockReference(12).Return(local.BlockReference{
 		EpochID:        851212842,
@@ -135,7 +136,7 @@ func TestBlockDeviceBackedLocationRecordArrayPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "Disk failure"),
-			lra.Put(100, exampleBlockDeviceBackedLocationRecord),
+			lra.Put(100, exampleBlockDeviceBackedLocationRecord, blockIndexResolver),
 		)
 	})
 
@@ -146,7 +147,7 @@ func TestBlockDeviceBackedLocationRecordArrayPut(t *testing.T) {
 
 		require.NoError(
 			t,
-			lra.Put(100, exampleBlockDeviceBackedLocationRecord),
+			lra.Put(100, exampleBlockDeviceBackedLocationRecord, blockIndexResolver),
 		)
 	})
 }

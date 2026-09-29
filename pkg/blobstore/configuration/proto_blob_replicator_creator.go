@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type protoBlobReplicatorCreator struct{}
+type protoBlobReplicatorCreator[T any] struct{}
 
-func (protoBlobReplicatorCreator) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo) (replication.BlobReplicator, error) {
+func (protoBlobReplicatorCreator[T]) NewCustomBlobReplicator(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess[T], sink BlobAccessInfo[T]) (replication.BlobReplicator, error) {
 	return nil, status.Error(codes.InvalidArgument, "Configuration did not contain a supported replicator")
 }

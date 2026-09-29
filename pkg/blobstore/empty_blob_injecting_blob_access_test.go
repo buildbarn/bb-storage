@@ -7,7 +7,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,18 +21,19 @@ import (
 func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("A")),
-		)
 
-		data, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(1)
+		expectedChunk := chunk.NewChunk(nil, []byte("A"))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(expectedChunk, nil)
+
+		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("A"), data)
 	})
 
@@ -40,89 +41,34 @@ func TestEmptyBlobInjectingBlobAccessGet(t *testing.T) {
 		// Errors from the backend should be propagated.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(
-			buffer.NewBufferFromError(
-				status.Error(codes.Internal, "Server on fire"),
-			),
+			nil, status.Error(codes.Internal, "Server on fire"),
 		)
 
-		_, err := blobAccess.Get(ctx, blobDigest).ToByteSlice(1)
+		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
 	})
 
 	t.Run("EmptySuccess", func(t *testing.T) {
 		// Requests for the empty blob should be processed directly.
-		data, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)).ToByteSlice(0)
+		chunk, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0))
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Empty(t, data)
-	})
-
-	t.Run("EmptyInvalid", func(t *testing.T) {
-		// Validation should still be performed on empty blobs.
-		_, err := blobAccess.Get(ctx, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 0)).ToByteSlice(0)
-		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
-	})
-}
-
-func TestEmptyBlobInjectingBlobAccessGetFromComposite(t *testing.T) {
-	ctrl, ctx := gomock.WithContext(context.Background(), t)
-
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
-	parentDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_SHA256, "d0607e3f454f88e2925ef995f549503b7f67541dc7ac0dcf4662265aed7a749f", 1000)
-	slicer := mock.NewMockBlobSlicer(ctrl)
-
-	t.Run("NonEmptySuccess", func(t *testing.T) {
-		// Requests for non-empty blobs should be forwarded.
-		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
-		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
-			buffer.NewValidatedBufferFromByteSlice([]byte("A")),
-		)
-
-		data, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
-		require.NoError(t, err)
-		require.Equal(t, []byte("A"), data)
-	})
-
-	t.Run("NonEmptyFailure", func(t *testing.T) {
-		// Errors from the backend should be propagated.
-		childDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
-		baseBlobAccess.EXPECT().GetFromComposite(ctx, parentDigest, childDigest, slicer).Return(
-			buffer.NewBufferFromError(
-				status.Error(codes.Internal, "Server on fire"),
-			),
-		)
-
-		_, err := blobAccess.GetFromComposite(ctx, parentDigest, childDigest, slicer).ToByteSlice(1)
-		testutil.RequireEqualStatus(t, err, status.Error(codes.Internal, "Server on fire"))
-	})
-
-	t.Run("EmptySuccess", func(t *testing.T) {
-		// Requests for the empty blob should be processed directly.
-		data, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0), slicer).ToByteSlice(0)
-		require.NoError(t, err)
-		require.Empty(t, data)
-	})
-
-	t.Run("EmptyInvalid", func(t *testing.T) {
-		// Validation should still be performed on empty blobs.
-		_, err := blobAccess.GetFromComposite(ctx, parentDigest, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "3e25960a79dbc69b674cd4ec67a72c62", 0), slicer).ToByteSlice(0)
-		testutil.RequireEqualStatus(t, err, status.Error(codes.InvalidArgument, "Buffer has checksum d41d8cd98f00b204e9800998ecf8427e, while 3e25960a79dbc69b674cd4ec67a72c62 was expected"))
 	})
 }
 
 func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	t.Run("NonEmptySuccess", func(t *testing.T) {
 		// Requests for non-empty blobs should be forwarded.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-				data, err := b.ToByteSlice(1)
-				require.NoError(t, err)
+			func(ctx context.Context, blobDigest digest.Digest, c *chunk.Chunk) error {
+				data := c.GetBytes()
 				require.Equal(t, []byte("A"), data)
 				return nil
 			},
@@ -133,7 +79,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+				chunk.NewChunk(nil, []byte("A")),
 			),
 		)
 	})
@@ -142,8 +88,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 		// Errors from the backend should be propagated.
 		blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "7fc56270e7a70fa81a5935b72eacbe29", 1)
 		baseBlobAccess.EXPECT().Put(ctx, blobDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, blobDigest digest.Digest, b buffer.Buffer) error {
-				b.Discard()
+			func(ctx context.Context, blobDigest digest.Digest, c *chunk.Chunk) error {
 				return status.Error(codes.Internal, "Server on fire")
 			},
 		)
@@ -154,7 +99,7 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				blobDigest,
-				buffer.NewValidatedBufferFromByteSlice([]byte("A")),
+				chunk.NewChunk(nil, []byte("A")),
 			),
 		)
 	})
@@ -166,31 +111,20 @@ func TestEmptyBlobInjectingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
-				buffer.NewValidatedBufferFromByteSlice(nil),
+				chunk.NewChunk(nil, nil),
 			),
 		)
 	})
 
-	t.Run("EmptyFailure", func(t *testing.T) {
-		// Providing buffers that are in an error state should
-		// not cause the error message to be discarded, even
-		// when the blob is empty.
-		require.Equal(
-			t,
-			status.Error(codes.Internal, "Server on fire"),
-			blobAccess.Put(
-				ctx,
-				digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0),
-				buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")),
-			),
-		)
-	})
+	// The "EmptyFailure" test (which tested passing a buffer initialized with NewBufferFromError)
+	// was removed here because with the new generic BlobAccess, `Put` accepts a materialized `*chunk.Chunk`.
+	// There is no longer a concept of passing a "delayed error" object into Put.
 }
 
 func TestEmptyBlobInjectingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	blobAccess := blobstore.NewEmptyBlobInjectingBlobAccess(baseBlobAccess)
 
 	unfilteredInputSet := digest.NewSetBuilder(0).

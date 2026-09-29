@@ -7,9 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,9 +34,9 @@ var (
 	mirroredBlobAccessFindMissingSynchronizationsFromBToA = mirroredBlobAccessFindMissingSynchronizations.WithLabelValues("FromBToA")
 )
 
-type mirroredBlobAccess struct {
-	backendA       blobstore.BlobAccess
-	backendB       blobstore.BlobAccess
+type mirroredBlobAccess[T any] struct {
+	backendA       blobstore.BlobAccess[T]
+	backendB       blobstore.BlobAccess[T]
 	replicatorAToB replication.BlobReplicator
 	replicatorBToA replication.BlobReplicator
 	round          atomic.Uint32
@@ -49,12 +47,12 @@ type mirroredBlobAccess struct {
 // inconsistencies between the two storage backends are detected (i.e.,
 // a blob is only present in one of the backends), the blob is
 // replicated.
-func NewMirroredBlobAccess(backendA, backendB blobstore.BlobAccess, replicatorAToB, replicatorBToA replication.BlobReplicator) blobstore.BlobAccess {
+func NewMirroredBlobAccess[T any](backendA, backendB blobstore.BlobAccess[T], replicatorAToB, replicatorBToA replication.BlobReplicator) blobstore.BlobAccess[T] {
 	mirroredBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(mirroredBlobAccessFindMissingSynchronizations)
 	})
 
-	return &mirroredBlobAccess{
+	return &mirroredBlobAccess[T]{
 		backendA:       backendA,
 		backendB:       backendB,
 		replicatorAToB: replicatorAToB,
@@ -62,68 +60,43 @@ func NewMirroredBlobAccess(backendA, backendB blobstore.BlobAccess, replicatorAT
 	}
 }
 
-func (ba *mirroredBlobAccess) getBlobReplicatorSelector() (blobstore.BlobAccess, replication.BlobReplicatorSelector) {
+func (ba *mirroredBlobAccess[T]) backendAndReplicator() (blobstore.BlobAccess[T], replication.BlobReplicator, string, string) {
 	// Alternate requests between storage backends.
-	var firstBackend blobstore.BlobAccess
-	var firstBackendName, secondBackendName string
-	var replicator replication.BlobReplicator
 	if ba.round.Add(1)%2 == 1 {
-		firstBackend = ba.backendA
-		firstBackendName, secondBackendName = "Backend A", "Backend B"
-		replicator = ba.replicatorBToA
-	} else {
-		firstBackend = ba.backendB
-		firstBackendName, secondBackendName = "Backend B", "Backend A"
-		replicator = ba.replicatorAToB
+		return ba.backendA, ba.replicatorBToA, "Backend A", "Backend B"
+	}
+	return ba.backendB, ba.replicatorAToB, "Backend B", "Backend A"
+}
+
+func (ba *mirroredBlobAccess[T]) Get(ctx context.Context, digest digest.Digest) (T, error) {
+	backend, replicator, name, otherName := ba.backendAndReplicator()
+	var zero T
+	ret, err := backend.Get(ctx, digest)
+	if err == nil {
+		return ret, nil
+	}
+	if status.Code(err) != codes.NotFound {
+		return zero, util.StatusWrap(err, name)
+	}
+	err = replicator.ReplicateMultiple(ctx, digest.ToSingletonSet())
+	if err != nil && status.Code(err) != codes.NotFound {
+		return zero, util.StatusWrap(err, otherName)
 	}
 
-	return firstBackend, func(observedErr error) (replication.BlobReplicator, error) {
-		// A fatal error occurred. Prepend the name of the
-		// backend that triggered the error.
-		if status.Code(observedErr) != codes.NotFound {
-			if replicator != nil {
-				return nil, util.StatusWrap(observedErr, firstBackendName)
-			}
-			return nil, util.StatusWrap(observedErr, secondBackendName)
-		}
-
-		// Both storage backends returned NotFound. Return one
-		// of the errors in original form.
-		if replicator == nil {
-			return nil, observedErr
-		}
-
-		// Consult the other storage backend. It may still have
-		// a copy of the object. Attempt to sync it back to
-		// repair this inconsistency.
-		replicatorToReturn := replicator
-		replicator = nil
-		return replicatorToReturn, nil
-	}
+	return backend.Get(ctx, digest)
 }
 
-func (ba *mirroredBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
-	return replication.GetWithBlobReplicator(ctx, digest, firstBackend, successiveBackends)
-}
-
-func (ba *mirroredBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	firstBackend, successiveBackends := ba.getBlobReplicatorSelector()
-	return replication.GetFromCompositeWithBlobReplicator(ctx, parentDigest, childDigest, slicer, firstBackend, successiveBackends)
-}
-
-func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+func (ba *mirroredBlobAccess[T]) Put(ctx context.Context, digest digest.Digest, value T) error {
 	// Store object in both storage backends.
-	b1, b2 := b.CloneStream()
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		if err := ba.backendA.Put(groupCtx, digest, b1); err != nil {
+		if err := ba.backendA.Put(groupCtx, digest, value); err != nil {
 			return util.StatusWrap(err, "Backend A")
 		}
 		return nil
 	})
 	group.Go(func() error {
-		if err := ba.backendB.Put(groupCtx, digest, b2); err != nil {
+		if err := ba.backendB.Put(groupCtx, digest, value); err != nil {
 			return util.StatusWrap(err, "Backend B")
 		}
 		return nil
@@ -131,7 +104,7 @@ func (ba *mirroredBlobAccess) Put(ctx context.Context, digest digest.Digest, b b
 	return group.Wait()
 }
 
-func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *mirroredBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Call FindMissing() on both backends.
 	findMissingGroup, findMissingCtx := errgroup.WithContext(ctx)
 	var resultsA, resultsB digest.Set
@@ -186,9 +159,9 @@ func (ba *mirroredBlobAccess) FindMissing(ctx context.Context, digests digest.Se
 	return missingFromBoth, nil
 }
 
-func (ba *mirroredBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+func (ba *mirroredBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	// Alternate requests between storage backends.
-	var backend blobstore.BlobAccess
+	var backend blobstore.BlobAccess[T]
 	var backendName string
 	if ba.round.Add(1)%2 == 1 {
 		backend = ba.backendA

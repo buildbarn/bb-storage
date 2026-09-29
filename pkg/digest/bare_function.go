@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"hash"
 	"strconv"
 
@@ -39,67 +40,78 @@ type bareFunction struct {
 	enumValue     remoteexecution.DigestFunction_Value
 	hasherFactory func(expectedSizeBytes int64) hash.Hash
 	hashBytesSize int
+	emptyHash     string
+}
+
+func newBareFunction(enumValue remoteexecution.DigestFunction_Value, hasherFactory func(expectedSizeBytes int64) hash.Hash, hashBytesSize int) bareFunction {
+	hasher := hasherFactory(0)
+	return bareFunction{
+		enumValue:     enumValue,
+		hasherFactory: hasherFactory,
+		hashBytesSize: hashBytesSize,
+		emptyHash:     hex.EncodeToString(hasher.Sum(nil)),
+	}
 }
 
 var (
-	blake3BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_BLAKE3,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+	blake3BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_BLAKE3,
+		func(expectedSizeBytes int64) hash.Hash {
 			return blake3.New()
 		},
-		hashBytesSize: 32,
-	}
-	gitsha1BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_GITSHA1,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		32,
+	)
+	gitsha1BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_GITSHA1,
+		func(expectedSizeBytes int64) hash.Hash {
 			h := sha1.New()
 			h.Write([]byte("blob "))
 			h.Write([]byte(strconv.FormatInt(expectedSizeBytes, 10)))
 			h.Write([]byte{0})
 			return h
 		},
-		hashBytesSize: sha1.Size,
-	}
-	md5BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_MD5,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		sha1.Size,
+	)
+	md5BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_MD5,
+		func(expectedSizeBytes int64) hash.Hash {
 			return md5.New()
 		},
-		hashBytesSize: md5.Size,
-	}
-	sha1BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_SHA1,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		md5.Size,
+	)
+	sha1BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_SHA1,
+		func(expectedSizeBytes int64) hash.Hash {
 			return sha1.New()
 		},
-		hashBytesSize: sha1.Size,
-	}
-	sha256BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_SHA256,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		sha1.Size,
+	)
+	sha256BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_SHA256,
+		func(expectedSizeBytes int64) hash.Hash {
 			return sha256.New()
 		},
-		hashBytesSize: sha256.Size,
-	}
-	sha256treeBareFunction = bareFunction{
-		enumValue:     remoteexecution.DigestFunction_SHA256TREE,
-		hasherFactory: sha256tree.New,
-		hashBytesSize: sha256tree.Size,
-	}
-	sha384BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_SHA384,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		sha256.Size,
+	)
+	sha256treeBareFunction = newBareFunction(
+		remoteexecution.DigestFunction_SHA256TREE,
+		sha256tree.New,
+		sha256tree.Size,
+	)
+	sha384BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_SHA384,
+		func(expectedSizeBytes int64) hash.Hash {
 			return sha512.New384()
 		},
-		hashBytesSize: sha512.Size384,
-	}
-	sha512BareFunction = bareFunction{
-		enumValue: remoteexecution.DigestFunction_SHA512,
-		hasherFactory: func(expectedSizeBytes int64) hash.Hash {
+		sha512.Size384,
+	)
+	sha512BareFunction = newBareFunction(
+		remoteexecution.DigestFunction_SHA512,
+		func(expectedSizeBytes int64) hash.Hash {
 			return sha512.New()
 		},
-		hashBytesSize: sha512.Size,
-	}
+		sha512.Size,
+	)
 )
 
 // getBareFunctionByEnumValue returns the bare digest function that

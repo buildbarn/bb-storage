@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -237,15 +236,16 @@ func (lbm *OldCurrentNewLocationBlobMap) increaseTotalBlocksToBeReleased(newValu
 // LocationBlobGetter is returned that can be used to fetch the blob's
 // contents.
 func (lbm *OldCurrentNewLocationBlobMap) Get(location Location) (LocationBlobGetter, bool) {
-	return func(digest digest.Digest) buffer.Buffer {
+	return func(digest digest.Digest) ([]byte, IntegrityErrorCallback, error) {
 		totalBlocksToBeReleased := lbm.totalBlocksReleased + uint64(location.BlockIndex) + 1
-		return lbm.blockList.Get(location.BlockIndex, digest, location.OffsetBytes, location.SizeBytes, func(dataIsValid bool) {
-			if !dataIsValid {
+		data, err := lbm.blockList.Get(location.BlockIndex, digest, location.OffsetBytes, location.SizeBytes)
+		return data,
+			func() {
 				if blocksReleased := lbm.increaseTotalBlocksToBeReleased(totalBlocksToBeReleased); blocksReleased > 0 {
 					lbm.errorLogger.Log(status.Errorf(codes.Internal, "Releasing %d blocks due to a data integrity error", blocksReleased))
 				}
-			}
-		})
+			},
+			err
 	}, location.BlockIndex < len(lbm.oldBlocks)
 }
 
@@ -387,8 +387,8 @@ func (lbm *OldCurrentNewLocationBlobMap) Put(sizeBytes int64) (LocationBlobPutWr
 	// gets converted back to a relative value later on.
 	absoluteBlockIndex := lbm.totalBlocksReleased + uint64(blockIndex)
 	putWriter := lbm.blockList.Put(blockIndex, sizeBytes)
-	return func(b buffer.Buffer) LocationBlobPutFinalizer {
-		putFinalizer := putWriter(b)
+	return func(data []byte) LocationBlobPutFinalizer {
+		putFinalizer := putWriter(data)
 		return func() (Location, error) {
 			offsetBytes, err := putFinalizer()
 			if err != nil {
