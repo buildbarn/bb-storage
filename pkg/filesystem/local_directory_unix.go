@@ -312,12 +312,27 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 
 	names, err := d.readdirnames()
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
+	return d.removeChildren(parentDeviceNumber, names)
+}
+
+// removeChildren consumes a directory snapshot. Another process may remove
+// an entry after it was listed; that must not prevent cleanup of its siblings.
+func (d *localDirectory) removeChildren(parentDeviceNumber rawDeviceNumber, names []string) error {
+	defer runtime.KeepAlive(d)
+
+children:
 	for _, name := range names {
 		component := path.MustNewComponent(name)
 		fileType, childDeviceNumber, _, err := d.lstat(component)
 		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			return err
 		}
 
@@ -330,6 +345,9 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 			}
 			fileType, childDeviceNumber, _, err = d.lstat(component)
 			if err != nil {
+				if os.IsNotExist(err) {
+					continue children
+				}
 				return err
 			}
 		}
@@ -350,6 +368,9 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 			}
 			subdirectory, err := d.enter(component)
 			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
 				return err
 			}
 			err = subdirectory.removeAllChildren(childDeviceNumber)
@@ -357,12 +378,12 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 			if err != nil {
 				return err
 			}
-			if err := unix.Unlinkat(d.fd, name, unix.AT_REMOVEDIR); err != nil {
+			if err := unix.Unlinkat(d.fd, name, unix.AT_REMOVEDIR); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		} else {
 			// Not a directory. Remove it immediately.
-			if err := unix.Unlinkat(d.fd, name, 0); err != nil {
+			if err := unix.Unlinkat(d.fd, name, 0); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		}
@@ -391,10 +412,18 @@ func (d *localDirectory) RemoveAll(name path.Component) error {
 		if err != nil {
 			return err
 		}
-		return unix.Unlinkat(d.fd, name.String(), unix.AT_REMOVEDIR)
+		if err := unix.Unlinkat(d.fd, name.String(), unix.AT_REMOVEDIR); !os.IsNotExist(err) {
+			return err
+		}
+		return nil
 	} else if err == syscall.ENOTDIR {
 		// Not a directory. Remove it immediately.
-		return unix.Unlinkat(d.fd, name.String(), 0)
+		if err := unix.Unlinkat(d.fd, name.String(), 0); !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	} else if os.IsNotExist(err) {
+		return nil
 	} else {
 		return err
 	}
