@@ -86,12 +86,13 @@ go_test(
         ],
         "@rules_go//go/platform:windows": [
             "local_directory_readonly_windows_test.go",
+            "local_directory_remove_windows_test.go",
             "local_directory_windows_test.go",
         ],
         "//conditions:default": [],
     }),
+    embed = [":filesystem"],
     deps = [
-        ":filesystem",
         "//pkg/filesystem/path",
         "@com_github_stretchr_testify//require",
     ] + select({
