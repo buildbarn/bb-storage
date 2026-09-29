@@ -155,12 +155,20 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 	return newLocalDirectory(pathString, true)
 }
 
-func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*localDirectory, error) {
+type reparsePointHandling int
+
+const (
+	followReparsePoints reparsePointHandling = iota
+	followNonSymlinkReparsePoints
+	rejectReparsePoints
+)
+
+func (d *localDirectory) enter(name path.Component, reparsePoints reparsePointHandling) (*localDirectory, error) {
 	defer runtime.KeepAlive(d)
 
 	var handle windows.Handle
 	var options uint32 = windows.FILE_DIRECTORY_FILE
-	if openReparsePoint {
+	if reparsePoints != followReparsePoints {
 		options |= windows.FILE_OPEN_REPARSE_POINT
 	}
 	err := ntCreateFile(&handle, windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE,
@@ -168,7 +176,7 @@ func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*loc
 	if err != nil {
 		return nil, err
 	}
-	if openReparsePoint {
+	if reparsePoints != followReparsePoints {
 		isReparsePoint, reparsePointTag, err := isReparsePointByHandle(handle)
 		if err != nil {
 			windows.CloseHandle(handle)
@@ -176,17 +184,17 @@ func (d *localDirectory) enter(name path.Component, openReparsePoint bool) (*loc
 		}
 		if isReparsePoint {
 			windows.CloseHandle(handle)
-			if reparsePointTag == windows.IO_REPARSE_TAG_SYMLINK {
+			if reparsePoints == rejectReparsePoints || reparsePointTag == windows.IO_REPARSE_TAG_SYMLINK {
 				return nil, syscall.ENOTDIR
 			}
-			return d.enter(name, false)
+			return d.enter(name, followReparsePoints)
 		}
 	}
 	return newLocalDirectoryFromHandle(handle)
 }
 
 func (d *localDirectory) EnterDirectory(name path.Component) (DirectoryCloser, error) {
-	return d.enter(name, true)
+	return d.enter(name, followNonSymlinkReparsePoints)
 }
 
 func (d *localDirectory) Close() error {
@@ -501,7 +509,7 @@ func readdirnames(handle windows.Handle) ([]string, error) {
 				continue
 			}
 			// Done.
-			if err.(syscall.Errno) == windows.ERROR_NO_MORE_FILES {
+			if err == windows.ERROR_NO_MORE_FILES || err == windows.ERROR_FILE_NOT_FOUND {
 				break
 			}
 
@@ -639,27 +647,6 @@ func (d *localDirectory) Remove(name path.Component) error {
 	return nil
 }
 
-// Cleanup must not use EnterDirectory, which follows junctions. Inspect the
-// opened directory itself so replacing a listed child cannot redirect removal.
-func (d *localDirectory) enterForRemoval(name path.Component) (*localDirectory, error) {
-	defer runtime.KeepAlive(d)
-
-	var handle windows.Handle
-	if err := ntCreateFile(&handle, windows.FILE_TRAVERSE|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE,
-		d.handle, name.String(), windows.FILE_OPEN, windows.FILE_DIRECTORY_FILE|windows.FILE_OPEN_REPARSE_POINT); err != nil {
-		return nil, err
-	}
-	isReparsePoint, _, err := isReparsePointByHandle(handle)
-	if err != nil || isReparsePoint {
-		windows.CloseHandle(handle)
-		if err != nil {
-			return nil, err
-		}
-		return nil, syscall.ENOTDIR
-	}
-	return newLocalDirectoryFromHandle(handle)
-}
-
 // On NTFS a mount point is a reparse point, so only the link is removed.
 func (d *localDirectory) RemoveAllChildren() error {
 	return d.removeAllChildren(nil)
@@ -670,39 +657,45 @@ func (d *localDirectory) removeAllChildren(dPath *path.Trace) error {
 
 	handle, err := d.createUpgradedHandle(windows.FILE_LIST_DIRECTORY | windows.FILE_READ_ATTRIBUTES | windows.SYNCHRONIZE)
 	if err != nil {
+		if dPath != nil && !os.IsNotExist(err) {
+			return util.StatusWrapf(err, "Failed to read contents of directory %#v", dPath.GetUNIXString())
+		}
 		return err
 	}
 	defer windows.CloseHandle(handle)
 	names, err := readdirnames(handle)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return util.StatusWrapf(err, "Failed to read contents of directory %#v", dPath.GetUNIXString())
 	}
-	return d.removeChildren(dPath, names)
-}
-
-// Another process may remove a child after enumeration; continue with its
-// siblings, but preserve permission, descriptor and I/O failures.
-func (d *localDirectory) removeChildren(dPath *path.Trace, names []string) error {
-	defer runtime.KeepAlive(d)
-
 	for _, name := range names {
 		component := path.MustNewComponent(name)
 		childPath := dPath.Append(component)
-		if err := d.removeAll(component, childPath); err != nil {
+		// Inspect the opened directory itself. Following a junction could
+		// redirect cleanup outside the directory being removed.
+		if subdirectory, err := d.enter(component, rejectReparsePoints); err == nil {
+			err := subdirectory.removeAllChildren(childPath)
+			subdirectory.Close()
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		} else if err != syscall.ENOTDIR {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return util.StatusWrapf(err, "Failed to enter directory %#v", childPath.GetUNIXString())
+		}
+		if err := d.Remove(component); err != nil && !os.IsNotExist(err) {
 			return util.StatusWrapf(err, "Failed to remove %#v", childPath.GetUNIXString())
 		}
 	}
 	return nil
 }
 
-func (d *localDirectory) removeAll(name path.Component, dPath *path.Trace) error {
+func (d *localDirectory) RemoveAll(name path.Component) error {
 	defer runtime.KeepAlive(d)
 
-	if subdirectory, err := d.enterForRemoval(name); err == nil {
-		err := subdirectory.removeAllChildren(dPath)
+	if subdirectory, err := d.enter(name, rejectReparsePoints); err == nil {
+		err := subdirectory.RemoveAllChildren()
 		subdirectory.Close()
 		if err != nil && !os.IsNotExist(err) {
 			return err
@@ -717,10 +710,6 @@ func (d *localDirectory) removeAll(name path.Component, dPath *path.Trace) error
 		return err
 	}
 	return nil
-}
-
-func (d *localDirectory) RemoveAll(name path.Component) error {
-	return d.removeAll(name, nil)
 }
 
 func (d *localDirectory) Rename(oldName path.Component, newDirectory Directory, newName path.Component) error {

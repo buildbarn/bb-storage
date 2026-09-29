@@ -1,13 +1,18 @@
 //go:build windows
 
-package filesystem
+package filesystem_test
 
 import (
 	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
+	"syscall"
 	"testing"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/stretchr/testify/require"
 
@@ -66,29 +71,140 @@ func TestLocalDirectoryRemovalKeepsWindowsDirectoryIdentity(t *testing.T) {
 	require.Equal(t, "untouched", string(data))
 }
 
-func TestLocalDirectoryRemovalChangedWindowsChildren(t *testing.T) {
+func TestLocalDirectoryRemoveAllChildrenConcurrentWindows(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
-	d := openRemovalDirectory(t, root)
-	for _, name := range []string{"vanished", "replaced", "surviving"} {
-		require.NoError(t, os.Mkdir(filepath.Join(root, name), 0o700))
-	}
-	// A missing entry must not stop cleanup of later siblings. A junction
-	// replacing an enumerated directory must not redirect that cleanup.
-	names := []string{"vanished", "replaced", "surviving"}
-	for _, name := range names[:2] {
-		require.NoError(t, os.Remove(filepath.Join(root, name)))
-	}
 	marker := filepath.Join(outside, "marker")
 	require.NoError(t, os.WriteFile(marker, []byte("untouched"), 0o600))
-	createRemovalJunction(t, filepath.Join(root, "replaced"), outside)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "surviving", "file"), nil, 0o600))
-	require.NoError(t, d.removeChildren(nil, names))
+	var children []path.Component
+	for i := range 16 {
+		name := strconv.Itoa(i)
+		children = append(children, path.MustNewComponent(name))
+		require.NoError(t, os.Mkdir(filepath.Join(root, name), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(root, name, "file"), nil, 0o600))
+	}
+	// Only the full sweep removes these siblings; the other callers remove
+	// the numbered children. Cleanup must finish without following the link.
+	require.NoError(t, os.WriteFile(filepath.Join(root, "surviving"), nil, 0o600))
+	createRemovalJunction(t, filepath.Join(root, "outside"), outside)
+
+	var directories [5]filesystem.DirectoryCloser
+	for i := range directories {
+		directories[i] = openRemovalDirectory(t, root)
+	}
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var errors [len(directories)]error
+	for i, d := range directories {
+		wg.Go(func() {
+			<-start
+			if i == 0 {
+				errors[i] = d.RemoveAllChildren()
+				return
+			}
+			for _, child := range children {
+				if err := d.RemoveAll(child); err != nil {
+					errors[i] = err
+					return
+				}
+			}
+		})
+	}
+	close(start)
+	wg.Wait()
+	for _, err := range errors {
+		require.NoError(t, err)
+	}
+
 	remaining, err := os.ReadDir(root)
 	require.NoError(t, err)
 	require.Empty(t, remaining)
 	data, err := os.ReadFile(marker)
 	require.NoError(t, err)
 	require.Equal(t, "untouched", string(data))
+}
+
+func TestLocalDirectoryEnterWindowsLinks(t *testing.T) {
+	for _, kind := range []string{"junction", "symlink"} {
+		t.Run(kind, func(t *testing.T) {
+			root, outside := t.TempDir(), t.TempDir()
+			d := openRemovalDirectory(t, root)
+			require.NoError(t, os.WriteFile(filepath.Join(outside, "marker"), nil, 0o600))
+			link := filepath.Join(root, "link")
+			if kind == "junction" {
+				createRemovalJunction(t, link, outside)
+			} else {
+				require.NoError(t, os.Symlink(outside, link))
+			}
+			subdirectory, err := d.EnterDirectory(path.MustNewComponent("link"))
+			if kind == "symlink" {
+				require.ErrorIs(t, err, syscall.ENOTDIR)
+				return
+			}
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, subdirectory.Close()) })
+			entries, err := subdirectory.ReadDir()
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+			require.Equal(t, "marker", entries[0].Name().String())
+		})
+	}
+}
+
+func TestLocalDirectoryWindowsEmptyDirectory(t *testing.T) {
+	d := openRemovalDirectory(t, t.TempDir())
+	entries, err := d.ReadDir()
+	require.NoError(t, err)
+	require.Empty(t, entries)
+	require.NoError(t, d.RemoveAllChildren())
+	child := path.MustNewComponent("child")
+	require.NoError(t, d.Mkdir(child, 0o700))
+	require.NoError(t, d.Remove(child))
+	require.NoError(t, d.Mkdir(child, 0o700))
+	require.NoError(t, d.RemoveAll(child))
+}
+
+func TestLocalDirectoryWindowsNestedRemovalError(t *testing.T) {
+	for _, operation := range []string{"RemoveAll", "RemoveAllChildren"} {
+		t.Run(operation, func(t *testing.T) {
+			root := t.TempDir()
+			parent := filepath.Join(root, "first", "second")
+			require.NoError(t, os.MkdirAll(parent, 0o700))
+			file := filepath.Join(parent, "file")
+			require.NoError(t, os.WriteFile(file, []byte("protected"), 0o600))
+			d := openRemovalDirectory(t, root)
+			// Deletion is allowed through either DELETE on the file or
+			// FILE_DELETE_CHILD on its parent, so deny both.
+			denyRemovalAccess(t, file, "SD")
+			denyRemovalAccess(t, parent, "0x00000040")
+			var err error
+			var failedPath string
+			if operation == "RemoveAll" {
+				err = d.RemoveAll(path.MustNewComponent("first"))
+				failedPath = "second/file"
+			} else {
+				err = d.RemoveAllChildren()
+				failedPath = "first/second/file"
+			}
+			require.EqualError(t, err, fmt.Sprintf("rpc error: code = Unknown desc = Failed to remove %q: %s", failedPath, windows.ERROR_ACCESS_DENIED))
+			data, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, "protected", string(data))
+		})
+	}
+}
+
+func TestLocalDirectoryWindowsNestedReopenPermissionDenied(t *testing.T) {
+	root := t.TempDir()
+	parent := filepath.Join(root, "first", "second")
+	require.NoError(t, os.MkdirAll(parent, 0o700))
+	file := filepath.Join(parent, "file")
+	require.NoError(t, os.WriteFile(file, []byte("protected"), 0o600))
+	d := openRemovalDirectory(t, root)
+	denyRemovalAccess(t, parent, "0x00000001")
+	require.EqualError(t, d.RemoveAllChildren(), fmt.Sprintf("rpc error: code = Unknown desc = Failed to read contents of directory %q: %s", "first/second", windows.ERROR_ACCESS_DENIED))
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+	require.Equal(t, "protected", string(data))
 }
 
 func TestLocalDirectoryRemoveAllMissingWindows(t *testing.T) {
@@ -99,7 +215,7 @@ func TestLocalDirectoryRemoveAllMissingWindows(t *testing.T) {
 func TestLocalDirectoryWindowsClosedHandle(t *testing.T) {
 	for _, operation := range []string{"ReadDir", "RemoveAllChildren", "RemoveAll", "Sync"} {
 		t.Run(operation, func(t *testing.T) {
-			d, err := NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
+			d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
 			require.NoError(t, err)
 			require.NoError(t, d.Close())
 			switch operation {
@@ -120,30 +236,8 @@ func TestLocalDirectoryWindowsClosedHandle(t *testing.T) {
 func TestLocalDirectoryWindowsReopenPermissionDenied(t *testing.T) {
 	root := t.TempDir()
 	d := openRemovalDirectory(t, root)
-	original, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
-	require.NoError(t, err)
-	acl, _, err := original.DACL()
-	require.NoError(t, err)
-	control, _, err := original.Control()
-	require.NoError(t, err)
-	protection := windows.SECURITY_INFORMATION(windows.UNPROTECTED_DACL_SECURITY_INFORMATION)
-	if control&windows.SE_DACL_PROTECTED != 0 {
-		protection = windows.PROTECTED_DACL_SECURITY_INFORMATION
-	}
-	t.Cleanup(func() {
-		require.NoError(t, windows.SetNamedSecurityInfo(root, windows.SE_FILE_OBJECT,
-			windows.DACL_SECURITY_INFORMATION|protection, nil, nil, acl, nil))
-	})
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	require.NoError(t, err)
-	sid := user.User.Sid.String()
 	// The retained handle does not grant the new FILE_LIST_DIRECTORY access.
-	security, err := windows.SecurityDescriptorFromString("D:P(D;;0x00000001;;;" + sid + ")(A;;FA;;;" + sid + ")")
-	require.NoError(t, err)
-	denied, _, err := security.DACL()
-	require.NoError(t, err)
-	require.NoError(t, windows.SetNamedSecurityInfo(root, windows.SE_FILE_OBJECT,
-		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, denied, nil))
+	denyRemovalAccess(t, root, "0x00000001")
 	before, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 	require.NoError(t, err)
 	_, err = d.ReadDir()
@@ -154,12 +248,39 @@ func TestLocalDirectoryWindowsReopenPermissionDenied(t *testing.T) {
 	require.Equal(t, before.String(), after.String())
 }
 
-func openRemovalDirectory(t *testing.T, root string) *localDirectory {
+func openRemovalDirectory(t *testing.T, root string) filesystem.DirectoryCloser {
 	t.Helper()
-	directory, err := NewLocalDirectory(path.LocalFormat.NewParser(root))
+	directory, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, directory.Close()) })
-	return directory.(*localDirectory)
+	return directory
+}
+
+func denyRemovalAccess(t *testing.T, name, rights string) {
+	t.Helper()
+	original, err := windows.GetNamedSecurityInfo(name, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	require.NoError(t, err)
+	acl, _, err := original.DACL()
+	require.NoError(t, err)
+	control, _, err := original.Control()
+	require.NoError(t, err)
+	protection := windows.SECURITY_INFORMATION(windows.UNPROTECTED_DACL_SECURITY_INFORMATION)
+	if control&windows.SE_DACL_PROTECTED != 0 {
+		protection = windows.PROTECTED_DACL_SECURITY_INFORMATION
+	}
+	t.Cleanup(func() {
+		require.NoError(t, windows.SetNamedSecurityInfo(name, windows.SE_FILE_OBJECT,
+			windows.DACL_SECURITY_INFORMATION|protection, nil, nil, acl, nil))
+	})
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	require.NoError(t, err)
+	sid := user.User.Sid.String()
+	security, err := windows.SecurityDescriptorFromString("D:P(D;;" + rights + ";;;" + sid + ")(A;;FA;;;" + sid + ")")
+	require.NoError(t, err)
+	denied, _, err := security.DACL()
+	require.NoError(t, err)
+	require.NoError(t, windows.SetNamedSecurityInfo(name, windows.SE_FILE_OBJECT,
+		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, denied, nil))
 }
 
 func createRemovalJunction(t *testing.T, link, target string) {
