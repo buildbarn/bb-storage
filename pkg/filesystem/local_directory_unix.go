@@ -211,7 +211,11 @@ func (d *localDirectory) Lstat(name path.Component) (FileInfo, error) {
 func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	defer runtime.KeepAlive(d)
 
-	return unix.Mkdirat(d.fd, name.String(), uint32(perm))
+	mode := uint32(perm.Perm())
+	if perm&os.ModeSticky != 0 {
+		mode |= unix.S_ISVTX
+	}
+	return unix.Mkdirat(d.fd, name.String(), mode)
 }
 
 func (d *localDirectory) readdirnames() ([]string, error) {
