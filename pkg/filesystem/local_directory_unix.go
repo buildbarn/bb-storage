@@ -307,6 +307,56 @@ func (d *localDirectory) Unmount(name path.Component) error {
 	return syscall.Unmount(name.String(), 0)
 }
 
+func (d *localDirectory) removeSingleChild(name path.Component, parentDeviceNumber rawDeviceNumber) error {
+	defer runtime.KeepAlive(d)
+
+	fileType, childDeviceNumber, _, err := d.lstat(name)
+	if err != nil {
+		return err
+	}
+
+	// The directory entry is a mount point. Repeatedly call
+	// unmount until the remaining directory is on the same
+	// file system.
+	for parentDeviceNumber != childDeviceNumber {
+		if err := d.Unmount(name); err != nil {
+			return err
+		}
+		fileType, childDeviceNumber, _, err = d.lstat(name)
+		if err != nil {
+			return err
+		}
+	}
+
+	if fileType == FileTypeDirectory {
+		// A directory. Remove all children. Adjust permissions
+		// to ensure we can delete directories with degenerate
+		// permissions.
+		if err := unix.Fchmodat(d.fd, name.String(), 0o700, unix.AT_SYMLINK_NOFOLLOW); runtime.GOOS == "linux" && err == unix.EOPNOTSUPP {
+			// Support for fchmodat(AT_SYMLINK_NOFOLLOW)
+			// was only added in Linux 6.6. Fall back to
+			// calling fchmodat(0) when running on an
+			// older kernel version.
+			//
+			// TODO: Remove this when the world has
+			// stopped using older kernel versions.
+			unix.Fchmodat(d.fd, name.String(), 0o700, 0)
+		}
+		subdirectory, err := d.enter(name)
+		if err != nil {
+			return err
+		}
+		err = subdirectory.removeAllChildren(childDeviceNumber)
+		subdirectory.Close()
+		if err != nil {
+			return err
+		}
+		return unix.Unlinkat(d.fd, name.String(), unix.AT_REMOVEDIR)
+	}
+	// Not a directory. Remove it immediately.
+	return unix.Unlinkat(d.fd, name.String(), 0)
+}
+
 func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) error {
 	defer runtime.KeepAlive(d)
 
@@ -317,68 +367,9 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 		}
 		return err
 	}
-
-children:
 	for _, name := range names {
-		component := path.MustNewComponent(name)
-		fileType, childDeviceNumber, _, err := d.lstat(component)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
+		if err := d.removeSingleChild(path.MustNewComponent(name), parentDeviceNumber); err != nil && !os.IsNotExist(err) {
 			return err
-		}
-
-		// The directory entry is a mount point. Repeatedly call
-		// unmount until the remaining directory is on the same
-		// file system.
-		for parentDeviceNumber != childDeviceNumber {
-			if err := d.Unmount(component); err != nil {
-				return err
-			}
-			fileType, childDeviceNumber, _, err = d.lstat(component)
-			if err != nil {
-				if os.IsNotExist(err) {
-					continue children
-				}
-				return err
-			}
-		}
-
-		if fileType == FileTypeDirectory {
-			// A directory. Remove all children. Adjust permissions
-			// to ensure we can delete directories with degenerate
-			// permissions.
-			if err := unix.Fchmodat(d.fd, name, 0o700, unix.AT_SYMLINK_NOFOLLOW); runtime.GOOS == "linux" && err == unix.EOPNOTSUPP {
-				// Support for fchmodat(AT_SYMLINK_NOFOLLOW)
-				// was only added in Linux 6.6. Fall back to
-				// calling fchmodat(0) when running on an
-				// older kernel version.
-				//
-				// TODO: Remove this when the world has
-				// stopped using older kernel versions.
-				unix.Fchmodat(d.fd, name, 0o700, 0)
-			}
-			subdirectory, err := d.enter(component)
-			if err != nil {
-				if os.IsNotExist(err) {
-					continue
-				}
-				return err
-			}
-			err = subdirectory.removeAllChildren(childDeviceNumber)
-			subdirectory.Close()
-			if err != nil {
-				return err
-			}
-			if err := unix.Unlinkat(d.fd, name, unix.AT_REMOVEDIR); err != nil && !os.IsNotExist(err) {
-				return err
-			}
-		} else {
-			// Not a directory. Remove it immediately.
-			if err := unix.Unlinkat(d.fd, name, 0); err != nil && !os.IsNotExist(err) {
-				return err
-			}
 		}
 	}
 	return nil
