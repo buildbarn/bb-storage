@@ -1,47 +1,67 @@
 //go:build darwin || freebsd || linux
 
-package filesystem
+package filesystem_test
 
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"syscall"
 	"testing"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/buildbarn/bb-storage/pkg/filesystem/path"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLocalDirectoryRemoveChildrenMissingEntry(t *testing.T) {
+func TestLocalDirectoryRemoveAllChildrenConcurrent(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	marker := filepath.Join(outside, "marker")
 	require.NoError(t, os.WriteFile(marker, []byte("untouched"), 0o600))
-	for _, name := range []string{"disappearing", "surviving"} {
+	var children []path.Component
+	for i := range 16 {
+		name := strconv.Itoa(i)
+		children = append(children, path.MustNewComponent(name))
 		require.NoError(t, os.Mkdir(filepath.Join(root, name), 0o700))
 		require.NoError(t, os.WriteFile(filepath.Join(root, name, "file"), nil, 0o600))
 	}
+	// Only the full sweep removes these siblings; the other callers remove
+	// the numbered children. Cleanup must finish without following the link.
+	require.NoError(t, os.WriteFile(filepath.Join(root, "surviving"), nil, 0o600))
 	require.NoError(t, os.Symlink(outside, filepath.Join(root, "outside")))
-	directory, err := NewLocalDirectory(path.LocalFormat.NewParser(root))
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, directory.Close()) })
-	d := directory.(*localDirectory)
 
-	names, err := d.readdirnames()
-	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"disappearing", "surviving", "outside"}, names)
-	// Process the missing entry first: swallowing ENOENT around the entire
-	// traversal would leave the surviving siblings behind.
-	for i, name := range names {
-		if name == "disappearing" {
-			names[0], names[i] = names[i], names[0]
-			break
-		}
+	var directories [5]filesystem.DirectoryCloser
+	for i := range directories {
+		d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, d.Close()) })
+		directories[i] = d
 	}
-	require.NoError(t, os.RemoveAll(filepath.Join(root, "disappearing")))
-	var stat syscall.Stat_t
-	require.NoError(t, syscall.Fstat(d.fd, &stat))
-	require.NoError(t, d.removeChildren(rawDeviceNumber(stat.Dev), names))
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var errors [len(directories)]error
+	for i, d := range directories {
+		wg.Go(func() {
+			<-start
+			if i == 0 {
+				errors[i] = d.RemoveAllChildren()
+				return
+			}
+			for _, child := range children {
+				if err := d.RemoveAll(child); err != nil {
+					errors[i] = err
+					return
+				}
+			}
+		})
+	}
+	close(start)
+	wg.Wait()
+	for _, err := range errors {
+		require.NoError(t, err)
+	}
 
 	entries, err := os.ReadDir(root)
 	require.NoError(t, err)
@@ -52,18 +72,16 @@ func TestLocalDirectoryRemoveChildrenMissingEntry(t *testing.T) {
 }
 
 func TestLocalDirectoryRemoveAllMissing(t *testing.T) {
-	d, err := NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, d.Close()) })
 	require.NoError(t, d.RemoveAll(path.MustNewComponent("missing")))
 }
 
 func TestLocalDirectoryRemovalClosed(t *testing.T) {
-	directory, err := NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(t.TempDir()))
 	require.NoError(t, err)
-	d := directory.(*localDirectory)
 	require.NoError(t, d.Close())
-	require.ErrorIs(t, d.removeChildren(0, []string{"missing"}), syscall.EBADF)
 	require.ErrorIs(t, d.RemoveAllChildren(), syscall.EBADF)
 	require.ErrorIs(t, d.RemoveAll(path.MustNewComponent("missing")), syscall.EBADF)
 }
@@ -74,16 +92,12 @@ func TestLocalDirectoryRemovalPermissionDenied(t *testing.T) {
 	}
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), nil, 0o600))
-	directory, err := NewLocalDirectory(path.LocalFormat.NewParser(root))
+	d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, directory.Close()) })
-	d := directory.(*localDirectory)
-	var stat syscall.Stat_t
-	require.NoError(t, syscall.Fstat(d.fd, &stat))
+	t.Cleanup(func() { require.NoError(t, d.Close()) })
 	require.NoError(t, os.Chmod(root, 0o500))
 	t.Cleanup(func() { require.NoError(t, os.Chmod(root, 0o700)) })
 
-	require.True(t, os.IsPermission(d.removeChildren(rawDeviceNumber(stat.Dev), []string{"file"})))
 	require.True(t, os.IsPermission(d.RemoveAllChildren()))
 	require.True(t, os.IsPermission(d.RemoveAll(path.MustNewComponent("file"))))
 	_, err = os.Stat(filepath.Join(root, "file"))

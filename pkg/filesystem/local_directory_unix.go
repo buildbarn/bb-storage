@@ -317,13 +317,6 @@ func (d *localDirectory) removeAllChildren(parentDeviceNumber rawDeviceNumber) e
 		}
 		return err
 	}
-	return d.removeChildren(parentDeviceNumber, names)
-}
-
-// removeChildren consumes a directory snapshot. Another process may remove
-// an entry after it was listed; that must not prevent cleanup of its siblings.
-func (d *localDirectory) removeChildren(parentDeviceNumber rawDeviceNumber, names []string) error {
-	defer runtime.KeepAlive(d)
 
 children:
 	for _, name := range names {
