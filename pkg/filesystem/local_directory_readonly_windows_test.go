@@ -74,6 +74,8 @@ func TestLocalDirectoryRemoveReadOnlyPermissionDenied(t *testing.T) {
 	denyReadOnlyRemovalAccess(t, file, "SD")
 	denyReadOnlyRemovalAccess(t, root, "0x00000040")
 	require.True(t, os.IsPermission(d.Remove(path.MustNewComponent("file"))))
+	require.True(t, os.IsPermission(d.RemoveAll(path.MustNewComponent("file"))))
+	require.Error(t, d.RemoveAllChildren())
 	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	require.Equal(t, "protected", string(data))
