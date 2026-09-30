@@ -195,6 +195,7 @@ func (ba *referenceExpandingBlobAccess) GetFromComposite(ctx context.Context, pa
 }
 
 func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
+	b.Discard()
 	return status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data")
 }
 

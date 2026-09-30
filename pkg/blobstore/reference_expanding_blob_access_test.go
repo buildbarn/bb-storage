@@ -536,6 +536,9 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 		// It is not possible to write objects using
 		// ReferenceExpandingBlobAccess, as it wouldn't know
 		// where to store the data.
+		r := mock.NewMockReadAtCloser(ctrl)
+		r.EXPECT().Close()
+
 		require.Equal(
 			t,
 			status.Error(codes.InvalidArgument, "The Indirect Content Addressable Storage can only store references, not data"),
@@ -547,7 +550,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 					"8b1a9953c4611296a827abf8c47804d7",
 					5,
 				),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+				buffer.NewValidatedBufferFromReaderAt(r, 123),
 			),
 		)
 	})

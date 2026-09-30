@@ -47,6 +47,7 @@ func (ba *authorizingBlobAccess) GetFromComposite(ctx context.Context, parentDig
 
 func (ba *authorizingBlobAccess) Put(ctx context.Context, d digest.Digest, b buffer.Buffer) error {
 	if err := auth.AuthorizeSingleInstanceName(ctx, ba.putAuthorizer, d.GetInstanceName()); err != nil {
+		b.Discard()
 		return util.StatusWrap(err, "Authorization")
 	}
 	return ba.BlobAccess.Put(ctx, d, b)

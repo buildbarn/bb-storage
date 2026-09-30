@@ -82,8 +82,10 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 
 	t.Run("Put-Denied", func(t *testing.T) {
 		putAuthorizer.EXPECT().Authorize(ctx, beepSlice).Return([]error{status.Error(codes.PermissionDenied, "You shall not pass")})
+		r := mock.NewMockReadAtCloser(ctrl)
+		r.EXPECT().Close()
 
-		err := ba.Put(ctx, d, wantBuf)
+		err := ba.Put(ctx, d, buffer.NewValidatedBufferFromReaderAt(r, 123))
 		testutil.RequireEqualStatus(t, status.Error(codes.PermissionDenied, "Authorization: You shall not pass"), err)
 	})
 
