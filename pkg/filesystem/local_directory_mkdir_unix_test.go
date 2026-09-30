@@ -3,8 +3,8 @@
 package filesystem_test
 
 import (
+	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -50,36 +50,31 @@ func TestLocalDirectoryMkdirSticky(t *testing.T) {
 }
 
 func TestLocalDirectoryMkdirStickyUmask(t *testing.T) {
-	if value := os.Getenv("BB_STORAGE_TEST_UMASK"); value != "" {
-		mask, err := strconv.ParseUint(value, 8, 32)
-		require.NoError(t, err)
-		root := t.TempDir()
-		d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
-		require.NoError(t, err)
-		t.Cleanup(func() { require.NoError(t, d.Close()) })
-		previous := syscall.Umask(int(mask))
-		defer syscall.Umask(previous)
-		mkdirErr := d.Mkdir(path.MustNewComponent("created"), 0o777|os.ModeSticky)
-		created := filepath.Join(root, "created")
-		t.Cleanup(func() { require.NoError(t, os.Chmod(created, 0o700)) })
-		want := os.FileMode(0o777 &^ mask)
-		if runtime.GOOS != "linux" && runtime.GOOS != "android" && os.Geteuid() != 0 && mask&0o100 != 0 {
-			require.ErrorIs(t, mkdirErr, syscall.EACCES)
-		} else {
-			require.NoError(t, mkdirErr)
-			want |= os.ModeSticky
-		}
-		info, err := os.Stat(created)
-		require.NoError(t, err)
-		require.Equal(t, os.ModeDir|want, info.Mode())
-		return
-	}
-	for _, mask := range []string{"0", "022", "077", "0400", "0100", "0700", "0777"} {
-		t.Run(mask, func(t *testing.T) {
-			command := exec.Command(os.Args[0], "-test.run=^TestLocalDirectoryMkdirStickyUmask$")
-			command.Env = append(os.Environ(), "BB_STORAGE_TEST_UMASK="+mask)
-			output, err := command.CombinedOutput()
-			require.NoError(t, err, "%s", output)
+	// These cases change process state and must remain sequential.
+	for _, mask := range []int{0, 0o022, 0o077, 0o400, 0o100, 0o700, 0o777} {
+		t.Run(strconv.FormatInt(int64(mask), 8), func(t *testing.T) {
+			root := t.TempDir()
+			d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, d.Close()) })
+			created := filepath.Join(root, "created")
+			name := path.MustNewComponent("created")
+			mkdirErr := func() error {
+				previous := syscall.Umask(mask)
+				defer syscall.Umask(previous)
+				return d.Mkdir(name, 0o777|os.ModeSticky)
+			}()
+			t.Cleanup(func() { require.NoError(t, os.Chmod(created, 0o700)) })
+			want := os.FileMode(0o777 &^ mask)
+			if runtime.GOOS != "linux" && runtime.GOOS != "android" && os.Geteuid() != 0 && mask&0o100 != 0 {
+				require.ErrorIs(t, mkdirErr, syscall.EACCES)
+			} else {
+				require.NoError(t, mkdirErr)
+				want |= os.ModeSticky
+			}
+			info, err := os.Stat(created)
+			require.NoError(t, err)
+			require.Equal(t, os.ModeDir|want, info.Mode())
 		})
 	}
 }
@@ -151,72 +146,78 @@ func TestLocalDirectoryMkdirStickyExisting(t *testing.T) {
 }
 
 func TestLocalDirectoryMkdirStickyDescriptorLifetime(t *testing.T) {
-	if value := os.Getenv("BB_STORAGE_TEST_FD_BUDGET"); value != "" {
-		spare, err := strconv.Atoi(value)
-		require.NoError(t, err)
-		root := t.TempDir()
-		d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
-		require.NoError(t, err)
-		t.Cleanup(func() { require.NoError(t, d.Close()) })
-		var original syscall.Rlimit
-		require.NoError(t, syscall.Getrlimit(syscall.RLIMIT_NOFILE, &original))
-		limited := original
-		limited.Cur = 64
-		var descriptors []int
-		defer func() {
-			for _, fd := range descriptors {
-				_ = syscall.Close(fd)
+	// These cases change process state and must remain sequential.
+	for _, spare := range []int{0, 1} {
+		t.Run(strconv.Itoa(spare), func(t *testing.T) {
+			root := t.TempDir()
+			d, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(root))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, d.Close()) })
+			name := path.MustNewComponent("created")
+			var original syscall.Rlimit
+			require.NoError(t, syscall.Getrlimit(syscall.RLIMIT_NOFILE, &original))
+			limited := original
+			limited.Cur = min(limited.Cur, 64)
+			descriptors := make([]int, 0, limited.Cur+1)
+			var fillErr, mkdirErr, probeErr, cleanupErr error
+			var opened, available int
+			operationErr := func() error {
+				defer func() {
+					cleanupErr = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &original)
+					for _, fd := range descriptors {
+						cleanupErr = errors.Join(cleanupErr, syscall.Close(fd))
+					}
+				}()
+				if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &limited); err != nil {
+					return err
+				}
+				// Do not report failures until the original limit is restored.
+				for range limited.Cur + 1 {
+					fd, err := syscall.Open("/dev/null", syscall.O_RDONLY, 0)
+					if err != nil {
+						fillErr = err
+						break
+					}
+					descriptors = append(descriptors, fd)
+				}
+				opened = len(descriptors)
+				if fillErr != syscall.EMFILE || opened < spare {
+					return nil
+				}
+				for range spare {
+					if err := syscall.Close(descriptors[len(descriptors)-1]); err != nil {
+						return err
+					}
+					descriptors = descriptors[:len(descriptors)-1]
+				}
+				mkdirErr = d.Mkdir(name, 0o700|os.ModeSticky)
+				for range limited.Cur + 1 {
+					fd, err := syscall.Open("/dev/null", syscall.O_RDONLY, 0)
+					if err != nil {
+						probeErr = err
+						break
+					}
+					available++
+					descriptors = append(descriptors, fd)
+				}
+				return nil
+			}()
+			require.NoError(t, cleanupErr)
+			require.NoError(t, operationErr)
+			require.ErrorIs(t, fillErr, syscall.EMFILE)
+			require.GreaterOrEqual(t, opened, spare)
+			require.ErrorIs(t, probeErr, syscall.EMFILE)
+			require.Equal(t, spare, available, "Mkdir leaked a descriptor")
+			want := os.ModeDir | os.FileMode(0o700)
+			if spare == 0 && runtime.GOOS != "linux" && runtime.GOOS != "android" {
+				require.ErrorIs(t, mkdirErr, syscall.EMFILE)
+			} else {
+				require.NoError(t, mkdirErr)
+				want |= os.ModeSticky
 			}
-			require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_NOFILE, &original))
-		}()
-		require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_NOFILE, &limited))
-		for {
-			fd, err := syscall.Open("/dev/null", syscall.O_RDONLY, 0)
-			if err != nil {
-				require.ErrorIs(t, err, syscall.EMFILE)
-				break
-			}
-			descriptors = append(descriptors, fd)
-		}
-		for range spare {
-			require.NoError(t, syscall.Close(descriptors[len(descriptors)-1]))
-			descriptors = descriptors[:len(descriptors)-1]
-		}
-		mkdirErr := d.Mkdir(path.MustNewComponent("created"), 0o700|os.ModeSticky)
-		available := 0
-		for {
-			fd, err := syscall.Open("/dev/null", syscall.O_RDONLY, 0)
-			if err != nil {
-				require.ErrorIs(t, err, syscall.EMFILE)
-				break
-			}
-			available++
-			descriptors = append(descriptors, fd)
-		}
-		for _, fd := range descriptors {
-			require.NoError(t, syscall.Close(fd))
-		}
-		descriptors = nil
-		require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_NOFILE, &original))
-		require.Equal(t, spare, available, "Mkdir leaked a descriptor")
-		want := os.ModeDir | os.FileMode(0o700)
-		if spare == 0 && runtime.GOOS != "linux" && runtime.GOOS != "android" {
-			require.ErrorIs(t, mkdirErr, syscall.EMFILE)
-		} else {
-			require.NoError(t, mkdirErr)
-			want |= os.ModeSticky
-		}
-		info, err := os.Stat(filepath.Join(root, "created"))
-		require.NoError(t, err)
-		require.Equal(t, want, info.Mode())
-		return
-	}
-	for _, spare := range []string{"0", "1"} {
-		t.Run(spare, func(t *testing.T) {
-			command := exec.Command(os.Args[0], "-test.run=^TestLocalDirectoryMkdirStickyDescriptorLifetime$")
-			command.Env = append(os.Environ(), "BB_STORAGE_TEST_FD_BUDGET="+spare)
-			output, err := command.CombinedOutput()
-			require.NoError(t, err, "%s", output)
+			info, err := os.Stat(filepath.Join(root, "created"))
+			require.NoError(t, err)
+			require.Equal(t, want, info.Mode())
 		})
 	}
 }
