@@ -649,12 +649,16 @@ func (d *localDirectory) Remove(name path.Component) error {
 		}
 	}
 	fileDispInfo := windowsext.FILE_DISPOSITION_INFORMATION_EX{
-		Flags: windows.FILE_DISPOSITION_DELETE | windows.FILE_DISPOSITION_POSIX_SEMANTICS,
+		// Do not clear the read-only attribute: it is shared by every hard link.
+		Flags: windows.FILE_DISPOSITION_DELETE | windows.FILE_DISPOSITION_POSIX_SEMANTICS |
+			windows.FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE,
 	}
 	var iosb windows.IO_STATUS_BLOCK
-	err = windows.NtSetInformationFile(handle, &iosb, (*byte)(unsafe.Pointer(&fileDispInfo)),
-		uint32(unsafe.Sizeof(fileDispInfo)), windows.FileDispositionInformationEx)
-	return err
+	if err := windows.NtSetInformationFile(handle, &iosb, (*byte)(unsafe.Pointer(&fileDispInfo)),
+		uint32(unsafe.Sizeof(fileDispInfo)), windows.FileDispositionInformationEx); err != nil {
+		return convertNtStatus(err)
+	}
+	return nil
 }
 
 // On NTFS mount point is a reparse point, no need to unmount.

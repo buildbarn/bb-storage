@@ -85,6 +85,7 @@ go_test(
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:windows": [
+            "local_directory_readonly_windows_test.go",
             "local_directory_windows_test.go",
         ],
         "//conditions:default": [],
