@@ -72,13 +72,16 @@ go_test(
         "@rules_go//go/platform:darwin": [
             "local_directory_darwin_test.go",
             "local_directory_remove_unix_test.go",
+            "local_directory_sticky_bsd_test.go",
         ],
         "@rules_go//go/platform:freebsd": [
             "local_directory_remove_unix_test.go",
+            "local_directory_sticky_bsd_test.go",
         ],
         "@rules_go//go/platform:ios": [
             "local_directory_darwin_test.go",
             "local_directory_remove_unix_test.go",
+            "local_directory_sticky_bsd_test.go",
         ],
         "@rules_go//go/platform:linux": [
             "local_directory_linux_test.go",

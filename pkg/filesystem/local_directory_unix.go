@@ -215,7 +215,26 @@ func (d *localDirectory) Mkdir(name path.Component, perm os.FileMode) error {
 	if perm&os.ModeSticky != 0 {
 		mode |= unix.S_ISVTX
 	}
-	return unix.Mkdirat(d.fd, name.String(), mode)
+	if err := unix.Mkdirat(d.fd, name.String(), mode); err != nil {
+		return err
+	}
+	if perm&os.ModeSticky == 0 || runtime.GOOS == "linux" || runtime.GOOS == "android" {
+		return nil
+	}
+
+	// BSD mkdirat() discards the sticky bit. Open the directory without
+	// following symlinks, so stat and chmod act on the same directory.
+	// Preserve the kernel's umask and inherited permission bits.
+	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC|oflagSearch, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	var stat unix.Stat_t
+	if err := unix.Fstat(fd, &stat); err != nil {
+		return err
+	}
+	return unix.Fchmod(fd, uint32(stat.Mode)&0o7777|unix.S_ISVTX)
 }
 
 func (d *localDirectory) readdirnames() ([]string, error) {

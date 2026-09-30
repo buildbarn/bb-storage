@@ -80,6 +80,9 @@ type Directory interface {
 	// Lstat is the equivalent of os.Lstat().
 	Lstat(name path.Component) (FileInfo, error)
 	// Mkdir is the equivalent of os.Mkdir().
+	// On macOS and FreeBSD, local directories install ModeSticky
+	// non-atomically and require search access to the new directory.
+	// An error while installing the bit leaves the directory in place.
 	Mkdir(name path.Component, perm os.FileMode) error
 	// Mknod is the equivalent of unix.Mknod().
 	Mknod(name path.Component, perm os.FileMode, deviceNumber DeviceNumber) error
