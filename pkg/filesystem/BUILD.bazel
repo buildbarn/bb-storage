@@ -66,22 +66,25 @@ go_test(
         "local_directory_test.go",
     ] + select({
         "@rules_go//go/platform:android": [
-            "local_directory_linux_test.go",
+            "local_directory_mkdir_unix_test.go",
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:darwin": [
             "local_directory_darwin_test.go",
+            "local_directory_mkdir_unix_test.go",
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:freebsd": [
+            "local_directory_mkdir_unix_test.go",
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:ios": [
             "local_directory_darwin_test.go",
+            "local_directory_mkdir_unix_test.go",
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:linux": [
-            "local_directory_linux_test.go",
+            "local_directory_mkdir_unix_test.go",
             "local_directory_remove_unix_test.go",
         ],
         "@rules_go//go/platform:windows": [
