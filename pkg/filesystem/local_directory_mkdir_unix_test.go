@@ -1,4 +1,4 @@
-//go:build darwin || freebsd
+//go:build darwin || freebsd || linux
 
 package filesystem_test
 
@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"syscall"
 	"testing"
@@ -32,7 +33,7 @@ func TestLocalDirectoryMkdirSticky(t *testing.T) {
 				created := filepath.Join(root, "created")
 				mkdirErr := d.Mkdir(path.MustNewComponent("created"), mode|sticky)
 				t.Cleanup(func() { require.NoError(t, os.Chmod(created, 0o700)) })
-				if sticky != 0 && os.Geteuid() != 0 && want&0o100 == 0 {
+				if sticky != 0 && runtime.GOOS != "linux" && runtime.GOOS != "android" && os.Geteuid() != 0 && want&0o100 == 0 {
 					// Installing the bit requires opening the new directory
 					// for search. Failure leaves the created entry in place.
 					require.ErrorIs(t, mkdirErr, syscall.EACCES)
@@ -49,7 +50,7 @@ func TestLocalDirectoryMkdirSticky(t *testing.T) {
 }
 
 func TestLocalDirectoryMkdirStickyUmask(t *testing.T) {
-	if value := os.Getenv("BB_STORAGE_TEST_BSD_UMASK"); value != "" {
+	if value := os.Getenv("BB_STORAGE_TEST_UMASK"); value != "" {
 		mask, err := strconv.ParseUint(value, 8, 32)
 		require.NoError(t, err)
 		root := t.TempDir()
@@ -62,7 +63,7 @@ func TestLocalDirectoryMkdirStickyUmask(t *testing.T) {
 		created := filepath.Join(root, "created")
 		t.Cleanup(func() { require.NoError(t, os.Chmod(created, 0o700)) })
 		want := os.FileMode(0o777 &^ mask)
-		if os.Geteuid() != 0 && mask&0o100 != 0 {
+		if runtime.GOOS != "linux" && runtime.GOOS != "android" && os.Geteuid() != 0 && mask&0o100 != 0 {
 			require.ErrorIs(t, mkdirErr, syscall.EACCES)
 		} else {
 			require.NoError(t, mkdirErr)
@@ -76,7 +77,7 @@ func TestLocalDirectoryMkdirStickyUmask(t *testing.T) {
 	for _, mask := range []string{"0", "022", "077", "0400", "0100", "0700", "0777"} {
 		t.Run(mask, func(t *testing.T) {
 			command := exec.Command(os.Args[0], "-test.run=^TestLocalDirectoryMkdirStickyUmask$")
-			command.Env = append(os.Environ(), "BB_STORAGE_TEST_BSD_UMASK="+mask)
+			command.Env = append(os.Environ(), "BB_STORAGE_TEST_UMASK="+mask)
 			output, err := command.CombinedOutput()
 			require.NoError(t, err, "%s", output)
 		})
@@ -122,7 +123,8 @@ func TestLocalDirectoryMkdirStickyExisting(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), []byte("file"), 0o600))
 	require.NoError(t, os.Mkdir(filepath.Join(root, "directory"), 0o700))
 	require.NoError(t, os.Symlink(target, filepath.Join(root, "symlink")))
-	for _, name := range []string{"directory", "file", "hardlink", "symlink"} {
+	require.NoError(t, os.Symlink(filepath.Join(root, "directory"), filepath.Join(root, "directory_symlink")))
+	for _, name := range []string{"directory", "file", "hardlink", "symlink", "directory_symlink"} {
 		before, err := os.Lstat(filepath.Join(root, name))
 		require.NoError(t, err)
 		require.ErrorIs(t, d.Mkdir(path.MustNewComponent(name), 0o777|os.ModeSticky), syscall.EEXIST)
@@ -140,6 +142,12 @@ func TestLocalDirectoryMkdirStickyExisting(t *testing.T) {
 	link, err := os.Readlink(filepath.Join(root, "symlink"))
 	require.NoError(t, err)
 	require.Equal(t, target, link)
+	info, err = os.Stat(filepath.Join(root, "directory"))
+	require.NoError(t, err)
+	require.Equal(t, os.ModeDir|0o700, info.Mode())
+	link, err = os.Readlink(filepath.Join(root, "directory_symlink"))
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(root, "directory"), link)
 }
 
 func TestLocalDirectoryMkdirStickyDescriptorLifetime(t *testing.T) {
@@ -192,7 +200,7 @@ func TestLocalDirectoryMkdirStickyDescriptorLifetime(t *testing.T) {
 		require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_NOFILE, &original))
 		require.Equal(t, spare, available, "Mkdir leaked a descriptor")
 		want := os.ModeDir | os.FileMode(0o700)
-		if spare == 0 {
+		if spare == 0 && runtime.GOOS != "linux" && runtime.GOOS != "android" {
 			require.ErrorIs(t, mkdirErr, syscall.EMFILE)
 		} else {
 			require.NoError(t, mkdirErr)
