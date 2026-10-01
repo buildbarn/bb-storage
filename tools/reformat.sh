@@ -35,7 +35,7 @@ go_module_name=$($go list -m)
 
 # Go dependencies
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
-bazel build $(bazel query --output=label 'kind("go_proto_library", //...)') || true
+bazel build --output_groups=go_generated_srcs --remote_download_regex='.*\.pb\.go$' $(bazel query --output=label 'kind("go_proto_library", //...)') || true
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
   cat "$f" > $(echo "$f" | sed -e "s|.*/${go_module_name}/||")
 done
@@ -59,7 +59,7 @@ find . -name '*.proto' -exec "$clang_format" -i {} +
 
 # Generated .pb.go files
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
-bazel build --output_groups=go_generated_srcs $(bazel query --output=label 'kind("go_proto_library", //...)')
+bazel build --output_groups=go_generated_srcs --remote_download_regex='.*\.pb\.go$' $(bazel query --output=label 'kind("go_proto_library", //...)')
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
   cat $f > $(echo $f | sed -e "s|.*/${go_module_name}/||")
 done
