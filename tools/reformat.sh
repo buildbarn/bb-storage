@@ -54,8 +54,9 @@ bazel mod tidy
 # Go
 $gofumpt -w -extra "$(pwd)"
 
-# Protobuf
-find . -name '*.proto' -exec "$clang_format" -i {} +
+# C++ and Protobuf
+# C++ sources use .cc; headers use .h.
+find . \( -name '*.proto' -o -name '*.cc' -o -name '*.h' \) -exec "$clang_format" -i {} +
 
 # Generated .pb.go files
 find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' -delete || true
