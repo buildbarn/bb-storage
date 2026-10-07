@@ -907,8 +907,6 @@ message ReadCanaryingBlobAccessConfiguration {
 message ZIPBlobAccessConfiguration {
   // Path of the ZIP file.
   string path = 1;
-
-  // When set, temporarily cache the integrity of data after it's been
 }
 
 message WithLabelsBlobAccessConfiguration {
