@@ -186,9 +186,10 @@ func (s *contentAddressableStorageServer) BatchReadBlobs(ctx context.Context, in
 		response.Responses = append(
 			response.Responses,
 			&remoteexecution.BatchReadBlobsResponse_Response{
-				Digest: in.Digests[i],
-				Data:   data,
-				Status: status.Convert(err).Proto(),
+				Digest:     in.Digests[i],
+				Data:       data,
+				Compressor: compressor,
+				Status:     status.Convert(err).Proto(),
 			},
 		)
 	}

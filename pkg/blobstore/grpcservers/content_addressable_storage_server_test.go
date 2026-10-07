@@ -129,6 +129,53 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 	testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to read a total of at least 357 bytes, while a maximum of 200 bytes is permitted"), err)
 }
 
+func TestContentAddressableStorageServerBatchReadBlobsZSTD(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+
+	request := &remoteexecution.BatchReadBlobsRequest{
+		Digests:               []*remoteexecution.Digest{digest1.GetProto()},
+		InstanceName:          "ubuntu1804",
+		AcceptableCompressors: []remoteexecution.Compressor_Value{remoteexecution.Compressor_ZSTD},
+	}
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	readerPutter := mock.NewMockReaderPutter(ctrl)
+	zstdPool := zstd.NewPoolFromConfiguration(nil)
+
+	data := []byte("Hello")
+	var compressed bytes.Buffer
+	encoder, err := zstdPool.NewEncoder(ctx, &compressed)
+	require.NoError(t, err)
+	_, err = encoder.Write(data)
+	require.NoError(t, err)
+	require.NoError(t, encoder.Close())
+
+	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(
+		gomock.Any(),
+		mustNewInstanceName("ubuntu1804"),
+	).Return(params, nil)
+	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunkWithCompressedData(data, compressed.Bytes()), nil)
+
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+
+	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
+	require.NoError(t, err)
+	testutil.RequireEqualProto(t, &remoteexecution.BatchReadBlobsResponse{
+		Responses: []*remoteexecution.BatchReadBlobsResponse_Response{
+			{
+				Digest:     digest1.GetProto(),
+				Data:       compressed.Bytes(),
+				Compressor: remoteexecution.Compressor_ZSTD,
+			},
+		},
+	}, response)
+}
+
 func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
@@ -440,6 +487,7 @@ func TestContentAddressableStorageServerBatchReadBlobsEmptyBlob(t *testing.T) {
 			require.Len(t, response.Responses, 1)
 			require.Equal(t, emptyDigest.GetProto(), response.Responses[0].Digest)
 			require.NoError(t, status.ErrorProto(response.Responses[0].Status))
+			require.Equal(t, tc.compressor, response.Responses[0].Compressor)
 			if tc.compressor == remoteexecution.Compressor_IDENTITY {
 				require.Empty(t, response.Responses[0].Data)
 			} else {

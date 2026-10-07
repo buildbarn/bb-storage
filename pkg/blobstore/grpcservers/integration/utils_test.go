@@ -455,6 +455,13 @@ func batchDownloadBlobs(ctx context.Context, client remoteexecution.ContentAddre
 			if r.Status != nil && r.Status.Code != int32(codes.OK) {
 				return nil, status.ErrorProto(r.Status)
 			}
+			// The REv2 specification leaves the choice of encoding
+			// to the server, so it must be derived from the response
+			// rather than from what was requested. This server always
+			// honors the requested encoding.
+			if r.Compressor != compressor {
+				return nil, status.Errorf(codes.Internal, "Digest %s was returned with compressor %s, while %s was requested", r.Digest.Hash, r.Compressor, compressor)
+			}
 			dataMap[r.Digest.Hash] = r.Data
 		}
 
