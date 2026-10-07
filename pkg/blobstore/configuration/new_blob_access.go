@@ -385,7 +385,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			return BlobAccessInfo{}, "", err
 		}
 		return BlobAccessInfo{
-			BlobAccess:      readfallback.NewReadFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess, replicator),
+			BlobAccess:      readfallback.NewReadFallbackBlobAccessWithFindMissingReplication(primary.BlobAccess, secondary.BlobAccess, replicator, !backend.ReadFallback.DisableFindMissingReplication),
 			DigestKeyFormat: primary.DigestKeyFormat.Combine(secondary.DigestKeyFormat),
 		}, "read_fallback", nil
 	case *pb.BlobAccessConfiguration_Demultiplexing:
