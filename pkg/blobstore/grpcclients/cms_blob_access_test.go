@@ -24,7 +24,7 @@ func TestCMSBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkDigest1 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "2b58e59caab73fafd9ae2f465c60db5b", 3)
@@ -160,7 +160,7 @@ func TestCMSBlobAccessGetEmptyBlob(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client)
 
 	emptyBlobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 
@@ -201,7 +201,7 @@ func TestCMSBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	blobAccess := grpcclients.NewCMSBlobAccess(client, 1<<20)
+	blobAccess := grpcclients.NewCMSBlobAccess(client)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	chunkDigest1 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "2b58e59caab73fafd9ae2f465c60db5b", 3)

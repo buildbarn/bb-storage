@@ -20,25 +20,23 @@ type cmsBlobAccessCreator struct {
 	protoBlobAccessCreator[chunk.Mapping]
 	protoBlobReplicatorCreator[chunk.Mapping]
 
-	chunkStorage            *BlobAccessInfo[*chunk.Chunk]
-	cdcParametersFetcher    capabilities.CDCParametersFetcher
-	chunkBytesReader        reader.Reader[[]byte]
-	grpcClientFactory       grpc.ClientFactory
-	maximumMessageSizeBytes int
-	zstdPool                zstd.Pool
+	chunkStorage         *BlobAccessInfo[*chunk.Chunk]
+	cdcParametersFetcher capabilities.CDCParametersFetcher
+	chunkBytesReader     reader.Reader[[]byte]
+	grpcClientFactory    grpc.ClientFactory
+	zstdPool             zstd.Pool
 }
 
 // NewCMSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for querying for chunk mapping.
-func NewCMSBlobAccessCreator(chunkStorage *BlobAccessInfo[*chunk.Chunk], cdcParametersFetcher capabilities.CDCParametersFetcher, chunkBytesReader reader.Reader[[]byte], grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool zstd.Pool) BlobAccessCreator[chunk.Mapping] {
+func NewCMSBlobAccessCreator(chunkStorage *BlobAccessInfo[*chunk.Chunk], cdcParametersFetcher capabilities.CDCParametersFetcher, chunkBytesReader reader.Reader[[]byte], grpcClientFactory grpc.ClientFactory, zstdPool zstd.Pool) BlobAccessCreator[chunk.Mapping] {
 	return &cmsBlobAccessCreator{
-		chunkStorage:            chunkStorage,
-		cdcParametersFetcher:    cdcParametersFetcher,
-		chunkBytesReader:        chunkBytesReader,
-		grpcClientFactory:       grpcClientFactory,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
+		chunkStorage:         chunkStorage,
+		cdcParametersFetcher: cdcParametersFetcher,
+		chunkBytesReader:     chunkBytesReader,
+		grpcClientFactory:    grpcClientFactory,
+		zstdPool:             zstdPool,
 	}
 }
 
@@ -79,7 +77,7 @@ func (bac *cmsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 		if err != nil {
 			return BlobAccessInfo[chunk.Mapping]{}, "", err
 		}
-		ba := grpcclients.NewCMSBlobAccess(client, bac.maximumMessageSizeBytes)
+		ba := grpcclients.NewCMSBlobAccess(client)
 		return BlobAccessInfo[chunk.Mapping]{
 			BlobAccess:      ba,
 			DigestKeyFormat: digest.KeyWithInstance,

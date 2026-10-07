@@ -16,16 +16,14 @@ import (
 
 type cmsBlobAccess struct {
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
-	maximumMessageSizeBytes         int
 }
 
 // NewCMSBlobAccess creates a BlobAccess that relays any requests to a
 // gRPC server that implements the split and splice API calls of a
 // remoteexecution.ContentAddressableStorage service.
-func NewCMSBlobAccess(client grpc.ClientConnInterface, maximumMessageSizeBytes int) blobstore.BlobAccess[chunk.Mapping] {
+func NewCMSBlobAccess(client grpc.ClientConnInterface) blobstore.BlobAccess[chunk.Mapping] {
 	return &cmsBlobAccess{
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
-		maximumMessageSizeBytes:         maximumMessageSizeBytes,
 	}
 }
 

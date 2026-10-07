@@ -686,7 +686,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 	chunkMappingStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkMappingStorage(),
-		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory, zstdPool),
 	)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
