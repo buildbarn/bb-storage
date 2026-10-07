@@ -41,6 +41,7 @@ go_library(
 go_test(
     name = "cas_test",
     srcs = [
+        "empty_blob_test.go",
         "nested_blob_replicator_test.go",
         "reader_putter_test.go",
         "stream_reader_test.go",
@@ -49,6 +50,7 @@ go_test(
         ":cas",
         "//internal/mock",
         "//pkg/blobstore/chunk",
+        "//pkg/cas/reader",
         "//pkg/digest",
         "//pkg/testutil",
         "//pkg/zstd",

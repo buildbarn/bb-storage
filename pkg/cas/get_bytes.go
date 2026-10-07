@@ -20,6 +20,11 @@ func GetBytes(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunk
 	if d.GetSizeBytes() > maximumSizeBytes {
 		return nil, status.Errorf(codes.InvalidArgument, "Digest size of %d bytes exceeds maximum size of %d bytes", d.GetSizeBytes(), maximumSizeBytes)
 	}
+	if d.GetSizeBytes() == 0 {
+		// By definition in the Remote Execution API, a zero-sized
+		// blob is always present. It is never stored.
+		return nil, nil
+	}
 	if IsSingleChunk(params, d) {
 		return chunkBytesReader.Read(ctx, d)
 	}

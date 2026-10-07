@@ -40,6 +40,11 @@ func NewStorageBackedStreamReader(chunkBytesReader reader.Reader[[]byte], chunkM
 }
 
 func (r *storageBackedStreamReader) ReadStream(ctx context.Context, d digest.Digest) (io.Reader, error) {
+	if d.GetSizeBytes() == 0 {
+		// By definition in the Remote Execution API, a zero-sized
+		// blob is always present. It is never stored.
+		return bytes.NewReader(nil), nil
+	}
 	params, err := r.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
 	if err != nil {
 		return nil, util.StatusWrap(err, "Could not fetch CDC parameters")
