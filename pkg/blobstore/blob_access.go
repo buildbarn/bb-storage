@@ -8,7 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
-// capablitiesProvider is a copy of the capabilities.Provider interface
+// capabilitiesProvider is a copy of the capabilities.Provider interface
 // which must be written inline for go mockgen to function in source
 // mode.
 type capabilitiesProvider interface {
