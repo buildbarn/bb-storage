@@ -338,7 +338,7 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Min chunk size of %d bytes larger than maximum of %d bytes", chunkingParameters.MinChunkSizeBytes, capabilities.LargestAcceptableMinChunkSizeBytes)
 			}
 			if chunkingParameters.HorizonSizeBytes > capabilities.LargestAcceptableHorizonSizeBytes {
-				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Horizon size of %d bytes larger than maximum of %d bytes", chunkingParameters.MinChunkSizeBytes, capabilities.LargestAcceptableHorizonSizeBytes)
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Horizon size of %d bytes larger than maximum of %d bytes", chunkingParameters.HorizonSizeBytes, capabilities.LargestAcceptableHorizonSizeBytes)
 			}
 			capabilitiesProvider = capabilities.NewMergingProvider([]capabilities.Provider{
 				capabilitiesProvider,
