@@ -650,6 +650,15 @@ message ReadFallbackBlobAccessConfiguration {
   // the secondary backend to the primary backend. If unset, objects
   // will not be copied.
   BlobReplicatorConfiguration replicator = 3;
+
+  // Disable replication of blobs from the secondary backend to the
+  // primary backend during FindMissingBlobs() calls. Both backends are
+  // still queried, and only blobs missing from both are reported missing.
+  // Replication during reads is unaffected.
+  //
+  // By default, blobs found only in the secondary backend are replicated
+  // using the configured replication strategy.
+  bool disable_find_missing_replication = 4;
 }
 
 message ReferenceExpandingBlobAccessConfiguration {

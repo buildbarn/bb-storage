@@ -16,8 +16,9 @@ import (
 
 type readFallbackBlobAccess struct {
 	blobstore.BlobAccess
-	secondary  blobstore.BlobAccess
-	replicator replication.BlobReplicator
+	secondary              blobstore.BlobAccess
+	replicator             replication.BlobReplicator
+	replicateOnFindMissing bool
 }
 
 // NewReadFallbackBlobAccess creates a decorator for BlobAccess that
@@ -27,10 +28,18 @@ type readFallbackBlobAccess struct {
 // This decorator can be used to integrate external data sets into the
 // system, e.g. by combining it with ReferenceExpandingBlobAccess.
 func NewReadFallbackBlobAccess(primary, secondary blobstore.BlobAccess, replicator replication.BlobReplicator) blobstore.BlobAccess {
+	return NewReadFallbackBlobAccessWithFindMissingReplication(primary, secondary, replicator, true)
+}
+
+// NewReadFallbackBlobAccessWithFindMissingReplication is identical to
+// NewReadFallbackBlobAccess, but allows replication during FindMissing()
+// calls to be disabled. Replication during reads is unaffected.
+func NewReadFallbackBlobAccessWithFindMissingReplication(primary, secondary blobstore.BlobAccess, replicator replication.BlobReplicator, replicateOnFindMissing bool) blobstore.BlobAccess {
 	return &readFallbackBlobAccess{
-		BlobAccess: primary,
-		secondary:  secondary,
-		replicator: replicator,
+		BlobAccess:             primary,
+		secondary:              secondary,
+		replicator:             replicator,
+		replicateOnFindMissing: replicateOnFindMissing,
 	}
 }
 
@@ -91,6 +100,9 @@ func (ba *readFallbackBlobAccess) FindMissing(ctx context.Context, digests diges
 	missingInBoth, err := ba.secondary.FindMissing(ctx, missingInPrimary)
 	if err != nil {
 		return digest.EmptySet, util.StatusWrap(err, "Secondary")
+	}
+	if !ba.replicateOnFindMissing {
+		return missingInBoth, nil
 	}
 
 	// Replicate the blobs that are present only in the secondary

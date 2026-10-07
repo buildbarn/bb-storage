@@ -846,12 +846,13 @@ func (x *CompletenessCheckingBlobAccessConfiguration) GetMaximumTotalTreeSizeByt
 }
 
 type ReadFallbackBlobAccessConfiguration struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	Primary       *BlobAccessConfiguration     `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
-	Secondary     *BlobAccessConfiguration     `protobuf:"bytes,2,opt,name=secondary,proto3" json:"secondary,omitempty"`
-	Replicator    *BlobReplicatorConfiguration `protobuf:"bytes,3,opt,name=replicator,proto3" json:"replicator,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                         protoimpl.MessageState       `protogen:"open.v1"`
+	Primary                       *BlobAccessConfiguration     `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
+	Secondary                     *BlobAccessConfiguration     `protobuf:"bytes,2,opt,name=secondary,proto3" json:"secondary,omitempty"`
+	Replicator                    *BlobReplicatorConfiguration `protobuf:"bytes,3,opt,name=replicator,proto3" json:"replicator,omitempty"`
+	DisableFindMissingReplication bool                         `protobuf:"varint,4,opt,name=disable_find_missing_replication,json=disableFindMissingReplication,proto3" json:"disable_find_missing_replication,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *ReadFallbackBlobAccessConfiguration) Reset() {
@@ -903,6 +904,13 @@ func (x *ReadFallbackBlobAccessConfiguration) GetReplicator() *BlobReplicatorCon
 		return x.Replicator
 	}
 	return nil
+}
+
+func (x *ReadFallbackBlobAccessConfiguration) GetDisableFindMissingReplication() bool {
+	if x != nil {
+		return x.DisableFindMissingReplication
+	}
+	return false
 }
 
 type ReferenceExpandingBlobAccessConfiguration struct {
@@ -1961,13 +1969,14 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\x0fexistence_cache\x18\x02 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x0eexistenceCache\"\xc5\x01\n" +
 	"+CompletenessCheckingBlobAccessConfiguration\x12T\n" +
 	"\abackend\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\abackend\x12@\n" +
-	"\x1dmaximum_total_tree_size_bytes\x18\x02 \x01(\x03R\x19maximumTotalTreeSizeBytes\"\xb5\x02\n" +
+	"\x1dmaximum_total_tree_size_bytes\x18\x02 \x01(\x03R\x19maximumTotalTreeSizeBytes\"\xfe\x02\n" +
 	"#ReadFallbackBlobAccessConfiguration\x12T\n" +
 	"\aprimary\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\aprimary\x12X\n" +
 	"\tsecondary\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\tsecondary\x12^\n" +
 	"\n" +
 	"replicator\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\n" +
-	"replicator\"\xd1\x04\n" +
+	"replicator\x12G\n" +
+	" disable_find_missing_replication\x18\x04 \x01(\bR\x1ddisableFindMissingReplication\"\xd1\x04\n" +
 	")ReferenceExpandingBlobAccessConfiguration\x12\x8b\x01\n" +
 	"$indirect_content_addressable_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR!indirectContentAddressableStorage\x12X\n" +
 	"\vaws_session\x18\x02 \x01(\v27.buildbarn.configuration.cloud.aws.SessionConfigurationR\n" +

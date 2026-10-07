@@ -237,3 +237,110 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend secondary returned inconsistent results while synchronizing: Object 00000000000000000000000000000001 not found"), err)
 	})
 }
+
+func TestReadFallbackBlobAccessWithoutFindMissingReplication(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	primary := mock.NewMockBlobAccess(ctrl)
+	secondary := mock.NewMockBlobAccess(ctrl)
+	replicator := mock.NewMockBlobReplicator(ctrl)
+	blobAccess := readfallback.NewReadFallbackBlobAccessWithFindMissingReplication(primary, secondary, replicator, false)
+	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	missingDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000000", 100)
+	primaryDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "00000000000000000000000000000001", 101)
+
+	t.Run("FindMissing", func(t *testing.T) {
+		// FindMissing() must not read or replicate blobs, even when
+		// some are present only in the secondary backend.
+		for _, tc := range []struct {
+			name             string
+			digests          digest.Set
+			missingInPrimary digest.Set
+			missingInBoth    digest.Set
+		}{
+			{
+				name:             "Mixed",
+				digests:          digest.NewSetBuilder(0).Add(helloDigest).Add(missingDigest).Add(primaryDigest).Build(),
+				missingInPrimary: digest.NewSetBuilder(0).Add(helloDigest).Add(missingDigest).Build(),
+				missingInBoth:    missingDigest.ToSingletonSet(),
+			},
+			{
+				name:             "AllInPrimary",
+				digests:          helloDigest.ToSingletonSet(),
+				missingInPrimary: digest.EmptySet,
+				missingInBoth:    digest.EmptySet,
+			},
+			{
+				name:             "AllInSecondary",
+				digests:          helloDigest.ToSingletonSet(),
+				missingInPrimary: helloDigest.ToSingletonSet(),
+				missingInBoth:    digest.EmptySet,
+			},
+			{
+				name:             "AllMissing",
+				digests:          helloDigest.ToSingletonSet(),
+				missingInPrimary: helloDigest.ToSingletonSet(),
+				missingInBoth:    helloDigest.ToSingletonSet(),
+			},
+			{
+				name:             "Empty",
+				digests:          digest.EmptySet,
+				missingInPrimary: digest.EmptySet,
+				missingInBoth:    digest.EmptySet,
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				gomock.InOrder(
+					primary.EXPECT().FindMissing(ctx, tc.digests).Return(tc.missingInPrimary, nil),
+					secondary.EXPECT().FindMissing(ctx, tc.missingInPrimary).Return(tc.missingInBoth, nil),
+				)
+
+				missing, err := blobAccess.FindMissing(ctx, tc.digests)
+				require.NoError(t, err)
+				require.Equal(t, tc.missingInBoth, missing)
+			})
+		}
+	})
+
+	t.Run("PrimaryFailure", func(t *testing.T) {
+		primary.EXPECT().FindMissing(ctx, helloDigest.ToSingletonSet()).
+			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
+
+		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Primary: I/O error"), err)
+	})
+
+	t.Run("SecondaryFailure", func(t *testing.T) {
+		primary.EXPECT().FindMissing(ctx, helloDigest.ToSingletonSet()).
+			Return(helloDigest.ToSingletonSet(), nil)
+		secondary.EXPECT().FindMissing(ctx, helloDigest.ToSingletonSet()).
+			Return(digest.EmptySet, status.Error(codes.Internal, "I/O error"))
+
+		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Secondary: I/O error"), err)
+	})
+
+	t.Run("GetStillReplicates", func(t *testing.T) {
+		primary.EXPECT().Get(ctx, helloDigest).
+			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		replicator.EXPECT().ReplicateSingle(ctx, helloDigest).
+			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+
+	t.Run("GetFromCompositeStillReplicates", func(t *testing.T) {
+		parentDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d20fb8dfa347cf895b38649410aeb3f8", 100)
+		slicer := mock.NewMockBlobSlicer(ctrl)
+		primary.EXPECT().GetFromComposite(ctx, parentDigest, helloDigest, slicer).
+			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		replicator.EXPECT().ReplicateComposite(ctx, parentDigest, helloDigest, slicer).
+			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+
+		data, err := blobAccess.GetFromComposite(ctx, parentDigest, helloDigest, slicer).ToByteSlice(100)
+		require.NoError(t, err)
+		require.Equal(t, []byte("Hello"), data)
+	})
+}
