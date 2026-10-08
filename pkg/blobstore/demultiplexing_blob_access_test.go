@@ -8,7 +8,7 @@ import (
 	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -23,8 +23,8 @@ import (
 func TestDemultiplexingBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
-	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter[*chunk.Chunk](ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter)
 
 	t.Run("UnknownInstanceName", func(t *testing.T) {
 		// This request cannot be forwarded to any backend.
@@ -38,13 +38,13 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 		_, err := blobAccess.Get(
 			ctx,
 			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		).ToByteSlice(100)
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Error messages should have the backend name prepended.
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -55,17 +55,17 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			nil,
 		)
 		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
-			Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
+			Return(nil, status.Error(codes.Internal, "Server on fire"))
 
 		_, err := blobAccess.Get(
 			ctx,
 			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		).ToByteSlice(100)
+		)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -75,107 +75,26 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			),
 			nil,
 		)
-		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
 
-		data, err := blobAccess.Get(
+		expectedChunk := chunk.NewChunk(nil, []byte("Hello"))
+		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
+			Return(expectedChunk, nil)
+
+		chunk, err := blobAccess.Get(
 			ctx,
 			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		).ToByteSlice(100)
+		)
 		require.NoError(t, err)
+		data := chunk.GetBytes()
 		require.Equal(t, []byte("Hello"), data)
-	})
-}
-
-func TestDemultiplexingBlobAccessGetFromComposite(t *testing.T) {
-	ctrl, ctx := gomock.WithContext(context.Background(), t)
-
-	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
-	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
-
-	t.Run("UnknownInstanceName", func(t *testing.T) {
-		// This request cannot be forwarded to any backend.
-		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("unknown"))).Return(
-			nil,
-			"",
-			digest.NoopInstanceNamePatcher,
-			status.Error(codes.InvalidArgument, "Unknown instance name"),
-		)
-		blobSlicer := mock.NewMockBlobSlicer(ctrl)
-
-		_, err := blobAccess.GetFromComposite(
-			ctx,
-			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
-			blobSlicer,
-		).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Unknown instance name"), err)
-	})
-
-	t.Run("BackendFailure", func(t *testing.T) {
-		// Error messages should have the backend name prepended.
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
-			baseBlobAccess,
-			"Primary",
-			digest.NewInstanceNamePatcher(
-				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye")),
-			),
-			nil,
-		)
-		blobSlicer := mock.NewMockBlobSlicer(ctrl)
-		baseBlobAccess.EXPECT().GetFromComposite(
-			ctx,
-			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
-			blobSlicer,
-		).Return(buffer.NewBufferFromError(status.Error(codes.Internal, "Server on fire")))
-
-		_, err := blobAccess.GetFromComposite(
-			ctx,
-			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
-			blobSlicer,
-		).ToByteSlice(100)
-		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Backend \"Primary\": Server on fire"), err)
-	})
-
-	t.Run("Success", func(t *testing.T) {
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
-		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
-			baseBlobAccess,
-			"Primary",
-			digest.NewInstanceNamePatcher(
-				util.Must(digest.NewInstanceName("hello")),
-				util.Must(digest.NewInstanceName("goodbye")),
-			),
-			nil,
-		)
-		blobSlicer := mock.NewMockBlobSlicer(ctrl)
-		baseBlobAccess.EXPECT().GetFromComposite(
-			ctx,
-			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
-			blobSlicer,
-		).Return(buffer.NewValidatedBufferFromByteSlice([]byte("ell")))
-
-		data, err := blobAccess.GetFromComposite(
-			ctx,
-			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-			digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "3123059c1c816471780539f6b6b738dc", 3),
-			blobSlicer,
-		).ToByteSlice(100)
-		require.NoError(t, err)
-		require.Equal(t, []byte("ell"), data)
 	})
 }
 
 func TestDemultiplexingBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
-	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter[*chunk.Chunk](ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter)
 
 	t.Run("UnknownInstanceName", func(t *testing.T) {
 		// This request cannot be forwarded to any backend.
@@ -192,14 +111,14 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+				chunk.NewChunk(nil, []byte("Hello")),
 			),
 		)
 	})
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Error messages should have the backend name prepended.
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -210,8 +129,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			nil,
 		)
 		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				b.Discard()
+			DoAndReturn(func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				return status.Error(codes.Internal, "I/O error")
 			})
 
@@ -221,13 +139,13 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+				chunk.NewChunk(nil, []byte("Hello")),
 			),
 		)
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -238,9 +156,8 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			nil,
 		)
 		baseBlobAccess.EXPECT().Put(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				data, err := b.ToByteSlice(100)
-				require.NoError(t, err)
+			DoAndReturn(func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
+				data := c.GetBytes()
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			})
@@ -250,7 +167,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				buffer.NewValidatedBufferFromByteSlice([]byte("Hello")),
+				chunk.NewChunk(nil, []byte("Hello")),
 			),
 		)
 	})
@@ -259,8 +176,8 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
-	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter[*chunk.Chunk](ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter)
 
 	t.Run("UnknownInstanceName", func(t *testing.T) {
 		// This request cannot be forwarded to any backend.
@@ -280,7 +197,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Error messages should have the backend name prepended.
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -315,7 +232,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 		// backends. We should see two FindMissing() calls
 		// against the backends. Report half of the digests as
 		// missing.
-		baseBlobAccessA := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccessA := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("a"))).Return(
 			baseBlobAccessA,
 			"a",
@@ -334,7 +251,7 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 			),
 			nil,
 		)
-		baseBlobAccessB := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccessB := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("b"))).Return(
 			baseBlobAccessB,
 			"b",
@@ -416,8 +333,8 @@ func TestDemultiplexingBlobAccessFindMissing(t *testing.T) {
 func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter(ctrl)
-	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter.Call)
+	demultiplexedBlobAccessGetter := mock.NewMockDemultiplexedBlobAccessGetter[*chunk.Chunk](ctrl)
+	blobAccess := blobstore.NewDemultiplexingBlobAccess(demultiplexedBlobAccessGetter)
 
 	t.Run("UnknownInstanceName", func(t *testing.T) {
 		// This request cannot be forwarded to any backend.
@@ -434,7 +351,7 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		// Error messages should have the backend name prepended.
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",
@@ -452,7 +369,7 @@ func TestDemultiplexingBlobAccessGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+		baseBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		demultiplexedBlobAccessGetter.EXPECT().Call(util.Must(digest.NewInstanceName("hello/world"))).Return(
 			baseBlobAccess,
 			"Primary",

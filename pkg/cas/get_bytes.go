@@ -1,0 +1,46 @@
+package cas
+
+import (
+	"context"
+
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
+
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
+	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// GetBytes returns the bytes of a digest from the CAS as a byteslice.
+// An error is returned if the digest is larger than maximumSizeBytes.
+func GetBytes(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, maximumSizeBytes int64) ([]byte, error) {
+	if d.GetSizeBytes() > maximumSizeBytes {
+		return nil, status.Errorf(codes.InvalidArgument, "Digest size of %d bytes exceeds maximum size of %d bytes", d.GetSizeBytes(), maximumSizeBytes)
+	}
+	if d.GetSizeBytes() == 0 {
+		// By definition in the Remote Execution API, a zero-sized
+		// blob is always present. It is never stored.
+		return nil, nil
+	}
+	if IsSingleChunk(params, d) {
+		return chunkBytesReader.Read(ctx, d)
+	}
+	mapping, err := chunkMappingFetcher.FetchChunkMapping(ctx, d)
+	if err != nil {
+		return nil, util.StatusWrap(err, "Could not fetch chunk mapping")
+	}
+	ret := make([]byte, d.GetSizeBytes())
+	offset := 0
+	for i := range mapping.Length() {
+		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(i))
+		if err != nil {
+			return nil, util.StatusWrap(err, "Could not fetch chunk")
+		}
+		copy(ret[offset:], chunkBytes)
+		offset += len(chunkBytes)
+	}
+	return ret, nil
+}

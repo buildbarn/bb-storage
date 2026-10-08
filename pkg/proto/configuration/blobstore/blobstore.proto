@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package buildbarn.configuration.blobstore;
 
+import "build/bazel/remote/execution/v2/remote_execution.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto";
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto";
@@ -16,10 +17,40 @@ import "google/rpc/status.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore";
 
+message ContentAddressableStorageConfiguration {
+  // Storage configuration for the Chunk Storage (CS).
+  BlobAccessConfiguration chunk_storage = 1;
+
+  // Storage configuration for the Chunk Mapping Storage (CMS).
+  BlobAccessConfiguration chunk_mapping_storage = 2;
+
+  // Optional: In memory cache for parsed object from the CMS. This
+  // cache is particularly useful for consumers which need to random
+  // access reads to the same digest often such as bb-clientd and
+  // bb-worker.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      chunk_mapping_cache = 3;
+
+  // Optional: In memory cache for CDC parameters per instance. When the
+  // chunk storage is remote this cache prevents each operation that
+  // interacts with CDC from having to fetch the capabilities from the
+  // upstream CS for every interaction with the CDC subsystem. It can be
+  // set to a relatively small cache with short retention as the number
+  // of instance names is typically small and the cost of a cache miss
+  // is relatively low.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration
+      cdc_parameter_cache = 4;
+
+  // Optional: In memory cache for decompressed bytes of chunks read
+  // from the CS. This cache is particularly useful for consumers which
+  // frequently read the same chunks.
+  buildbarn.configuration.digest.ExistenceCacheConfiguration chunk_cache = 5;
+}
+
 // Storage configuration for Bazel Buildbarn.
 message BlobstoreConfiguration {
   // Storage configuration for the Content Addressable Storage (CAS).
-  BlobAccessConfiguration content_addressable_storage = 1;
+  ContentAddressableStorageConfiguration content_addressable_storage = 1;
 
   // Storage configuration for the Action Cache (AC).
   BlobAccessConfiguration action_cache = 2;
@@ -76,12 +107,15 @@ message BlobAccessConfiguration {
     ExistenceCachingBlobAccessConfiguration existence_caching = 16;
 
     // Only return ActionResult messages for which all output files are
-    // present in the Content Addressable Storage (CAS). Certain
-    // clients, such as Bazel, require the use of this decorator. To
-    // reduce latency, it is advised that this decorator is used at the
-    // lowest level that has a full view of the entire CAS.
+    // present in the Chunk Storage (CS) and Chunk Mapping Storage
+    // (CMS). Certain clients, such as Bazel, require the use of this
+    // decorator. To reduce latency, it is advised that this decorator
+    // is used at the lowest level that has a full view of the entire CS
+    // and CMS.
     //
-    // This decorator must be placed on the Action Cache.
+    // This decorator must be placed on the Action Cache. This decorator
+    // requires that the CS, CMS and AC all share the same instance name
+    // mappings.
     CompletenessCheckingBlobAccessConfiguration completeness_checking = 17;
 
     // Fall back to reading data from a secondary backend when not found
@@ -200,6 +234,17 @@ message BlobAccessConfiguration {
     // value. When gRPC calls are timed out a `DEADLINE_EXCEEDED` error
     // code will be returned.
     DeadlineEnforcingBlobAccess deadline_enforcing = 28;
+
+    // Validate that chunk mapping requests fulfill the API
+    // specification. Chunk Mapping Storage (CMS) is used to implement
+    // the GetChunkMapping and RegisterChunkMapping methods from the
+    // REv2 API. This blob access enforces that the supplied chunk
+    // mappings are correctly RepMaxCDC chunked.
+    //
+    // This decorator is only supported for the CMS. This decorator
+    // requires that the CS and CMS both share the same instance name
+    // mappings.
+    ChunkMappingValidatingBlobAccessConfiguration chunk_mapping_validating = 29;
   }
 
   // Was 'redis'. Instead of using Redis, one may run a separate
@@ -490,17 +535,6 @@ message LocalBlobAccessConfiguration {
     //
     // Recommended value: 3
     int32 spare_blocks = 2;
-
-    // When set, temporarily cache the integrity of data after it's been
-    // read from the block device. This is a requirement for being able
-    // to randomly access objects quickly.
-    //
-    // The disadvantage of enabling this option is that data corruption
-    // on the block device may not be detected. It is therefore
-    // recommended to set the cache duration to a limited value (e.g.,
-    // "4h").
-    buildbarn.configuration.digest.ExistenceCacheConfiguration
-        data_integrity_validation_cache = 3;
   }
 
   // Data store for the contents of objects. The following Prometheus
@@ -608,6 +642,18 @@ message LocalBlobAccessConfiguration {
   // level, e.g., on top of CompletenessCheckingBlobAccess. This can be
   // achieved by using HierarchicalInstanceNamesBlobAccess.
   bool hierarchical_instance_names = 14;
+
+  // The chunking parameters advertised via GetCapabilities, setting
+  // this announces support for the SplitBlob and SpliceBlob api calls.
+  //
+  // Adding the chunking parameters does not make the underlying
+  // blobstore enforce the chunking parameters or implement the split
+  // and splice blob. There must be a configured Chunk Mapping Storage with
+  // an outer ChunkValidatingBlobAccess that has view of the entire
+  // Content Addressable Storage (CAS).
+  //
+  // This option is only supported for the CS.
+  build.bazel.remote.execution.v2.RepMaxCdcParams chunking_parameters = 15;
 }
 
 message ExistenceCachingBlobAccessConfiguration {
@@ -671,7 +717,7 @@ message ReferenceExpandingBlobAccessConfiguration {
 
   // Optional: Storage backend to use when Reference objects refer to
   // objects stored in another Content Addressable Storage.
-  BlobAccessConfiguration content_addressable_storage = 5;
+  ContentAddressableStorageConfiguration content_addressable_storage = 5;
 }
 
 message BlobReplicatorConfiguration {
@@ -861,17 +907,6 @@ message ReadCanaryingBlobAccessConfiguration {
 message ZIPBlobAccessConfiguration {
   // Path of the ZIP file.
   string path = 1;
-
-  // When set, temporarily cache the integrity of data after it's been
-  // read from the ZIP file. Once cached, uncompressed files in the ZIP
-  // file (i.e., ones stored with compression method STORE) may be
-  // randomly accessed quickly.
-  //
-  // The disadvantage of enabling this option is that data corruption in
-  // the ZIP file may not be detected. It is therefore recommended to
-  // set the cache duration to a limited value (e.g., "4h").
-  buildbarn.configuration.digest.ExistenceCacheConfiguration
-      data_integrity_validation_cache = 2;
 }
 
 message WithLabelsBlobAccessConfiguration {
@@ -902,4 +937,9 @@ message GrpcBlobAccessConfiguration {
   // used if the server supports it. Has no effect for other storage
   // types (AC, ICAS, etc.).
   bool enable_compression = 2;
+}
+
+message ChunkMappingValidatingBlobAccessConfiguration {
+  // The backend to which validated operations are delegated.
+  BlobAccessConfiguration backend = 1;
 }

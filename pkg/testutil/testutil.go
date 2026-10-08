@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildbarn/bb-storage/pkg/filesystem"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/status"
@@ -13,6 +14,22 @@ import (
 
 	"go.uber.org/mock/gomock"
 )
+
+// FileReaderIsProto is a helper function that requires a
+// filesystem.FileReader to contain the binary representation of a
+// specific proto object. The resulting content gets stored in the
+// actual parameter.
+func FileReaderIsProto[T proto.Message](t *testing.T, r filesystem.FileReader, expected, actual T) {
+	t.Helper()
+	len, err := r.Len()
+	require.NoError(t, err)
+	bytes := make([]byte, len)
+	n, err := r.ReadAt(bytes, 0)
+	require.NoError(t, err)
+	require.Equal(t, len, int64(n))
+	require.NoError(t, proto.Unmarshal(bytes, actual))
+	RequireEqualProto(t, expected, actual)
+}
 
 // RequireEqualProto asserts that the two passed protocol buffer
 // messages are equal.

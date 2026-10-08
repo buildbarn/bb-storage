@@ -10,7 +10,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/google/uuid"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -248,26 +247,6 @@ func (d Digest) GetByteStreamReadPath(compressor remoteexecution.Compressor_Valu
 	digestFunction, hashStart, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
 	return path.Join(
 		d.value[sizeBytesEnd+1:],
-		compressorEnumToMidfix[compressor],
-		digestFunctionEnumToMidfix[digestFunction],
-		d.value[hashStart:hashEnd],
-		strconv.FormatInt(sizeBytes, 10),
-	)
-}
-
-// GetByteStreamWritePath converts the Digest to a string having one of
-// the following formats:
-//
-// - ${instanceName}/uploads/${uuid}/blobs/${digestFunction}/${hash}/${size}
-// - ${instanceName}/uploads/${uuid}/compressed-blobs/${digestFunction}/${compressor}/${hash}/${size}
-//
-// This notation is used to write files through the ByteStream service.
-func (d Digest) GetByteStreamWritePath(uuid uuid.UUID, compressor remoteexecution.Compressor_Value) string {
-	digestFunction, hashStart, hashEnd, sizeBytes, sizeBytesEnd := d.unpack()
-	return path.Join(
-		d.value[sizeBytesEnd+1:],
-		"uploads",
-		uuid.String(),
 		compressorEnumToMidfix[compressor],
 		digestFunctionEnumToMidfix[digestFunction],
 		d.value[hashStart:hashEnd],
