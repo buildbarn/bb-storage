@@ -522,6 +522,19 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 			BlobAccess:      blobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_writing", nil
+	case *pb.BlobAccessConfiguration_ExistenceCaching:
+		base, err := nc.NewNestedBlobAccess(backend.ExistenceCaching.Backend, creator)
+		if err != nil {
+			return BlobAccessInfo[T]{}, "", err
+		}
+		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, base.DigestKeyFormat, "ExistenceCachingBlobAccess")
+		if err != nil {
+			return BlobAccessInfo[T]{}, "", err
+		}
+		return BlobAccessInfo[T]{
+			BlobAccess:      blobstore.NewExistenceCachingBlobAccess(base.BlobAccess, existenceCache),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_DeadlineEnforcing:
 		base, err := nc.NewNestedBlobAccess(backend.DeadlineEnforcing.Backend, creator)
 		if err != nil {

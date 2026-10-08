@@ -174,6 +174,13 @@ local authorizer = {
 local csReplicator = { 'deduplicating': { 'local': {} } };
 local simpleReplicator = { 'local': {} };
 
+local existenceCaching(inner) = {
+	existenceCaching: {
+		backend: inner,
+		existenceCache: { cacheSize: 1024, cacheDuration: '60s', cacheReplacementPolicy: 'LEAST_RECENTLY_USED' },
+	},
+};
+
 {
 	grpcServers: [{
 		listenPaths: [listenPath],
@@ -195,8 +202,10 @@ local simpleReplicator = { 'local': {} };
 	maximumMessageSizeBytes: maximumMessageSizeBytes,
 	contentAddressableStorageServer: {
 		contentAddressableStorage: {
-			chunkStorage: readCaching(topology, csReplicator),
-			chunkMappingStorage: readCaching({ chunkMappingValidating: { backend: topology } }, simpleReplicator),
+			chunkStorage: existenceCaching(readCaching(topology, csReplicator)),
+			chunkMappingStorage: existenceCaching(
+				readCaching({ chunkMappingValidating: { backend: topology } }, simpleReplicator)
+			),
 			cdcParameterCache: {
 				cacheSize: 1,
 				cacheDuration: '60s',

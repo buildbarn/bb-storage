@@ -80,19 +80,6 @@ func (bac *csBlobAccessCreator) NewHierarchicalInstanceNamesLocalBlobAccess(keyL
 
 func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[*chunk.Chunk]) (BlobAccessInfo[*chunk.Chunk], string, error) {
 	switch backend := configuration.Backend.(type) {
-	case *pb.BlobAccessConfiguration_ExistenceCaching:
-		base, err := nestedCreator.NewNestedBlobAccess(backend.ExistenceCaching.Backend, bac)
-		if err != nil {
-			return BlobAccessInfo[*chunk.Chunk]{}, "", err
-		}
-		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, base.DigestKeyFormat, "ExistenceCachingBlobAccess")
-		if err != nil {
-			return BlobAccessInfo[*chunk.Chunk]{}, "", err
-		}
-		return BlobAccessInfo[*chunk.Chunk]{
-			BlobAccess:      blobstore.NewExistenceCachingBlobAccess(base.BlobAccess, existenceCache),
-			DigestKeyFormat: base.DigestKeyFormat,
-		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_Grpc:
 		grpc := backend.Grpc
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(grpc.Client, terminationGroup)
