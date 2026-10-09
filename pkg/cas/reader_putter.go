@@ -45,6 +45,39 @@ func NewReaderPutter(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappi
 
 func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Reader, params *remoteexecution.RepMaxCdcParams) error {
 	digestFunction := d.GetDigestFunction()
+
+	if IsSingleChunk(params, d) {
+		// Blob will fit in a single chunk, so we read it directly
+		// making sure the stream does not add up to more bytes than
+		// advertised.
+		data, err := io.ReadAll(io.LimitReader(r, d.GetSizeBytes()+1))
+		if err != nil {
+			return util.StatusWrap(err, "Failed to read write stream")
+		}
+		if int64(len(data)) > d.GetSizeBytes() {
+			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), len(data))
+		}
+		digestGenerator := digestFunction.NewGenerator(d.GetSizeBytes())
+		if _, err := digestGenerator.Write(data); err != nil {
+			return status.Error(codes.Internal, "Could not compute digest of chunk")
+		}
+		if actual := digestGenerator.Sum(); actual != d {
+			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
+		}
+		if d.GetSizeBytes() > 0 {
+			missing, err := rp.chunkStorage.FindMissing(ctx, d.ToSingletonSet())
+			if err != nil {
+				return err
+			}
+			if !missing.Empty() {
+				if err := rp.chunkStorage.Put(ctx, d, chunk.NewChunk(rp.zstdPool, data)); err != nil {
+					return util.StatusWrap(err, "Failed to save chunk")
+				}
+			}
+		}
+		return nil
+	}
+
 	cdcChunker := cdc.NewRepMaxContentDefinedChunker(
 		&cdc.FastContentDefinedChunkerGearTable,
 		int(params.MinChunkSizeBytes),
