@@ -480,10 +480,9 @@ message RemoteAuthenticationPolicy {
 }
 
 message TracingMethodConfiguration {
-  // Names of fields to extract from the request message of an RPC, and
-  // convert into trace span attributes. The resulting attributes will
-  // have "request." prepended to their names. If the RPC is client
-  // streaming, the value is extracted from the first message.
+  // Names of fields to extract from the first request message of an
+  // RPC, and convert into trace span attributes. The resulting
+  // attributes will have "request." prepended to their names.
   //
   // Lookups are performed against the names used in the Protobuf
   // schema; not the Protobuf JSON encoding. Nested fields can be
@@ -500,16 +499,20 @@ message TracingMethodConfiguration {
   //
   // Attributes will not be attached to trace spans if one of the parent
   // messages of the field that is referenced is not set.
-  repeated string attributes_from_first_request_message = 1;
+  repeated string attributes_from_request_message = 1;
 
-  // Names of fields to extract from the response message of an RPC, and
-  // convert into trace span attributes. The resulting attributes will
-  // have "response." prepended to their names. If the RPC is server
-  // streaming, the value is extracted from the first message.
+  // Names of fields to extract from the first response message of an
+  // RPC, and convert into trace span attributes. The resulting
+  // attributes will have "response." prepended to their names.
   //
   // Lookups are performed using the same rules as those for
-  // 'attributes_from_first_request_message'.
-  repeated string attributes_from_first_response_message = 2;
+  // 'attributes_from_request_message'.
+  repeated string attributes_from_response_message = 2;
+
+  // Whether to extract attributes from follow-up request and response
+  // messages in streaming RPCs, and emit per-message span events for
+  // those messages.
+  bool include_followup_messages = 3;
 }
 
 message ServerRelayConfiguration {
