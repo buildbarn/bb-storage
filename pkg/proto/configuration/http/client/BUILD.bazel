@@ -9,6 +9,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/proto/configuration/tls:tls_proto",
+        "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
     ],
 )

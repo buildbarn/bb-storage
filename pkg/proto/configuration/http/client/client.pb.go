@@ -10,6 +10,7 @@ import (
 	tls "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
@@ -244,13 +245,14 @@ func (*OAuth2Configuration_ServiceAccountKey) isOAuth2Configuration_Credentials(
 func (*OAuth2Configuration_ClientCredentials) isOAuth2Configuration_Credentials() {}
 
 type OAuth2ClientCredentials struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	ClientId         string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	ClientSecret     string                 `protobuf:"bytes,2,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
-	TokenEndpointUrl string                 `protobuf:"bytes,3,opt,name=token_endpoint_url,json=tokenEndpointUrl,proto3" json:"token_endpoint_url,omitempty"`
-	HttpClient       *Configuration         `protobuf:"bytes,4,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ClientId            string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientSecret        string                 `protobuf:"bytes,2,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
+	TokenEndpointUrl    string                 `protobuf:"bytes,3,opt,name=token_endpoint_url,json=tokenEndpointUrl,proto3" json:"token_endpoint_url,omitempty"`
+	HttpClient          *Configuration         `protobuf:"bytes,4,opt,name=http_client,json=httpClient,proto3" json:"http_client,omitempty"`
+	TokenRequestTimeout *durationpb.Duration   `protobuf:"bytes,5,opt,name=token_request_timeout,json=tokenRequestTimeout,proto3" json:"token_request_timeout,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *OAuth2ClientCredentials) Reset() {
@@ -311,6 +313,13 @@ func (x *OAuth2ClientCredentials) GetHttpClient() *Configuration {
 	return nil
 }
 
+func (x *OAuth2ClientCredentials) GetTokenRequestTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.TokenRequestTimeout
+	}
+	return nil
+}
+
 type Configuration_HeaderValues struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Header        string                 `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
@@ -367,7 +376,7 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_cli
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDesc = "" +
 	"\n" +
-	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe4\x03\n" +
+	"Pgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x12#buildbarn.configuration.http.client\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe4\x03\n" +
 	"\rConfiguration\x12B\n" +
 	"\x03tls\x18\x01 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12\x1d\n" +
 	"\tproxy_url\x18\x02 \x01(\tH\x00R\bproxyUrl\x12N\n" +
@@ -385,13 +394,14 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_c
 	"\x13service_account_key\x18\x02 \x01(\tH\x00R\x11serviceAccountKey\x12m\n" +
 	"\x12client_credentials\x18\x04 \x01(\v2<.buildbarn.configuration.http.client.OAuth2ClientCredentialsH\x00R\x11clientCredentials\x12\x16\n" +
 	"\x06scopes\x18\x03 \x03(\tR\x06scopesB\r\n" +
-	"\vcredentials\"\xde\x01\n" +
+	"\vcredentials\"\xad\x02\n" +
 	"\x17OAuth2ClientCredentials\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12#\n" +
 	"\rclient_secret\x18\x02 \x01(\tR\fclientSecret\x12,\n" +
 	"\x12token_endpoint_url\x18\x03 \x01(\tR\x10tokenEndpointUrl\x12S\n" +
 	"\vhttp_client\x18\x04 \x01(\v22.buildbarn.configuration.http.client.ConfigurationR\n" +
-	"httpClientBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/clientb\x06proto3"
+	"httpClient\x12M\n" +
+	"\x15token_request_timeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x13tokenRequestTimeoutBEZCgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/clientb\x06proto3"
 
 var (
 	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_rawDescOnce sync.Once
@@ -413,6 +423,7 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_cli
 	(*Configuration_HeaderValues)(nil), // 3: buildbarn.configuration.http.client.Configuration.HeaderValues
 	(*tls.ClientConfiguration)(nil),    // 4: buildbarn.configuration.tls.ClientConfiguration
 	(*emptypb.Empty)(nil),              // 5: google.protobuf.Empty
+	(*durationpb.Duration)(nil),        // 6: google.protobuf.Duration
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_client_proto_depIdxs = []int32{
 	4, // 0: buildbarn.configuration.http.client.Configuration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
@@ -422,11 +433,12 @@ var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_http_client_cli
 	5, // 4: buildbarn.configuration.http.client.OAuth2Configuration.google_default_credentials:type_name -> google.protobuf.Empty
 	2, // 5: buildbarn.configuration.http.client.OAuth2Configuration.client_credentials:type_name -> buildbarn.configuration.http.client.OAuth2ClientCredentials
 	0, // 6: buildbarn.configuration.http.client.OAuth2ClientCredentials.http_client:type_name -> buildbarn.configuration.http.client.Configuration
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 7: buildbarn.configuration.http.client.OAuth2ClientCredentials.token_request_timeout:type_name -> google.protobuf.Duration
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() {

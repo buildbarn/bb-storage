@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"time"
 
 	configuration "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -32,12 +33,23 @@ func NewOAuth2TokenSourceFromConfiguration(oauthConfig *configuration.OAuth2Conf
 }
 
 func clientCredentialsTokenSource(scopes []string, config *configuration.OAuth2Configuration_ClientCredentials) (oauth2.TokenSource, error) {
+	var timeout time.Duration
+	if tokenRequestTimeout := config.ClientCredentials.TokenRequestTimeout; tokenRequestTimeout != nil {
+		if err := tokenRequestTimeout.CheckValid(); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid token request timeout: %s", err)
+		}
+		timeout = tokenRequestTimeout.AsDuration()
+		if timeout <= 0 {
+			return nil, status.Error(codes.InvalidArgument, "Token request timeout must be positive")
+		}
+	}
 	roundTripper, err := NewRoundTripperFromConfiguration(config.ClientCredentials.HttpClient)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create HTTP client")
 	}
 	httpClient := &http.Client{
 		Transport: NewMetricsRoundTripper(roundTripper, "ClientCredentials"),
+		Timeout:   timeout,
 	}
 	oidcConfig := &clientcredentials.Config{
 		ClientID:     config.ClientCredentials.ClientId,

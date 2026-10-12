@@ -3,6 +3,7 @@ syntax = "proto3";
 package buildbarn.configuration.http.client;
 
 import "github.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/buildbarn/bb-storage/pkg/proto/configuration/http/client";
@@ -88,4 +89,14 @@ message OAuth2ClientCredentials {
   // Configuration options for the HTTP client that is used to send
   // requests to the token endpoint and user info endpoint.
   Configuration http_client = 4;
+
+  // Timeout for an entire HTTP request to the token endpoint, including
+  // connecting, redirects, waiting for headers, and reading the response
+  // body. When set, this duration must be positive. When unset, no timeout
+  // is imposed, preserving the behavior of existing configurations.
+  //
+  // The client may probe multiple authentication styles when obtaining
+  // its first token. Each request gets its own timeout. This does not
+  // bound time spent waiting for another token acquisition to finish.
+  google.protobuf.Duration token_request_timeout = 5;
 }
