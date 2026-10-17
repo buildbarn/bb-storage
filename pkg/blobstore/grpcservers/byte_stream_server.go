@@ -1,7 +1,6 @@
 package grpcservers
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -13,7 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
+	"github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc/codes"
@@ -24,14 +23,14 @@ type byteStreamServer struct {
 	chunkStorage         blobstore.BlobAccess[*chunk.Chunk]
 	chunkMappingStorage  blobstore.BlobAccess[chunk.Mapping]
 	cdcParametersFetcher capabilities.CDCParametersFetcher
-	zstdPool             bb_zstd.Pool
+	zstdPool             zstd.Pool
 	readerPutter         cas.ReaderPutter
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to the Chunk Storage (CS) and Chunk Mapping Storage (CMS).
 // It is used by Bazel to access the Content Addressable Storage (CAS).
-func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool bb_zstd.Pool, readerPutter cas.ReaderPutter) bytestream.ByteStreamServer {
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, readerPutter cas.ReaderPutter) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		chunkStorage:         chunkStorage,
 		chunkMappingStorage:  chunkMappingStorage,
@@ -83,7 +82,7 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			if err != nil {
 				return err
 			}
-			if err := s.sendChunk(ctx, out, chunk, chunkOffset, compressor); err != nil {
+			if err := s.sendChunk(out, chunk, chunkOffset, compressor); err != nil {
 				return err
 			}
 			chunkOffset = 0
@@ -96,27 +95,23 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 	if err != nil {
 		return err
 	}
-	return s.sendChunk(ctx, out, chunk, int64(in.ReadOffset), compressor)
+	return s.sendChunk(out, chunk, int64(in.ReadOffset), compressor)
 }
 
-func (s *byteStreamServer) sendChunk(ctx context.Context, out bytestream.ByteStream_ReadServer, chunk *chunk.Chunk, chunkOffset int64, compressor remoteexecution.Compressor_Value) error {
+func (byteStreamServer) sendChunk(out bytestream.ByteStream_ReadServer, chunk *chunk.Chunk, chunkOffset int64, compressor remoteexecution.Compressor_Value) error {
 	if chunkOffset == 0 || compressor == remoteexecution.Compressor_IDENTITY {
 		// ZSTD has the neat property that we can simply send
 		// multiple ZSTD encoded chunks and their concatenated byte
 		// representation is a valid ZSTD representation of their
 		// concatenated underlying bytes.
 		var data []byte
-		var err error
 		switch compressor {
 		case remoteexecution.Compressor_IDENTITY:
 			data = chunk.GetBytes()
 		case remoteexecution.Compressor_ZSTD:
-			data, err = chunk.GetBytesCompressed(ctx)
+			data = chunk.GetBytesCompressed()
 		default:
 			panic("Unsupported compression algorithm should not be reachable")
-		}
-		if err != nil {
-			return err
 		}
 		return out.SendMsg(&bytestream.ReadResponse{
 			Data: data[chunkOffset:],
@@ -126,23 +121,9 @@ func (s *byteStreamServer) sendChunk(ctx context.Context, out bytestream.ByteStr
 	// bytes we need to find the data based on that offset in
 	// its decompressed form, then compress it again before
 	// sending it back.
-	data := chunk.GetBytes()
-	data = data[chunkOffset:]
-	var buf bytes.Buffer
-	buf.Grow(len(data))
-	encoder, err := s.zstdPool.NewEncoder(ctx, &buf)
-	if err != nil {
-		return err
-	}
-	if _, err := encoder.Write(data); err != nil {
-		encoder.Close()
-		return err
-	}
-	if err := encoder.Close(); err != nil {
-		return err
-	}
+	data := chunk.GetBytes()[chunkOffset:]
 	return out.SendMsg(&bytestream.ReadResponse{
-		Data: buf.Bytes(),
+		Data: zstd.Encode(data),
 	})
 }
 
@@ -173,7 +154,7 @@ func (s *byteStreamServer) Write(stream bytestream.ByteStream_WriteServer) error
 	case remoteexecution.Compressor_IDENTITY:
 		r = rawReader
 	case remoteexecution.Compressor_ZSTD:
-		zr, err := bb_zstd.NewReadCloser(ctx, s.zstdPool, rawReader)
+		zr, err := zstd.NewReadCloser(ctx, s.zstdPool, rawReader)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
 		}

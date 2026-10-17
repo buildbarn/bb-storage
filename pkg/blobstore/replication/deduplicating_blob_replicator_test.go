@@ -32,7 +32,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		// If the sink reports the blob as present, no actual
 		// replication should take place.
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, nil)
-		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 
 		data, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		// the sink.
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(helloDigestSet, nil)
 		base.EXPECT().ReplicateMultiple(ctx, helloDigestSet)
-		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 
 		data, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(helloDigestSet, nil)
 		base.EXPECT().ReplicateMultiple(ctx, helloDigestSet)
 		sink.EXPECT().FindMissing(ctx, helloDigestSet).Return(digest.EmptySet, nil).MaxTimes(9)
-		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil).Times(10)
+		sink.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil).Times(10)
 
 		done := make(chan struct{}, 10)
 		for i := 0; i < 10; i++ {

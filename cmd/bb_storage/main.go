@@ -78,7 +78,6 @@ func main() {
 				configuration.ContentAddressableStorageServer.ContentAddressableStorage,
 				grpcClientFactory,
 				int(configuration.MaximumMessageSizeBytes),
-				zstdPool,
 			)
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
@@ -236,8 +235,7 @@ func main() {
 						authorizedChunkStorage,
 						authorizedChunkMappingStorage,
 						cdcParametersFetcher,
-						zstdPool,
-						cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage, zstdPool),
+						cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
 						casGetChunkMappingAuthorizer,
 						casPutChunkMappingAuthorizer,
 						configuration.MaximumMessageSizeBytes,
@@ -254,7 +252,7 @@ func main() {
 							authorizedChunkMappingStorage,
 							cdcParametersFetcher,
 							zstdPool,
-							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage, zstdPool),
+							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
 						),
 					)
 				}

@@ -31,9 +31,9 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		// Requests should alternate between backends to spread
 		// the load between backends equally.
 		gomock.InOrder(
-			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
-			backendB.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
-			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
+			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil),
+			backendB.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil),
+			backendA.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil),
 		)
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
@@ -64,7 +64,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		// will get synchronized into the first, and then fetched again.
 		gomock.InOrder(
 			backendA.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.NotFound, "Blob not found")),
-			replicatorBToA.EXPECT().ReplicateSingle(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
+			replicatorBToA.EXPECT().ReplicateSingle(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil),
 		)
 
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
@@ -120,7 +120,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 			},
 		)
 
-		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))))
+		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello world"))))
 	})
 
 	t.Run("ErrorBackendA", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend A: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))),
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello world"))),
 		)
 	})
 
@@ -141,7 +141,7 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Internal, "Backend B: Server on fire"),
-			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello world"))),
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello world"))),
 		)
 	})
 }

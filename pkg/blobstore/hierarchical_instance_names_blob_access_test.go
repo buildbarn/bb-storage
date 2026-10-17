@@ -64,7 +64,7 @@ func TestHierarchicalInstanceNamesBlobAccessGet(t *testing.T) {
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest1).
 				Return(nil, status.Error(codes.NotFound, "Object not found")),
 			baseBlobAccess.EXPECT().Get(ctx, helloDigest2).
-				Return(chunk.NewChunk(nil, []byte("Hello")), nil),
+				Return(chunk.NewChunk([]byte("Hello")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest1)

@@ -12,7 +12,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
@@ -23,14 +22,6 @@ import (
 
 	"go.uber.org/mock/gomock"
 )
-
-func newTestZstdPool(maxEncoders, maxDecoders int64) bb_zstd.Pool {
-	return bb_zstd.NewBoundedPool(
-		maxEncoders, maxDecoders,
-		[]zstd.EOption{zstd.WithEncoderConcurrency(1)},
-		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
-	)
-}
 
 func expectGetCapabilitiesWithZSTD(client *mock.MockClientConnInterface) {
 	client.EXPECT().Invoke(
@@ -62,8 +53,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, false)
+	blobAccess := grpcclients.NewCSBlobAccess(client, false)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -78,7 +68,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 
 		testutil.RequireEqualStatus(t,
 			status.Error(codes.Internal, "Failed to create outgoing connection"),
-			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello"))))
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello"))))
 	})
 
 	t.Run("ServerFailure", func(t *testing.T) {
@@ -101,7 +91,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 
 		testutil.RequireEqualStatus(t,
 			status.Error(codes.Unavailable, "Disk on fire"),
-			blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello"))))
+			blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello"))))
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -132,7 +122,7 @@ func TestCSBlobAccessPut(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, []byte("Hello")))
+		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello")))
 		require.NoError(t, err)
 	})
 }
@@ -141,8 +131,7 @@ func TestCSBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, false)
+	blobAccess := grpcclients.NewCSBlobAccess(client, false)
 
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -221,8 +210,7 @@ func TestCSBlobAccessGetCapabilities(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, false)
+	blobAccess := grpcclients.NewCSBlobAccess(client, false)
 
 	t.Run("BackendFailure", func(t *testing.T) {
 		client.EXPECT().Invoke(
@@ -332,8 +320,7 @@ func TestCSBlobAccessPutWithCompression(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, true)
+	blobAccess := grpcclients.NewCSBlobAccess(client, true)
 
 	expectGetCapabilitiesWithZSTD(client)
 	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "1411ffd5854fa029dc4d231aa89311eb", 1000)
@@ -366,7 +353,7 @@ func TestCSBlobAccessPutWithCompression(t *testing.T) {
 			return nil
 		})
 
-		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk(pool, largeData))
+		err := blobAccess.Put(ctx, blobDigest, chunk.NewChunk(largeData))
 		require.NoError(t, err)
 	})
 }
@@ -375,8 +362,7 @@ func TestCSBlobAccessGetWithCompression(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, true)
+	blobAccess := grpcclients.NewCSBlobAccess(client, true)
 
 	expectGetCapabilitiesWithZSTD(client)
 
@@ -426,8 +412,7 @@ func TestCSBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	client := mock.NewMockClientConnInterface(ctrl)
-	pool := newTestZstdPool(1, 1)
-	blobAccess := grpcclients.NewCSBlobAccess(client, pool, false)
+	blobAccess := grpcclients.NewCSBlobAccess(client, false)
 
 	digest1 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	digest2 := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "1411ffd5854fa029dc4d231aa89311eb", 1000)

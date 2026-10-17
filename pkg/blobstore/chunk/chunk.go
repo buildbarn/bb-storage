@@ -1,13 +1,9 @@
 package chunk
 
 import (
-	"bytes"
-	"context"
 	"sync/atomic"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
-	"google.golang.org/grpc/codes"
 )
 
 // Chunk is an abstraction over a single chunk in the Chunk Storage (CS)
@@ -19,7 +15,6 @@ import (
 type Chunk struct {
 	data []byte
 
-	zstdPool       zstd.Pool
 	compressedData atomic.Pointer[[]byte]
 }
 
@@ -31,45 +26,20 @@ func (c *Chunk) GetBytes() []byte {
 
 // GetBytesCompressed gets the underlying bytes of the chunk in ZSTD
 // compressed format.
-func (c *Chunk) GetBytesCompressed(ctx context.Context) ([]byte, error) {
+func (c *Chunk) GetBytesCompressed() []byte {
 	if compressedData := c.compressedData.Load(); compressedData != nil {
-		return *compressedData, nil
+		return *compressedData
 	}
-	return c.compress(ctx)
-}
-
-func (c *Chunk) compress(ctx context.Context) ([]byte, error) {
-	var buf bytes.Buffer
-	encoder, err := c.zstdPool.NewEncoder(ctx, &buf)
-	if err != nil {
-		// An error acquiring the encoder, we return the error but do
-		// not save the result.
-		return nil, err
-	}
-
-	_, err = encoder.Write(c.data)
-	closeErr := encoder.Close()
-
-	if err == nil {
-		// No error while writing but we might have an error while
-		// closing.
-		err = closeErr
-	}
-
-	if err != nil {
-		return nil, util.StatusWrapWithCode(err, codes.Internal, "Could not compress data")
-	}
-	compressedData := buf.Bytes()
+	compressedData := zstd.Encode(c.data)
 	c.compressedData.Store(&compressedData)
-	return compressedData, nil
+	return compressedData
 }
 
 // NewChunk creates a chunk from an uncompressed byte slice. Ownership
 // of the provided slice is transferred to the chunk, callers must not
 // modify or reuse it afterwards.
-func NewChunk(zstdPool zstd.Pool, data []byte) *Chunk {
-	c := &Chunk{data: data, zstdPool: zstdPool}
-	return c
+func NewChunk(data []byte) *Chunk {
+	return &Chunk{data: data}
 }
 
 // NewChunkWithCompressedData creates a chunk that has data in both its

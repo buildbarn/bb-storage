@@ -53,19 +53,18 @@ func TestContentAddressableStorageServerBatchReadBlobsSuccess(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	singleChunkParameters := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("ubuntu1804")).Return(singleChunkParameters, nil).Times(1)
 	a := make([]byte, 123)
-	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunk(zstdPool, a), nil)
+	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunk(a), nil)
 	b := make([]byte, 234)
-	chunkStorage.EXPECT().Get(ctx, digest2).Return(chunk.NewChunk(zstdPool, b), nil)
+	chunkStorage.EXPECT().Get(ctx, digest2).Return(chunk.NewChunk(b), nil)
 	chunkStorage.EXPECT().Get(ctx, digest3).Return(nil, status.Error(codes.NotFound, "The object you requested could not be found"))
 
 	maximumMessageSizeBytes := 4 << 20
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
 
 	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.NoError(t, err)
@@ -119,11 +118,10 @@ func TestContentAddressableStorageServerBatchReadBlobsFailure(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	maximumMessageSizeBytes := 200
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
 
 	_, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	testutil.RequireEqualStatus(t, status.Error(codes.InvalidArgument, "Attempted to read a total of at least 357 bytes, while a maximum of 200 bytes is permitted"), err)
@@ -161,7 +159,7 @@ func TestContentAddressableStorageServerBatchReadBlobsZSTD(t *testing.T) {
 	).Return(params, nil)
 	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunkWithCompressedData(data, compressed.Bytes()), nil)
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.NoError(t, err)
@@ -200,7 +198,6 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
@@ -221,7 +218,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 		return bytes.Equal(chunk.GetBytes(), []byte("World"))
 	})).Return(status.Error(codes.Internal, "Hard disk has a case of the Mondays"))
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 	response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
 	require.NoError(t, err)
@@ -239,6 +236,47 @@ func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
 			},
 		},
 	}, response)
+}
+
+func TestContentAddressableStorageServerBatchUpdateBlobsTooLarge(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	// The digest advertises a blob that is larger than the maximum
+	// message size. The compressed data itself is small, so without
+	// the size check it would be decompressed into memory far beyond
+	// what the backend is willing to accept.
+	data := zstd.Encode(bytes.Repeat([]byte("A"), 100))
+	digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "e6065c4aa2ab1603008fc18410f579d4", 1<<20)
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(
+		gomock.Any(),
+		mustNewInstanceName("ubuntu1804"),
+	).Return(params, nil)
+
+	request := &remoteexecution.BatchUpdateBlobsRequest{
+		InstanceName: "ubuntu1804",
+		Requests: []*remoteexecution.BatchUpdateBlobsRequest_Request{
+			{
+				Digest:     digest1.GetProto(),
+				Data:       data,
+				Compressor: remoteexecution.Compressor_ZSTD,
+			},
+		},
+	}
+
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, mock.NewMockReaderPutter(ctrl), allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
+	require.NoError(t, err)
+	require.Len(t, response.Responses, 1)
+	testutil.RequireEqualStatus(
+		t,
+		status.Error(codes.InvalidArgument, "Attempted to upload blob of 1048576 bytes but this backend only supports uploading blobs up to 200 bytes"),
+		status.ErrorProto(response.Responses[0].Status),
+	)
 }
 
 func TestContentAddressableStorageServerBatchUpdateBlobsMultiChunk(t *testing.T) {
@@ -260,7 +298,6 @@ func TestContentAddressableStorageServerBatchUpdateBlobsMultiChunk(t *testing.T)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The blob is large enough relative to the minimum chunk size
 	// that it cannot be stored as a single chunk, causing it to be
@@ -279,7 +316,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsMultiChunk(t *testing.T)
 		},
 	)
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 	response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
 	require.NoError(t, err)
@@ -333,7 +370,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 		},
 	}
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 	response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
 	require.NoError(t, err)
 	require.Len(t, response.Responses, 1)
@@ -351,7 +388,6 @@ func TestContentAddressableStorageServerBatchUpdateBlobsCorruptZSTD(t *testing.T
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
@@ -368,7 +404,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsCorruptZSTD(t *testing.T
 		},
 	}
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 	response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
 	require.NoError(t, err)
 	require.Len(t, response.Responses, 1)
@@ -396,7 +432,6 @@ func TestContentAddressableStorageServerFindMissingBlobs(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	digests := digest.NewSetBuilder(2)
 	digests.Add(digest1)
@@ -408,7 +443,7 @@ func TestContentAddressableStorageServerFindMissingBlobs(t *testing.T) {
 
 	maximumMessageSizeBytes := 200
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
 
 	response, err := contentAddressableStorageServer.FindMissingBlobs(ctx, request)
 	require.NoError(t, err)
@@ -427,7 +462,6 @@ func TestContentAddressableStorageServerFindMissingBlobsEmptyBlob(t *testing.T) 
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The empty blob is always considered present. It may never be
 	// reported as missing. The digest is filtered out before any
@@ -440,7 +474,7 @@ func TestContentAddressableStorageServerFindMissingBlobsEmptyBlob(t *testing.T) 
 	chunkMappingStorage.EXPECT().FindMissing(gomock.Any(), digest.EmptySet).Return(digest.EmptySet, nil)
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
 
 	response, err := contentAddressableStorageServer.FindMissingBlobs(ctx, request)
 	require.NoError(t, err)
@@ -480,7 +514,7 @@ func TestContentAddressableStorageServerBatchReadBlobsEmptyBlob(t *testing.T) {
 			).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
 
 			readerPutter := mock.NewMockReaderPutter(ctrl)
-			contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+			contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 			response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 			require.NoError(t, err)
@@ -551,7 +585,7 @@ func TestContentAddressableStorageServerBatchUpdateBlobsEmptyBlob(t *testing.T) 
 				InstanceName: "ubuntu1804",
 			}
 
-			contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+			contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 			response, err := contentAddressableStorageServer.BatchUpdateBlobs(ctx, request)
 			require.NoError(t, err)
@@ -599,7 +633,6 @@ func TestContentAddressableStorageServerSplitBlob(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
 		mustNewInstanceName("my_instance_name"),
@@ -613,7 +646,7 @@ func TestContentAddressableStorageServerSplitBlob(t *testing.T) {
 
 	maximumMessageSizeBytes := 200
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
 
 	response, err := contentAddressableStorageServer.SplitBlob(ctx, request)
 	require.NoError(t, err)
@@ -636,7 +669,6 @@ func TestContentAddressableStorageServerSplitBlobSingleChunk(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// The blob is small enough to fit in a single chunk. Such blobs
 	// have no chunk mapping in storage, so splitting them is refused.
@@ -646,7 +678,7 @@ func TestContentAddressableStorageServerSplitBlobSingleChunk(t *testing.T) {
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
 
 	_, err := contentAddressableStorageServer.SplitBlob(ctx, request)
 	testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This server does not implement trivial GetChunkMappings"), err)
@@ -667,7 +699,6 @@ func TestContentAddressableStorageServerSplitBlobNotFound(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	// A single-chunk blob that does not exist. The trivial split is
 	// refused before any storage interaction.
@@ -677,7 +708,7 @@ func TestContentAddressableStorageServerSplitBlobNotFound(t *testing.T) {
 	).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
 
 	_, err := contentAddressableStorageServer.SplitBlob(ctx, request)
 	testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This server does not implement trivial GetChunkMappings"), err)
@@ -722,13 +753,12 @@ func TestContentAddressableStorageServerSpliceBlob(t *testing.T) {
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	chunkMappingStorage.EXPECT().Put(ctx, blobDigest, expectedChunkMapping).Return(nil)
 
 	maximumMessageSizeBytes := 200
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, int64(maximumMessageSizeBytes), 1000)
 	response, err := contentAddressableStorageServer.SpliceBlob(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, request.BlobDigest, response.BlobDigest)
@@ -745,10 +775,9 @@ func TestContentAddressableStorageServerRegisterChunkMappingSingleChunk(t *testi
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
 
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
 
 	for _, chunkDigests := range [][]*remoteexecution.Digest{
 		{},
@@ -776,7 +805,6 @@ func TestContentAddressableStorageServerRegisterChunkMappingSizeOverflow(t *test
 	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	chunkDigests := make([]*remoteexecution.Digest, 4)
 	for i := 0; i < 3; i++ {
@@ -791,7 +819,7 @@ func TestContentAddressableStorageServerRegisterChunkMappingSizeOverflow(t *test
 	}
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
 	_, err := contentAddressableStorageServer.SpliceBlob(ctx, &remoteexecution.SpliceBlobRequest{
 		InstanceName: "my_instance_name",
 		BlobDigest: &remoteexecution.Digest{

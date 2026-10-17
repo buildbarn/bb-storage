@@ -126,7 +126,7 @@ func TestByteStreamServer(t *testing.T) {
 		// Attempt to fetch the small blob without an instance name.
 		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "09f7e02f1290be211da707a266f153b3", 5)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(zstdPool, []byte("Hello")), nil)
+		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk([]byte("Hello")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "blobs/09f7e02f1290be211da707a266f153b3/5",
@@ -158,15 +158,15 @@ func TestByteStreamServer(t *testing.T) {
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest1,
-		).Return(chunk.NewChunk(zstdPool, []byte("This is a ")), nil)
+		).Return(chunk.NewChunk([]byte("This is a ")), nil)
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest2,
-		).Return(chunk.NewChunk(zstdPool, []byte("long messa")), nil)
+		).Return(chunk.NewChunk([]byte("long messa")), nil)
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest3,
-		).Return(chunk.NewChunk(zstdPool, []byte("ge")), nil)
+		).Return(chunk.NewChunk([]byte("ge")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/blobs/3538d378083b9afa5ffad767f7269509/22",
@@ -190,7 +190,7 @@ func TestByteStreamServer(t *testing.T) {
 		originalData := []byte("This is a test message that should be compressed with ZSTD")
 		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(zstdPool, originalData), nil)
+		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(originalData), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58",
@@ -224,7 +224,7 @@ func TestByteStreamServer(t *testing.T) {
 
 		digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", 100000)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digest.EmptyInstanceName).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(zstdPool, originalData), nil)
+		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(originalData), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "compressed-blobs/zstd/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2/100000",
@@ -259,7 +259,7 @@ func TestByteStreamServer(t *testing.T) {
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			digest.MustNewDigest("", remoteexecution.DigestFunction_SHA256, "8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61", 58),
-		).Return(chunk.NewChunk(zstdPool, originalData), nil)
+		).Return(chunk.NewChunk(originalData), nil)
 
 		decompressedData := readAndDecompressZSTD(t, ctx, client, "compressed-blobs/zstd/8b2c3f8a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f61/58", 17)
 		require.Equal(t, originalData[17:], decompressedData)
@@ -291,7 +291,7 @@ func TestByteStreamServer(t *testing.T) {
 			chunkStorage.EXPECT().Get(
 				gomock.Any(),
 				blobDigest,
-			).Return(chunk.NewChunk(zstdPool, originalData), nil)
+			).Return(chunk.NewChunk(originalData), nil)
 
 			decompressedData := readAndDecompressZSTD(t, ctx, client, resourceName, offsets[i])
 
@@ -345,7 +345,7 @@ func TestByteStreamServer(t *testing.T) {
 		// Attempt to fetch a lblob with an instance name and offset.
 		digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "da39a3ee5e6b4b0d3255bfef95601890", 19)
 		cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("ubuntu1804")).Return(singleChunkParameters, nil)
-		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk(zstdPool, []byte("This offset message")), nil)
+		chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(chunk.NewChunk([]byte("This offset message")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "ubuntu1804/blobs/da39a3ee5e6b4b0d3255bfef95601890/19",
@@ -381,11 +381,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest2,
-		).Return(chunk.NewChunk(zstdPool, []byte("long messa")), nil)
+		).Return(chunk.NewChunk([]byte("long messa")), nil)
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest3,
-		).Return(chunk.NewChunk(zstdPool, []byte("ge")), nil)
+		).Return(chunk.NewChunk([]byte("ge")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/blobs/4538d378083b9afa5ffad767f7269509/22",
@@ -422,11 +422,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest2,
-		).Return(chunk.NewChunk(zstdPool, []byte("long messa")), nil)
+		).Return(chunk.NewChunk([]byte("long messa")), nil)
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest3,
-		).Return(chunk.NewChunk(zstdPool, []byte("ge")), nil)
+		).Return(chunk.NewChunk([]byte("ge")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/blobs/5538d378083b9afa5ffad767f7269509/22",
@@ -498,11 +498,11 @@ func TestByteStreamServer(t *testing.T) {
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest2,
-		).Return(chunk.NewChunk(zstdPool, []byte("long messa")), nil)
+		).Return(chunk.NewChunk([]byte("long messa")), nil)
 		chunkStorage.EXPECT().Get(
 			gomock.Any(),
 			chunkDigest3,
-		).Return(chunk.NewChunk(zstdPool, []byte("ge")), nil)
+		).Return(chunk.NewChunk([]byte("ge")), nil)
 
 		req, err := client.Read(ctx, &bytestream.ReadRequest{
 			ResourceName: "debian8/compressed-blobs/zstd/7538d378083b9afa5ffad767f7269509/22",

@@ -18,8 +18,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
-	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -47,7 +45,6 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
 	)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
@@ -509,7 +506,6 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
 	)
 
 	t.Run("Failure", func(t *testing.T) {
@@ -524,7 +520,7 @@ func TestReferenceExpandingBlobAccessPut(t *testing.T) {
 					"8b1a9953c4611296a827abf8c47804d7",
 					5,
 				),
-				chunk.NewChunk(nil, []byte("Hello")),
+				chunk.NewChunk([]byte("Hello")),
 			),
 		)
 	})
@@ -549,7 +545,6 @@ func TestReferenceExpandingBlobAccessFindMissing(t *testing.T) {
 		s3Client,
 		gcsClient,
 		100,
-		bb_zstd.NewUnboundedPool(nil, []zstd.DOption{zstd.WithDecoderConcurrency(1)}),
 	)
 
 	digests := digest.NewSetBuilder(0).

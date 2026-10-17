@@ -36,7 +36,6 @@ type referenceExpandingBlobAccess struct {
 	s3Client                          cloud_aws.S3Client
 	gcsClient                         cloud_gcp.StorageClient
 	maximumMessageSizeBytes           int
-	zstdPool                          bb_zstd.Pool
 }
 
 // getHTTPRangeHeader creates a HTTP Range header based on the offset
@@ -53,7 +52,7 @@ func getHTTPRangeHeader(reference *icas.Reference) string {
 // Storage (CAS) backend. Any object requested through this BlobAccess
 // will cause its reference to be loaded from the ICAS, followed by
 // fetching its data from the referenced location.
-func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) blobstore.BlobAccess[*chunk.Chunk] {
+func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference], chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, httpClient *http.Client, s3Client cloud_aws.S3Client, gcsClient cloud_gcp.StorageClient, maximumMessageSizeBytes int) blobstore.BlobAccess[*chunk.Chunk] {
 	return &referenceExpandingBlobAccess{
 		indirectContentAddressableStorage: indirectContentAddressableStorage,
 		chunkBytesReader:                  chunkBytesReader,
@@ -62,7 +61,6 @@ func NewReferenceExpandingBlobAccess(indirectContentAddressableStorage blobstore
 		httpClient:                        httpClient,
 		s3Client:                          s3Client,
 		gcsClient:                         gcsClient,
-		zstdPool:                          zstdPool,
 		maximumMessageSizeBytes:           maximumMessageSizeBytes,
 	}
 }
@@ -164,49 +162,57 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		return nil, status.Error(codes.Unimplemented, "Reference uses an unsupported medium")
 	}
 
-	r = statusReturningReadCloser{r: r}
-
-	// Apply a decompressor if needed.
-	switch reference.Decompressor {
-	case remoteexecution.Compressor_IDENTITY:
-	case remoteexecution.Compressor_ZSTD:
-		// Disable concurrency, as the default is to use
-		// GOMAXPROCS. We should just use a single thread,
-		// because many BlobAccess operations may run in
-		// parallel.
-		decoder, err := bb_zstd.NewReadCloser(ctx, ba.zstdPool, r)
-		if err != nil {
-			r.Close()
-			return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to create Zstandard decoder")
-		}
-		r = decoder
-	case remoteexecution.Compressor_DEFLATE:
-		r = struct {
-			io.Reader
-			io.Closer
-		}{
-			Reader: flate.NewReader(r),
-			Closer: r,
-		}
-	default:
-		r.Close()
-		return nil, status.Error(codes.Unimplemented, "Reference uses an unsupported decompressor")
-	}
-
-	// TODO: Should we install a RepairFunc that deletes the ICAS
-	// entry? That should likely only be done conditionally, as it
-	// may not always be desirable to let clients mutate the ICAS.
+	// TODO: Should we install a RepairFunc that deletes the ICAS entry?
+	// That should likely only be done conditionally, as it may not
+	// always be desirable to let clients mutate the ICAS.
 	//
 	// If we wanted to support this, should we add a separate
 	// BlobAccess.Delete(), or maybe a mechanism to forward the
 	// RepairFunc from the ICAS buffer?
-	data, err := util.ReadFullyDecompressed(r, blobDigest.GetSizeBytes())
-	closeErr := r.Close()
-	if err != nil {
-		return nil, err
+	r = statusReturningReadCloser{r: r}
+
+	decompressor := io.Reader(r)
+	var data []byte
+	switch reference.Decompressor {
+	case remoteexecution.Compressor_IDENTITY:
+	case remoteexecution.Compressor_ZSTD:
+		// RFC 8878 bounds the size of a single frame at its input size
+		// plus 22 bytes of header plus 3 bytes of block header per 1
+		// KiB of window. Adding a margin for legitimate concatenation
+		// of a small number of frames yields the bound below, which
+		// should be larger than any reasonable multi-frame
+		// representation.
+		sizeBytes := int(blobDigest.GetSizeBytes())
+		maximumCompressedSize := sizeBytes + sizeBytes/32 + 256
+		compressedData, err := io.ReadAll(io.LimitReader(r, int64(maximumCompressedSize)+1))
+		if err != nil {
+			r.Close()
+			return nil, util.StatusWrap(err, "Failed to read ZSTD compressed data")
+		}
+		if len(compressedData) > maximumCompressedSize {
+			r.Close()
+			return nil, status.Errorf(codes.InvalidArgument, "ZSTD compressed data is larger than the maximum of %d bytes", maximumCompressedSize)
+		}
+		data, err = bb_zstd.Decode(compressedData, int(blobDigest.GetSizeBytes()))
+		if err != nil {
+			r.Close()
+			return nil, err
+		}
+	case remoteexecution.Compressor_DEFLATE:
+		decompressor = flate.NewReader(r)
+	default:
+		r.Close()
+		return nil, status.Error(codes.Unimplemented, "Reference uses an unsupported decompressor")
 	}
-	if closeErr != nil {
-		return nil, closeErr
+	if data == nil {
+		var err error
+		if data, err = util.ReadFullyDecompressed(decompressor, blobDigest.GetSizeBytes()); err != nil {
+			r.Close()
+			return nil, err
+		}
+	}
+	if err := r.Close(); err != nil {
+		return nil, err
 	}
 
 	// Validate the checksum.
@@ -224,7 +230,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		)
 	}
 
-	return chunk.NewChunk(ba.zstdPool, data), nil
+	return chunk.NewChunk(data), nil
 }
 
 func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {

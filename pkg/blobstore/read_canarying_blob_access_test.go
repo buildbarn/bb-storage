@@ -51,7 +51,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 			},
 		)
 
-		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunk.NewChunk(nil, []byte("Hello"))))
+		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunk.NewChunk([]byte("Hello"))))
 	})
 
 	t.Run("Get", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// That way the client doesn't observe too many errors.
 		for _, ts := range []int64{10002, 10100, 10200, 10300} {
 			clock.EXPECT().Now().Return(time.Unix(ts, 0))
-			sourceBackend.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+			sourceBackend.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		// replica, as it's known to be online.
 		for _, ts := range []int64{10301, 10601, 10901, 11201} {
 			clock.EXPECT().Now().Return(time.Unix(ts, 0))
-			replicaBackend.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+			replicaBackend.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 			clock.EXPECT().Now().Return(time.Unix(ts, 100000000))
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)

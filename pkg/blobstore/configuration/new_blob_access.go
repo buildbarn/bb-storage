@@ -30,7 +30,6 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -629,8 +628,8 @@ func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, confi
 // constituent parts of a Content Addressable Storage (CAS) and a
 // BlobAccess for the Action Cache. Most Buildbarn components tend to
 // require access to both these data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
-	chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes, zstdPool)
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+	chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
@@ -659,11 +658,11 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 // NewCASFromConfiguration is a convenience function to create the
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
-		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
+		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes),
 	)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Storage")
@@ -699,7 +698,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 	chunkMappingStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkMappingStorage(),
-		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory, zstdPool),
+		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory),
 	)
 	if err != nil {
 		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")

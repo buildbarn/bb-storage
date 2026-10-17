@@ -38,7 +38,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 		// The first time the object is requested, it should be
 		// replicated in the background.
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			chunk.NewChunk(nil, []byte("Hello")), nil,
+			chunk.NewChunk([]byte("Hello")), nil,
 		)
 		clock.EXPECT().Now().Return(time.Unix(1000, 0)).Times(3)
 		baseReplicator.EXPECT().ReplicateMultiple(ctx, helloDigests).Return(nil)
@@ -51,7 +51,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 		// be cached. We should only perform the load during the
 		// second attempt.
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			chunk.NewChunk(nil, []byte("Hello")), nil,
+			chunk.NewChunk([]byte("Hello")), nil,
 		)
 		clock.EXPECT().Now().Return(time.Unix(1060, 0))
 
@@ -62,7 +62,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 		// A third request after the cache entry has expired
 		// should trigger a replication once again.
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			chunk.NewChunk(nil, []byte("Hello")), nil,
+			chunk.NewChunk([]byte("Hello")), nil,
 		)
 		clock.EXPECT().Now().Return(time.Unix(1060, 1)).Times(3)
 		baseReplicator.EXPECT().ReplicateMultiple(ctx, helloDigests).Return(nil)

@@ -30,7 +30,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 	t.Run("Fast", func(t *testing.T) {
 		// Provide a blob that can be served by the fast backend
 		// immediately.
-		fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil)
+		fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil)
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 		// attempt to replicate, and then fetch it again.
 		gomock.InOrder(
 			fastBlobAccess.EXPECT().Get(ctx, blobDigest).Return(nil, status.Error(codes.NotFound, "Blob not found")),
-			blobReplicator.EXPECT().ReplicateSingle(ctx, blobDigest).Return(chunk.NewChunk(nil, []byte("Hello world")), nil),
+			blobReplicator.EXPECT().ReplicateSingle(ctx, blobDigest).Return(chunk.NewChunk([]byte("Hello world")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
@@ -79,7 +79,7 @@ func TestReadCachingBlobAccessPut(t *testing.T) {
 	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
 	blobDigest := digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)
 
-	c := chunk.NewChunk(nil, []byte("Hello, world"))
+	c := chunk.NewChunk([]byte("Hello, world"))
 
 	// Write calls should always be forwarded to the slow backend,
 	// as the slow backend acts as the source of truth. We should

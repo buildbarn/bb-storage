@@ -62,7 +62,7 @@ var encodeSlots = func() chan struct{} {
 // that holds exactly the compressed representation.
 //
 // The returned byte slice is tight, meaning that its capacity is equal
-// to its length. It may be retained freely
+// to its length. It may be retained freely.
 func Encode(data []byte) []byte {
 	<-encodeSlots
 	defer func() { encodeSlots <- struct{}{} }()

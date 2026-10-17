@@ -8,7 +8,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -21,10 +20,9 @@ var (
 )
 
 func TestChunkCoderEncodeDecodeRoundTrip(t *testing.T) {
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	c := coder.NewChunkCoder(zstdPool)
+	c := coder.NewChunkCoder()
 
-	encoded, err := c.Encode(chunk.NewChunk(zstdPool, []byte("Hello")), helloDigest)
+	encoded, err := c.Encode(chunk.NewChunk([]byte("Hello")), helloDigest)
 	require.NoError(t, err)
 
 	decoded, err := c.Decode(encoded, helloDigest)
@@ -34,11 +32,10 @@ func TestChunkCoderEncodeDecodeRoundTrip(t *testing.T) {
 }
 
 func TestChunkCoderDecodeRejectsDigestMismatch(t *testing.T) {
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
-	c := coder.NewChunkCoder(zstdPool)
+	c := coder.NewChunkCoder()
 
 	// Payload of "World" decoded against the digest of "Hello".
-	encoded, err := c.Encode(chunk.NewChunk(zstdPool, []byte("World")), worldDigest)
+	encoded, err := c.Encode(chunk.NewChunk([]byte("World")), worldDigest)
 	require.NoError(t, err)
 	_, err = c.Decode(encoded, helloDigest)
 	testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Digest mismatch, expected %s, got %s", helloDigest, worldDigest), err)

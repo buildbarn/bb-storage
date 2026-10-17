@@ -1,7 +1,6 @@
 package grpcclients
 
 import (
-	"bytes"
 	"context"
 	"slices"
 	"sync/atomic"
@@ -10,7 +9,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc"
@@ -22,7 +20,6 @@ type csBlobAccess struct {
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
 	capabilitiesClient              remoteexecution.CapabilitiesClient
 	supportedCompressors            atomic.Pointer[[]remoteexecution.Compressor_Value]
-	zstdPool                        bb_zstd.Pool
 	preferCompression               bool
 }
 
@@ -34,11 +31,10 @@ type csBlobAccess struct {
 //
 // If preferCompression is true, the client will use ZSTD compression
 // for operations if the server supports it.
-func NewCSBlobAccess(client grpc.ClientConnInterface, zstdPool bb_zstd.Pool, preferCompression bool) blobstore.BlobAccess[*chunk.Chunk] {
+func NewCSBlobAccess(client grpc.ClientConnInterface, preferCompression bool) blobstore.BlobAccess[*chunk.Chunk] {
 	return &csBlobAccess{
 		contentAddressableStorageClient: remoteexecution.NewContentAddressableStorageClient(client),
 		capabilitiesClient:              remoteexecution.NewCapabilitiesClient(client),
-		zstdPool:                        zstdPool,
 		preferCompression:               preferCompression,
 	}
 }
@@ -102,12 +98,7 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 	case remoteexecution.Compressor_IDENTITY:
 		data = r.Data
 	case remoteexecution.Compressor_ZSTD:
-		decoder, err := ba.zstdPool.NewDecoder(ctx, bytes.NewReader(r.Data))
-		if err != nil {
-			return nil, err
-		}
-		defer decoder.Close()
-		data, err = util.ReadFullyDecompressed(decoder, digest.GetSizeBytes())
+		data, err = bb_zstd.Decode(r.Data, int(digest.GetSizeBytes()))
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +115,7 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 	}
 
 	if compressedData == nil {
-		return chunk.NewChunk(ba.zstdPool, data), nil
+		return chunk.NewChunk(data), nil
 	}
 	return chunk.NewChunkWithCompressedData(data, compressedData), nil
 }
@@ -139,10 +130,7 @@ func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *ch
 	var data []byte
 	if useCompression {
 		compressor = remoteexecution.Compressor_ZSTD
-		data, err = value.GetBytesCompressed(ctx)
-		if err != nil {
-			return err
-		}
+		data = value.GetBytesCompressed()
 	} else {
 		compressor = remoteexecution.Compressor_IDENTITY
 		data = value.GetBytes()

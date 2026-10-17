@@ -30,7 +30,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		// Data should be read from the source and written into
 		// the sink.
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			chunk.NewChunk(nil, []byte("Hello")), nil,
+			chunk.NewChunk([]byte("Hello")), nil,
 		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
@@ -58,7 +58,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 
 	t.Run("SinkError", func(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(
-			chunk.NewChunk(nil, []byte("Hello")), nil,
+			chunk.NewChunk([]byte("Hello")), nil,
 		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
@@ -86,7 +86,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 	worldDigest := digest.MustNewDigest("world", remoteexecution.DigestFunction_MD5, "f5a7924e621e84c9280a9a27e1bcb7f6", 5)
 
 	t.Run("Success", func(t *testing.T) {
-		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data := c.GetBytes()
@@ -95,7 +95,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 			},
 		)
 
-		source.EXPECT().Get(ctx, worldDigest).Return(chunk.NewChunk(nil, []byte("World")), nil)
+		source.EXPECT().Get(ctx, worldDigest).Return(chunk.NewChunk([]byte("World")), nil)
 		sink.EXPECT().Put(ctx, worldDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				data := c.GetBytes()
@@ -130,7 +130,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		)
 	})
 	t.Run("SinkError", func(t *testing.T) {
-		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
 				return status.Error(codes.Internal, "Disk full")

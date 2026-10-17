@@ -26,7 +26,6 @@ type contentAddressableStorageServer struct {
 	chunkMappingStorage       blobstore.BlobAccess[chunk.Mapping]
 	chunkMappingFetcher       chunk.MappingFetcher
 	cdcParametersFetcher      capabilities.CDCParametersFetcher
-	zstdPool                  zstd.Pool
 	readerPutter              cas.ReaderPutter
 	getChunkMappingAuthorizer auth.Authorizer
 	putChunkMappingAuthorizer auth.Authorizer
@@ -36,12 +35,11 @@ type contentAddressableStorageServer struct {
 
 // NewContentAddressableStorageServer creates a GRPC service for serving
 // the contents of a Bazel Content Addressable Storage (CAS) to Bazel.
-func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, readerPutter cas.ReaderPutter, getChunkMappingAuthorizer, putChunkMappingAuthorizer auth.Authorizer, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
+func NewContentAddressableStorageServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, readerPutter cas.ReaderPutter, getChunkMappingAuthorizer, putChunkMappingAuthorizer auth.Authorizer, maximumMessageSizeBytes int64, maximumChunkCount int) remoteexecution.ContentAddressableStorageServer {
 	return &contentAddressableStorageServer{
 		chunkStorage:              chunkStorage,
 		chunkMappingStorage:       chunkMappingStorage,
 		cdcParametersFetcher:      cdcParametersFetcher,
-		zstdPool:                  zstdPool,
 		readerPutter:              readerPutter,
 		getChunkMappingAuthorizer: getChunkMappingAuthorizer,
 		putChunkMappingAuthorizer: putChunkMappingAuthorizer,
@@ -124,12 +122,9 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		case remoteexecution.Compressor_IDENTITY:
 			data = chunk.GetBytes()
 		case remoteexecution.Compressor_ZSTD:
-			data, err = chunk.GetBytesCompressed(ctx)
+			data = chunk.GetBytesCompressed()
 		default:
 			panic("Unsupported compression algorithm should not be reachable")
-		}
-		if err != nil {
-			return nil, err
 		}
 		buf.Write(data)
 	}
@@ -223,6 +218,8 @@ func (s *contentAddressableStorageServer) BatchUpdateBlobs(ctx context.Context, 
 			if digest.GetSizeBytes() == 0 {
 				// Empty blob is always present in storage.
 				err = nil
+			} else if digest.GetSizeBytes() > s.maximumMessageSizeBytes {
+				err = status.Errorf(codes.InvalidArgument, "Attempted to upload blob of %d bytes but this backend only supports uploading blobs up to %d bytes", digest.GetSizeBytes(), s.maximumMessageSizeBytes)
 			} else if cas.IsSingleChunk(params, digest) {
 				err = s.updateChunk(ctx, digest, request.Data, request.Compressor)
 			} else {
@@ -244,16 +241,10 @@ func (s *contentAddressableStorageServer) updateChunk(ctx context.Context, d dig
 	case remoteexecution.Compressor_IDENTITY:
 		decompressedData = data
 	case remoteexecution.Compressor_ZSTD:
-		decoder, err := s.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
-		if err != nil {
-			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
-		}
-		r := io.LimitReader(decoder, d.GetSizeBytes()+1)
-		if decompressedData, err = io.ReadAll(r); err != nil {
-			decoder.Close()
+		var err error
+		if decompressedData, err = zstd.Decode(data, int(d.GetSizeBytes())); err != nil {
 			return util.StatusWrap(err, "Failed to decompress ZSTD data")
 		}
-		decoder.Close()
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
@@ -267,7 +258,7 @@ func (s *contentAddressableStorageServer) updateChunk(ctx context.Context, d dig
 	// We can't reuse the compression here as it comes from an untrusted
 	// client. Even if it represents the correct blob it could still be
 	// an arbitrarily poor compression.
-	if err := s.chunkStorage.Put(ctx, d, chunk.NewChunk(s.zstdPool, decompressedData)); err != nil {
+	if err := s.chunkStorage.Put(ctx, d, chunk.NewChunk(decompressedData)); err != nil {
 		return util.StatusWrap(err, "Failed to save chunk")
 	}
 	return nil
@@ -278,17 +269,11 @@ func (s *contentAddressableStorageServer) updateBlob(ctx context.Context, d dige
 	case remoteexecution.Compressor_IDENTITY:
 		return s.readerPutter.PutReaderAt(ctx, d, bytes.NewReader(data), params)
 	case remoteexecution.Compressor_ZSTD:
-		decoder, err := s.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
+		decompressedData, err := zstd.Decode(data, int(d.GetSizeBytes()))
 		if err != nil {
-			return util.StatusWrap(err, "Failed to acquire ZSTD decoder")
+			return util.StatusWrap(err, "Failed to decompress ZSTD data")
 		}
-		defer decoder.Close()
-
-		// Limit the amount of data that is read to one byte beyond the
-		// advertised size, so that corrupt or malicious streams cannot
-		// trigger unbounded decompression.
-		r := io.LimitReader(decoder, d.GetSizeBytes()+1)
-		return s.readerPutter.PutReader(ctx, d, r, params)
+		return s.readerPutter.PutReaderAt(ctx, d, bytes.NewReader(decompressedData), params)
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}

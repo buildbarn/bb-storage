@@ -1,45 +1,27 @@
 package coder
 
 import (
-	"bytes"
-	"context"
-
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type chunkCoder struct {
-	zstdPool zstd.Pool
-}
+type chunkCoder struct{}
 
 // NewChunkCoder returns a Coder that can encode and decode a
 // *chunk.Chunk into an efficient binary format.
-func NewChunkCoder(zstdPool zstd.Pool) Coder[*chunk.Chunk, []byte] {
-	return &chunkCoder{
-		zstdPool: zstdPool,
-	}
+func NewChunkCoder() Coder[*chunk.Chunk, []byte] {
+	return chunkCoder{}
 }
 
 func (chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
-	// TODO: Should ctx be part of this signature?
-	ctx := context.Background()
-	return chunk.GetBytesCompressed(ctx)
+	return chunk.GetBytesCompressed(), nil
 }
 
-func (c *chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
-	ctx := context.Background()
-
-	decoder, err := c.zstdPool.NewDecoder(ctx, bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	defer decoder.Close()
-
-	decompressed, err := util.ReadFullyDecompressed(decoder, d.GetSizeBytes())
+func (chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
+	decompressed, err := zstd.Decode(data, int(d.GetSizeBytes()))
 	if err != nil {
 		return nil, err
 	}

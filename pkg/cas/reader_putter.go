@@ -11,7 +11,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/buildbarn/bb-storage/pkg/zstd"
 	cdc "github.com/buildbarn/go-cdc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,15 +30,13 @@ type ReaderPutter interface {
 type readerPutter struct {
 	chunkStorage        blobstore.BlobAccess[*chunk.Chunk]
 	chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
-	zstdPool            zstd.Pool
 }
 
 // NewReaderPutter creates a ReaderPutter that writes to the CAS.
-func NewReaderPutter(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], zstdPool zstd.Pool) ReaderPutter {
+func NewReaderPutter(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]) ReaderPutter {
 	return &readerPutter{
 		chunkStorage:        chunkStorage,
 		chunkMappingStorage: chunkMappingStorage,
-		zstdPool:            zstdPool,
 	}
 }
 
@@ -70,7 +67,7 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 				return err
 			}
 			if !missing.Empty() {
-				if err := rp.chunkStorage.Put(ctx, d, chunk.NewChunk(rp.zstdPool, data)); err != nil {
+				if err := rp.chunkStorage.Put(ctx, d, chunk.NewChunk(data)); err != nil {
 					return util.StatusWrap(err, "Failed to save chunk")
 				}
 			}
@@ -125,7 +122,7 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 		}
 		if !missing.Empty() {
 			// The calculated chunk was not present in Chunk Storage.
-			if err := rp.chunkStorage.Put(ctx, chunkDigest, chunk.NewChunk(rp.zstdPool, data)); err != nil {
+			if err := rp.chunkStorage.Put(ctx, chunkDigest, chunk.NewChunk(data)); err != nil {
 				return util.StatusWrap(err, "Failed to save chunk")
 			}
 		}

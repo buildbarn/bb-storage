@@ -12,7 +12,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_copy"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,14 +46,12 @@ func main() {
 
 		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil, nil)
 
-		zstdPool := bb_zstd.NewPoolFromConfiguration(nil)
-
-		sourceChunkBytesReader, _, sourceChunkMappingStorage, sourceChunkMappingFetcher, sourceCdcParametersFetcher, _, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Source, grpcClientFactory, int(configuration.MaximumMessageSizeBytes), zstdPool)
+		sourceChunkBytesReader, _, sourceChunkMappingStorage, sourceChunkMappingFetcher, sourceCdcParametersFetcher, _, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Source, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create source")
 		}
 
-		_, sinkChunkStorage, sinkChunkMappingStorage, _, sinkCdcParametersFetcher, sinkDigestKeyFormat, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Sink, grpcClientFactory, int(configuration.MaximumMessageSizeBytes), zstdPool)
+		_, sinkChunkStorage, sinkChunkMappingStorage, _, sinkCdcParametersFetcher, sinkDigestKeyFormat, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Sink, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
@@ -65,7 +62,7 @@ func main() {
 		}
 
 		replicator := cas.NewReplicator(
-			cas.NewReaderPutter(sinkChunkStorage, sinkChunkMappingStorage, zstdPool),
+			cas.NewReaderPutter(sinkChunkStorage, sinkChunkMappingStorage),
 			sourceChunkBytesReader,
 			sourceChunkMappingStorage,
 			sourceChunkMappingFetcher,

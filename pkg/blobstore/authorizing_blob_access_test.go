@@ -31,7 +31,7 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 	d2 := digest.MustNewDigest("bop/bip", remoteexecution.DigestFunction_SHA256, "da95ccd92a874d2169839cd90d9045be61d17df779fb28fe520a7465c6063723", 3)
 	digests := digest.GetUnion([]digest.Set{d.ToSingletonSet(), d2.ToSingletonSet()})
 	wantBytes := []byte("European Burmese")
-	wantChunk := chunk.NewChunk(nil, wantBytes)
+	wantChunk := chunk.NewChunk(wantBytes)
 
 	beep := util.Must(digest.NewInstanceName("beep"))
 	beepSlice := []digest.InstanceName{beep}

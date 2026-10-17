@@ -76,7 +76,7 @@ func TestDemultiplexingBlobAccessGet(t *testing.T) {
 			nil,
 		)
 
-		expectedChunk := chunk.NewChunk(nil, []byte("Hello"))
+		expectedChunk := chunk.NewChunk([]byte("Hello"))
 		baseBlobAccess.EXPECT().Get(ctx, digest.MustNewDigest("goodbye/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)).
 			Return(expectedChunk, nil)
 
@@ -111,7 +111,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("unknown", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				chunk.NewChunk(nil, []byte("Hello")),
+				chunk.NewChunk([]byte("Hello")),
 			),
 		)
 	})
@@ -139,7 +139,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				chunk.NewChunk(nil, []byte("Hello")),
+				chunk.NewChunk([]byte("Hello")),
 			),
 		)
 	})
@@ -167,7 +167,7 @@ func TestDemultiplexingBlobAccessPut(t *testing.T) {
 			blobAccess.Put(
 				ctx,
 				digest.MustNewDigest("hello/world", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-				chunk.NewChunk(nil, []byte("Hello")),
+				chunk.NewChunk([]byte("Hello")),
 			),
 		)
 	})

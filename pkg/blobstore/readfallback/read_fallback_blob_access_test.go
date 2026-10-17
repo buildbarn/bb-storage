@@ -30,7 +30,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 	t.Run("PrimarySuccess", func(t *testing.T) {
 		// The primary backend is able to serve the object.
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(chunk.NewChunk(nil, []byte("Hello")), nil)
+			Return(chunk.NewChunk([]byte("Hello")), nil)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 		// which returns the object.
 		gomock.InOrder(
 			primary.EXPECT().Get(ctx, helloDigest).Return(nil, status.Error(codes.NotFound, "Object not found")),
-			replicator.EXPECT().ReplicateSingle(ctx, helloDigest).Return(chunk.NewChunk(nil, []byte("Hello")), nil),
+			replicator.EXPECT().ReplicateSingle(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil),
 		)
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
@@ -112,7 +112,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 
 		require.NoError(
 			t,
-			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk([]byte("Hello"))),
 		)
 	})
 
@@ -125,7 +125,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		require.Equal(
 			t,
 			status.Error(codes.Internal, "I/O error"),
-			blobAccess.Put(ctx, helloDigest, chunk.NewChunk(nil, []byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, chunk.NewChunk([]byte("Hello"))),
 		)
 	})
 }

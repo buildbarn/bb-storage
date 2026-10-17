@@ -23,7 +23,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -42,19 +41,17 @@ type csBlobAccessCreator struct {
 	csBlobReplicatorCreator
 
 	maximumMessageSizeBytes int
-	zstdPool                bb_zstd.Pool
 }
 
 // NewCSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Chunk Storage.
-func NewCSBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) BlobAccessCreator[*chunk.Chunk] {
+func NewCSBlobAccessCreator(grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*chunk.Chunk] {
 	return &csBlobAccessCreator{
 		csBlobReplicatorCreator: csBlobReplicatorCreator{
 			grpcClientFactory: grpcClientFactory,
 		},
 		maximumMessageSizeBytes: maximumMessageSizeBytes,
-		zstdPool:                zstdPool,
 	}
 }
 
@@ -66,8 +63,8 @@ func (csBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provide
 	return csCapabilitiesProvider
 }
 
-func (bac *csBlobAccessCreator) GetBinaryCoder() coder.Coder[*chunk.Chunk, []byte] {
-	return coder.NewChunkCoder(bac.zstdPool)
+func (csBlobAccessCreator) GetBinaryCoder() coder.Coder[*chunk.Chunk, []byte] {
+	return coder.NewChunkCoder()
 }
 
 func (csBlobAccessCreator) NewBlockListGrowthPolicy(currentBlocks, newBlocks int) (local.BlockListGrowthPolicy, error) {
@@ -86,7 +83,7 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		if err != nil {
 			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
-		ba := grpcclients.NewCSBlobAccess(client, bac.zstdPool, backend.Grpc.EnableCompression)
+		ba := grpcclients.NewCSBlobAccess(client, backend.Grpc.EnableCompression)
 		// TODO: Should we provide a configuration option, so
 		// that digest.KeyWithoutInstance can be used?
 		return BlobAccessInfo[*chunk.Chunk]{
@@ -116,7 +113,7 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		var chunkMappingFetcher chunk.MappingFetcher
 		var cdcParametersFetcher capabilities.CDCParametersFetcher
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
-			chunkBytesReader, _, _, chunkMappingFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes, bac.zstdPool)
+			chunkBytesReader, _, _, chunkMappingFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes)
 		} else {
 			// TODO: is an equivalent of this needed?
 			// chunkStorage = blobstore.NewErrorBlobAccess[*chunk.Chunk](status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
@@ -157,7 +154,6 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 				s3.NewFromConfig(awsConfig),
 				gcsClient,
 				bac.maximumMessageSizeBytes,
-				bac.zstdPool,
 			),
 			DigestKeyFormat: indirectContentAddressableStorage.DigestKeyFormat,
 		}, "reference_expanding", nil
