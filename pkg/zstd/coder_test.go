@@ -16,11 +16,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func pseudoRandomData(t *testing.T, size int) []byte {
-	t.Helper()
+func pseudoRandomData(tb testing.TB, size int) []byte {
+	tb.Helper()
 	data := make([]byte, size)
 	_, err := rand.New(rand.NewSource(1)).Read(data)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	return data
 }
 
@@ -174,6 +174,11 @@ func TestEncodeDecodeConcurrent(t *testing.T) {
 // FuzzEncodeDecode verifies the round trip property for arbitrary
 // inputs, including the empty input.
 func FuzzEncodeDecode(f *testing.F) {
+	for i := range 4 {
+		f.Add(pseudoRandomData(f, (256<<i)-1))
+		f.Add(pseudoRandomData(f, 256<<i))
+		f.Add(pseudoRandomData(f, (256<<i)+1))
+	}
 	f.Add([]byte("The quick brown fox jumps over the lazy dog."))
 	f.Add([]byte{})
 	f.Fuzz(func(t *testing.T, data []byte) {

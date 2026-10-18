@@ -39,6 +39,11 @@ func init() {
 // buffer.
 const scratchSize = 4 << 20
 
+// A threshold below which compression will not be performed. Encoding
+// will still return a byte slice which is fully valid ZSTD data for
+// smaller inputs.
+const minimumCompressionSizeBytes = 512
+
 var scratchPool = sync.Pool{
 	New: func() any {
 		scratch := make([]byte, 0, scratchSize)
@@ -64,6 +69,25 @@ var encodeSlots = func() chan struct{} {
 // The returned byte slice is tight, meaning that its capacity is equal
 // to its length. It may be retained freely.
 func Encode(data []byte) []byte {
+	if len(data) < minimumCompressionSizeBytes {
+		// Data that is too small to be worth compressing is stored as
+		// a ZSTD frame containing a single uncompressed block:
+
+		result := make([]byte, 9+len(data))
+		// Magic number, frame header descriptor (no frame content size,
+		// no checksums, no dictionary) and window descriptor (minimum
+		// window size).
+		copy(result, "\x28\xb5\x2f\xfd\x00\x00")
+		// Block header: last block flag in bit 0, block type
+		// uncompressed in bits 1-2, block size in bits 3-23.
+		blockHeader := uint32(len(data))<<3 | 1
+		result[6] = byte(blockHeader)
+		result[7] = byte(blockHeader >> 8)
+		result[8] = byte(blockHeader >> 16)
+		copy(result[9:], data)
+		return result
+	}
+
 	<-encodeSlots
 	defer func() { encodeSlots <- struct{}{} }()
 
@@ -74,9 +98,9 @@ func Encode(data []byte) []byte {
 	scratch := scratchPool.Get().(*[]byte)
 
 	tmp := coderEncoder.EncodeAll(data, (*scratch)[:0])
+
 	result := make([]byte, len(tmp))
 	copy(result, tmp)
-
 	scratchPool.Put(scratch)
 	return result
 }
