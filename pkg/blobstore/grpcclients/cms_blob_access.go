@@ -93,20 +93,31 @@ func (ba *cmsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, valu
 		DigestFunction:   digestFunction.GetEnumValue(),
 		ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
 	}); err != nil {
-		return err
+		return registerChunkMappingSendError(stream, err)
 	}
-	protoDigests = protoDigests[n:]
-	for len(protoDigests) > 0 {
+	for protoDigests = protoDigests[n:]; len(protoDigests) > 0; protoDigests = protoDigests[n:] {
 		n = min(len(protoDigests), blobstore.RecommendedFindMissingDigestsCount)
 		if err := stream.Send(&remoteexecution.RegisterChunkMappingRequest{
 			ChunkDigests: protoDigests[:n],
 		}); err != nil {
-			return err
+			return registerChunkMappingSendError(stream, err)
 		}
 	}
 
 	_, err = stream.CloseAndRecv()
 	return err
+}
+
+// Send() returns io.EOF once the server has terminated the stream.
+// The status the server returned is only obtained by receiving.
+func registerChunkMappingSendError(stream remoteexecution.ContentAddressableStorage_RegisterChunkMappingClient, err error) error {
+	if err != io.EOF {
+		return err
+	}
+	if _, err := stream.CloseAndRecv(); err != nil {
+		return err
+	}
+	return status.Error(codes.Internal, "Server terminated the stream before all chunk digests were sent")
 }
 
 func (ba *cmsBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {

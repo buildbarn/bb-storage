@@ -36,6 +36,7 @@ go_test(
     deps = [
         ":grpcclients",
         "//internal/mock",
+        "//pkg/blobstore",
         "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/testutil",

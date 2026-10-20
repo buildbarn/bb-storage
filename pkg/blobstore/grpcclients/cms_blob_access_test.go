@@ -2,11 +2,13 @@ package grpcclients_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -261,5 +263,67 @@ func TestCMSBlobAccessPut(t *testing.T) {
 
 		err := blobAccess.Put(ctx, emptyBlobDigest, chunk.Mapping{})
 		require.NoError(t, err)
+	})
+
+	// Blobs with more chunks than fit in one request are registered
+	// in multiple requests, each carrying the next slice of digests.
+	t.Run("MultipleBatches", func(t *testing.T) {
+		chunkCount := blobstore.RecommendedFindMissingDigestsCount + 1
+		chunkDigests := make([]digest.Digest, 0, chunkCount)
+		for i := 0; i < chunkCount; i++ {
+			chunkDigests = append(chunkDigests, digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, fmt.Sprintf("%032x", i), 1))
+		}
+		bigBlobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", int64(chunkCount))
+
+		clientStream := mock.NewMockClientStream(ctrl)
+		client.EXPECT().NewStream(
+			gomock.Any(),
+			gomock.Any(),
+			"/build.bazel.remote.execution.v2.ContentAddressableStorage/RegisterChunkMapping",
+			gomock.Any(),
+		).Return(clientStream, nil)
+		gomock.InOrder(
+			clientStream.EXPECT().SendMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
+				request := m.(*remoteexecution.RegisterChunkMappingRequest)
+				testutil.RequireEqualProto(t, bigBlobDigest.GetProto(), request.BlobDigest)
+				require.Len(t, request.ChunkDigests, blobstore.RecommendedFindMissingDigestsCount)
+				testutil.RequireEqualProto(t, chunkDigests[0].GetProto(), request.ChunkDigests[0])
+				return nil
+			}),
+			clientStream.EXPECT().SendMsg(testutil.EqProto(t, &remoteexecution.RegisterChunkMappingRequest{
+				ChunkDigests: []*remoteexecution.Digest{chunkDigests[chunkCount-1].GetProto()},
+			})),
+			clientStream.EXPECT().CloseSend(),
+			clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
+				proto.Merge(m.(proto.Message), &remoteexecution.RegisterChunkMappingResponse{BlobDigest: bigBlobDigest.GetProto()})
+				return nil
+			}),
+		)
+
+		chunkMapping, err := chunk.NewMappingFromDigests(chunkDigests, uint64(chunkCount), false)
+		require.NoError(t, err)
+		require.NoError(t, blobAccess.Put(ctx, bigBlobDigest, chunkMapping))
+	})
+
+	// When the server rejects the registration while digests are still
+	// being sent, Send() returns io.EOF. The server's status must be
+	// surfaced instead.
+	t.Run("ServerRejectsEarly", func(t *testing.T) {
+		clientStream := mock.NewMockClientStream(ctrl)
+		client.EXPECT().NewStream(
+			gomock.Any(),
+			gomock.Any(),
+			"/build.bazel.remote.execution.v2.ContentAddressableStorage/RegisterChunkMapping",
+			gomock.Any(),
+		).Return(clientStream, nil)
+		clientStream.EXPECT().SendMsg(gomock.Any()).Return(io.EOF)
+		clientStream.EXPECT().CloseSend()
+		clientStream.EXPECT().RecvMsg(gomock.Any()).Return(status.Error(codes.InvalidArgument, "Too many chunks"))
+
+		chunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunkDigest1, chunkDigest2}, 5, false)
+		require.NoError(t, err)
+		testutil.RequireEqualStatus(t,
+			status.Error(codes.InvalidArgument, "Too many chunks"),
+			blobAccess.Put(ctx, blobDigest, chunkMapping))
 	})
 }
