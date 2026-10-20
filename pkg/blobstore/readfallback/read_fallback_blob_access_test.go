@@ -212,35 +212,22 @@ func TestReadFallbackBlobAccessFindMissing(t *testing.T) {
 func TestReadFallbackBlobAccessSeparateReplicators(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	primary := mock.NewMockBlobAccess(ctrl)
-	secondary := mock.NewMockBlobAccess(ctrl)
-	getReplicator := mock.NewMockBlobReplicator(ctrl)
-	findMissingReplicator := mock.NewMockBlobReplicator(ctrl)
+	primary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	secondary := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	getReplicator := mock.NewMockBlobReplicator[*chunk.Chunk](ctrl)
+	findMissingReplicator := mock.NewMockBlobReplicator[*chunk.Chunk](ctrl)
 	blobAccess := readfallback.NewReadFallbackBlobAccess(primary, secondary, getReplicator, findMissingReplicator)
 	helloDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 
 	t.Run("Get", func(t *testing.T) {
 		primary.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+			Return(nil, status.Error(codes.NotFound, "Object not found"))
 		getReplicator.EXPECT().ReplicateSingle(ctx, helloDigest).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			Return(chunk.NewChunk([]byte("Hello")), nil)
 
-		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(100)
+		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), data)
-	})
-
-	t.Run("GetFromComposite", func(t *testing.T) {
-		parentDigest := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d20fb8dfa347cf895b38649410aeb3f8", 100)
-		slicer := mock.NewMockBlobSlicer(ctrl)
-		primary.EXPECT().GetFromComposite(ctx, parentDigest, helloDigest, slicer).
-			Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
-		getReplicator.EXPECT().ReplicateComposite(ctx, parentDigest, helloDigest, slicer).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
-
-		data, err := blobAccess.GetFromComposite(ctx, parentDigest, helloDigest, slicer).ToByteSlice(100)
-		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), data)
+		require.Equal(t, []byte("Hello"), chunk.GetBytes())
 	})
 
 	t.Run("FindMissing", func(t *testing.T) {
