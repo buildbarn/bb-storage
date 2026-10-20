@@ -1,6 +1,6 @@
 module github.com/buildbarn/bb-storage
 
-go 1.27.2
+go 1.27.3
 
 // rules_go doesn't support gomock's package mode.
 replace go.uber.org/mock => go.uber.org/mock v0.4.0
