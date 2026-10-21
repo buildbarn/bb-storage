@@ -117,10 +117,30 @@ type zstdByteStreamWriter struct {
 	resourceName string
 	writeOffset  int64
 	cancel       context.CancelFunc
+	closed       bool
+	err          error
+}
+
+func finishByteStreamWriteAfterSendError(client bytestream.ByteStream_WriteClient, err error) error {
+	if err == io.EOF {
+		_, err = client.CloseAndRecv()
+	}
+	return err
+}
+
+func (w *zstdByteStreamWriter) send(request *bytestream.WriteRequest) error {
+	err := w.client.Send(request)
+	if err == nil {
+		return nil
+	}
+	w.err = finishByteStreamWriteAfterSendError(w.client, err)
+	w.closed = true
+	w.cancel()
+	return w.err
 }
 
 func (w *zstdByteStreamWriter) Write(p []byte) (int, error) {
-	if err := w.client.Send(&bytestream.WriteRequest{
+	if err := w.send(&bytestream.WriteRequest{
 		ResourceName: w.resourceName,
 		WriteOffset:  w.writeOffset,
 		Data:         p,
@@ -133,18 +153,20 @@ func (w *zstdByteStreamWriter) Write(p []byte) (int, error) {
 }
 
 func (w *zstdByteStreamWriter) Close() error {
-	if err := w.client.Send(&bytestream.WriteRequest{
+	if w.closed {
+		return w.err
+	}
+	if err := w.send(&bytestream.WriteRequest{
 		ResourceName: w.resourceName,
 		WriteOffset:  w.writeOffset,
 		FinishWrite:  true,
 	}); err != nil {
-		w.cancel()
-		w.client.CloseAndRecv()
 		return err
 	}
-	_, err := w.client.CloseAndRecv()
+	w.closed = true
+	_, w.err = w.client.CloseAndRecv()
 	w.cancel()
-	return err
+	return w.err
 }
 
 const resourceNameHeader = "build.bazel.remote.execution.v2.resource-name"
@@ -307,26 +329,26 @@ func (ba *casBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer
 	for {
 		if data, err := r.Read(); err == nil {
 			// Non-terminating chunk.
-			if client.Send(&bytestream.WriteRequest{
+			if err := client.Send(&bytestream.WriteRequest{
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
 				Data:         data,
-			}) != nil {
+			}); err != nil {
+				err = finishByteStreamWriteAfterSendError(client, err)
 				cancel()
-				_, err := client.CloseAndRecv()
 				return err
 			}
 			writeOffset += int64(len(data))
 			resourceName = ""
 		} else if err == io.EOF {
 			// Terminating chunk.
-			if client.Send(&bytestream.WriteRequest{
+			if err := client.Send(&bytestream.WriteRequest{
 				ResourceName: resourceName,
 				WriteOffset:  writeOffset,
 				FinishWrite:  true,
-			}) != nil {
+			}); err != nil {
+				err = finishByteStreamWriteAfterSendError(client, err)
 				cancel()
-				_, err := client.CloseAndRecv()
 				return err
 			}
 			_, err := client.CloseAndRecv()

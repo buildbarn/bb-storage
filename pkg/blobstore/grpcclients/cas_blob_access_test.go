@@ -432,6 +432,31 @@ func TestCASBlobAccessPutWithCompression(t *testing.T) {
 		err := blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 1000))
 		require.NoError(t, err)
 	})
+
+	t.Run("SendFailure", func(t *testing.T) {
+		largeData := make([]byte, 1000)
+		for i := range largeData {
+			largeData[i] = byte('A' + (i % 26))
+		}
+
+		clientStream := mock.NewMockClientStream(ctrl)
+		uuidGenerator.EXPECT().Call().Return(testUUID, nil)
+		client.EXPECT().NewStream(gomock.Any(), gomock.Any(), "/google.bytestream.ByteStream/Write").
+			Return(clientStream, nil)
+		r := mock.NewMockFileReader(ctrl)
+		r.EXPECT().ReadAt(gomock.Len(1000), int64(0)).DoAndReturn(func(p []byte, off int64) (int, error) {
+			copy(p, largeData)
+			return 1000, nil
+		})
+		r.EXPECT().Close()
+		clientStream.EXPECT().SendMsg(gomock.Any()).Return(io.EOF)
+		clientStream.EXPECT().CloseSend().Return(nil)
+		clientStream.EXPECT().RecvMsg(gomock.Any()).Return(status.Error(codes.DeadlineExceeded, "Deadline exceeded"))
+
+		testutil.RequireEqualStatus(t,
+			status.Error(codes.DeadlineExceeded, "Deadline exceeded"),
+			blobAccess.Put(ctx, blobDigest, buffer.NewValidatedBufferFromReaderAt(r, 1000)))
+	})
 }
 
 // expectGetCapabilitiesWithZSTD sets up a mock to return ZSTD in SupportedCompressors.
