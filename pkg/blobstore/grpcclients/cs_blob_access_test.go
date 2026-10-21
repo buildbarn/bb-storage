@@ -2,11 +2,14 @@ package grpcclients_test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/bazelbuild/remote-apis/build/bazel/semver"
 	"github.com/buildbarn/bb-storage/internal/mock"
+	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -419,7 +422,7 @@ func TestCSBlobAccessFindMissing(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		client.EXPECT().Invoke(
-			ctx,
+			gomock.Any(),
 			"/build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs",
 			gomock.Any(),
 			gomock.Any(),
@@ -437,5 +440,39 @@ func TestCSBlobAccessFindMissing(t *testing.T) {
 		missing, err := blobAccess.FindMissing(ctx, digestsToSearch)
 		require.NoError(t, err)
 		require.Equal(t, digest.NewSetBuilder(0).Add(digest2).Build(), missing)
+	})
+
+	// Requests with more digests than fit in a single message are
+	// split into multiple concurrent calls.
+	t.Run("MultipleBatches", func(t *testing.T) {
+		digestCount := blobstore.RecommendedFindMissingDigestsCount + 1
+		digestsToSearch := digest.NewSetBuilder(digestCount)
+		for i := 0; i < digestCount; i++ {
+			digestsToSearch.Add(digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, fmt.Sprintf("%032x", i), 1))
+		}
+
+		var lock sync.Mutex
+		batchSizes := []int{}
+		client.EXPECT().Invoke(
+			gomock.Any(),
+			"/build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs",
+			gomock.Any(),
+			gomock.Any(),
+			gomock.Any(),
+		).DoAndReturn(func(ctx context.Context, method string, req, reply interface{}, opts ...grpc.CallOption) error {
+			r := req.(*remoteexecution.FindMissingBlobsRequest)
+			require.Equal(t, "hello", r.InstanceName)
+			lock.Lock()
+			batchSizes = append(batchSizes, len(r.BlobDigests))
+			lock.Unlock()
+			resp := reply.(*remoteexecution.FindMissingBlobsResponse)
+			resp.MissingBlobDigests = r.BlobDigests
+			return nil
+		}).Times(2)
+
+		missing, err := blobAccess.FindMissing(ctx, digestsToSearch.Build())
+		require.NoError(t, err)
+		require.Equal(t, digestsToSearch.Build(), missing)
+		require.ElementsMatch(t, []int{blobstore.RecommendedFindMissingDigestsCount, 1}, batchSizes)
 	})
 }

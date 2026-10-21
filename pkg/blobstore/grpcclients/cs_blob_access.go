@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -163,38 +164,65 @@ func (ba *csBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (di
 }
 
 func findMissingBlobsInternal(ctx context.Context, digests digest.Set, cas remoteexecution.ContentAddressableStorageClient) (digest.Set, error) {
+	type findMissingBatch struct {
+		digestFunction digest.Function
+		blobDigests    []*remoteexecution.Digest
+	}
+
 	// Partition all digests by digest function, as the
 	// FindMissingBlobs() RPC can only process digests for a single
-	// instance name and digest function.
+	// instance name and digest function. Partition each of the
+	// resulting lists into batches as well, so that the request
+	// messages stay below the maximum message size.
 	perFunctionDigests := map[digest.Function][]*remoteexecution.Digest{}
 	for _, digest := range digests.Items() {
 		digestFunction := digest.GetDigestFunction()
 		perFunctionDigests[digestFunction] = append(perFunctionDigests[digestFunction], digest.GetProto())
 	}
-
-	missingDigests := digest.NewSetBuilder(0)
+	var batches []findMissingBatch
 	for digestFunction, blobDigests := range perFunctionDigests {
-		// Call FindMissingBlobs() for each digest function.
-		request := remoteexecution.FindMissingBlobsRequest{
-			InstanceName:   digestFunction.GetInstanceName().String(),
-			BlobDigests:    blobDigests,
-			DigestFunction: digestFunction.GetEnumValue(),
-		}
-		response, err := cas.FindMissingBlobs(ctx, &request)
-		if err != nil {
-			return digest.EmptySet, err
-		}
-
-		// Convert results back.
-		for _, proto := range response.MissingBlobDigests {
-			blobDigest, err := digestFunction.NewDigestFromProto(proto)
-			if err != nil {
-				return digest.EmptySet, err
-			}
-			missingDigests.Add(blobDigest)
+		for len(blobDigests) > 0 {
+			n := min(len(blobDigests), blobstore.RecommendedFindMissingDigestsCount)
+			batches = append(batches, findMissingBatch{
+				digestFunction: digestFunction,
+				blobDigests:    blobDigests[:n],
+			})
+			blobDigests = blobDigests[n:]
 		}
 	}
-	return missingDigests.Build(), nil
+
+	// Call FindMissingBlobs() for all batches concurrently.
+	missingPerBatch := make([]digest.Set, len(batches))
+	group, groupCtx := errgroup.WithContext(ctx)
+	for indexIter, batchIter := range batches {
+		index, batch := indexIter, batchIter
+		group.Go(func() error {
+			response, err := cas.FindMissingBlobs(groupCtx, &remoteexecution.FindMissingBlobsRequest{
+				InstanceName:   batch.digestFunction.GetInstanceName().String(),
+				BlobDigests:    batch.blobDigests,
+				DigestFunction: batch.digestFunction.GetEnumValue(),
+			})
+			if err != nil {
+				return err
+			}
+
+			// Convert results back.
+			missingDigests := digest.NewSetBuilder(len(response.MissingBlobDigests))
+			for _, proto := range response.MissingBlobDigests {
+				blobDigest, err := batch.digestFunction.NewDigestFromProto(proto)
+				if err != nil {
+					return err
+				}
+				missingDigests.Add(blobDigest)
+			}
+			missingPerBatch[index] = missingDigests.Build()
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return digest.EmptySet, err
+	}
+	return digest.GetUnion(missingPerBatch), nil
 }
 
 func (ba *csBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
