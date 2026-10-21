@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -390,8 +391,15 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 		if err != nil {
 			return BlobAccessInfo[T]{}, "", err
 		}
+		// Share the same replicator between reads and FindMissing()
+		// calls, so that concurrency limits and deduplication apply
+		// to both, unless replication during FindMissing() is disabled.
+		findMissingReplicator := replicator
+		if backend.ReadFallback.DisableFindMissingReplication {
+			findMissingReplicator = replication.NewNoopBlobReplicator[T](secondary.BlobAccess)
+		}
 		return BlobAccessInfo[T]{
-			BlobAccess:      readfallback.NewReadFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess, replicator),
+			BlobAccess:      readfallback.NewReadFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess, replicator, findMissingReplicator),
 			DigestKeyFormat: primary.DigestKeyFormat.Combine(secondary.DigestKeyFormat),
 		}, "read_fallback", nil
 	case *pb.BlobAccessConfiguration_Demultiplexing:

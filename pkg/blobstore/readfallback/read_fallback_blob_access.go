@@ -14,21 +14,26 @@ import (
 
 type readFallbackBlobAccess[T any] struct {
 	blobstore.BlobAccess[T]
-	secondary  blobstore.BlobAccess[T]
-	replicator replication.BlobReplicator[T]
+	secondary             blobstore.BlobAccess[T]
+	getReplicator         replication.BlobReplicator[T]
+	findMissingReplicator replication.BlobReplicator[T]
 }
 
 // NewReadFallbackBlobAccess creates a decorator for BlobAccess that
 // causes reads for non-existent to be forwarded to a secondary storage
-// backend. Data is never written to the latter.
+// backend. Data is only ever written to the primary storage backend.
 //
-// This decorator can be used to integrate external data sets into the
-// system, e.g. by combining it with ReferenceExpandingBlobAccess.
-func NewReadFallbackBlobAccess[T any](primary, secondary blobstore.BlobAccess[T], replicator replication.BlobReplicator[T]) blobstore.BlobAccess[T] {
+// Objects that are only present in the secondary backend are copied
+// to the primary backend using getReplicator during reads, and using
+// findMissingReplicator during FindMissing() calls. Both arguments may
+// refer to the same replicator, so that concurrency limits and
+// deduplication are shared across both kinds of calls.
+func NewReadFallbackBlobAccess[T any](primary, secondary blobstore.BlobAccess[T], getReplicator, findMissingReplicator replication.BlobReplicator[T]) blobstore.BlobAccess[T] {
 	return &readFallbackBlobAccess[T]{
-		BlobAccess: primary,
-		secondary:  secondary,
-		replicator: replicator,
+		BlobAccess:            primary,
+		secondary:             secondary,
+		getReplicator:         getReplicator,
+		findMissingReplicator: findMissingReplicator,
 	}
 }
 
@@ -41,7 +46,7 @@ func (ba *readFallbackBlobAccess[T]) Get(ctx context.Context, digest digest.Dige
 	if status.Code(err) != codes.NotFound {
 		return zero, util.StatusWrap(err, "Primary")
 	}
-	ret, err = ba.replicator.ReplicateSingle(ctx, digest)
+	ret, err = ba.getReplicator.ReplicateSingle(ctx, digest)
 	if err != nil && status.Code(err) != codes.NotFound {
 		return zero, util.StatusWrap(err, "Secondary")
 	}
@@ -49,11 +54,6 @@ func (ba *readFallbackBlobAccess[T]) Get(ctx context.Context, digest digest.Dige
 }
 
 func (ba *readFallbackBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
-	// Call FindMissing() on the backends sequentially, as opposed
-	// to calling them concurrently and merging the results. In the
-	// common case, the primary backend is capable of pruning most
-	// of the digests, making the call to the secondary backend a
-	// lot smaller.
 	missingInPrimary, err := ba.BlobAccess.FindMissing(ctx, digests)
 	if err != nil {
 		return digest.EmptySet, util.StatusWrap(err, "Primary")
@@ -63,10 +63,8 @@ func (ba *readFallbackBlobAccess[T]) FindMissing(ctx context.Context, digests di
 		return digest.EmptySet, util.StatusWrap(err, "Secondary")
 	}
 
-	// Replicate the blobs that are present only in the secondary
-	// backend to the primary backend.
 	presentOnlyInSecondary, _, _ := digest.GetDifferenceAndIntersection(missingInPrimary, missingInBoth)
-	if err := ba.replicator.ReplicateMultiple(ctx, presentOnlyInSecondary); err != nil {
+	if err := ba.findMissingReplicator.ReplicateMultiple(ctx, presentOnlyInSecondary); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return digest.EmptySet, util.StatusWrapWithCode(err, codes.Internal, "Backend secondary returned inconsistent results while synchronizing")
 		}
