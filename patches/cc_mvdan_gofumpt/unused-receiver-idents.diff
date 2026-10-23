@@ -37,7 +37,7 @@ index 879969d..2f6d437 100644
  		}
  		return true
  	}
-@@ -152,7 +166,26 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
+@@ -152,7 +166,21 @@ func File(fset *token.FileSet, file *ast.File, opts Options) {
  
  		// Reset minSplitFactor and blockLevel.
  		switch node := c.Node().(type) {
@@ -53,11 +53,6 @@ index 879969d..2f6d437 100644
 +						delete(f.receiverNameUsages, ident.Name)
 +					}
 +					field.Names = usedIdents
-+					if len(usedIdents) == 0 {
-+						if base, ok := field.Type.(*ast.StarExpr); ok {
-+							field.Type = base.X
-+						}
-+					}
 +				}
 +			}
 +			f.parentFuncTypes = f.parentFuncTypes[:len(f.parentFuncTypes)-1]
