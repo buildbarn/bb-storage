@@ -7,7 +7,7 @@ gomock(
     interfaces = [
         "AEAD",
         "IntTreeDirectoryVisitor",
-        "IOReader",
+        "Reader",
         "ReadCloser",
         "RecordArray",
         "RecordKeyHasher",
@@ -17,6 +17,9 @@ gomock(
         "Writer",
     ],
     library = "//internal/mock/aliases",
+    mock_names = {
+        "Reader": "MockIOReader",
+    },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
@@ -144,8 +147,6 @@ gomock(
     ],
     library = "//pkg/capabilities",
     mock_names = {
-        "IOReader": "MockIOReader",
-        "CDCParametersFetcher": "MockCDCParametersFetcher",
         "Provider": "MockCapabilitiesProvider",
     },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -283,7 +284,6 @@ gomock(
     ],
     library = "//pkg/grpc",
     mock_names = {
-        "IOReader": "MockIOReader",
         "Authenticator": "MockGRPCAuthenticator",
     },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -316,7 +316,6 @@ gomock(
     interfaces = ["Authenticator"],
     library = "//pkg/http/server",
     mock_names = {
-        "IOReader": "MockIOReader",
         "Authenticator": "MockHTTPAuthenticator",
     },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -343,7 +342,6 @@ gomock(
     interfaces = ["Gatherer"],
     library = "@com_github_prometheus_client_golang//prometheus",
     mock_names = {
-        "IOReader": "MockIOReader",
         "Gatherer": "MockPrometheusGatherer",
     },
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
@@ -384,7 +382,6 @@ gomock(
     ],
     library = "@io_opentelemetry_go_otel_trace//:trace",
     mock_names = {
-        "IOReader": "MockIOReader",
         "Span": "BareMockSpan",
         "Tracer": "BareMockTracer",
         "TracerProvider": "BareMockTracerProvider",
