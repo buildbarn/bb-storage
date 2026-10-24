@@ -21,7 +21,7 @@ func NewSHA256SuffixCoder() Coder[[]byte, []byte] {
 
 func (sha256SuffixCoder) Encode(data []byte, parentDigest digest.Digest) ([]byte, error) {
 	hasher := sha256.New()
-	hasher.Write(parentDigest.GetHashBytes())
+	hasher.Write([]byte(parentDigest.GetKey(digest.KeyWithoutInstance)))
 	hasher.Write(data)
 	return hasher.Sum(data), nil
 }
@@ -36,7 +36,7 @@ func (sha256SuffixCoder) Decode(data []byte, parentDigest digest.Digest) ([]byte
 	expectedHash := data[suffixIndex:]
 
 	hasher := sha256.New()
-	hasher.Write(parentDigest.GetHashBytes())
+	hasher.Write([]byte(parentDigest.GetKey(digest.KeyWithoutInstance)))
 	hasher.Write(payload)
 	actualHash := hasher.Sum(nil)
 	for i := range actualHash {
