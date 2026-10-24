@@ -1,7 +1,6 @@
 package local
 
 import (
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
@@ -43,7 +42,7 @@ type BlockList interface {
 	PushBack() error
 
 	// Get a blob from a given block in the BlockList.
-	Get(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer
+	Get(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64) ([]byte, error)
 
 	// HasSpace returns whether a given block in the BlockList is
 	// capable of storing an additional blob of a given size.

@@ -1,15 +1,16 @@
 package cas_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"go.uber.org/mock/gomock"
 )
@@ -18,8 +19,8 @@ func TestNestedBlobReplicator(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
 	replicator := mock.NewMockReplicator(ctrl)
-	actionReader := mock.NewMockMessageReader[*remoteexecution.Action](ctrl)
-	directoryReader := mock.NewMockMessageReader[*remoteexecution.Directory](ctrl)
+	actionReader := mock.NewMockReader[*remoteexecution.Action](ctrl)
+	directoryReader := mock.NewMockReader[*remoteexecution.Directory](ctrl)
 	treeReader := mock.NewMockStreamReader(ctrl)
 	nestedReplicator := cas.NewNestedBlobReplicator(
 		replicator,
@@ -140,6 +141,8 @@ func TestNestedBlobReplicator(t *testing.T) {
 				},
 			},
 		}
+		treeBytes, err := proto.Marshal(tree)
+		require.NoError(t, err)
 
 		// Enqueue some objects that can be replicated.
 		nestedReplicator.EnqueueAction(actionDigest)
@@ -153,25 +156,25 @@ func TestNestedBlobReplicator(t *testing.T) {
 		replicator.EXPECT().Replicate(ctx, digest.EmptySet).AnyTimes()
 
 		replicator.EXPECT().Replicate(ctx, actionDigest.ToSingletonSet()).Return(nil)
-		actionReader.EXPECT().ReadMessage(ctx, actionDigest).Return(action, nil)
+		actionReader.EXPECT().Read(ctx, actionDigest).Return(action, nil)
 		replicator.EXPECT().Replicate(ctx, commandDigest.ToSingletonSet()).Return(nil)
 
 		replicator.EXPECT().Replicate(ctx, fullDirectoryDigest.ToSingletonSet()).Return(nil)
-		directoryReader.EXPECT().ReadMessage(ctx, fullDirectoryDigest).Return(fullDirectory, nil)
+		directoryReader.EXPECT().Read(ctx, fullDirectoryDigest).Return(fullDirectory, nil)
 		replicator.EXPECT().Replicate(ctx, digest.NewSetBuilder(2).Add(file1Digest).Add(file2Digest).Build()).Return(nil)
 
 		replicator.EXPECT().Replicate(ctx, emptyDirectoryDigest.ToSingletonSet()).Return(nil)
-		directoryReader.EXPECT().ReadMessage(ctx, emptyDirectoryDigest).Return(emptyDir, nil)
+		directoryReader.EXPECT().Read(ctx, emptyDirectoryDigest).Return(emptyDir, nil)
 
 		replicator.EXPECT().Replicate(ctx, treeDigest.ToSingletonSet()).Return(nil)
-		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(buffer.NewProtoBufferFromProto(tree, buffer.UserProvided).ToReader(), nil)
+		treeReader.EXPECT().ReadStream(ctx, treeDigest).Return(bytes.NewReader(treeBytes), nil)
 		replicator.EXPECT().Replicate(ctx, digest.NewSetBuilder(2).Add(file4Digest).Add(file5Digest).Build()).Return(nil)
 
 		replicator.EXPECT().Replicate(ctx, inputRootDirectoryDigest.ToSingletonSet()).Return(nil)
-		directoryReader.EXPECT().ReadMessage(ctx, inputRootDirectoryDigest).Return(emptyDir, nil)
+		directoryReader.EXPECT().Read(ctx, inputRootDirectoryDigest).Return(emptyDir, nil)
 
 		replicator.EXPECT().Replicate(ctx, directory2Digest.ToSingletonSet()).Return(nil)
-		directoryReader.EXPECT().ReadMessage(ctx, directory2Digest).Return(emptyDir, nil)
+		directoryReader.EXPECT().Read(ctx, directory2Digest).Return(emptyDir, nil)
 
 		require.NoError(t, nestedReplicator.Replicate(ctx))
 	})

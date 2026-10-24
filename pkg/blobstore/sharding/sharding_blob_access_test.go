@@ -7,7 +7,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -22,11 +21,11 @@ import (
 func TestShardingBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	shard0 := mock.NewMockBlobAccess(ctrl)
-	shard1 := mock.NewMockBlobAccess(ctrl)
+	shard0 := mock.NewMockBlobAccess[[]byte](ctrl)
+	shard1 := mock.NewMockBlobAccess[[]byte](ctrl)
 	shardSelector := mock.NewMockShardSelector(ctrl)
 	blobAccess := sharding.NewShardingBlobAccess(
-		[]sharding.ShardBackend{
+		[]sharding.ShardBackend[[]byte]{
 			{
 				Backend: shard0,
 				Key:     "shard0",
@@ -40,71 +39,49 @@ func TestShardingBlobAccess(t *testing.T) {
 	)
 
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	llDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "5b54c0a045f179bcbbbc9abcb8b5cd4c", 2)
 
 	t.Run("GetFailure", func(t *testing.T) {
 		// Errors should be prefixed with the shard key.
 		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(1)
 		shard1.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server offline")))
+			Return(nil, status.Error(codes.Unavailable, "Server offline"))
 
-		_, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(1000)
+		_, err := blobAccess.Get(ctx, helloDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Shard shard1: Server offline"), err)
 	})
 
 	t.Run("GetSuccess", func(t *testing.T) {
 		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(0)
 		shard0.EXPECT().Get(ctx, helloDigest).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+			Return([]byte("Hello"), nil)
 
-		data, err := blobAccess.Get(ctx, helloDigest).ToByteSlice(1000)
+		data, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
 		require.Equal(t, []byte("Hello"), data)
-	})
-
-	t.Run("GetFromCompositeSuccess", func(t *testing.T) {
-		// For reads from composite objects, the sharding needs
-		// to be based on the parent digest. That digest was
-		// used to upload the object to storage.
-		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(0)
-		slicer := mock.NewMockBlobSlicer(ctrl)
-		shard0.EXPECT().GetFromComposite(ctx, helloDigest, llDigest, slicer).
-			Return(buffer.NewValidatedBufferFromByteSlice([]byte("ll")))
-
-		data, err := blobAccess.GetFromComposite(ctx, helloDigest, llDigest, slicer).ToByteSlice(1000)
-		require.NoError(t, err)
-		require.Equal(t, []byte("ll"), data)
 	})
 
 	t.Run("PutFailure", func(t *testing.T) {
 		// Errors should be prefixed with a shard key.
 		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(1)
-		shard1.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				b.Discard()
-				return status.Error(codes.Unavailable, "Server offline")
-			},
-		)
+		shard1.EXPECT().Put(ctx, helloDigest, gomock.Any()).Return(status.Error(codes.Unavailable, "Server offline"))
 
 		testutil.RequireEqualStatus(
 			t,
 			status.Error(codes.Unavailable, "Shard shard1: Server offline"),
-			blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))),
+			blobAccess.Put(ctx, helloDigest, []byte("Hello")),
 		)
 	})
 
 	t.Run("PutSuccess", func(t *testing.T) {
 		shardSelector.EXPECT().GetShard(uint64(0x8b1a9953c4611296)).Return(0)
 		shard0.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
-			func(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-				data, err := b.ToByteSlice(1000)
-				require.NoError(t, err)
-				require.Equal(t, []byte("Hello"), data)
+			func(ctx context.Context, digest digest.Digest, value []byte) error {
+				require.Equal(t, []byte("Hello"), value)
 				return nil
 			},
 		)
 
-		require.NoError(t, blobAccess.Put(ctx, helloDigest, buffer.NewValidatedBufferFromByteSlice([]byte("Hello"))))
+		require.NoError(t, blobAccess.Put(ctx, helloDigest, []byte("Hello")))
 	})
 
 	digest1 := digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "21f843aefbfb88627ec2cad9e8f1f49a", 1)

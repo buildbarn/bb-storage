@@ -1,7 +1,6 @@
 package local
 
 import (
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/random"
@@ -264,8 +263,8 @@ func (bl *PersistentBlockList) PushBack() error {
 }
 
 // Get data from one of the blocks managed by this BlockList.
-func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
+func (bl *PersistentBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64) ([]byte, error) {
+	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes)
 }
 
 // HasSpace returns whether a block with a given index has sufficient
@@ -277,8 +276,7 @@ func (bl *PersistentBlockList) HasSpace(index int, sizeBytes int64) bool {
 // Put data into a block managed by the BlockList.
 func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWriter {
 	if bl.closedForWriting {
-		return func(b buffer.Buffer) BlockListPutFinalizer {
-			b.Discard()
+		return func(data []byte) BlockListPutFinalizer {
 			return func() (int64, error) {
 				return 0, errClosedForWriting
 			}
@@ -288,9 +286,9 @@ func (bl *PersistentBlockList) Put(index int, sizeBytes int64) BlockListPutWrite
 	// Allocate space from the requested block.
 	putWriter := bl.blocks[index].block.Put(sizeBytes)
 	absoluteBlockIndex := bl.totalBlocksReleased + index
-	return func(b buffer.Buffer) BlockListPutFinalizer {
+	return func(data []byte) BlockListPutFinalizer {
 		// Copy data into the block without holding any locks.
-		putFinalizer := putWriter(b)
+		putFinalizer := putWriter(data)
 
 		return func() (int64, error) {
 			offsetBytes, err := putFinalizer()

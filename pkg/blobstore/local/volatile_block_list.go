@@ -1,7 +1,6 @@
 package local
 
 import (
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
 )
@@ -75,8 +74,8 @@ func (bl *volatileBlockList) PushBack() error {
 	return nil
 }
 
-func (bl *volatileBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes, dataIntegrityCallback)
+func (bl *volatileBlockList) Get(index int, digest digest.Digest, offsetBytes, sizeBytes int64) ([]byte, error) {
+	return bl.blocks[index].block.Get(digest, offsetBytes, sizeBytes)
 }
 
 func (bl *volatileBlockList) HasSpace(index int, sizeBytes int64) bool {

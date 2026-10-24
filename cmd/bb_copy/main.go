@@ -12,7 +12,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/proto/configuration/bb_copy"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,52 +40,47 @@ func main() {
 			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
 
+		if configuration.TraversalConcurrency <= 0 {
+			return status.Errorf(codes.InvalidArgument, "traversal_concurrency must be > 0, got %d", configuration.TraversalConcurrency)
+		}
+
 		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil, nil)
 
-		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
-			grpcClientFactory,
-			int(configuration.MaximumMessageSizeBytes),
-			bb_zstd.NewPoolFromConfiguration(nil),
-		)
-		source, err := blobstore_configuration.NewBlobAccessFromConfiguration(
-			dependenciesGroup,
-			configuration.Source,
-			blobAccessCreator,
-		)
+		source, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Source, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create source")
 		}
-		sink, err := blobstore_configuration.NewBlobAccessFromConfiguration(
-			dependenciesGroup,
-			configuration.Sink,
-			blobAccessCreator,
-		)
+
+		sink, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Sink, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
-		blobReplicator, err := blobstore_configuration.NewBlobReplicatorFromConfiguration(
-			dependenciesGroup,
-			configuration.Replicator,
-			source.BlobAccess,
-			sink,
-			blobstore_configuration.NewCASBlobReplicatorCreator(grpcClientFactory),
-		)
-		if err != nil {
-			return util.StatusWrap(err, "Failed to create blob replicator")
-		}
-		nestedReplicator := cas.NewNestedBlobReplicator(
-			cas.NewBlobAccessReplicator(blobReplicator),
-			int(configuration.MaximumMessageSizeBytes),
-			cas.NewBlobAccessMessageReader[remoteexecution.Action](source.BlobAccess, int(configuration.MaximumMessageSizeBytes)),
-			cas.NewBlobAccessMessageReader[remoteexecution.Directory](source.BlobAccess, int(configuration.MaximumMessageSizeBytes)),
-			cas.NewBlobAccessStreamReader(source.BlobAccess),
-			sink.DigestKeyFormat,
-		)
 
 		instanceName, err := digest.NewInstanceName(configuration.InstanceName)
 		if err != nil {
 			return util.StatusWrap(err, "Invalid instance name")
 		}
+
+		replicator := cas.NewReplicator(
+			cas.NewReaderPutter(sink.ChunkStorage, sink.ChunkMappingStorage),
+			source.ChunkBytesReader,
+			source.ChunkMappingStorage,
+			source.ChunkMappingFetcher,
+			source.CDCParametersFetcher,
+			sink.ChunkStorage,
+			sink.ChunkMappingStorage,
+			sink.CDCParametersFetcher,
+			instanceName,
+		)
+		nestedReplicator := cas.NewNestedBlobReplicator(
+			replicator,
+			int(configuration.MaximumMessageSizeBytes),
+			cas.NewMessageReader[remoteexecution.Action](source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewMessageReader[remoteexecution.Directory](source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewStorageBackedStreamReader(source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher),
+			sink.DigestKeyFormat,
+		)
+
 		digestFunction, err := instanceName.GetDigestFunction(configuration.DigestFunction, 0)
 		if err != nil {
 			return util.StatusWrap(err, "Invalid digest function")
@@ -105,7 +99,7 @@ func main() {
 			if err != nil {
 				return util.StatusWrapf(err, "Invalid blob digest at index %d", i)
 			}
-			if err := blobReplicator.ReplicateMultiple(ctx, blobDigest.ToSingletonSet()); err != nil {
+			if err := replicator.Replicate(ctx, blobDigest.ToSingletonSet()); err != nil {
 				return util.StatusWrapf(err, "Failed to schedule replication of blob with digest %#v", blobDigest.String())
 			}
 		}
