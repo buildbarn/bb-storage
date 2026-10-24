@@ -16,8 +16,6 @@ go_library(
         "//pkg/builder",
         "//pkg/capabilities",
         "//pkg/cas",
-        "//pkg/cas/reader",
-        "//pkg/digest",
         "//pkg/global",
         "//pkg/grpc",
         "//pkg/program",

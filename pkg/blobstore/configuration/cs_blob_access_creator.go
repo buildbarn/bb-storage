@@ -14,7 +14,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/referenceexpanding"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
-	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/cloud/aws"
 	"github.com/buildbarn/bb-storage/pkg/cloud/gcp"
 	"github.com/buildbarn/bb-storage/pkg/digest"
@@ -109,11 +108,9 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			return BlobAccessInfo[*chunk.Chunk]{}, "", err
 		}
 
-		var chunkBytesReader reader.Reader[[]byte]
-		var chunkMappingFetcher chunk.MappingFetcher
-		var cdcParametersFetcher capabilities.CDCParametersFetcher
+		var contentAddressableStorageInfo ContentAddressableStorageInfo
 		if backend.ReferenceExpanding.ContentAddressableStorage != nil {
-			chunkBytesReader, _, _, chunkMappingFetcher, cdcParametersFetcher, _, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes)
+			contentAddressableStorageInfo, err = NewCASFromConfiguration(terminationGroup, backend.ReferenceExpanding.ContentAddressableStorage, bac.grpcClientFactory, bac.maximumMessageSizeBytes)
 		} else {
 			// TODO: is an equivalent of this needed?
 			// chunkStorage = blobstore.NewErrorBlobAccess[*chunk.Chunk](status.Error(codes.Unimplemented, "No Content Addressable Storage configured"))
@@ -145,9 +142,9 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		return BlobAccessInfo[*chunk.Chunk]{
 			BlobAccess: referenceexpanding.NewReferenceExpandingBlobAccess(
 				indirectContentAddressableStorage.BlobAccess,
-				chunkBytesReader,
-				chunkMappingFetcher,
-				cdcParametersFetcher,
+				contentAddressableStorageInfo.ChunkBytesReader,
+				contentAddressableStorageInfo.ChunkMappingFetcher,
+				contentAddressableStorageInfo.CDCParametersFetcher,
 				&http.Client{
 					Transport: http_client.NewMetricsRoundTripper(roundTripper, "HTTPReferenceExpandingBlobAccess"),
 				},

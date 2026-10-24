@@ -46,12 +46,12 @@ func main() {
 
 		grpcClientFactory := grpc.NewBaseClientFactory(grpc.BaseClientDialer, nil, nil, nil)
 
-		sourceChunkBytesReader, _, sourceChunkMappingStorage, sourceChunkMappingFetcher, sourceCdcParametersFetcher, _, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Source, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
+		source, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Source, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create source")
 		}
 
-		_, sinkChunkStorage, sinkChunkMappingStorage, _, sinkCdcParametersFetcher, sinkDigestKeyFormat, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Sink, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
+		sink, err := blobstore_configuration.NewCASFromConfiguration(dependenciesGroup, configuration.Sink, grpcClientFactory, int(configuration.MaximumMessageSizeBytes))
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create sink")
 		}
@@ -62,23 +62,23 @@ func main() {
 		}
 
 		replicator := cas.NewReplicator(
-			cas.NewReaderPutter(sinkChunkStorage, sinkChunkMappingStorage),
-			sourceChunkBytesReader,
-			sourceChunkMappingStorage,
-			sourceChunkMappingFetcher,
-			sourceCdcParametersFetcher,
-			sinkChunkStorage,
-			sinkChunkMappingStorage,
-			sinkCdcParametersFetcher,
+			cas.NewReaderPutter(sink.ChunkStorage, sink.ChunkMappingStorage),
+			source.ChunkBytesReader,
+			source.ChunkMappingStorage,
+			source.ChunkMappingFetcher,
+			source.CDCParametersFetcher,
+			sink.ChunkStorage,
+			sink.ChunkMappingStorage,
+			sink.CDCParametersFetcher,
 			instanceName,
 		)
 		nestedReplicator := cas.NewNestedBlobReplicator(
 			replicator,
 			int(configuration.MaximumMessageSizeBytes),
-			cas.NewMessageReader[remoteexecution.Action](sourceChunkBytesReader, sourceChunkMappingFetcher, sourceCdcParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
-			cas.NewMessageReader[remoteexecution.Directory](sourceChunkBytesReader, sourceChunkMappingFetcher, sourceCdcParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
-			cas.NewStorageBackedStreamReader(sourceChunkBytesReader, sourceChunkMappingFetcher, sourceCdcParametersFetcher),
-			sinkDigestKeyFormat,
+			cas.NewMessageReader[remoteexecution.Action](source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewMessageReader[remoteexecution.Directory](source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher, int(configuration.MaximumMessageSizeBytes)),
+			cas.NewStorageBackedStreamReader(source.ChunkBytesReader, source.ChunkMappingFetcher, source.CDCParametersFetcher),
+			sink.DigestKeyFormat,
 		)
 
 		digestFunction, err := instanceName.GetDigestFunction(configuration.DigestFunction, 0)

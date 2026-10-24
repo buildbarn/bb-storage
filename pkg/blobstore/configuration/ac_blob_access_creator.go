@@ -3,13 +3,11 @@ package configuration
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
-	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/grpc"
@@ -35,29 +33,19 @@ type acBlobAccessCreator struct {
 	protoBlobAccessCreator[*remoteexecution.ActionResult]
 	protoBlobReplicatorCreator[*remoteexecution.ActionResult]
 
-	chunkBytesReader        reader.Reader[[]byte]
-	chunkStorage            blobstore.BlobAccess[*chunk.Chunk]
-	chunkMappingStorage     blobstore.BlobAccess[chunk.Mapping]
-	chunkMappingFetcher     chunk.MappingFetcher
-	cdcParametersFetcher    capabilities.CDCParametersFetcher
-	digestKeyFormat         digest.KeyFormat
-	grpcClientFactory       grpc.ClientFactory
-	maximumMessageSizeBytes int
+	contentAddressableStorageInfo *ContentAddressableStorageInfo
+	grpcClientFactory             grpc.ClientFactory
+	maximumMessageSizeBytes       int
 }
 
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(chunkBytesReader reader.Reader[[]byte], chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], chunkMappingFetcher chunk.MappingFetcher, cdcParametersFetcher capabilities.CDCParametersFetcher, digestKeyFormat digest.KeyFormat, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
+func NewACBlobAccessCreator(contentAddressableStorageInfo *ContentAddressableStorageInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
 	return &acBlobAccessCreator{
-		chunkBytesReader:        chunkBytesReader,
-		chunkStorage:            chunkStorage,
-		chunkMappingStorage:     chunkMappingStorage,
-		chunkMappingFetcher:     chunkMappingFetcher,
-		cdcParametersFetcher:    cdcParametersFetcher,
-		digestKeyFormat:         digestKeyFormat,
-		grpcClientFactory:       grpcClientFactory,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		contentAddressableStorageInfo: contentAddressableStorageInfo,
+		grpcClientFactory:             grpcClientFactory,
+		maximumMessageSizeBytes:       maximumMessageSizeBytes,
 	}
 }
 
@@ -105,7 +93,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "action_result_expiring", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
-		if bac.chunkBytesReader == nil {
+		if bac.contentAddressableStorageInfo == nil {
 			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
 		}
 		base, err := nestedCreator.NewNestedBlobAccess(backend.CompletenessChecking.Backend, bac)
@@ -115,15 +103,19 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 		return BlobAccessInfo[*remoteexecution.ActionResult]{
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
-				bac.chunkStorage,
-				bac.chunkMappingStorage,
-				bac.cdcParametersFetcher,
-				cas.NewStorageBackedStreamReader(bac.chunkBytesReader, bac.chunkMappingFetcher, bac.cdcParametersFetcher),
+				bac.contentAddressableStorageInfo.ChunkStorage,
+				bac.contentAddressableStorageInfo.ChunkMappingStorage,
+				bac.contentAddressableStorageInfo.CDCParametersFetcher,
+				cas.NewStorageBackedStreamReader(
+					bac.contentAddressableStorageInfo.ChunkBytesReader,
+					bac.contentAddressableStorageInfo.ChunkMappingFetcher,
+					bac.contentAddressableStorageInfo.CDCParametersFetcher,
+				),
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
 				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.digestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorageInfo.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)

@@ -15,8 +15,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/builder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/cas"
-	"github.com/buildbarn/bb-storage/pkg/cas/reader"
-	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
@@ -58,12 +56,7 @@ func main() {
 		var cacheCapabilitiesAuthorizers []auth.Authorizer
 
 		// Content Addressable Storage (CAS).
-		var chunkBytesReader reader.Reader[[]byte]
-		var chunkStorage blobstore.BlobAccess[*chunk.Chunk]
-		var chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
-		var chunkMappingFetcher chunk.MappingFetcher
-		var cdcParametersFetcher capabilities.CDCParametersFetcher
-		var digestKeyFormat digest.KeyFormat
+		var contentAddressableStorageInfo *blobstore_configuration.ContentAddressableStorageInfo
 		var authorizedChunkStorage blobstore.BlobAccess[*chunk.Chunk]
 		var authorizedChunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
 		var casGetChunkMappingAuthorizer auth.Authorizer
@@ -72,8 +65,7 @@ func main() {
 		if configuration.ContentAddressableStorageServer != nil {
 			maximumChunkCount = int(configuration.ContentAddressableStorageServer.MaximumChunkCount)
 
-			var err error
-			chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err = blobstore_configuration.NewCASFromConfiguration(
+			casInfoValue, err := blobstore_configuration.NewCASFromConfiguration(
 				dependenciesGroup,
 				configuration.ContentAddressableStorageServer.ContentAddressableStorage,
 				grpcClientFactory,
@@ -82,6 +74,7 @@ func main() {
 			if err != nil {
 				return util.StatusWrap(err, "Failed to create Content Addressable Storage")
 			}
+			contentAddressableStorageInfo = &casInfoValue
 
 			// Create authorizers.
 			getAuthorizer, err := auth_configuration.DefaultAuthorizerFactory.NewAuthorizerFromConfiguration(configuration.ContentAddressableStorageServer.GetAuthorizer, dependenciesGroup, grpcClientFactory)
@@ -98,14 +91,14 @@ func main() {
 			}
 
 			// Create authorized versions of the backends.
-			authorizedChunkStorage = blobstore.NewAuthorizingBlobAccess(chunkStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
-			authorizedChunkMappingStorage = blobstore.NewAuthorizingBlobAccess(chunkMappingStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			authorizedChunkStorage = blobstore.NewAuthorizingBlobAccess(contentAddressableStorageInfo.ChunkStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
+			authorizedChunkMappingStorage = blobstore.NewAuthorizingBlobAccess(contentAddressableStorageInfo.ChunkMappingStorage, getAuthorizer, putAuthorizer, findMissingAuthorizer)
 			casGetChunkMappingAuthorizer = getAuthorizer
 			casPutChunkMappingAuthorizer = putAuthorizer
 			// Create the Chunk Storage (CS).
 			cacheCapabilitiesProviders = append(
 				cacheCapabilitiesProviders,
-				chunkStorage,
+				contentAddressableStorageInfo.ChunkStorage,
 				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 					CacheCapabilities: &remoteexecution.CacheCapabilities{
 						SupportedCompressors: configuration.SupportedCompressors,
@@ -124,12 +117,7 @@ func main() {
 				dependenciesGroup,
 				configuration.ActionCache,
 				blobstore_configuration.NewACBlobAccessCreator(
-					chunkBytesReader,
-					chunkStorage,
-					chunkMappingStorage,
-					chunkMappingFetcher,
-					cdcParametersFetcher,
-					digestKeyFormat,
+					contentAddressableStorageInfo,
 					grpcClientFactory,
 					int(configuration.MaximumMessageSizeBytes),
 				),
@@ -234,7 +222,7 @@ func main() {
 					contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(
 						authorizedChunkStorage,
 						authorizedChunkMappingStorage,
-						cdcParametersFetcher,
+						contentAddressableStorageInfo.CDCParametersFetcher,
 						cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
 						casGetChunkMappingAuthorizer,
 						casPutChunkMappingAuthorizer,
@@ -250,7 +238,7 @@ func main() {
 						grpcservers.NewByteStreamServer(
 							authorizedChunkStorage,
 							authorizedChunkMappingStorage,
-							cdcParametersFetcher,
+							contentAddressableStorageInfo.CDCParametersFetcher,
 							zstdPool,
 							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
 						),

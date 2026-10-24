@@ -44,6 +44,30 @@ type BlobAccessInfo[T any] struct {
 	DigestKeyFormat digest.KeyFormat
 }
 
+// ContentAddressableStorageInfo contains the pieces that constitute a
+// Content Addressable Storage (CAS). It is returned by functions which
+// create a CAS such as NewCASFromConfiguration().
+type ContentAddressableStorageInfo struct {
+	// ChunkStorage (CS) is the underlying blob access for chunks of the
+	// CAS.
+	ChunkStorage blobstore.BlobAccess[*chunk.Chunk]
+	// ChunkMappingStorage (CMS) is the underlying blob access for chunk
+	// mappings of the CAS.
+	ChunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
+	// ChunkBytesReader is an interface that reads the raw underlying
+	// bytes of a chunk.
+	ChunkBytesReader reader.Reader[[]byte]
+	// ChunkMappingFetcher is an interface that gets the Chunk Mapping
+	// of a given digest.
+	ChunkMappingFetcher chunk.MappingFetcher
+	// CDCParametersFetcher is an interface that fetches the CDC
+	// parameters of a given instance name.
+	CDCParametersFetcher capabilities.CDCParametersFetcher
+	// DigestKeyFormat is the digest.KeyFormat of the CAS, i.e. the
+	// combined digest.KeyFormat of the CS and CMS.
+	DigestKeyFormat digest.KeyFormat
+}
+
 type simpleNestedBlobAccessCreator[T any] struct {
 	terminationGroup program.Group
 	labels           map[string]BlobAccessInfo[T]
@@ -636,44 +660,39 @@ func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, confi
 // constituent parts of a Content Addressable Storage (CAS) and a
 // BlobAccess for the Action Cache. Most Buildbarn components tend to
 // require access to both these data stores.
-func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
-	chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes)
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (ContentAddressableStorageInfo, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+	casInfo, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes)
 	if err != nil {
-		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
+		return ContentAddressableStorageInfo{}, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
 
 	actionCache, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(
-			chunkBytesReader,
-			chunkStorage,
-			chunkMappingStorage,
-			chunkMappingFetcher,
-			cdcParametersFetcher,
-			digestKeyFormat,
+			&casInfo,
 			grpcClientFactory,
 			maximumMessageSizeBytes,
 		),
 	)
 	if err != nil {
-		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, nil, util.StatusWrap(err, "Failed to create Action Cache")
+		return ContentAddressableStorageInfo{}, nil, util.StatusWrap(err, "Failed to create Action Cache")
 	}
 
-	return chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, digestKeyFormat, actionCache.BlobAccess, nil
+	return casInfo, actionCache.BlobAccess, nil
 }
 
 // NewCASFromConfiguration is a convenience function to create the
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
-func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (reader.Reader[[]byte], blobstore.BlobAccess[*chunk.Chunk], blobstore.BlobAccess[chunk.Mapping], chunk.MappingFetcher, capabilities.CDCParametersFetcher, digest.KeyFormat, error) {
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (ContentAddressableStorageInfo, error) {
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
 		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes),
 	)
 	if err != nil {
-		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Storage")
+		return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create Chunk Storage")
 	}
 	chunkStorage := chunkStorageInfo.BlobAccess
 
@@ -686,7 +705,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 			"CDCParameterCache",
 		)
 		if err != nil {
-			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create cdc parameter cache")
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create cdc parameter cache")
 		}
 		cdcParametersFetcher = capabilities.NewCachingCDCParametersFetcher(cdcParametersFetcher, clock.SystemClock, cache)
 	}
@@ -698,7 +717,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 			"ChunkCache",
 		)
 		if err != nil {
-			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create chunk cache")
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create chunk cache")
 		}
 		chunkBytesReader = reader.NewCachingReader(chunkBytesReader, clock.SystemClock, cache)
 	}
@@ -709,7 +728,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory),
 	)
 	if err != nil {
-		return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
+		return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
 	}
 	chunkMappingStorage := chunkMappingStorageInfo.BlobAccess
 	var chunkMappingFetcher chunk.MappingFetcher = blobstore.NewBlobAccessMappingFetcher(chunkMappingStorage)
@@ -719,10 +738,17 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 			"ChunkMappingCache",
 		)
 		if err != nil {
-			return nil, nil, nil, nil, nil, digest.KeyWithoutInstance, util.StatusWrap(err, "Failed to create chunk mapping cache")
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create chunk mapping cache")
 		}
 		chunkMappingFetcher = chunk.NewCachingMappingFetcher(chunkMappingFetcher, clock.SystemClock, cache)
 	}
 
-	return chunkBytesReader, chunkStorage, chunkMappingStorage, chunkMappingFetcher, cdcParametersFetcher, chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat), nil
+	return ContentAddressableStorageInfo{
+		ChunkStorage:         chunkStorage,
+		ChunkMappingStorage:  chunkMappingStorage,
+		ChunkBytesReader:     chunkBytesReader,
+		ChunkMappingFetcher:  chunkMappingFetcher,
+		CDCParametersFetcher: cdcParametersFetcher,
+		DigestKeyFormat:      chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
+	}, nil
 }
