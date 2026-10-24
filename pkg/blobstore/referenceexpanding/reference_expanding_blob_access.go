@@ -206,7 +206,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 	}
 	if data == nil {
 		var err error
-		if data, err = util.ReadFullyDecompressed(decompressor, blobDigest.GetSizeBytes()); err != nil {
+		if data, err = util.ReadExact(decompressor, blobDigest.GetSizeBytes()); err != nil {
 			r.Close()
 			return nil, err
 		}
