@@ -248,17 +248,14 @@ func (s *contentAddressableStorageServer) updateChunk(ctx context.Context, d dig
 	default:
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
-	generator := d.GetDigestFunction().NewGenerator(d.GetSizeBytes())
-	if _, err := generator.Write(decompressedData); err != nil {
-		return status.Error(codes.Internal, "Could not compute digest of blob")
-	}
-	if actual := generator.Sum(); actual != d {
+	c := chunk.NewChunk(decompressedData)
+	if actual := c.ComputeDigest(d.GetDigestFunction()); actual != d {
 		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 	}
 	// We can't reuse the compression here as it comes from an untrusted
 	// client. Even if it represents the correct blob it could still be
 	// an arbitrarily poor compression.
-	if err := s.chunkStorage.Put(ctx, d, chunk.NewChunk(decompressedData)); err != nil {
+	if err := s.chunkStorage.Put(ctx, d, c); err != nil {
 		return util.StatusWrap(err, "Failed to save chunk")
 	}
 	return nil

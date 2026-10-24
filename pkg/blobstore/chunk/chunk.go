@@ -3,6 +3,7 @@ package chunk
 import (
 	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 )
 
@@ -35,6 +36,16 @@ func (c *Chunk) GetBytesCompressed() []byte {
 	return compressedData
 }
 
+// ComputeDigest computes the digest of the underlying chunk.
+func (c *Chunk) ComputeDigest(digestFunction digest.Function) digest.Digest {
+	data := c.GetBytes()
+	generator := digestFunction.NewGenerator(int64(len(data)))
+	if _, err := generator.Write(data); err != nil {
+		panic("Should not be possible, got error while computing digest of fixed size byte slice: " + err.Error())
+	}
+	return generator.Sum()
+}
+
 // NewChunk creates a chunk from an uncompressed byte slice. Ownership
 // of the provided slice is transferred to the chunk, callers must not
 // modify or reuse it afterwards.
@@ -43,10 +54,8 @@ func NewChunk(data []byte) *Chunk {
 }
 
 // NewChunkCompressed creates a chunk that has data in both its
-// compressed and uncompressed form. It is the responsibility of the
-// caller to make sure that this chunk is valid. Ownership of the
-// provided slice is transferred to the chunk, callers must not modify
-// it afterwards.
+// compressed and uncompressed form. Ownership of the provided slice is
+// transferred to the chunk, callers must not modify it afterwards.
 func NewChunkCompressed(compressedData []byte, maximumDecodedSizeBytes int) (*Chunk, error) {
 	data, err := zstd.Decode(compressedData, maximumDecodedSizeBytes)
 	if err != nil {

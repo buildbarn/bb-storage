@@ -216,12 +216,8 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 	}
 
 	// Validate the checksum.
-	digestGenerator := blobDigest.GetDigestFunction().NewGenerator(blobDigest.GetSizeBytes())
-	if _, err = digestGenerator.Write(data); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to compute digest of blob")
-	}
-	computedDigest := digestGenerator.Sum()
-	if blobDigest != computedDigest {
+	c := chunk.NewChunk(data)
+	if computedDigest := c.ComputeDigest(blobDigest.GetDigestFunction()); blobDigest != computedDigest {
 		return nil, status.Errorf(
 			codes.InvalidArgument,
 			"Buffer has checksum %s, while %s was expected",
@@ -230,7 +226,7 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 		)
 	}
 
-	return chunk.NewChunk(data), nil
+	return c, nil
 }
 
 func (referenceExpandingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {

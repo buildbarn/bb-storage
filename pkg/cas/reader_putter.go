@@ -54,11 +54,8 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 		if int64(len(data)) > d.GetSizeBytes() {
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), len(data))
 		}
-		digestGenerator := digestFunction.NewGenerator(d.GetSizeBytes())
-		if _, err := digestGenerator.Write(data); err != nil {
-			return status.Error(codes.Internal, "Could not compute digest of chunk")
-		}
-		if actual := digestGenerator.Sum(); actual != d {
+		c := chunk.NewChunk(data)
+		if actual := c.ComputeDigest(digestFunction); actual != d {
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 		}
 		if d.GetSizeBytes() > 0 {
@@ -67,7 +64,7 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 				return err
 			}
 			if !missing.Empty() {
-				if err := rp.chunkStorage.Put(ctx, d, chunk.NewChunk(data)); err != nil {
+				if err := rp.chunkStorage.Put(ctx, d, c); err != nil {
 					return util.StatusWrap(err, "Failed to save chunk")
 				}
 			}
@@ -99,15 +96,10 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 		// The chunker returns data that aliases an internal buffer
 		// which gets reused between calls. Copy it, so that the
 		// resulting chunk may be retained for as long as desired.
-		data := bytes.Clone(chunkData)
+		c := chunk.NewChunk(bytes.Clone(chunkData))
+		chunkDigest := c.ComputeDigest(digestFunction)
 
-		digestGenerator := digestFunction.NewGenerator(int64(len(data)))
-		if _, err := digestGenerator.Write(data); err != nil {
-			return status.Error(codes.Internal, "Could not compute digest of chunk")
-		}
-		chunkDigest := digestGenerator.Sum()
-
-		if _, err := wholeGen.Write(data); err != nil {
+		if _, err := wholeGen.Write(c.GetBytes()); err != nil {
 			return status.Error(codes.Internal, "Could not compute digest of blob")
 		}
 
@@ -122,7 +114,7 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 		}
 		if !missing.Empty() {
 			// The calculated chunk was not present in Chunk Storage.
-			if err := rp.chunkStorage.Put(ctx, chunkDigest, chunk.NewChunk(data)); err != nil {
+			if err := rp.chunkStorage.Put(ctx, chunkDigest, c); err != nil {
 				return util.StatusWrap(err, "Failed to save chunk")
 			}
 		}

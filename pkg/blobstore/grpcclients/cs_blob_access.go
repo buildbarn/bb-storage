@@ -92,7 +92,6 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, err
 	}
 
-	generator := digestFunction.NewGenerator(digest.GetSizeBytes())
 	var c *chunk.Chunk
 	switch r.Compressor {
 	case remoteexecution.Compressor_IDENTITY:
@@ -106,10 +105,7 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, status.Errorf(codes.Internal, "Unsupported upstream compresssion algorithm %s", r.Compressor.String())
 	}
 
-	if _, err := generator.Write(c.GetBytes()); err != nil {
-		return nil, err
-	}
-	if actualDigest := generator.Sum(); actualDigest != digest {
+	if actualDigest := c.ComputeDigest(digestFunction); actualDigest != digest {
 		return nil, status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", digest.String(), actualDigest.String())
 	}
 

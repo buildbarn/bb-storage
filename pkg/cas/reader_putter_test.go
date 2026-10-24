@@ -216,7 +216,7 @@ func FuzzReaderPutter(f *testing.F) {
 
 		type storedChunk struct {
 			digest digest.Digest
-			data   []byte
+			chunk  *chunk.Chunk
 		}
 		chunks := make([]storedChunk, 0)
 		chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -228,7 +228,7 @@ func FuzzReaderPutter(f *testing.F) {
 		).AnyTimes()
 		chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, d digest.Digest, c *chunk.Chunk) error {
-				chunks = append(chunks, storedChunk{digest: d, data: c.GetBytes()})
+				chunks = append(chunks, storedChunk{digest: d, chunk: c})
 				return nil
 			},
 		).AnyTimes()
@@ -238,10 +238,8 @@ func FuzzReaderPutter(f *testing.F) {
 
 		composedData := make([]byte, 0, dataSizeBytes)
 		for i, c := range chunks {
-			chunkGen := digestFunction.NewGenerator(int64(len(c.data)))
-			chunkGen.Write(c.data)
-			require.Equal(chunkGen.Sum(), c.digest, "Digest mismatch for chunk %d.", i)
-			composedData = append(composedData, c.data...)
+			require.Equal(c.chunk.ComputeDigest(digestFunction), c.digest, "Digest mismatch for chunk %d.", i)
+			composedData = append(composedData, c.chunk.GetBytes()...)
 		}
 		require.Equal(originalData, composedData)
 
