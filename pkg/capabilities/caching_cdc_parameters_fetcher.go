@@ -17,8 +17,9 @@ import (
 type cachingCDCParametersFetcher struct {
 	CDCParametersFetcher
 	clock clock.Clock
-	cache lossymap.Map[digest.InstanceName, *remoteexecution.RepMaxCdcParams, time.Time]
+
 	lock  sync.Mutex
+	cache lossymap.Map[digest.InstanceName, *remoteexecution.RepMaxCdcParams, time.Time]
 }
 
 // NewCachingCDCParametersFetcher decorates a CDCParametersFetcher with

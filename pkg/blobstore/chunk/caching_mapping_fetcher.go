@@ -16,8 +16,9 @@ import (
 type cachingMappingFetcher struct {
 	MappingFetcher
 	clock clock.Clock
-	cache lossymap.Map[digest.Digest, Mapping, time.Time]
+
 	lock  sync.Mutex
+	cache lossymap.Map[digest.Digest, Mapping, time.Time]
 }
 
 // NewCachingMappingFetcher decorates a Fetcher with a cache.

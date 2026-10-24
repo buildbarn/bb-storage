@@ -16,8 +16,9 @@ import (
 type cachingReader[T any] struct {
 	Reader[T]
 	clock clock.Clock
-	cache lossymap.Map[digest.Digest, T, time.Time]
+
 	lock  sync.Mutex
+	cache lossymap.Map[digest.Digest, T, time.Time]
 }
 
 // NewCachingReader decorates a Reader with a cache, so that values
