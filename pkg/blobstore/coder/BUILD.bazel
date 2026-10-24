@@ -17,7 +17,6 @@ go_library(
         "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/util",
-        "//pkg/zstd",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",

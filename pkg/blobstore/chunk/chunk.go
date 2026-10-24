@@ -42,13 +42,18 @@ func NewChunk(data []byte) *Chunk {
 	return &Chunk{data: data}
 }
 
-// NewChunkWithCompressedData creates a chunk that has data in both its
+// NewChunkCompressed creates a chunk that has data in both its
 // compressed and uncompressed form. It is the responsibility of the
 // caller to make sure that this chunk is valid. Ownership of the
-// provided slices are transferred to the chunk, callers must not modify
-// or reuse them afterwards.
-func NewChunkWithCompressedData(data, compressedData []byte) *Chunk {
+// provided slice is transferred to the chunk, callers must not modify
+// it afterwards.
+func NewChunkCompressed(compressedData []byte, maximumDecodedSizeBytes int) (*Chunk, error) {
+	data, err := zstd.Decode(compressedData, maximumDecodedSizeBytes)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Chunk{data: data}
 	c.compressedData.Store(&compressedData)
-	return c
+	return c, nil
 }

@@ -18,18 +18,22 @@ func TestChunkCompressedRoundTrip(t *testing.T) {
 		require.Equal(t, []byte("hello world"), decoded)
 	})
 
-	t.Run("Compressed", func(t *testing.T) {
+	t.Run("CompressedSuccess", func(t *testing.T) {
 		compressed := zstd.Encode([]byte("test data"))
-		c := chunk.NewChunkWithCompressedData([]byte("test data"), compressed)
-
+		c, err := chunk.NewChunkCompressed(compressed, len([]byte("test data")))
+		require.NoError(t, err)
 		require.Equal(t, compressed, c.GetBytesCompressed())
 		require.Equal(t, []byte("test data"), c.GetBytes())
 	})
 
-	t.Run("Precompressed", func(t *testing.T) {
-		// Chunks created with compressed data pre-populated never
-		// need to compress.
-		c := chunk.NewChunkWithCompressedData([]byte("test data"), []byte("precomputed"))
-		require.Equal(t, []byte("precomputed"), c.GetBytesCompressed())
+	t.Run("CompressedFailure", func(t *testing.T) {
+		_, err := chunk.NewChunkCompressed([]byte("not valid zstd data"), 100)
+		require.Error(t, err)
+	})
+
+	t.Run("CompressedBufferTooLarge", func(t *testing.T) {
+		compressed := zstd.Encode([]byte("test data"))
+		_, err := chunk.NewChunkCompressed(compressed, 4)
+		require.Error(t, err)
 	})
 }

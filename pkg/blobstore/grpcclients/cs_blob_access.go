@@ -9,7 +9,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
@@ -94,31 +93,27 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 	}
 
 	generator := digestFunction.NewGenerator(digest.GetSizeBytes())
-	var data, compressedData []byte
+	var c *chunk.Chunk
 	switch r.Compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		data = r.Data
+		c = chunk.NewChunk(r.Data)
 	case remoteexecution.Compressor_ZSTD:
-		data, err = bb_zstd.Decode(r.Data, int(digest.GetSizeBytes()))
+		c, err = chunk.NewChunkCompressed(r.Data, int(digest.GetSizeBytes()))
 		if err != nil {
 			return nil, err
 		}
-		compressedData = r.Data
 	default:
 		return nil, status.Errorf(codes.Internal, "Unsupported upstream compresssion algorithm %s", r.Compressor.String())
 	}
 
-	if _, err := generator.Write(data); err != nil {
+	if _, err := generator.Write(c.GetBytes()); err != nil {
 		return nil, err
 	}
 	if actualDigest := generator.Sum(); actualDigest != digest {
 		return nil, status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", digest.String(), actualDigest.String())
 	}
 
-	if compressedData == nil {
-		return chunk.NewChunk(data), nil
-	}
-	return chunk.NewChunkWithCompressedData(data, compressedData), nil
+	return c, nil
 }
 
 func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *chunk.Chunk) error {

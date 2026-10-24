@@ -142,36 +142,27 @@ func TestContentAddressableStorageServerBatchReadBlobsZSTD(t *testing.T) {
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	zstdPool := zstd.NewPoolFromConfiguration(nil)
 
 	data := []byte("Hello")
-	var compressed bytes.Buffer
-	encoder, err := zstdPool.NewEncoder(ctx, &compressed)
-	require.NoError(t, err)
-	_, err = encoder.Write(data)
-	require.NoError(t, err)
-	require.NoError(t, encoder.Close())
-
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(
 		gomock.Any(),
 		mustNewInstanceName("ubuntu1804"),
 	).Return(params, nil)
-	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunkWithCompressedData(data, compressed.Bytes()), nil)
+	chunkStorage.EXPECT().Get(ctx, digest1).Return(chunk.NewChunk(data), nil)
 
 	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
 
 	response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, request)
 	require.NoError(t, err)
-	testutil.RequireEqualProto(t, &remoteexecution.BatchReadBlobsResponse{
-		Responses: []*remoteexecution.BatchReadBlobsResponse_Response{
-			{
-				Digest:     digest1.GetProto(),
-				Data:       compressed.Bytes(),
-				Compressor: remoteexecution.Compressor_ZSTD,
-			},
-		},
-	}, response)
+	require.Len(t, response.Responses, 1)
+	require.Equal(t, digest1.GetProto(), response.Responses[0].Digest)
+	require.NoError(t, status.ErrorProto(response.Responses[0].Status))
+	require.Equal(t, remoteexecution.Compressor_ZSTD, response.Responses[0].Compressor)
+
+	decompressed, err := zstd.Decode(response.Responses[0].Data, len(data))
+	require.NoError(t, err)
+	require.Equal(t, data, decompressed)
 }
 
 func TestContentAddressableStorageServerBatchUpdateBlobs(t *testing.T) {
