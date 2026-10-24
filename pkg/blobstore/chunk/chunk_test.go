@@ -8,35 +8,83 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func TestChunkCompressedRoundTrip(t *testing.T) {
-	t.Run("Uncompressed", func(t *testing.T) {
+func TestChunkEncodedRoundTrip(t *testing.T) {
+	t.Run("Identity", func(t *testing.T) {
 		c := chunk.NewChunk([]byte("hello world"))
 
 		require.Equal(t, []byte("hello world"), c.GetBytes())
-		decoded, err := zstd.Decode(c.GetBytesCompressed(), len("hello world"))
+		encoded, err := c.GetEncodedBytes(remoteexecution.Compressor_IDENTITY)
+		require.NoError(t, err)
+		require.Equal(t, []byte("hello world"), encoded)
+	})
+
+	t.Run("ZSTD", func(t *testing.T) {
+		c := chunk.NewChunk([]byte("hello world"))
+
+		encoded, err := c.GetEncodedBytes(remoteexecution.Compressor_ZSTD)
+		require.NoError(t, err)
+		decoded, err := zstd.Decode(encoded, len("hello world"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("hello world"), decoded)
 	})
 
-	t.Run("CompressedSuccess", func(t *testing.T) {
-		compressed := zstd.Encode([]byte("test data"))
-		c, err := chunk.NewChunkCompressed(compressed, len([]byte("test data")))
+	t.Run("UnsupportedCompressor", func(t *testing.T) {
+		c := chunk.NewChunk([]byte("hello world"))
+
+		_, err := c.GetEncodedBytes(remoteexecution.Compressor_DEFLATE)
+		require.Equal(t, codes.Unimplemented, status.Code(err))
+	})
+}
+
+func TestChunkFromEncoded(t *testing.T) {
+	t.Run("Identity", func(t *testing.T) {
+		c, err := chunk.NewChunkFromEncoded([]byte("test data"), 100, remoteexecution.Compressor_IDENTITY)
 		require.NoError(t, err)
-		require.Equal(t, compressed, c.GetBytesCompressed())
 		require.Equal(t, []byte("test data"), c.GetBytes())
 	})
 
-	t.Run("CompressedFailure", func(t *testing.T) {
-		_, err := chunk.NewChunkCompressed([]byte("not valid zstd data"), 100)
+	t.Run("IdentityBufferTooLarge", func(t *testing.T) {
+		_, err := chunk.NewChunkFromEncoded([]byte("test data"), 4, remoteexecution.Compressor_IDENTITY)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+	})
+
+	t.Run("NegativeMaximumDecodedSize", func(t *testing.T) {
+		_, err := chunk.NewChunkFromEncoded([]byte("test data"), -1, remoteexecution.Compressor_IDENTITY)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+	})
+
+	t.Run("ZSTD", func(t *testing.T) {
+		compressed := zstd.Encode([]byte("test data"))
+		c, err := chunk.NewChunkFromEncoded(compressed, len([]byte("test data")), remoteexecution.Compressor_ZSTD)
+		require.NoError(t, err)
+		require.Equal(t, []byte("test data"), c.GetBytes())
+
+		// The chunk must hand back the exact bytes it was created
+		// from, not a fresh encoding of the decoded data.
+		encoded, err := c.GetEncodedBytes(remoteexecution.Compressor_ZSTD)
+		require.NoError(t, err)
+		require.Equal(t, compressed, encoded)
+	})
+
+	t.Run("ZSTDDecodeFailure", func(t *testing.T) {
+		_, err := chunk.NewChunkFromEncoded([]byte("not valid zstd data"), 100, remoteexecution.Compressor_ZSTD)
 		require.Error(t, err)
 	})
 
-	t.Run("CompressedBufferTooLarge", func(t *testing.T) {
+	t.Run("ZSTDBufferTooLarge", func(t *testing.T) {
 		compressed := zstd.Encode([]byte("test data"))
-		_, err := chunk.NewChunkCompressed(compressed, 4)
+		_, err := chunk.NewChunkFromEncoded(compressed, 4, remoteexecution.Compressor_ZSTD)
 		require.Error(t, err)
+	})
+
+	t.Run("UnsupportedCompressor", func(t *testing.T) {
+		_, err := chunk.NewChunkFromEncoded([]byte("test data"), 100, remoteexecution.Compressor_DEFLATE)
+		require.Equal(t, codes.Unimplemented, status.Code(err))
 	})
 }
 

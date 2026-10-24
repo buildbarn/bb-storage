@@ -114,18 +114,13 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 	var buf bytes.Buffer
 	buf.Grow(int(blobDigest.GetSizeBytes()))
 	for i := range chunkCount {
-		chunk, err := s.chunkStorage.Get(ctx, getChunkDigest(i))
+		c, err := s.chunkStorage.Get(ctx, getChunkDigest(i))
 		if err != nil {
 			return nil, err
 		}
-		var data []byte
-		switch compressor {
-		case remoteexecution.Compressor_IDENTITY:
-			data = chunk.GetBytes()
-		case remoteexecution.Compressor_ZSTD:
-			data = chunk.GetBytesCompressed()
-		default:
-			panic("Unsupported compression algorithm should not be reachable")
+		data, err := c.GetEncodedBytes(compressor)
+		if err != nil {
+			return nil, err
 		}
 		buf.Write(data)
 	}

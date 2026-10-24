@@ -1,6 +1,7 @@
 package coder
 
 import (
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"google.golang.org/grpc/codes"
@@ -16,11 +17,11 @@ func NewChunkCoder() Coder[*chunk.Chunk, []byte] {
 }
 
 func (chunkCoder) Encode(chunk *chunk.Chunk, d digest.Digest) ([]byte, error) {
-	return chunk.GetBytesCompressed(), nil
+	return chunk.GetEncodedBytes(remoteexecution.Compressor_ZSTD)
 }
 
 func (chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
-	c, err := chunk.NewChunkCompressed(data, int(d.GetSizeBytes()))
+	c, err := chunk.NewChunkFromEncoded(data, int(d.GetSizeBytes()), remoteexecution.Compressor_ZSTD)
 	if err != nil {
 		return nil, err
 	}

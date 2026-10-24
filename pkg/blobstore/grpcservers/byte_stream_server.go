@@ -104,14 +104,9 @@ func (byteStreamServer) sendChunk(out bytestream.ByteStream_ReadServer, chunk *c
 		// multiple ZSTD encoded chunks and their concatenated byte
 		// representation is a valid ZSTD representation of their
 		// concatenated underlying bytes.
-		var data []byte
-		switch compressor {
-		case remoteexecution.Compressor_IDENTITY:
-			data = chunk.GetBytes()
-		case remoteexecution.Compressor_ZSTD:
-			data = chunk.GetBytesCompressed()
-		default:
-			panic("Unsupported compression algorithm should not be reachable")
+		data, err := chunk.GetEncodedBytes(compressor)
+		if err != nil {
+			return err
 		}
 		return out.SendMsg(&bytestream.ReadResponse{
 			Data: data[chunkOffset:],

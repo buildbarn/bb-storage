@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc"
@@ -92,17 +93,9 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, err
 	}
 
-	var c *chunk.Chunk
-	switch r.Compressor {
-	case remoteexecution.Compressor_IDENTITY:
-		c = chunk.NewChunk(r.Data)
-	case remoteexecution.Compressor_ZSTD:
-		c, err = chunk.NewChunkCompressed(r.Data, int(digest.GetSizeBytes()))
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, status.Errorf(codes.Internal, "Unsupported upstream compresssion algorithm %s", r.Compressor.String())
+	c, err := chunk.NewChunkFromEncoded(r.Data, int(digest.GetSizeBytes()), r.Compressor)
+	if err != nil {
+		return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to decode upstream response")
 	}
 
 	if actualDigest := c.ComputeDigest(digestFunction); actualDigest != digest {
@@ -118,14 +111,13 @@ func (ba *csBlobAccess) Put(ctx context.Context, digest digest.Digest, value *ch
 		return err
 	}
 
-	var compressor remoteexecution.Compressor_Value
-	var data []byte
+	compressor := remoteexecution.Compressor_IDENTITY
 	if useCompression {
 		compressor = remoteexecution.Compressor_ZSTD
-		data = value.GetBytesCompressed()
-	} else {
-		compressor = remoteexecution.Compressor_IDENTITY
-		data = value.GetBytes()
+	}
+	data, err := value.GetEncodedBytes(compressor)
+	if err != nil {
+		return err
 	}
 
 	req := &remoteexecution.BatchUpdateBlobsRequest{
