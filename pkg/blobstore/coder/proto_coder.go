@@ -2,7 +2,6 @@ package coder
 
 import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -28,7 +27,7 @@ func (protoCoder[T, TPtr]) Decode(data []byte, d digest.Digest) (TPtr, error) {
 	msg := TPtr(new(T))
 	err := proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, util.StatusWrap(err, "Failed to unmarshal message")
+		return nil, err
 	}
 	return msg, nil
 }
