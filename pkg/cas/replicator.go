@@ -100,7 +100,7 @@ func (r *replicator) Replicate(ctx context.Context, digests digest.Set) error {
 		}
 		chunkDigestsBuilder := digest.NewSetBuilder(chunkMapping.Length())
 		for i := range chunkMapping.Length() {
-			chunkDigestsBuilder.Add(chunkMapping.GetDigestAtIndex(i))
+			chunkDigestsBuilder.Add(chunkMapping.GetDigestAtIndex(blobDigest.GetInstanceName(), i))
 		}
 		missingChunks, err := FindMissing(ctx, r.sinkChunkStorage, r.sinkChunkMappingStorage, sinkParams, chunkDigestsBuilder.Build())
 		if err != nil {

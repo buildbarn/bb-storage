@@ -52,7 +52,7 @@ func TestChunkMappingValidatingBlobAccessGetServesStoredMapping(t *testing.T) {
 
 	chunkMapping, err := validatingCMS.Get(ctx, blobDigest)
 	require.NoError(t, err)
-	require.Equal(t, []digest.Digest{chunk1Digest, chunk2Digest}, chunkMapping.GetDigests())
+	require.Equal(t, []digest.Digest{chunk1Digest, chunk2Digest}, chunkMapping.GetDigests(blobDigest.GetInstanceName()))
 }
 
 func TestChunkMappingValidatingBlobAccessGetMissingBlob(t *testing.T) {

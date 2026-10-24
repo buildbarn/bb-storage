@@ -66,7 +66,7 @@ func (r *storageBackedStreamReader) ReadStream(ctx context.Context, d digest.Dig
 	return &validatingMappingReader{
 		ctx:              ctx,
 		chunkBytesReader: r.chunkBytesReader,
-		chunkDigests:     mapping.GetDigests(),
+		chunkDigests:     mapping.GetDigests(d.GetInstanceName()),
 		blobDigest:       d,
 		digestGenerator:  d.GetDigestFunction().NewGenerator(d.GetSizeBytes()),
 	}, nil

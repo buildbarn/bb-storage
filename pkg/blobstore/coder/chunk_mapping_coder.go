@@ -42,7 +42,7 @@ func (chunkMappingCoder) Encode(chunkMapping chunk.Mapping, d digest.Digest) ([]
 	data := make([]byte, size)
 	offset := 0
 	for i := range chunkMapping.Length() {
-		chunkDigest := chunkMapping.GetDigestAtIndex(i)
+		chunkDigest := chunkMapping.GetDigestAtIndex(d.GetInstanceName(), i)
 		if chunkDigest.GetSizeBytes() > math.MaxUint32 {
 			return nil, status.Errorf(codes.InvalidArgument, "Attempted to serialize digest of size %d but we can only encode up to size %d", chunkDigest.GetSizeBytes(), uint32(math.MaxUint32))
 		}
@@ -50,7 +50,7 @@ func (chunkMappingCoder) Encode(chunkMapping chunk.Mapping, d digest.Digest) ([]
 		offset += 4
 	}
 	for i := range chunkMapping.Length() {
-		bytes := chunkMapping.GetDigestAtIndex(i).GetHashBytes()
+		bytes := chunkMapping.GetDigestAtIndex(d.GetInstanceName(), i).GetHashBytes()
 		copy(data[offset:], bytes)
 		offset += len(bytes)
 	}

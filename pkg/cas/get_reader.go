@@ -39,7 +39,7 @@ func GetReader(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chun
 		return nil, util.StatusWrap(err, "Could not fetch chunk mapping")
 	}
 	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
-	offsetDigests := mapping.GetDigests()[index:]
+	offsetDigests := mapping.GetDigests(d.GetInstanceName())[index:]
 	r := chunk.NewReaderFromDigests(ctx, offsetDigests, chunkBytesReader)
 	if chunkOffset > 0 {
 		if _, err := io.CopyN(io.Discard, r, chunkOffset); err != nil {

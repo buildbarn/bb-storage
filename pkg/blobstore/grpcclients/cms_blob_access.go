@@ -81,9 +81,9 @@ func (ba *cmsBlobAccess) Put(ctx context.Context, blobDigest digest.Digest, valu
 
 	// Send the chunk digests in batches to stay below the maximum
 	// message size. All fields other than ChunkDigests are ignored by
-	// servers on subsequent requests. At least one request is always
-	// sent, so that the server can identify the blob being registered
-	// even for empty chunk mappings.
+	// servers on subsequent requests. The first request identifies the
+	// blob being registered and always carries at least one chunk, as
+	// chunk mappings contain two or more chunks.
 	protoDigests := value.GetProtoDigests()
 	n := min(len(protoDigests), blobstore.RecommendedFindMissingDigestsCount)
 	if err := stream.Send(&remoteexecution.RegisterChunkMappingRequest{

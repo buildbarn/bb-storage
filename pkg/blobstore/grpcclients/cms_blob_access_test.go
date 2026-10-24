@@ -74,7 +74,7 @@ func TestCMSBlobAccessGet(t *testing.T) {
 		})
 		chunkMapping, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		require.Equal(t, []digest.Digest{chunkDigest1, chunkDigest2}, chunkMapping.GetDigests())
+		require.Equal(t, []digest.Digest{chunkDigest1, chunkDigest2}, chunkMapping.GetDigests(blobDigest.GetInstanceName()))
 		require.False(t, chunkMapping.IsValidated())
 	})
 
@@ -236,33 +236,6 @@ func TestCMSBlobAccessPut(t *testing.T) {
 		chunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunkDigest1, chunkDigest2}, 5, false)
 		require.NoError(t, err)
 		require.NoError(t, blobAccess.Put(ctx, blobDigest, chunkMapping))
-	})
-
-	t.Run("EmptyListForEmptyBlob", func(t *testing.T) {
-		emptyBlobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
-
-		clientStream := mock.NewMockClientStream(ctrl)
-		client.EXPECT().NewStream(
-			gomock.Any(),
-			gomock.Any(),
-			"/build.bazel.remote.execution.v2.ContentAddressableStorage/RegisterChunkMapping",
-			gomock.Any(),
-		).Return(clientStream, nil)
-		clientStream.EXPECT().SendMsg(testutil.EqProto(t, &remoteexecution.RegisterChunkMappingRequest{
-			InstanceName:     "hello",
-			BlobDigest:       emptyBlobDigest.GetProto(),
-			DigestFunction:   remoteexecution.DigestFunction_MD5,
-			ChunkingFunction: remoteexecution.ChunkingFunction_REP_MAX_CDC,
-			ChunkDigests:     []*remoteexecution.Digest{},
-		}))
-		clientStream.EXPECT().CloseSend()
-		clientStream.EXPECT().RecvMsg(gomock.Any()).DoAndReturn(func(m interface{}) error {
-			proto.Merge(m.(proto.Message), &remoteexecution.RegisterChunkMappingResponse{BlobDigest: emptyBlobDigest.GetProto()})
-			return nil
-		})
-
-		err := blobAccess.Put(ctx, emptyBlobDigest, chunk.Mapping{})
-		require.NoError(t, err)
 	})
 
 	// Blobs with more chunks than fit in one request are registered

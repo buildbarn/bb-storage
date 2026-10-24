@@ -35,7 +35,7 @@ func GetBytes(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunk
 	ret := make([]byte, d.GetSizeBytes())
 	offset := 0
 	for i := range mapping.Length() {
-		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(i))
+		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(d.GetInstanceName(), i))
 		if err != nil {
 			return nil, util.StatusWrap(err, "Could not fetch chunk")
 		}

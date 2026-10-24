@@ -26,7 +26,10 @@ go_library(
 
 go_test(
     name = "chunk_test",
-    srcs = ["chunk_test.go"],
+    srcs = [
+        "chunk_test.go",
+        "mapping_test.go",
+    ],
     deps = [
         ":chunk",
         "//pkg/digest",

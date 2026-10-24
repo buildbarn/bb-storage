@@ -73,7 +73,8 @@ func (ba *chunkMappingValidatingBlobAccess) matchesStoredChunkMapping(ctx contex
 	if err != nil {
 		return false, util.StatusWrap(err, "Failed to retrieve stored chunk mapping")
 	}
-	return slices.Equal(userChunkMapping.GetDigests(), storedChunkMapping.GetDigests()), nil
+	instanceName := d.GetInstanceName()
+	return slices.Equal(userChunkMapping.GetDigests(instanceName), storedChunkMapping.GetDigests(instanceName)), nil
 }
 
 func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Digest, value chunk.Mapping) error {
@@ -90,7 +91,7 @@ func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Di
 	// are represented by other chunks. We therefore flatten the chunk
 	// list and verify all chunks and subchunks are present in the Chunk
 	// Storage.
-	value, err = ba.flattenAndVerifyPresence(ctx, params, value)
+	value, err = ba.flattenAndVerifyPresence(ctx, params, d.GetInstanceName(), value)
 	if err != nil {
 		return status.Error(codes.NotFound, "At least one chunk is missing from storage")
 	}
@@ -106,15 +107,15 @@ func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Di
 	}
 	// No more shortcuts available. The blob is reassembled from the
 	// stored chunk bytes and re-chunked canonically.
-	reader := chunk.NewReaderFromDigests(ctx, value.GetDigests(), ba.chunkBytesReader)
+	reader := chunk.NewReaderFromDigests(ctx, value.GetDigests(d.GetInstanceName()), ba.chunkBytesReader)
 	return ba.readerPutter.PutReader(ctx, d, reader, params)
 }
 
-func (ba *chunkMappingValidatingBlobAccess) flattenAndVerifyPresence(ctx context.Context, params *remoteexecution.RepMaxCdcParams, userChunkMapping chunk.Mapping) (chunk.Mapping, error) {
+func (ba *chunkMappingValidatingBlobAccess) flattenAndVerifyPresence(ctx context.Context, params *remoteexecution.RepMaxCdcParams, instanceName digest.InstanceName, userChunkMapping chunk.Mapping) (chunk.Mapping, error) {
 	maxChunkSize := 2*int64(params.MinChunkSizeBytes) - 1
 	bigDigests := digest.NewSetBuilder(userChunkMapping.Length())
 	for i := range userChunkMapping.Length() {
-		d := userChunkMapping.GetDigestAtIndex(i)
+		d := userChunkMapping.GetDigestAtIndex(instanceName, i)
 		if d.GetSizeBytes() > maxChunkSize {
 			bigDigests.Add(d)
 		}
@@ -131,7 +132,7 @@ func (ba *chunkMappingValidatingBlobAccess) flattenAndVerifyPresence(ctx context
 	// the chunk list by expanding the chunk mappings of all big chunks.
 	flattenedDigests := make([]digest.Digest, 0, userChunkMapping.Length())
 	for i := range userChunkMapping.Length() {
-		outerDigest := userChunkMapping.GetDigestAtIndex(i)
+		outerDigest := userChunkMapping.GetDigestAtIndex(instanceName, i)
 		if outerDigest.GetSizeBytes() <= maxChunkSize {
 			flattenedDigests = append(flattenedDigests, outerDigest)
 		} else {
@@ -139,7 +140,7 @@ func (ba *chunkMappingValidatingBlobAccess) flattenAndVerifyPresence(ctx context
 			if err != nil {
 				return chunk.Mapping{}, util.StatusWrap(err, "Error fetching inner chunk mapping")
 			}
-			flattenedDigests = append(flattenedDigests, innerChunkMapping.GetDigests()...)
+			flattenedDigests = append(flattenedDigests, innerChunkMapping.GetDigests(outerDigest.GetInstanceName())...)
 		}
 	}
 	flattenedChunksBuilder := digest.NewSetBuilder(len(flattenedDigests))
@@ -168,7 +169,7 @@ func (ba *chunkMappingValidatingBlobAccess) findMissingChunksOfMapping(ctx conte
 	}
 	builder := digest.NewSetBuilder(storedChunkMapping.Length())
 	for i := range storedChunkMapping.Length() {
-		builder.Add(storedChunkMapping.GetDigestAtIndex(i))
+		builder.Add(storedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), i))
 	}
 	// TODO: This causes one find missing call per chunk mapping but we
 	// could aggregate these into a single call with a bit of

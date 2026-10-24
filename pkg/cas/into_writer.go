@@ -41,7 +41,7 @@ func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 	}
 	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
 	for ; index < mapping.Length(); index++ {
-		chunkData, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(index))
+		chunkData, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(d.GetInstanceName(), index))
 		if err != nil {
 			return err
 		}

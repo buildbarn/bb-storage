@@ -55,7 +55,7 @@ func ReadBlobAt(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 
 	n := 0
 	for n < len(buf) && index < mapping.Length() {
-		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(index))
+		chunkBytes, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(d.GetInstanceName(), index))
 		if err != nil {
 			return n, util.StatusWrap(err, "Could not fetch chunk")
 		}

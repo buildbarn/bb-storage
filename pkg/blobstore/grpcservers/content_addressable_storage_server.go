@@ -108,7 +108,8 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 			return nil, err
 		}
 		chunkCount = chunkMapping.Length()
-		getChunkDigest = chunkMapping.GetDigestAtIndex
+		instanceName := blobDigest.GetInstanceName()
+		getChunkDigest = func(i int) digest.Digest { return chunkMapping.GetDigestAtIndex(instanceName, i) }
 	}
 	var buf bytes.Buffer
 	buf.Grow(int(blobDigest.GetSizeBytes()))

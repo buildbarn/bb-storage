@@ -53,16 +53,16 @@ func TestReaderPutterMultipleChunks(t *testing.T) {
 	}, 143, true)
 	require.NoError(t, err)
 
-	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(0).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(0).ToSingletonSet(), nil)
-	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(1).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(1).ToSingletonSet(), nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(0), gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet(), nil)
+	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet(), nil)
+	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0), gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
 		return bytes.Equal(chunk.GetBytes(), data[:77])
 	})).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(1), gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1), gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
@@ -188,6 +188,7 @@ const (
 	fuzzMinChunkSize          = 256 << 10 // 256 KiB
 	fuzzMaxChunkSize          = 2*fuzzMinChunkSize - 1
 	fuzzHorizonLookaheadBytes = 8 * fuzzMinChunkSize
+	fuzzMaxDataSizeBytes      = 20 << 20 // 20 MiB
 )
 
 func FuzzReaderPutter(f *testing.F) {
@@ -196,6 +197,12 @@ func FuzzReaderPutter(f *testing.F) {
 		f.Add((i+1)<<20, int64(i))
 	}
 	f.Fuzz(func(t *testing.T, dataSizeBytes int, seed int64) {
+		// The fuzzer is free to generate any int, including
+		// negative and absurdly large ones. Only fuzz data sizes
+		// that we are willing to allocate.
+		if dataSizeBytes < 0 || dataSizeBytes > fuzzMaxDataSizeBytes {
+			return
+		}
 		require := require.New(t)
 		rng := rand.New(rand.NewSource(seed))
 		originalData := make([]byte, dataSizeBytes)
