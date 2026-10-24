@@ -84,7 +84,7 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, err
 	}
 
-	if len(resp.GetResponses()) != 1 {
+	if len(resp.Responses) != 1 {
 		return nil, status.Errorf(codes.Internal, "Expected 1 response, got %d", len(resp.Responses))
 	}
 
