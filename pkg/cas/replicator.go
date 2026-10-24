@@ -83,13 +83,17 @@ func (r *replicator) Replicate(ctx context.Context, digests digest.Set) error {
 	// the backend to perform the cdc translation on the fly if
 	// required.
 	for _, blobDigest := range missing.Items() {
-		if IsSingleChunk(sourceParams, blobDigest) {
-			data, err := r.sourceChunkBytesReader.Read(ctx, blobDigest)
+		if IsSingleChunk(sinkParams, blobDigest) || IsSingleChunk(sourceParams, blobDigest) {
+			// At least one side stores this blob as a single chunk. The
+			// sink must not obtain a chunk mapping for it, and the
+			// source has none to offer, so reassemble the blob and hand
+			// it to the sink as a stream. The sink chunks it using its
+			// own CDC parameters.
+			blobReader, err := GetReader(ctx, r.sourceChunkBytesReader, r.sourceChunkMappingFetcher, sourceParams, blobDigest, 0)
 			if err != nil {
-				return util.StatusWrapf(err, "Failed to fetch blob %s", blobDigest.String())
+				return util.StatusWrapf(err, "Failed to fetch blob %s from source", blobDigest.String())
 			}
-			err = r.sinkReaderPutter.PutReaderAt(ctx, blobDigest, bytes.NewReader(data), sinkParams)
-			if err != nil {
+			if err := r.sinkReaderPutter.PutReader(ctx, blobDigest, blobReader, sinkParams); err != nil {
 				return util.StatusWrapf(err, "Failed to replicate blob %s", blobDigest.String())
 			}
 			continue

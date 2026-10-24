@@ -97,6 +97,7 @@ func TestChunkMappingValidatingBlobAccessPutManualSplice(t *testing.T) {
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digestFunction.GetInstanceName()).Return(testCDCParams, nil)
 	chunkMappingStorage.EXPECT().FindMissing(gomock.Any(), digest.EmptySet).Return(digest.EmptySet, nil)
 	chunkStorage.EXPECT().FindMissing(gomock.Any(), digest.NewSetBuilder(2).Add(chunk1Digest).Add(chunk2Digest).Build()).Return(digest.EmptySet, nil)
+	chunkMappingStorage.EXPECT().Get(gomock.Any(), fullBlobDigest).Return(chunk.Mapping{}, status.Error(codes.NotFound, "Blob not found"))
 	chunkBytesReader.EXPECT().Read(gomock.Any(), chunk1Digest).Return(chunk1Data, nil)
 	chunkBytesReader.EXPECT().Read(gomock.Any(), chunk2Digest).Return(chunk2Data, nil)
 	readerPutter.EXPECT().PutReader(gomock.Any(), fullBlobDigest, gomock.Any(), testCDCParams).DoAndReturn(
@@ -184,6 +185,88 @@ func TestChunkMappingValidatingBlobAccessPutMissingChunk(t *testing.T) {
 	require.Equal(t, codes.NotFound, status.Code(err))
 }
 
+func TestChunkMappingValidatingBlobAccessPutMatchingStoredMapping(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
+	readerPutter := mock.NewMockReaderPutter(ctrl)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(chunkMappingStorage, chunkStorage, cdcParametersFetcher, chunkBytesReader, readerPutter)
+
+	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
+	blobData := bytes.Repeat([]byte("testdatafortests"), 250)
+	chunk1Data := blobData[:len(blobData)/2]
+	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
+	chunk2Data := blobData[len(blobData)/2:]
+	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
+	blobDigest := mustComputeDigest(t, digestFunction, blobData)
+
+	chunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunk1Digest, chunk2Digest}, uint64(blobDigest.GetSizeBytes()), false)
+	require.NoError(t, err)
+
+	// The mapping that is already in storage is identical to the one
+	// being put, so the expensive reassembly is skipped. Note that the
+	// stored mapping is validated while the supplied one is not, which
+	// must not affect the comparison.
+	storedChunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunk1Digest, chunk2Digest}, uint64(blobDigest.GetSizeBytes()), true)
+	require.NoError(t, err)
+
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digestFunction.GetInstanceName()).Return(testCDCParams, nil)
+	chunkMappingStorage.EXPECT().FindMissing(gomock.Any(), digest.EmptySet).Return(digest.EmptySet, nil)
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), digest.NewSetBuilder(2).Add(chunk1Digest).Add(chunk2Digest).Build()).Return(digest.EmptySet, nil)
+	chunkMappingStorage.EXPECT().Get(gomock.Any(), blobDigest).Return(storedChunkMapping, nil)
+
+	err = validatingCMS.Put(ctx, blobDigest, chunkMapping)
+	require.NoError(t, err)
+}
+
+func TestChunkMappingValidatingBlobAccessPutStoredMappingDiffers(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	chunkBytesReader := mock.NewMockReader[[]byte](ctrl)
+	readerPutter := mock.NewMockReaderPutter(ctrl)
+	validatingCMS := chunkmappingvalidating.NewChunkMappingValidatingBlobAccess(chunkMappingStorage, chunkStorage, cdcParametersFetcher, chunkBytesReader, readerPutter)
+
+	digestFunction := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256)
+	blobData := append(bytes.Repeat([]byte("a"), 2000), bytes.Repeat([]byte("b"), 2000)...)
+	chunk1Data := blobData[:2000]
+	chunk1Digest := mustComputeDigest(t, digestFunction, chunk1Data)
+	chunk2Data := blobData[2000:]
+	chunk2Digest := mustComputeDigest(t, digestFunction, chunk2Data)
+	blobDigest := mustComputeDigest(t, digestFunction, blobData)
+
+	chunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunk1Digest, chunk2Digest}, uint64(blobDigest.GetSizeBytes()), false)
+	require.NoError(t, err)
+
+	// The stored mapping contains the same chunks in a different
+	// order, so it does not match and the blob is reassembled.
+	storedChunkMapping, err := chunk.NewMappingFromDigests([]digest.Digest{chunk2Digest, chunk1Digest}, uint64(blobDigest.GetSizeBytes()), true)
+	require.NoError(t, err)
+
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digestFunction.GetInstanceName()).Return(testCDCParams, nil)
+	chunkMappingStorage.EXPECT().FindMissing(gomock.Any(), digest.EmptySet).Return(digest.EmptySet, nil)
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), digest.NewSetBuilder(2).Add(chunk1Digest).Add(chunk2Digest).Build()).Return(digest.EmptySet, nil)
+	chunkMappingStorage.EXPECT().Get(gomock.Any(), blobDigest).Return(storedChunkMapping, nil)
+	chunkBytesReader.EXPECT().Read(gomock.Any(), chunk1Digest).Return(chunk1Data, nil)
+	chunkBytesReader.EXPECT().Read(gomock.Any(), chunk2Digest).Return(chunk2Data, nil)
+	readerPutter.EXPECT().PutReader(gomock.Any(), blobDigest, gomock.Any(), testCDCParams).DoAndReturn(
+		func(ctx context.Context, d digest.Digest, r io.Reader, params *remoteexecution.RepMaxCdcParams) error {
+			data, err := io.ReadAll(r)
+			require.NoError(t, err)
+			require.Equal(t, blobData, data)
+			return nil
+		},
+	)
+
+	err = validatingCMS.Put(ctx, blobDigest, chunkMapping)
+	require.NoError(t, err)
+}
+
 func TestChunkMappingValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
@@ -208,6 +291,7 @@ func TestChunkMappingValidatingBlobAccessPutRepeatedChunks(t *testing.T) {
 	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), digestFunction.GetInstanceName()).Return(testCDCParams, nil)
 	chunkMappingStorage.EXPECT().FindMissing(gomock.Any(), digest.EmptySet).Return(digest.EmptySet, nil)
 	chunkStorage.EXPECT().FindMissing(gomock.Any(), digest.NewSetBuilder(2).Add(digestA).Add(digestB).Build()).Return(digest.EmptySet, nil)
+	chunkMappingStorage.EXPECT().Get(gomock.Any(), expectedDigest).Return(chunk.Mapping{}, status.Error(codes.NotFound, "Blob not found"))
 	chunkBytesReader.EXPECT().Read(gomock.Any(), digestA).Return(chunkAData, nil).Times(3)
 	chunkBytesReader.EXPECT().Read(gomock.Any(), digestB).Return(chunkBData, nil)
 	readerPutter.EXPECT().PutReader(gomock.Any(), expectedDigest, gomock.Any(), testCDCParams).DoAndReturn(

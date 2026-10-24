@@ -745,6 +745,7 @@ func TestContentAddressableStorageServerSpliceBlob(t *testing.T) {
 	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
 	chunkMappingStorage.EXPECT().Put(ctx, blobDigest, expectedChunkMapping).Return(nil)
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), blobDigest.GetInstanceName()).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 2, HorizonSizeBytes: 4}, nil)
 
 	maximumMessageSizeBytes := 200
 
@@ -784,6 +785,35 @@ func TestContentAddressableStorageServerRegisterChunkMappingSingleChunk(t *testi
 	}
 }
 
+// TestContentAddressableStorageServerRegisterChunkMappingSmallBlob
+// verifies that a decomposition of a blob that fits in a single chunk is
+// rejected, even if the client provides two or more chunks. Such blobs
+// are stored as a chunk and never obtain a chunk mapping, so there is
+// nothing to register.
+func TestContentAddressableStorageServerRegisterChunkMappingSmallBlob(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	blobDigest := digest.MustNewDigest("my_instance_name", remoteexecution.DigestFunction_SHA256, "e1bb3ab0d9402ae576a4f07d81f314f90a3e70672f5da6c21647e8ab507e511b", 18)
+	chunk1Digest := digest.MustNewDigest("my_instance_name", remoteexecution.DigestFunction_SHA256, "409a7f83ac6b31dc8c77e3ec18038f209bd2f545e0f4177c2e2381aa4e067b49", 9)
+	chunk2Digest := digest.MustNewDigest("my_instance_name", remoteexecution.DigestFunction_SHA256, "0479688f99e8cbc70291ce272876ff8e0db71a0889daf2752884b0996056b4a0", 9)
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	readerPutter := mock.NewMockReaderPutter(ctrl)
+
+	// 18 bytes is below twice the minimum chunk size of 16 bytes.
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), blobDigest.GetInstanceName()).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 16, HorizonSizeBytes: 32}, nil)
+
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)
+	_, err := contentAddressableStorageServer.SpliceBlob(ctx, &remoteexecution.SpliceBlobRequest{
+		InstanceName: "my_instance_name",
+		BlobDigest:   blobDigest.GetProto(),
+		ChunkDigests: []*remoteexecution.Digest{chunk1Digest.GetProto(), chunk2Digest.GetProto()},
+	})
+	testutil.RequireEqualStatus(t, status.Error(codes.Unimplemented, "This server does not implement RegisterChunkMapping calls for blobs that fit in a single chunk"), err)
+}
+
 func TestContentAddressableStorageServerRegisterChunkMappingSizeOverflow(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
@@ -808,6 +838,9 @@ func TestContentAddressableStorageServerRegisterChunkMappingSizeOverflow(t *test
 		Hash:      "0000000000000000000000000000000000000000000000000000000000000012",
 		SizeBytes: 18,
 	}
+
+	// The blob is large enough to not be rejected as a single chunk.
+	cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("my_instance_name")).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1, HorizonSizeBytes: 1}, nil)
 
 	readerPutter := mock.NewMockReaderPutter(ctrl)
 	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 200, 1000)

@@ -9,6 +9,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestMappingEquals verifies that Equals() only considers the chunks
+// that make up the mapping, not how the mapping was constructed.
+func TestMappingEquals(t *testing.T) {
+	md5 := digest.MustNewFunction("", remoteexecution.DigestFunction_MD5)
+	sha256 := digest.MustNewFunction("", remoteexecution.DigestFunction_SHA256)
+
+	digestA, err := md5.NewDigest("00000000000000000000000000000000", 3)
+	require.NoError(t, err)
+	digestB, err := md5.NewDigest("11111111111111111111111111111111", 4)
+	require.NoError(t, err)
+	digestC, err := md5.NewDigest("22222222222222222222222222222222", 5)
+	require.NoError(t, err)
+	digestASha256, err := sha256.NewDigest("0000000000000000000000000000000000000000000000000000000000000000", 3)
+	require.NoError(t, err)
+	digestBSha256, err := sha256.NewDigest("1111111111111111111111111111111111111111111111111111111111111111", 4)
+	require.NoError(t, err)
+
+	mapping, err := chunk.NewMappingFromDigests([]digest.Digest{digestA, digestB}, 7, false)
+	require.NoError(t, err)
+	validatedMapping, err := chunk.NewMappingFromDigests([]digest.Digest{digestA, digestB}, 7, true)
+	require.NoError(t, err)
+	reorderedMapping, err := chunk.NewMappingFromDigests([]digest.Digest{digestB, digestA}, 7, false)
+	require.NoError(t, err)
+	resizedMapping, err := chunk.NewMappingFromDigests([]digest.Digest{digestA, digestC}, 8, false)
+	require.NoError(t, err)
+	otherFunctionMapping, err := chunk.NewMappingFromDigests([]digest.Digest{digestASha256, digestBSha256}, 7, false)
+	require.NoError(t, err)
+
+	// The validated flag does not affect equality.
+	require.True(t, mapping.Equals(validatedMapping))
+	require.True(t, validatedMapping.Equals(mapping))
+
+	// Chunk order, chunk sizes and digest function do.
+	require.False(t, mapping.Equals(reorderedMapping))
+	require.False(t, mapping.Equals(resizedMapping))
+	require.False(t, mapping.Equals(otherFunctionMapping))
+}
+
 // FuzzMappingFindChunkOffset verifies that FindChunkOffset() assigns
 // every offset within a chunk mapping to the chunk that contains it.
 //

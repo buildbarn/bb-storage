@@ -2,7 +2,6 @@ package chunkmappingvalidating
 
 import (
 	"context"
-	"slices"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 
@@ -59,13 +58,7 @@ func (ba *chunkMappingValidatingBlobAccess) Get(ctx context.Context, d digest.Di
 
 // matchesStoredChunkMapping checks if the user-provided chunk digests
 // match the chunk mapping already stored for the given digest.
-func (ba *chunkMappingValidatingBlobAccess) matchesStoredChunkMapping(ctx context.Context, params *remoteexecution.RepMaxCdcParams, d digest.Digest, userChunkMapping chunk.Mapping) (bool, error) {
-	if cas.IsSingleChunk(params, d) {
-		// TODO: This can only happen if we are asked to register a
-		// chunk mapping for a blob that in the end is a single chunk.
-		// Should we prevent this at a higher level?
-		return false, nil
-	}
+func (ba *chunkMappingValidatingBlobAccess) matchesStoredChunkMapping(ctx context.Context, d digest.Digest, userChunkMapping chunk.Mapping) (bool, error) {
 	storedChunkMapping, err := ba.BlobAccess.Get(ctx, d)
 	if status.Code(err) == codes.NotFound {
 		return false, nil
@@ -73,8 +66,7 @@ func (ba *chunkMappingValidatingBlobAccess) matchesStoredChunkMapping(ctx contex
 	if err != nil {
 		return false, util.StatusWrap(err, "Failed to retrieve stored chunk mapping")
 	}
-	instanceName := d.GetInstanceName()
-	return slices.Equal(userChunkMapping.GetDigests(instanceName), storedChunkMapping.GetDigests(instanceName)), nil
+	return userChunkMapping.Equals(storedChunkMapping), nil
 }
 
 func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Digest, value chunk.Mapping) error {
@@ -95,7 +87,7 @@ func (ba *chunkMappingValidatingBlobAccess) Put(ctx context.Context, d digest.Di
 	if err != nil {
 		return status.Error(codes.NotFound, "At least one chunk is missing from storage")
 	}
-	match, err := ba.matchesStoredChunkMapping(ctx, params, d, value)
+	match, err := ba.matchesStoredChunkMapping(ctx, d, value)
 	if err != nil {
 		return err
 	}

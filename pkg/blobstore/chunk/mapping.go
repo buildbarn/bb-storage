@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"math"
 	"math/bits"
+	"slices"
 	"sort"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
@@ -151,6 +152,15 @@ func (m Mapping) GetProtoDigests() []*remoteexecution.Digest {
 // determined to compose the digest which it is being addressed by.
 func (m Mapping) IsValidated() bool {
 	return m.validated
+}
+
+// Equals returns whether two chunk mappings contain the same chunks in
+// the same order. The validated state is not taken into account, as it
+// only denotes how much verification a mapping has already undergone.
+func (m Mapping) Equals(other Mapping) bool {
+	return m.digestFunction == other.digestFunction &&
+		slices.Equal(m.digests, other.digests) &&
+		slices.Equal(m.endsAt, other.endsAt)
 }
 
 // FindChunkOffset returns the index of the chunk containing the given

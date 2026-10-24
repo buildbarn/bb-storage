@@ -285,6 +285,16 @@ func (s *contentAddressableStorageServer) registerChunkMapping(ctx context.Conte
 	if len(digests) < 2 {
 		return status.Error(codes.Unimplemented, "This server does not implement trivial RegisterChunkMapping calls")
 	}
+	// Blobs that fit in a single chunk are stored as a chunk and never
+	// obtain a chunk mapping, even if a client provides a decomposition
+	// into multiple chunks that are all below the minimum chunk size.
+	params, err := s.cdcParametersFetcher.FetchCDCParameters(ctx, d.GetInstanceName())
+	if err != nil {
+		return err
+	}
+	if cas.IsSingleChunk(params, d) {
+		return status.Error(codes.Unimplemented, "This server does not implement RegisterChunkMapping calls for blobs that fit in a single chunk")
+	}
 	// Store the chunk mapping.
 	chunkMapping, err := chunk.NewMappingFromProtoDigests(d.GetDigestFunction(), digests, uint64(d.GetSizeBytes()), false)
 	if err != nil {

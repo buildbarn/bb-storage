@@ -242,7 +242,7 @@ func TestRepMaxCDCSplitAndSpliceBehaviors(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		blobData := []byte("This blob will be fully uploaded before we try to splice it.")
+		blobData := makeRandomData(t, int(minChunkSizeBytes*2), 0)
 		blobDigest := computeDigest(blobData)
 		err := batchUploadBlob(ctx, casClient, blobData, blobDigest, remoteexecution.Compressor_IDENTITY)
 		require.NoError(t, err, "Unexpected error when uploading blob.")
