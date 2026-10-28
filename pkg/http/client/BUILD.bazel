@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "client",
@@ -20,5 +20,17 @@ go_library(
         "@org_golang_google_grpc//status",
         "@org_golang_x_oauth2//:oauth2",
         "@org_golang_x_oauth2//clientcredentials",
+    ],
+)
+
+go_test(
+    name = "client_test",
+    srcs = ["header_adding_round_tripper_test.go"],
+    deps = [
+        ":client",
+        "//internal/mock",
+        "//pkg/proto/configuration/http/client",
+        "@com_github_stretchr_testify//require",
+        "@org_uber_go_mock//gomock",
     ],
 )
