@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/testutil",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/filesystem",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",

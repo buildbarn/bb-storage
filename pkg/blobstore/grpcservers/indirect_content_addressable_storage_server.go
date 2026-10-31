@@ -5,7 +5,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -14,18 +13,16 @@ import (
 )
 
 type indirectContentAddressableStorageServer struct {
-	blobAccess              blobstore.BlobAccess
-	maximumMessageSizeBytes int
+	blobAccess blobstore.BlobAccess[*icas.Reference]
 }
 
 // NewIndirectContentAddressableStorageServer creates a gRPC service for
 // serving the contents of an Indirect Content Addressable Storage
 // (ICAS). The ICAS is a Buildbarn specific extension for integrating
 // external corpora into the CAS.
-func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess, maximumMessageSizeBytes int) icas.IndirectContentAddressableStorageServer {
+func NewIndirectContentAddressableStorageServer(blobAccess blobstore.BlobAccess[*icas.Reference]) icas.IndirectContentAddressableStorageServer {
 	return &indirectContentAddressableStorageServer{
-		blobAccess:              blobAccess,
-		maximumMessageSizeBytes: maximumMessageSizeBytes,
+		blobAccess: blobAccess,
 	}
 }
 
@@ -77,7 +74,7 @@ func (s *indirectContentAddressableStorageServer) BatchUpdateReferences(ctx cont
 			err = s.blobAccess.Put(
 				ctx,
 				digest,
-				buffer.NewProtoBufferFromProto(request.Reference, buffer.UserProvided),
+				request.Reference,
 			)
 		}
 		responses = append(responses,
@@ -105,12 +102,5 @@ func (s *indirectContentAddressableStorageServer) GetReference(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	actionResult, err := s.blobAccess.Get(ctx, digest).ToProto(
-		&icas.Reference{},
-		s.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return actionResult.(*icas.Reference), nil
+	return s.blobAccess.Get(ctx, digest)
 }

@@ -5,7 +5,7 @@ Buildbarn提供了远程执行协议（[Remote Execution protocol](https://githu
 
 本仓库提供了Buildbarn的Storage 守护进程（简称Storage Daemon），可用来搭建一个可伸缩拓展的缓存服务。由Storage Daemon本身不提供远程构建功能，所以当仅部署Storage Daemon时，编译将在本地执行。Storage Daemon通过将Build Action请求转发到一个独立的远程执行服务。
 
-Storage Daemon可以通过配置来使用一系列的后端, 例如Redis和S3。同时也提供一种本地磁盘存储， 数据被写入到一个大文件中，用哈希表来索引，这个存储是自清理的，不需要垃圾回收。通过[Storage的配置文件]((https://github.com/buildbarn/bb-storage/blob/main/pkg/proto/configuration/blobstore/blobstore.proto))可以很好的了解哪些后端存储可用以及如何配置他们。
+Storage Daemon可以通过配置来使用一系列的后端，例如通过gRPC转发的后端，以及本地磁盘存储后端。本地磁盘存储后端把数据写入到一个大文件中，用哈希表来索引，这个存储是自清理的，不需要垃圾回收。通过[Storage的配置文件](https://github.com/buildbarn/bb-storage/blob/main/pkg/proto/configuration/blobstore/blobstore.proto)可以很好的了解哪些后端存储可用以及如何配置他们。
 
 ## 搭建Buildbarn Storage Daemon
 
@@ -22,67 +22,131 @@ Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 ```
 $ cat config/bb_storage.jsonnet
 {
-  blobstore: {
+  contentAddressableStorageServer: {
     contentAddressableStorage: {
-      'local': {
-        keyLocationMapOnBlockDevice: {
-          file: {
-            path: '/storage-cas/key_location_map',
-            sizeBytes: 16 * 1024 * 1024,
-          },
-        },
-        keyLocationMapMaximumGetAttempts: 16,
-        keyLocationMapMaximumPutAttempts: 64,
-        oldBlocks: 8,
-        currentBlocks: 24,
-        newBlocks: 3,
-        blocksOnBlockDevice: {
-          source: {
-            file: {
-              path: '/storage-cas/blocks',
-              sizeBytes: 10 * 1024 * 1024 * 1024,
-            },
-          },
-          spareBlocks: 3,
-        },
-        persistent: {
-          stateDirectoryPath: '/storage-cas/persistent_state',
-          minimumEpochInterval: '5m',
-        },
-      },
-    },
-    actionCache: {
-      completenessChecking: {
+      chunkStorage: {
         'local': {
-          keyLocationMapOnBlockDevice: {
-            file: {
-              path: '/storage-ac/key_location_map',
-              sizeBytes: 1024 * 1024,
+          keyLocationMap: {
+            onBlockDevice: {
+              file: {
+                path: '/storage-cas/key_location_map',
+                sizeBytes: 16 * 1024 * 1024,
+              },
             },
+            maximumGetAttempts: 16,
+            maximumPutAttempts: 64,
           },
-          keyLocationMapMaximumGetAttempts: 16,
-          keyLocationMapMaximumPutAttempts: 64,
           oldBlocks: 8,
           currentBlocks: 24,
-          newBlocks: 1,
+          newBlocks: 3,
           blocksOnBlockDevice: {
             source: {
               file: {
-                path: '/storage-ac/blocks',
-                sizeBytes: 100 * 1024 * 1024,
+                path: '/storage-cas/blocks',
+                sizeBytes: 10 * 1024 * 1024 * 1024,
               },
             },
             spareBlocks: 3,
           },
           persistent: {
-            stateDirectoryPath: '/storage-ac/persistent_state',
-            minimumEpochInterval: '5m',
+            stateDirectoryPath: '/storage-cas/persistent_state',
+            minimumEpochInterval: '300s',
+          },
+          chunkingParameters: {
+            minChunkSizeBytes: 256 * 1024,
+            horizonSizeBytes: 8 * 256 * 1024,
+          },
+        },
+      },
+      chunkMappingStorage: {
+        chunkMappingValidating: {
+          backend: {
+            'local': {
+              keyLocationMap: {
+                onBlockDevice: {
+                  file: {
+                    path: '/storage-cms/key_location_map',
+                    sizeBytes: 16 * 1024 * 1024,
+                  },
+                },
+                maximumGetAttempts: 16,
+                maximumPutAttempts: 64,
+              },
+              oldBlocks: 8,
+              currentBlocks: 24,
+              newBlocks: 1,
+              blocksOnBlockDevice: {
+                source: {
+                  file: {
+                    path: '/storage-cms/blocks',
+                    sizeBytes: 1024 * 1024 * 1024,
+                  },
+                },
+                spareBlocks: 3,
+              },
+              persistent: {
+                stateDirectoryPath: '/storage-cms/persistent_state',
+                minimumEpochInterval: '300s',
+              },
+            },
           },
         },
       },
     },
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { allow: {} },
+    findMissingAuthorizer: { allow: {} },
+    maximumChunkCount: 100000,
   },
-  global: { diagnosticsHttpListenAddress: ':9980' },
+  actionCache: {
+    backend: {
+      completenessChecking: {
+        backend: {
+          'local': {
+            keyLocationMap: {
+              onBlockDevice: {
+                file: {
+                  path: '/storage-ac/key_location_map',
+                  sizeBytes: 1024 * 1024,
+                },
+              },
+              maximumGetAttempts: 16,
+              maximumPutAttempts: 64,
+            },
+            oldBlocks: 8,
+            currentBlocks: 24,
+            newBlocks: 1,
+            blocksOnBlockDevice: {
+              source: {
+                file: {
+                  path: '/storage-ac/blocks',
+                  sizeBytes: 100 * 1024 * 1024,
+                },
+              },
+              spareBlocks: 3,
+            },
+            persistent: {
+              stateDirectoryPath: '/storage-ac/persistent_state',
+              minimumEpochInterval: '300s',
+            },
+          },
+        },
+        maximumTotalTreeSizeBytes: 16 * 1024 * 1024,
+      },
+    },
+    getAuthorizer: { allow: {} },
+    putAuthorizer: { instanceNamePrefix: {
+      allowedInstanceNamePrefixes: ['foo'],
+    } },
+  },
+  global: { diagnosticsHttpServer: {
+    httpServers: [{
+      listenAddresses: [':9980'],
+      authenticationPolicy: { allow: {} },
+    }],
+    enablePrometheus: true,
+    enablePprof: true,
+  } },
   grpcServers: [{
     listenAddresses: [':8980'],
     authenticationPolicy: { allow: {} },
@@ -90,21 +154,24 @@ $ cat config/bb_storage.jsonnet
   schedulers: {
     bar: { endpoint: { address: 'bar-scheduler:8981' } },
   },
-  allowAcUpdatesForInstanceNamePrefixes: ['foo'],
+  executeAuthorizer: { allow: {} },
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
-$ mkdir -p storage-{ac,cas}/persistent_state
+$ mkdir -p storage-{ac,cas,cms}/persistent_state
 $ docker run \
       -p 8980:8980 \
       -p 9980:9980 \
       -v $(pwd)/config:/config \
       -v $(pwd)/storage-cas:/storage-cas \
+      -v $(pwd)/storage-cms:/storage-cms \
       -v $(pwd)/storage-ac:/storage-ac \
       bazel/cmd/bb_storage:bb_storage_container \
       /config/bb_storage.jsonnet
 ```
 
-在上面的例子中，Storage Daemon被配置为储存单个CAS，包含两个AC，分别是名字为`foo`和`bar`的实例。前者是用做远端缓存，这里配置文件中加入了`allowAcUpdatesForInstances`选项来配置其对客户端可写。后者是用作远端执行，这里配置文件中加入了`schedulers`选项来将build action转发到一个独立的调度服务（地址为：`bar-scheduler:8981`）。请到[配置文件](https://github.com/buildbarn/bb-storage/blob/main/pkg/proto/configuration/bb_storage/bb_storage.proto)中查看所有的选项。
+在上面的例子中，Storage Daemon被配置为储存单个CAS。该CAS由两部分组成：Chunk Storage（CS）用于存放各个数据块（chunk），Chunk Mapping Storage（CMS）用于记录数据块如何组合成完整的blob。CS上的`chunkingParameters`声明了对`SplitBlob()`和`SpliceBlob()`调用的支持，CMS则被包裹在`chunkMappingValidating`中，以确保只接受符合这些参数、且数据块确实能拼接成blob摘要的映射。
+
+配置中包含两个AC，分别是名字为`foo`和`bar`的实例。前者是用做远端缓存，这里配置文件中通过`actionCache.putAuthorizer`选项来配置其对客户端可写。后者是用作远端执行，这里配置文件中加入了`schedulers`选项来将build action转发到一个独立的调度服务（地址为：`bar-scheduler:8981`）。请到[配置文件](https://github.com/buildbarn/bb-storage/blob/main/pkg/proto/configuration/bb_storage/bb_storage.proto)中查看所有的选项。
 
 Bazel通过如下设置就可以使用远端缓存了：
 

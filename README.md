@@ -42,40 +42,81 @@ This container image can then be launched using Docker as follows:
 ```
 $ cat config/bb_storage.jsonnet
 {
-  contentAddressableStorage: {
-    backend: {
-      'local': {
-        keyLocationMap: {
-          onBlockDevice: {
-            file: {
-              path: '/storage-cas/key_location_map',
-              sizeBytes: 16 * 1024 * 1024,
+  contentAddressableStorageServer: {
+    contentAddressableStorage: {
+      chunkStorage: {
+        'local': {
+          keyLocationMap: {
+            onBlockDevice: {
+              file: {
+                path: '/storage-cas/key_location_map',
+                sizeBytes: 16 * 1024 * 1024,
+              },
+            },
+            maximumGetAttempts: 16,
+            maximumPutAttempts: 64,
+          },
+          oldBlocks: 8,
+          currentBlocks: 24,
+          newBlocks: 3,
+          blocksOnBlockDevice: {
+            source: {
+              file: {
+                path: '/storage-cas/blocks',
+                sizeBytes: 10 * 1024 * 1024 * 1024,
+              },
+            },
+            spareBlocks: 3,
+          },
+          persistent: {
+            stateDirectoryPath: '/storage-cas/persistent_state',
+            minimumEpochInterval: '300s',
+          },
+          chunkingParameters: {
+            minChunkSizeBytes: 256 * 1024,
+            horizonSizeBytes: 8 * 256 * 1024,
+          },
+        },
+      },
+      chunkMappingStorage: {
+        chunkMappingValidating: {
+          backend: {
+            'local': {
+              keyLocationMap: {
+                onBlockDevice: {
+                  file: {
+                    path: '/storage-cms/key_location_map',
+                    sizeBytes: 16 * 1024 * 1024,
+                  },
+                },
+                maximumGetAttempts: 16,
+                maximumPutAttempts: 64,
+              },
+              oldBlocks: 8,
+              currentBlocks: 24,
+              newBlocks: 1,
+              blocksOnBlockDevice: {
+                source: {
+                  file: {
+                    path: '/storage-cms/blocks',
+                    sizeBytes: 1024 * 1024 * 1024,
+                  },
+                },
+                spareBlocks: 3,
+              },
+              persistent: {
+                stateDirectoryPath: '/storage-cms/persistent_state',
+                minimumEpochInterval: '300s',
+              },
             },
           },
-          maximumGetAttempts: 16,
-          maximumPutAttempts: 64,
-        },
-        oldBlocks: 8,
-        currentBlocks: 24,
-        newBlocks: 3,
-        blocksOnBlockDevice: {
-          source: {
-            file: {
-              path: '/storage-cas/blocks',
-              sizeBytes: 10 * 1024 * 1024 * 1024,
-            },
-          },
-          spareBlocks: 3,
-        },
-        persistent: {
-          stateDirectoryPath: '/storage-cas/persistent_state',
-          minimumEpochInterval: '300s',
         },
       },
     },
     getAuthorizer: { allow: {} },
     putAuthorizer: { allow: {} },
     findMissingAuthorizer: { allow: {} },
+    maximumChunkCount: 100000,
   },
   actionCache: {
     backend: {
@@ -136,21 +177,26 @@ $ cat config/bb_storage.jsonnet
   executeAuthorizer: { allow: {} },
   maximumMessageSizeBytes: 16 * 1024 * 1024,
 }
-$ mkdir -p storage-{ac,cas}/persistent_state
+$ mkdir -p storage-{ac,cas,cms}/persistent_state
 $ docker run \
       -p 8980:8980 \
       -p 9980:9980 \
       -v $(pwd)/config:/config \
       -v $(pwd)/storage-cas:/storage-cas \
+      -v $(pwd)/storage-cms:/storage-cms \
       -v $(pwd)/storage-ac:/storage-ac \
       bazel/cmd/bb_storage:bb_storage_container \
       /config/bb_storage.jsonnet
 ```
 
 In the example above, the daemon is configured to store a single on-disk
-CAS. Two ACs are made, corresponding with instance names `foo` and
+CAS. The CAS is composed of a Chunk Storage (CS), which holds the
+individual chunks, and a Chunk Mapping Storage (CMS), which records how
+blobs are decomposed into those chunks.
+
+Two ACs are made, corresponding with instance names `foo` and
 `bar`. The former is intended just for remote caching, which is why it's
-made client-writable through `actionCacheAuthorizers` in the
+made client-writable through `actionCache.putAuthorizer` in the
 configuration file. The latter is intended for remote execution, which
 is why `schedulers` is used to forward build action execution requests
 to a separate scheduler service at address `bar-scheduler:8981`.

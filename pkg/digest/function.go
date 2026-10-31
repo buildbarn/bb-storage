@@ -46,6 +46,12 @@ func (f Function) GetEnumValue() remoteexecution.DigestFunction_Value {
 	return f.bareFunction.enumValue
 }
 
+// GetHashLength returns the length in bytes of the hashes that are
+// contained in digests created using this digest function.
+func (f Function) GetHashLength() int {
+	return len(f.bareFunction.emptyHash) / 2
+}
+
 // NewGenerator creates a writer that may be used to compute digests of
 // newly created files.
 //
@@ -64,7 +70,7 @@ func (f Function) NewGenerator(expectedSizeBytes int64) *Generator {
 // non-degenerate.
 func (f Function) NewDigest(hash string, sizeBytes int64) (Digest, error) {
 	// Validate the digest function.
-	if hashStringSize := 2 * f.bareFunction.hashBytesSize; len(hash) != hashStringSize {
+	if hashStringSize := len(f.bareFunction.emptyHash); len(hash) != hashStringSize {
 		return BadDigest, status.Errorf(codes.InvalidArgument, "Hash has length %d, while %d characters were expected", len(hash), hashStringSize)
 	}
 
@@ -78,6 +84,13 @@ func (f Function) NewDigest(hash string, sizeBytes int64) (Digest, error) {
 	// Validate the size.
 	if sizeBytes < 0 {
 		return BadDigest, status.Errorf(codes.InvalidArgument, "Invalid digest size: %d bytes", sizeBytes)
+	}
+
+	// Validate degenerate empty blobs. The empty blob is the only blob
+	// of size zero, and its hash is fully determined by the digest
+	// function.
+	if sizeBytes == 0 && hash != f.bareFunction.emptyHash {
+		return BadDigest, status.Errorf(codes.InvalidArgument, "Empty blob has checksum %s, while %s was expected", f.bareFunction.emptyHash, hash)
 	}
 
 	return f.newDigestUnchecked(hash, sizeBytes), nil

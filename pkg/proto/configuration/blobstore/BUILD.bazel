@@ -15,6 +15,7 @@ proto_library(
         "//pkg/proto/configuration/grpc:grpc_proto",
         "//pkg/proto/configuration/http/client:client_proto",
         "//pkg/proto/configuration/lossymap:lossymap_proto",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto",
         "@googleapis//google/rpc:status_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -35,6 +36,7 @@ go_proto_library(
         "//pkg/proto/configuration/grpc",
         "//pkg/proto/configuration/http/client",
         "//pkg/proto/configuration/lossymap",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )
