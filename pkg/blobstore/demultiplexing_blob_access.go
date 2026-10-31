@@ -4,8 +4,6 @@ import (
 	"context"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 )
@@ -18,10 +16,28 @@ import (
 // as part of error messages. The name must be unique, as it is also
 // used as a key to identify backends. An InstanceNamePatcher can also
 // be returned to adjust the instance name for outgoing requests.
-type DemultiplexedBlobAccessGetter func(i digest.InstanceName) (BlobAccess, string, digest.InstanceNamePatcher, error)
+type DemultiplexedBlobAccessGetter[T any] interface {
+	Call(i digest.InstanceName) (BlobAccess[T], string, digest.InstanceNamePatcher, error)
+}
 
-type demultiplexingBlobAccess struct {
-	getBackend DemultiplexedBlobAccessGetter
+type demultiplexedBlobAccessGetter[T any] struct {
+	fn func(i digest.InstanceName) (BlobAccess[T], string, digest.InstanceNamePatcher, error)
+}
+
+// NewDemultiplexedBlobAccessGetter creates a
+// DemuliplexedBlobAccessGetter from a function.
+func NewDemultiplexedBlobAccessGetter[T any](fn func(i digest.InstanceName) (BlobAccess[T], string, digest.InstanceNamePatcher, error)) DemultiplexedBlobAccessGetter[T] {
+	return &demultiplexedBlobAccessGetter[T]{
+		fn: fn,
+	}
+}
+
+func (g *demultiplexedBlobAccessGetter[T]) Call(i digest.InstanceName) (BlobAccess[T], string, digest.InstanceNamePatcher, error) {
+	return g.fn(i)
+}
+
+type demultiplexingBlobAccess[T any] struct {
+	getBackend DemultiplexedBlobAccessGetter[T]
 }
 
 // NewDemultiplexingBlobAccess creates a BlobAccess that demultiplexes
@@ -32,51 +48,41 @@ type demultiplexingBlobAccess struct {
 // For every request, calls are made to a DemultiplexedBlobAccessGetter
 // callback that provide different backends and mutate instance names on
 // outgoing requests.
-func NewDemultiplexingBlobAccess(getBackend DemultiplexedBlobAccessGetter) BlobAccess {
-	return &demultiplexingBlobAccess{
+func NewDemultiplexingBlobAccess[T any](getBackend DemultiplexedBlobAccessGetter[T]) BlobAccess[T] {
+	return &demultiplexingBlobAccess[T]{
 		getBackend: getBackend,
 	}
 }
 
-func (ba *demultiplexingBlobAccess) Get(ctx context.Context, digest digest.Digest) buffer.Buffer {
-	backend, backendName, patcher, err := ba.getBackend(digest.GetInstanceName())
+func (ba *demultiplexingBlobAccess[T]) Get(ctx context.Context, digest digest.Digest) (T, error) {
+	backend, backendName, patcher, err := ba.getBackend.Call(digest.GetInstanceName())
+	var zero T
 	if err != nil {
-		return buffer.NewBufferFromError(err)
+		return zero, err
 	}
-	return buffer.WithErrorHandler(
-		backend.Get(ctx, patcher.PatchDigest(digest)),
-		backendNamePrefixingErrorHandler{backendName: backendName},
-	)
+	ret, err := backend.Get(ctx, patcher.PatchDigest(digest))
+	if err != nil {
+		return zero, util.StatusWrapf(err, "Backend %#v", backendName)
+	}
+	return ret, nil
 }
 
-func (ba *demultiplexingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	backend, backendName, patcher, err := ba.getBackend(parentDigest.GetInstanceName())
+func (ba *demultiplexingBlobAccess[T]) Put(ctx context.Context, digest digest.Digest, value T) error {
+	backend, backendName, patcher, err := ba.getBackend.Call(digest.GetInstanceName())
 	if err != nil {
-		return buffer.NewBufferFromError(err)
-	}
-	return buffer.WithErrorHandler(
-		backend.GetFromComposite(ctx, patcher.PatchDigest(parentDigest), patcher.PatchDigest(childDigest), slicer),
-		backendNamePrefixingErrorHandler{backendName: backendName},
-	)
-}
-
-func (ba *demultiplexingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	backend, backendName, patcher, err := ba.getBackend(digest.GetInstanceName())
-	if err != nil {
-		b.Discard()
 		return err
 	}
-	if err := backend.Put(ctx, patcher.PatchDigest(digest), b); err != nil {
+	if err := backend.Put(ctx, patcher.PatchDigest(digest), value); err != nil {
 		return util.StatusWrapf(err, "Backend %#v", backendName)
 	}
 	return nil
 }
 
-func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *demultiplexingBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Partition the digest set into one set per backend.
 	type partitionInfo struct {
 		digests digest.SetBuilder
-		backend BlobAccess
+		backend BlobAccess[T]
 		patcher digest.InstanceNamePatcher
 	}
 	perInstanceNamePartitions := map[digest.InstanceName]*partitionInfo{}
@@ -86,7 +92,7 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 		partition, ok := perInstanceNamePartitions[instanceName]
 		if !ok {
 			// This instance name hasn't been observed before.
-			backend, backendName, patcher, err := ba.getBackend(instanceName)
+			backend, backendName, patcher, err := ba.getBackend.Call(instanceName)
 			if err != nil {
 				return digest.EmptySet, err
 			}
@@ -127,8 +133,8 @@ func (ba *demultiplexingBlobAccess) FindMissing(ctx context.Context, digests dig
 	return allMissing.Build(), nil
 }
 
-func (ba *demultiplexingBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
-	backend, backendName, patcher, err := ba.getBackend(instanceName)
+func (ba *demultiplexingBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
+	backend, backendName, patcher, err := ba.getBackend.Call(instanceName)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +144,3 @@ func (ba *demultiplexingBlobAccess) GetCapabilities(ctx context.Context, instanc
 	}
 	return capabilities, err
 }
-
-type backendNamePrefixingErrorHandler struct {
-	backendName string
-}
-
-func (eh backendNamePrefixingErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	return nil, util.StatusWrapf(err, "Backend %#v", eh.backendName)
-}
-
-func (backendNamePrefixingErrorHandler) Done() {}

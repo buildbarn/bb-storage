@@ -9,18 +9,19 @@ import (
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
 
 	"golang.org/x/sync/semaphore"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // NewBlobReplicatorFromConfiguration creates a BlobReplicator object
 // based on a configuration file.
-func NewBlobReplicatorFromConfiguration(terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess, sink BlobAccessInfo, creator BlobReplicatorCreator) (replication.BlobReplicator, error) {
+func NewBlobReplicatorFromConfiguration[T any](terminationGroup program.Group, configuration *pb.BlobReplicatorConfiguration, source blobstore.BlobAccess[T], sink BlobAccessInfo[T], creator BlobReplicatorCreator[T]) (replication.BlobReplicator[T], error) {
 	if configuration == nil {
 		return nil, status.Error(codes.InvalidArgument, "Replicator configuration not specified")
 	}
 	storageTypeName := creator.GetStorageTypeName()
-	var configuredBlobReplicator replication.BlobReplicator
+	var configuredBlobReplicator replication.BlobReplicator[T]
 	switch mode := configuration.Mode.(type) {
 	case *pb.BlobReplicatorConfiguration_ConcurrencyLimiting:
 		base, err := NewBlobReplicatorFromConfiguration(terminationGroup, mode.ConcurrencyLimiting.Base, source, sink, creator)

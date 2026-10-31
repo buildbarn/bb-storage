@@ -1,9 +1,6 @@
 package local
 
 import (
-	"bytes"
-
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 )
@@ -38,8 +35,8 @@ type inMemoryBlock struct {
 	writeOffsetBytes int
 }
 
-func (ib *inMemoryBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-	return buffer.NewValidatedBufferFromByteSlice(ib.data[offsetBytes : offsetBytes+sizeBytes])
+func (ib *inMemoryBlock) Get(digest digest.Digest, offsetBytes, sizeBytes int64) ([]byte, error) {
+	return ib.data[offsetBytes : offsetBytes+sizeBytes], nil
 }
 
 func (ib *inMemoryBlock) HasSpace(sizeBytes int64) bool {
@@ -50,11 +47,10 @@ func (ib *inMemoryBlock) Put(sizeBytes int64) BlockPutWriter {
 	// Allocate space.
 	offsetBytes := ib.writeOffsetBytes
 	ib.writeOffsetBytes += int(sizeBytes)
-	return func(b buffer.Buffer) BlockPutFinalizer {
-		// Ingest data.
-		err := b.IntoWriter(bytes.NewBuffer(ib.data[offsetBytes:offsetBytes]))
+	return func(data []byte) BlockPutFinalizer {
+		copy(ib.data[offsetBytes:offsetBytes+int(sizeBytes)], data)
 		return func() (int64, error) {
-			return int64(offsetBytes), err
+			return int64(offsetBytes), nil
 		}
 	}
 }

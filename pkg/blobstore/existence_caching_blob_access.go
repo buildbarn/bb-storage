@@ -6,8 +6,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 )
 
-type existenceCachingBlobAccess struct {
-	BlobAccess
+type existenceCachingBlobAccess[T any] struct {
+	BlobAccess[T]
 	existenceCache *digest.ExistenceCache
 }
 
@@ -22,14 +22,14 @@ type existenceCachingBlobAccess struct {
 // This decorator may be useful to run on instances that act as
 // frontends for a mirrored/sharding storage pool, as it may reduce the
 // load observed on the storage pool.
-func NewExistenceCachingBlobAccess(base BlobAccess, existenceCache *digest.ExistenceCache) BlobAccess {
-	return &existenceCachingBlobAccess{
+func NewExistenceCachingBlobAccess[T any](base BlobAccess[T], existenceCache *digest.ExistenceCache) BlobAccess[T] {
+	return &existenceCachingBlobAccess[T]{
 		BlobAccess:     base,
 		existenceCache: existenceCache,
 	}
 }
 
-func (ba *existenceCachingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *existenceCachingBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	// Determine which digests don't need to be checked, because
 	// they have already been requested recently.
 	maybeMissing := ba.existenceCache.RemoveExisting(digests)

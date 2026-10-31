@@ -13,8 +13,11 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/auth",
         "//pkg/blobstore",
-        "//pkg/blobstore/buffer",
+        "//pkg/blobstore/chunk",
+        "//pkg/capabilities",
+        "//pkg/cas",
         "//pkg/digest",
         "//pkg/proto/fsac",
         "//pkg/proto/icas",
@@ -39,7 +42,8 @@ go_test(
     deps = [
         ":grpcservers",
         "//internal/mock",
-        "//pkg/blobstore/buffer",
+        "//pkg/auth",
+        "//pkg/blobstore/chunk",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/testutil",

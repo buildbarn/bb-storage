@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -63,13 +62,11 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 		block2.EXPECT().HasSpace(int64(5)).Return(true)
 		require.True(t, blockList.HasSpace(1, 5))
 
-		block2.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
-			data, err := b.ToByteSlice(10)
-			require.NoError(t, err)
+		block2.EXPECT().Put(int64(5)).Return(func(data []byte) local.BlockPutFinalizer {
 			require.Equal(t, []byte("Hello"), data)
 			return func() (int64, error) { return int64(i) * 16, nil }
 		})
-		offset, err := blockList.Put(1, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		offset, err := blockList.Put(1, 5)([]byte("Hello"))()
 		require.NoError(t, err)
 		require.Equal(t, int64(i)*16, offset)
 	}
@@ -129,13 +126,11 @@ func TestPersistentBlockListPersistentState(t *testing.T) {
 		block1.EXPECT().HasSpace(int64(5)).Return(true)
 		require.True(t, blockList.HasSpace(0, 5))
 
-		block1.EXPECT().Put(int64(5)).Return(func(b buffer.Buffer) local.BlockPutFinalizer {
-			data, err := b.ToByteSlice(10)
-			require.NoError(t, err)
+		block1.EXPECT().Put(int64(5)).Return(func(data []byte) local.BlockPutFinalizer {
 			require.Equal(t, []byte("Hello"), data)
 			return func() (int64, error) { return int64(i) * 16, nil }
 		})
-		offset, err := blockList.Put(0, 5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		offset, err := blockList.Put(0, 5)([]byte("Hello"))()
 		require.NoError(t, err)
 		require.Equal(t, int64(i)*16, offset)
 	}
@@ -284,13 +279,11 @@ func TestPersistentBlockListPutInterruptedByPopFront(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
-		data, err := b.ToByteSlice(10)
-		require.NoError(t, err)
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(data []byte) local.BlockPutFinalizer {
 		require.Equal(t, []byte("Hello"), data)
 		return func() (int64, error) { return 0, nil }
 	})
-	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+	putFinalizer := putWriter([]byte("Hello"))
 
 	// Finalizing the write should fail, as the Block against which
 	// it occurred is no longer addressable.
@@ -421,7 +414,7 @@ func TestPersistentBlockListPutAfterFinalSync1(t *testing.T) {
 	blockList.NotifyPersistentStateWritten()
 
 	// Not expecting block.EXPECT().Put().
-	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+	putFinalizer := putWriter([]byte("Hello"))
 
 	_, err := putFinalizer()
 	require.Equal(
@@ -470,14 +463,12 @@ func TestPersistentBlockListPutAfterFinalSync2(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
-		data, err := b.ToByteSlice(10)
-		require.NoError(t, err)
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(data []byte) local.BlockPutFinalizer {
 		require.Equal(t, []byte("Hello"), data)
 		return func() (int64, error) { return 0, nil }
 	})
 
-	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+	putFinalizer := putWriter([]byte("Hello"))
 
 	_, err := putFinalizer()
 	require.Equal(
@@ -523,13 +514,11 @@ func TestPersistentBlockListPutAfterFinalSync3(t *testing.T) {
 	// Because writing is permitted without holding any locks, there
 	// is nothing we can do to prevent the write from occurring. It
 	// should still be directed against the underlying Block.
-	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(b buffer.Buffer) local.BlockPutFinalizer {
-		data, err := b.ToByteSlice(10)
-		require.NoError(t, err)
+	blockPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(func(data []byte) local.BlockPutFinalizer {
 		require.Equal(t, []byte("Hello"), data)
 		return func() (int64, error) { return 0, nil }
 	})
-	putFinalizer := putWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))
+	putFinalizer := putWriter([]byte("Hello"))
 
 	// Close for writing in the last minute.
 	blockList.NotifySyncStarting(true)

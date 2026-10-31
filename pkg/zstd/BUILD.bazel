@@ -4,6 +4,7 @@ go_library(
     name = "zstd",
     srcs = [
         "bounded_pool.go",
+        "coder.go",
         "configuration.go",
         "metrics_pool.go",
         "pool.go",
@@ -18,16 +19,24 @@ go_library(
         "//pkg/util",
         "@com_github_klauspost_compress//zstd",
         "@com_github_prometheus_client_golang//prometheus",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
         "@org_golang_x_sync//semaphore",
     ],
 )
 
 go_test(
     name = "zstd_test",
-    srcs = ["bounded_pool_test.go"],
+    srcs = [
+        "bounded_pool_test.go",
+        "coder_test.go",
+    ],
     deps = [
         ":zstd",
+        "//pkg/testutil",
         "@com_github_klauspost_compress//zstd",
         "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

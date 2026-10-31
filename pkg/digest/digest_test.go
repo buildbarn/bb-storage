@@ -8,7 +8,6 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -299,102 +298,6 @@ func TestDigestGetByteStreamReadPath(t *testing.T) {
 			t,
 			"hello/world/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
 			d.GetByteStreamReadPath(remoteexecution.Compressor_DEFLATE),
-		)
-	})
-}
-
-func TestDigestGetByteStreamWritePath(t *testing.T) {
-	uuid := uuid.Must(uuid.Parse("36ebab65-3c4f-4faf-818b-2eabb4cd1b02"))
-
-	t.Run("NoInstanceName", func(t *testing.T) {
-		t.Run("BLAKE3", func(t *testing.T) {
-			require.Equal(
-				t,
-				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/blake3/af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/123",
-				digest.MustNewDigest(
-					"",
-					remoteexecution.DigestFunction_BLAKE3,
-					"af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
-					123,
-				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-			)
-		})
-
-		t.Run("GITSHA1", func(t *testing.T) {
-			require.Equal(
-				t,
-				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/gitsha1/42e4b92e68ca9224a420f93ed0a73786515d75a8/123",
-				digest.MustNewDigest(
-					"",
-					remoteexecution.DigestFunction_GITSHA1,
-					"42e4b92e68ca9224a420f93ed0a73786515d75a8",
-					123,
-				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-			)
-		})
-
-		t.Run("MD5", func(t *testing.T) {
-			require.Equal(
-				t,
-				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-				digest.MustNewDigest(
-					"",
-					remoteexecution.DigestFunction_MD5,
-					"8b1a9953c4611296a827abf8c47804d7",
-					123,
-				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-			)
-		})
-
-		t.Run("SHA256TREE", func(t *testing.T) {
-			require.Equal(
-				t,
-				"uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/sha256tree/e58ef976160845c07f7be8dedf6f36194acb958f84cd2bbff74161e07ba5fcca/123",
-				digest.MustNewDigest(
-					"",
-					remoteexecution.DigestFunction_SHA256TREE,
-					"e58ef976160845c07f7be8dedf6f36194acb958f84cd2bbff74161e07ba5fcca",
-					123,
-				).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-			)
-		})
-	})
-
-	t.Run("InstanceNameOneComponent", func(t *testing.T) {
-		require.Equal(
-			t,
-			"hello/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			digest.MustNewDigest(
-				"hello",
-				remoteexecution.DigestFunction_MD5,
-				"8b1a9953c4611296a827abf8c47804d7",
-				123,
-			).GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-		)
-	})
-
-	t.Run("InstanceNameTwoComponents", func(t *testing.T) {
-		d := digest.MustNewDigest(
-			"hello/world",
-			remoteexecution.DigestFunction_MD5,
-			"8b1a9953c4611296a827abf8c47804d7",
-			123,
-		)
-
-		require.Equal(
-			t,
-			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/blobs/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_IDENTITY),
-		)
-		require.Equal(
-			t,
-			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/zstd/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_ZSTD),
-		)
-		require.Equal(
-			t,
-			"hello/world/uploads/36ebab65-3c4f-4faf-818b-2eabb4cd1b02/compressed-blobs/deflate/8b1a9953c4611296a827abf8c47804d7/123",
-			d.GetByteStreamWritePath(uuid, remoteexecution.Compressor_DEFLATE),
 		)
 	})
 }
