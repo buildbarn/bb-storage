@@ -5,8 +5,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -15,77 +14,54 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type zipReadingBlobAccess struct {
+type zipReadingBlobAccess[T any] struct {
 	capabilities.Provider
-	readBufferFactory ReadBufferFactory
-	digestKeyFormat   digest.KeyFormat
-	files             map[string]*zip.File
+	decoder         coder.Decoder[T, []byte]
+	digestKeyFormat digest.KeyFormat
+	files           map[string]*zip.File
 }
 
 // NewZIPReadingBlobAccess creates a BlobAccess that is capable of
 // reading objects from a ZIP archive. Depending on whether the
 // containing files are compressed, files may either be randomly or
 // sequentially accessible.
-func NewZIPReadingBlobAccess(capabilitiesProvider capabilities.Provider, readBufferFactory ReadBufferFactory, digestKeyFormat digest.KeyFormat, filesList []*zip.File) BlobAccess {
+func NewZIPReadingBlobAccess[T any](capabilitiesProvider capabilities.Provider, decoder coder.Decoder[T, []byte], digestKeyFormat digest.KeyFormat, filesList []*zip.File) BlobAccess[T] {
 	files := make(map[string]*zip.File, len(filesList))
 	for _, file := range filesList {
 		files[file.Name] = file
 	}
-	return &zipReadingBlobAccess{
-		Provider:          capabilitiesProvider,
-		readBufferFactory: readBufferFactory,
-		digestKeyFormat:   digestKeyFormat,
-		files:             files,
+	return &zipReadingBlobAccess[T]{
+		Provider:        capabilitiesProvider,
+		decoder:         decoder,
+		digestKeyFormat: digestKeyFormat,
+		files:           files,
 	}
 }
 
-func (ba *zipReadingBlobAccess) Get(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+func (ba *zipReadingBlobAccess[T]) Get(ctx context.Context, blobDigest digest.Digest) (T, error) {
+	var zero T
 	key := blobDigest.GetKey(ba.digestKeyFormat)
 	file, ok := ba.files[key]
 	if !ok {
-		return buffer.NewBufferFromError(status.Errorf(codes.NotFound, "File %#v not found in ZIP archive", key))
+		return zero, status.Errorf(codes.NotFound, "File %#v not found in ZIP archive", key)
 	}
-
-	if file.Method == zip.Store && file.CompressedSize64 == file.UncompressedSize64 {
-		// File is not compressed. Open it in raw mode,
-		// so that we can perform random access.
-		r, err := file.OpenRaw()
-		if err != nil {
-			return buffer.NewBufferFromError(util.StatusWrapfWithCode(err, codes.Internal, "Failed to open file %#v in ZIP archive", key))
-		}
-		return ba.readBufferFactory.NewBufferFromReaderAt(
-			blobDigest,
-			nopAtCloser{ReaderAt: r.(io.ReaderAt)},
-			int64(file.UncompressedSize64),
-			buffer.Irreparable(blobDigest),
-		)
-	}
-
-	// File is compressed. Open it for sequential access.
+	blobData := make([]byte, file.UncompressedSize64)
 	r, err := file.Open()
 	if err != nil {
-		return buffer.NewBufferFromError(util.StatusWrapfWithCode(err, codes.Internal, "Failed to open file %#v in ZIP archive", key))
+		return zero, util.StatusWrapfWithCode(err, codes.Internal, "Failed to open file %#v in ZIP archive", key)
 	}
-	return ba.readBufferFactory.NewBufferFromReader(
-		blobDigest,
-		io.NopCloser(r),
-		buffer.Irreparable(blobDigest),
-	)
+	defer r.Close()
+	if _, err := io.ReadFull(r, blobData); err != nil {
+		return zero, util.StatusWrapf(err, "Failed to read entire file %#v", key)
+	}
+	return ba.decoder.Decode(blobData, blobDigest)
 }
 
-func (ba *zipReadingBlobAccess) GetFromComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	// TODO: We can provide a better implementation that stores the
-	// resulting slices.
-	b, _ := slicer.Slice(ba.Get(ctx, parentDigest), childDigest)
-	return b
-}
-
-func (zipReadingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	b.Discard()
+func (zipReadingBlobAccess[T]) Put(ctx context.Context, digest digest.Digest, value T) error {
 	return status.Error(codes.InvalidArgument, "The ZIP reading storage backend does not permit writes")
 }
 
-func (ba *zipReadingBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
+func (ba *zipReadingBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error) {
 	missing := digest.NewSetBuilder(0)
 	for _, fileDigest := range digests.Items() {
 		if _, ok := ba.files[fileDigest.GetKey(ba.digestKeyFormat)]; !ok {
@@ -93,12 +69,4 @@ func (ba *zipReadingBlobAccess) FindMissing(ctx context.Context, digests digest.
 		}
 	}
 	return missing.Build(), nil
-}
-
-type nopAtCloser struct {
-	io.ReaderAt
-}
-
-func (nopAtCloser) Close() error {
-	return nil
 }

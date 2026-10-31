@@ -7,7 +7,9 @@ import (
 	"sync"
 	"time"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
@@ -15,6 +17,9 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/sharding"
 	"github.com/buildbarn/bb-storage/pkg/blockdevice"
+	"github.com/buildbarn/bb-storage/pkg/capabilities"
+	"github.com/buildbarn/bb-storage/pkg/cas"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
@@ -24,10 +29,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/lossymap"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
-	digest_pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/digest"
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,68 +39,70 @@ import (
 // BlobAccessInfo contains an instance of BlobAccess and information
 // relevant to its creation. It is returned by functions that construct
 // BlobAccess instances, such as NewBlobAccessFromConfiguration().
-type BlobAccessInfo struct {
-	BlobAccess      blobstore.BlobAccess
+type BlobAccessInfo[T any] struct {
+	BlobAccess      blobstore.BlobAccess[T]
 	DigestKeyFormat digest.KeyFormat
 }
 
-func newCachedReadBufferFactory(cacheConfiguration *digest_pb.ExistenceCacheConfiguration, baseReadBufferFactory blobstore.ReadBufferFactory, digestKeyFormat digest.KeyFormat) (blobstore.ReadBufferFactory, error) {
-	if cacheConfiguration == nil {
-		// No caching enabled.
-		return baseReadBufferFactory, nil
-	}
-	dataIntegrityCheckingCache, err := digest.NewExistenceCacheFromConfiguration(cacheConfiguration, digestKeyFormat, "DataIntegrityValidationCache")
-	if err != nil {
-		return nil, err
-	}
-	return blobstore.NewValidationCachingReadBufferFactory(
-		baseReadBufferFactory,
-		dataIntegrityCheckingCache,
-	), nil
+// ContentAddressableStorageInfo contains the pieces that constitute a
+// Content Addressable Storage (CAS). It is returned by functions which
+// create a CAS such as NewCASFromConfiguration().
+type ContentAddressableStorageInfo struct {
+	// ReadInfo contains the components required to read blobs from the
+	// CAS.
+	cas.ReadInfo
+	// ChunkStorage (CS) is the underlying blob access for chunks of the
+	// CAS.
+	ChunkStorage blobstore.BlobAccess[*chunk.Chunk]
+	// ChunkMappingStorage (CMS) is the underlying blob access for chunk
+	// mappings of the CAS.
+	ChunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
+	// DigestKeyFormat is the digest.KeyFormat of the CAS, i.e. the
+	// combined digest.KeyFormat of the CS and CMS.
+	DigestKeyFormat digest.KeyFormat
 }
 
-type simpleNestedBlobAccessCreator struct {
+type simpleNestedBlobAccessCreator[T any] struct {
 	terminationGroup program.Group
-	labels           map[string]BlobAccessInfo
+	labels           map[string]BlobAccessInfo[T]
 }
 
-func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, string, error) {
-	readBufferFactory := creator.GetReadBufferFactory()
+func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator[T]) (BlobAccessInfo[T], string, error) {
 	storageTypeName := creator.GetStorageTypeName()
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_Error:
-		return BlobAccessInfo{
-			BlobAccess:      blobstore.NewErrorBlobAccess(status.ErrorProto(backend.Error)),
+		return BlobAccessInfo[T]{
+			BlobAccess:      blobstore.NewErrorBlobAccess[T](status.ErrorProto(backend.Error)),
 			DigestKeyFormat: digest.KeyWithoutInstance,
 		}, "error", nil
 	case *pb.BlobAccessConfiguration_ReadCaching:
 		slow, err := nc.NewNestedBlobAccess(backend.ReadCaching.Slow, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		fast, err := nc.NewNestedBlobAccess(backend.ReadCaching.Fast, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		replicator, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.ReadCaching.Replicator, slow.BlobAccess, fast, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      readcaching.NewReadCachingBlobAccess(slow.BlobAccess, fast.BlobAccess, replicator),
 			DigestKeyFormat: slow.DigestKeyFormat,
 		}, "read_caching", nil
 	case *pb.BlobAccessConfiguration_Sharding:
-		backends := make([]sharding.ShardBackend, 0, len(backend.Sharding.Shards))
+		backends := make([]sharding.ShardBackend[T], 0, len(backend.Sharding.Shards))
 		shards := make([]sharding.Shard, 0, len(backend.Sharding.Shards))
 		keys := make([]string, 0, len(backend.Sharding.Shards))
 		var combinedDigestKeyFormat *digest.KeyFormat
 		for key, shard := range backend.Sharding.Shards {
 			backend, err := nc.NewNestedBlobAccess(shard.Backend, creator)
 			if err != nil {
-				return BlobAccessInfo{}, "", err
+				return BlobAccessInfo[T]{}, "", err
 			}
-			backends = append(backends, sharding.ShardBackend{Backend: backend.BlobAccess, Key: key})
+			backends = append(backends, sharding.ShardBackend[T]{Backend: backend.BlobAccess, Key: key})
 			if combinedDigestKeyFormat == nil {
 				combinedDigestKeyFormat = &backend.DigestKeyFormat
 			} else {
@@ -106,7 +111,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			}
 
 			if shard.Weight == 0 {
-				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Shards must have positive weights")
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Shards must have positive weights")
 			}
 			shards = append(shards, sharding.Shard{
 				Key:    key,
@@ -115,13 +120,13 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			keys = append(keys, key)
 		}
 		if combinedDigestKeyFormat == nil {
-			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Cannot create sharding blob access without any backends")
+			return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Cannot create sharding blob access without any backends")
 		}
 		shardSelector, err := sharding.NewRendezvousShardSelector(shards)
 		if err != nil {
-			return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Could not create rendezvous shard selector")
+			return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Could not create rendezvous shard selector")
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess: sharding.NewShardingBlobAccess(
 				backends,
 				shardSelector,
@@ -131,21 +136,21 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 	case *pb.BlobAccessConfiguration_Mirrored:
 		backendA, err := nc.NewNestedBlobAccess(backend.Mirrored.BackendA, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		backendB, err := nc.NewNestedBlobAccess(backend.Mirrored.BackendB, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		replicatorAToB, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.Mirrored.ReplicatorAToB, backendA.BlobAccess, backendB, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		replicatorBToA, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.Mirrored.ReplicatorBToA, backendB.BlobAccess, backendA, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      mirrored.NewMirroredBlobAccess(backendA.BlobAccess, backendB.BlobAccess, replicatorAToB, replicatorBToA),
 			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
 		}, "mirrored", nil
@@ -188,33 +193,27 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				persistent == nil,
 			)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to open blocks block device")
+				return BlobAccessInfo[T]{}, "", util.StatusWrap(err, "Failed to open blocks block device")
 			}
 			dataSyncer = blockDevice.Sync
 			blockCount := blocksOnBlockDevice.SpareBlocks + backend.Local.OldBlocks + backend.Local.CurrentBlocks + backend.Local.NewBlocks
 			if blockCount > 100 {
-				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Total number of blocks is %d, which is more than this implementation is willing to support", blockCount)
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Total number of blocks is %d, which is more than this implementation is willing to support", blockCount)
 			}
 			blockSectorCount = sectorCount / int64(blockCount)
 			if blockSectorCount <= 0 {
-				return BlobAccessInfo{}, "", status.Errorf(codes.InvalidArgument, "Block device only has %d sectors (%d bytes each), which is less than the total number of blocks (%d), meaning this backend would be incapable of storing any data", sectorCount, sectorSizeBytes, blockCount)
-			}
-
-			cachedReadBufferFactory, err := newCachedReadBufferFactory(blocksOnBlockDevice.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
-			if err != nil {
-				return BlobAccessInfo{}, "", err
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Block device only has %d sectors (%d bytes each), which is less than the total number of blocks (%d), meaning this backend would be incapable of storing any data", sectorCount, sectorSizeBytes, blockCount)
 			}
 
 			blockAllocator = local.NewBlockDeviceBackedBlockAllocator(
 				blockDevice,
-				cachedReadBufferFactory,
 				sectorSizeBytes,
 				blockSectorCount,
 				int(blockCount),
 				storageTypeName,
 			)
 		default:
-			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Blocks backend not specified")
+			return BlobAccessInfo[T]{}, "", status.Error(codes.InvalidArgument, "Blocks backend not specified")
 		}
 
 		var globalLock sync.RWMutex
@@ -231,12 +230,12 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			// persistent state from disk.
 			persistentStateDirectory, err := filesystem.NewLocalDirectory(path.LocalFormat.NewParser(persistent.StateDirectoryPath))
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
+				return BlobAccessInfo[T]{}, "", util.StatusWrapf(err, "Failed to open persistent state directory %#v", persistent.StateDirectoryPath)
 			}
 			persistentStateStore := local.NewDirectoryBackedPersistentStateStore(persistentStateDirectory)
 			persistentState, err := persistentStateStore.ReadPersistentState()
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to reload persistent state from %#v", persistent.StateDirectoryPath)
+				return BlobAccessInfo[T]{}, "", util.StatusWrapf(err, "Failed to reload persistent state from %#v", persistent.StateDirectoryPath)
 			}
 			keyLocationMapHashInitialization = persistentState.KeyLocationMapHashInitialization
 
@@ -257,7 +256,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			// state file when writes and block releases
 			// occur.
 			if err := persistent.MinimumEpochInterval.CheckValid(); err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to obtain minimum epoch duration")
+				return BlobAccessInfo[T]{}, "", util.StatusWrap(err, "Failed to obtain minimum epoch duration")
 			}
 			minimumEpochInterval := persistent.MinimumEpochInterval.AsDuration()
 			periodicSyncer := local.NewPeriodicSyncer(
@@ -293,7 +292,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			int(backend.Local.NewBlocks),
 		)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 
 		locationBlobMap := local.NewOldCurrentNewLocationBlobMap(
@@ -343,19 +342,43 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			persistent != nil,
 		)
 		if err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Failed to create key-location map")
+			return BlobAccessInfo[T]{}, "", util.StatusWrap(err, "Failed to create key-location map")
 		}
 
-		var localBlobAccess blobstore.BlobAccess
+		var localBlobAccess blobstore.BlobAccess[T]
+		capabilitiesProvider := creator.GetDefaultCapabilitiesProvider()
+		chunkingParameters := backend.Local.GetChunkingParameters()
+		if chunkingParameters != nil {
+			if chunkingParameters.MinChunkSizeBytes < 64 {
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Chunking parameters must have a minimum chunk size of at least 64 bytes, got %d", chunkingParameters.MinChunkSizeBytes)
+			}
+			if chunkingParameters.MinChunkSizeBytes > capabilities.LargestAcceptableMinChunkSizeBytes {
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Min chunk size of %d bytes larger than maximum of %d bytes", chunkingParameters.MinChunkSizeBytes, capabilities.LargestAcceptableMinChunkSizeBytes)
+			}
+			if chunkingParameters.HorizonSizeBytes > capabilities.LargestAcceptableHorizonSizeBytes {
+				return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Horizon size of %d bytes larger than maximum of %d bytes", chunkingParameters.HorizonSizeBytes, capabilities.LargestAcceptableHorizonSizeBytes)
+			}
+			capabilitiesProvider = capabilities.NewMergingProvider([]capabilities.Provider{
+				capabilitiesProvider,
+				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
+					CacheCapabilities: &remoteexecution.CacheCapabilities{
+						SplitBlobSupport:  true,
+						SpliceBlobSupport: true,
+						RepMaxCdcParams:   chunkingParameters,
+					},
+				}),
+			})
+		}
 		if backend.Local.HierarchicalInstanceNames {
 			localBlobAccess, err = creator.NewHierarchicalInstanceNamesLocalBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
 				locationBlobMap,
 				&globalLock,
+				capabilitiesProvider,
 			)
 			if err != nil {
-				return BlobAccessInfo{}, "", err
+				return BlobAccessInfo[T]{}, "", err
 			}
 		} else {
 			localBlobAccess = local.NewFlatBlobAccess(
@@ -365,34 +388,35 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				digestKeyFormat,
 				&globalLock,
 				storageTypeName,
-				creator.GetDefaultCapabilitiesProvider(),
+				capabilitiesProvider,
+				creator.GetBinaryCoder(),
 			)
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      localBlobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, backendType, nil
 	case *pb.BlobAccessConfiguration_ReadFallback:
 		primary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Primary, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		secondary, err := nc.NewNestedBlobAccess(backend.ReadFallback.Secondary, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		replicator, err := NewBlobReplicatorFromConfiguration(nc.terminationGroup, backend.ReadFallback.Replicator, secondary.BlobAccess, primary, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		// Share the same replicator between reads and FindMissing()
 		// calls, so that concurrency limits and deduplication apply
 		// to both, unless replication during FindMissing() is disabled.
 		findMissingReplicator := replicator
 		if backend.ReadFallback.DisableFindMissingReplication {
-			findMissingReplicator = replication.NewNoopBlobReplicator(secondary.BlobAccess)
+			findMissingReplicator = replication.NewNoopBlobReplicator[T](secondary.BlobAccess)
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      readfallback.NewReadFallbackBlobAccess(primary.BlobAccess, secondary.BlobAccess, replicator, findMissingReplicator),
 			DigestKeyFormat: primary.DigestKeyFormat.Combine(secondary.DigestKeyFormat),
 		}, "read_fallback", nil
@@ -401,7 +425,7 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		// in the configuration indexed by instance name prefix.
 		backendsTrie := digest.NewInstanceNameTrie()
 		type demultiplexedBackendInfo struct {
-			backend             blobstore.BlobAccess
+			backend             blobstore.BlobAccess[T]
 			backendName         string
 			instanceNamePatcher digest.InstanceNamePatcher
 		}
@@ -409,15 +433,15 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		for k, demultiplexed := range backend.Demultiplexing.InstanceNamePrefixes {
 			matchInstanceNamePrefix, err := digest.NewInstanceName(k)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Invalid instance name %#v", k)
+				return BlobAccessInfo[T]{}, "", util.StatusWrapf(err, "Invalid instance name %#v", k)
 			}
 			addInstanceNamePrefix, err := digest.NewInstanceName(demultiplexed.AddInstanceNamePrefix)
 			if err != nil {
-				return BlobAccessInfo{}, "", util.StatusWrapf(err, "Invalid instance name %#v", demultiplexed.AddInstanceNamePrefix)
+				return BlobAccessInfo[T]{}, "", util.StatusWrapf(err, "Invalid instance name %#v", demultiplexed.AddInstanceNamePrefix)
 			}
 			backend, err := nc.NewNestedBlobAccess(demultiplexed.Backend, creator)
 			if err != nil {
-				return BlobAccessInfo{}, "", err
+				return BlobAccessInfo[T]{}, "", err
 			}
 			backendsTrie.Set(matchInstanceNamePrefix, len(backends))
 			backends = append(backends, demultiplexedBackendInfo{
@@ -426,15 +450,15 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 				instanceNamePatcher: digest.NewInstanceNamePatcher(matchInstanceNamePrefix, addInstanceNamePrefix),
 			})
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess: blobstore.NewDemultiplexingBlobAccess(
-				func(i digest.InstanceName) (blobstore.BlobAccess, string, digest.InstanceNamePatcher, error) {
+				blobstore.NewDemultiplexedBlobAccessGetter(func(i digest.InstanceName) (blobstore.BlobAccess[T], string, digest.InstanceNamePatcher, error) {
 					idx := backendsTrie.GetLongestPrefix(i)
 					if idx < 0 {
 						return nil, "", digest.NoopInstanceNamePatcher, status.Errorf(codes.InvalidArgument, "Unknown instance name: %#v", i.String())
 					}
 					return backends[idx].backend, backends[idx].backendName, backends[idx].instanceNamePatcher, nil
-				},
+				}),
 			),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "demultiplexing", nil
@@ -442,17 +466,17 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		config := backend.ReadCanarying
 		source, err := nc.NewNestedBlobAccess(config.Source, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		replica, err := nc.NewNestedBlobAccess(config.Replica, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		maximumCacheDuration := config.MaximumCacheDuration
 		if err := maximumCacheDuration.CheckValid(); err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum cache duration")
+			return BlobAccessInfo[T]{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum cache duration")
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess: blobstore.NewReadCanaryingBlobAccess(
 				source.BlobAccess,
 				replica.BlobAccess,
@@ -468,28 +492,24 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		config := backend.ZipReading
 		file, err := os.Open(config.Path)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		fileInfo, err := file.Stat()
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		zipReader, err := zip.NewReader(file, fileInfo.Size())
 		if err != nil {
 			file.Close()
-			return BlobAccessInfo{}, "", util.StatusWrapf(err, "Failed to open ZIP file %#v", config.Path)
+			return BlobAccessInfo[T]{}, "", util.StatusWrapf(err, "Failed to open ZIP file %#v", config.Path)
 		}
 
 		digestKeyFormat := creator.GetBaseDigestKeyFormat()
-		cachedReadBufferFactory, err := newCachedReadBufferFactory(config.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
-		if err != nil {
-			return BlobAccessInfo{}, "", err
-		}
 
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess: blobstore.NewZIPReadingBlobAccess(
 				creator.GetDefaultCapabilitiesProvider(),
-				cachedReadBufferFactory,
+				creator.GetBinaryCoder(),
 				digestKeyFormat,
 				zipReader.File,
 			),
@@ -500,16 +520,13 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 		zipPath := config.Path
 		file, err := os.OpenFile(zipPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o666)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 		digestKeyFormat := creator.GetBaseDigestKeyFormat()
-		cachedReadBufferFactory, err := newCachedReadBufferFactory(config.DataIntegrityValidationCache, readBufferFactory, digestKeyFormat)
-		if err != nil {
-			return BlobAccessInfo{}, "", err
-		}
+
 		blobAccess := blobstore.NewZIPWritingBlobAccess(
 			creator.GetDefaultCapabilitiesProvider(),
-			cachedReadBufferFactory,
+			creator.GetBinaryCoder(),
 			digestKeyFormat,
 			file,
 		)
@@ -526,22 +543,35 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 			return nil
 		})
 
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      blobAccess,
 			DigestKeyFormat: digestKeyFormat,
 		}, "zip_writing", nil
+	case *pb.BlobAccessConfiguration_ExistenceCaching:
+		base, err := nc.NewNestedBlobAccess(backend.ExistenceCaching.Backend, creator)
+		if err != nil {
+			return BlobAccessInfo[T]{}, "", err
+		}
+		existenceCache, err := digest.NewExistenceCacheFromConfiguration(backend.ExistenceCaching.ExistenceCache, base.DigestKeyFormat, "ExistenceCachingBlobAccess")
+		if err != nil {
+			return BlobAccessInfo[T]{}, "", err
+		}
+		return BlobAccessInfo[T]{
+			BlobAccess:      blobstore.NewExistenceCachingBlobAccess(base.BlobAccess, existenceCache),
+			DigestKeyFormat: base.DigestKeyFormat,
+		}, "existence_caching", nil
 	case *pb.BlobAccessConfiguration_DeadlineEnforcing:
 		base, err := nc.NewNestedBlobAccess(backend.DeadlineEnforcing.Backend, creator)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[T]{}, "", err
 		}
 
 		timeout := backend.DeadlineEnforcing.Timeout
 		if err := timeout.CheckValid(); err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrap(err, "Invalid timeout for deadline enforcement")
+			return BlobAccessInfo[T]{}, "", util.StatusWrap(err, "Invalid timeout for deadline enforcement")
 		}
 
-		return BlobAccessInfo{
+		return BlobAccessInfo[T]{
 			BlobAccess:      blobstore.NewDeadlineEnforcingBlobAccess(base.BlobAccess, timeout.AsDuration()),
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "deadline_enforcing", nil
@@ -552,9 +582,9 @@ func (nc *simpleNestedBlobAccessCreator) newNestedBlobAccessBare(configuration *
 // NewNestedBlobAccess may be called by
 // BlobAccessCreator.NewCustomBlobAccess() to create BlobAccess
 // objects for instances nested inside the configuration.
-func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
+func (nc *simpleNestedBlobAccessCreator[T]) NewNestedBlobAccess(configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator[T]) (BlobAccessInfo[T], error) {
 	if configuration == nil {
-		return BlobAccessInfo{}, status.Error(codes.InvalidArgument, "Storage configuration not specified")
+		return BlobAccessInfo[T]{}, status.Error(codes.InvalidArgument, "Storage configuration not specified")
 	}
 
 	// Protobuf does not support anchors/aliases like YAML. Have
@@ -565,7 +595,7 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		config := backend.WithLabels
 
 		// Inherit labels from the parent.
-		labels := map[string]BlobAccessInfo{}
+		labels := map[string]BlobAccessInfo[T]{}
 		for label, labelBackend := range nc.labels {
 			labels[label] = labelBackend
 		}
@@ -574,16 +604,16 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		for label, labelBackend := range config.Labels {
 			if _, ok := labels[label]; ok {
 				// Disallow shadowing.
-				return BlobAccessInfo{}, status.Errorf(codes.InvalidArgument, "Label %#v has already been declared", label)
+				return BlobAccessInfo[T]{}, status.Errorf(codes.InvalidArgument, "Label %#v has already been declared", label)
 			}
 			info, err := nc.NewNestedBlobAccess(labelBackend, creator)
 			if err != nil {
-				return BlobAccessInfo{}, util.StatusWrapf(err, "Label %#v", label)
+				return BlobAccessInfo[T]{}, util.StatusWrapf(err, "Label %#v", label)
 			}
 			labels[label] = info
 		}
 
-		return (&simpleNestedBlobAccessCreator{
+		return (&simpleNestedBlobAccessCreator[T]{
 			terminationGroup: nc.terminationGroup,
 			labels:           labels,
 		}).NewNestedBlobAccess(config.Backend, creator)
@@ -591,14 +621,14 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 		if labelBackend, ok := nc.labels[backend.Label]; ok {
 			return labelBackend, nil
 		}
-		return BlobAccessInfo{}, status.Errorf(codes.InvalidArgument, "Label %#v not declared", backend.Label)
+		return BlobAccessInfo[T]{}, status.Errorf(codes.InvalidArgument, "Label %#v not declared", backend.Label)
 	}
 
 	backend, backendType, err := nc.newNestedBlobAccessBare(configuration, creator)
 	if err != nil {
-		return BlobAccessInfo{}, err
+		return BlobAccessInfo[T]{}, err
 	}
-	return BlobAccessInfo{
+	return BlobAccessInfo[T]{
 		BlobAccess:      blobstore.NewMetricsBlobAccess(backend.BlobAccess, clock.SystemClock, creator.GetStorageTypeName(), backendType),
 		DigestKeyFormat: backend.DigestKeyFormat,
 	}, nil
@@ -606,46 +636,115 @@ func (nc *simpleNestedBlobAccessCreator) NewNestedBlobAccess(configuration *pb.B
 
 // NewBlobAccessFromConfiguration creates a BlobAccess object based on a
 // configuration file.
-func NewBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator) (BlobAccessInfo, error) {
-	nestedCreator := &simpleNestedBlobAccessCreator{
+func NewBlobAccessFromConfiguration[T any](terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, creator BlobAccessCreator[T]) (BlobAccessInfo[T], error) {
+	nestedCreator := &simpleNestedBlobAccessCreator[T]{
 		terminationGroup: terminationGroup,
 	}
 	backend, err := nestedCreator.NewNestedBlobAccess(configuration, creator)
 	if err != nil {
-		return BlobAccessInfo{}, err
+		return BlobAccessInfo[T]{}, err
 	}
-	return BlobAccessInfo{
+	return BlobAccessInfo[T]{
 		BlobAccess:      creator.WrapTopLevelBlobAccess(backend.BlobAccess),
 		DigestKeyFormat: backend.DigestKeyFormat,
 	}, nil
 }
 
-// NewCASAndACBlobAccessFromConfiguration is a convenience function to
-// create BlobAccess objects for both the Content Addressable Storage
-// and Action Cache. Most Buildbarn components tend to require access to
-// both these data stores.
-func NewCASAndACBlobAccessFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int, zstdPool bb_zstd.Pool) (blobstore.BlobAccess, blobstore.BlobAccess, error) {
-	contentAddressableStorage, err := NewBlobAccessFromConfiguration(
-		terminationGroup,
-		configuration.GetContentAddressableStorage(),
-		NewCASBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes, zstdPool),
-	)
+// NewCASAndACFromConfiguration is a convenience function to create the
+// constituent parts of a Content Addressable Storage (CAS) and a
+// BlobAccess for the Action Cache. Most Buildbarn components tend to
+// require access to both these data stores.
+func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration *pb.BlobstoreConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (ContentAddressableStorageInfo, blobstore.BlobAccess[*remoteexecution.ActionResult], error) {
+	casInfo, err := NewCASFromConfiguration(terminationGroup, configuration.ContentAddressableStorage, grpcClientFactory, maximumMessageSizeBytes)
 	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
+		return ContentAddressableStorageInfo{}, nil, util.StatusWrap(err, "Failed to create Content Addressable Storage")
 	}
 
 	actionCache, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetActionCache(),
 		NewACBlobAccessCreator(
-			&contentAddressableStorage,
+			&casInfo,
 			grpcClientFactory,
 			maximumMessageSizeBytes,
 		),
 	)
 	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Failed to create Action Cache")
+		return ContentAddressableStorageInfo{}, nil, util.StatusWrap(err, "Failed to create Action Cache")
 	}
 
-	return contentAddressableStorage.BlobAccess, actionCache.BlobAccess, nil
+	return casInfo, actionCache.BlobAccess, nil
+}
+
+// NewCASFromConfiguration is a convenience function to create the
+// constituent parts of a Content Addressable Storage (CAS) from
+// configuration.
+func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (ContentAddressableStorageInfo, error) {
+	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkStorage(),
+		NewCSBlobAccessCreator(grpcClientFactory, maximumMessageSizeBytes),
+	)
+	if err != nil {
+		return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create Chunk Storage")
+	}
+	chunkStorage := chunkStorageInfo.BlobAccess
+
+	// The chunking parameters are a property of the Chunk Storage
+	// (CS), so the CDC parameters are fetched from there.
+	cdcParametersFetcher := capabilities.NewBaseCDCParametersFetcher(chunkStorage)
+	if configuration.GetCdcParameterCache() != nil {
+		cache, err := lossymap.NewSimpleMapFromConfiguration[digest.InstanceName, *remoteexecution.RepMaxCdcParams](
+			configuration.CdcParameterCache,
+			"CDCParameterCache",
+		)
+		if err != nil {
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create cdc parameter cache")
+		}
+		cdcParametersFetcher = capabilities.NewCachingCDCParametersFetcher(cdcParametersFetcher, clock.SystemClock, cache)
+	}
+
+	var chunkBytesReader reader.Reader[[]byte] = cas.NewChunkBytesReader(chunkStorage)
+	if chunkCacheConfiguration := configuration.GetChunkCache(); chunkCacheConfiguration != nil {
+		cache, err := lossymap.NewSimpleMapFromConfiguration[digest.Digest, []byte](
+			chunkCacheConfiguration,
+			"ChunkCache",
+		)
+		if err != nil {
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create chunk cache")
+		}
+		chunkBytesReader = reader.NewCachingReader(chunkBytesReader, clock.SystemClock, cache)
+	}
+
+	chunkMappingStorageInfo, err := NewBlobAccessFromConfiguration(
+		terminationGroup,
+		configuration.GetChunkMappingStorage(),
+		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory),
+	)
+	if err != nil {
+		return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
+	}
+	chunkMappingStorage := chunkMappingStorageInfo.BlobAccess
+	var chunkMappingFetcher chunk.MappingFetcher = blobstore.NewBlobAccessMappingFetcher(chunkMappingStorage)
+	if configuration.GetChunkMappingCache() != nil {
+		cache, err := lossymap.NewSimpleMapFromConfiguration[digest.Digest, chunk.Mapping](
+			configuration.ChunkMappingCache,
+			"ChunkMappingCache",
+		)
+		if err != nil {
+			return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create chunk mapping cache")
+		}
+		chunkMappingFetcher = chunk.NewCachingMappingFetcher(chunkMappingFetcher, clock.SystemClock, cache)
+	}
+
+	return ContentAddressableStorageInfo{
+		ReadInfo: cas.ReadInfo{
+			ChunkBytesReader:     chunkBytesReader,
+			ChunkMappingFetcher:  chunkMappingFetcher,
+			CDCParametersFetcher: cdcParametersFetcher,
+		},
+		ChunkStorage:        chunkStorage,
+		ChunkMappingStorage: chunkMappingStorage,
+		DigestKeyFormat:     chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
+	}, nil
 }

@@ -3,6 +3,7 @@ package configuration
 import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/completenesschecking"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcclients"
 	"github.com/buildbarn/bb-storage/pkg/capabilities"
@@ -29,27 +30,23 @@ var acCapabilitiesProvider = capabilities.NewStaticProvider(&remoteexecution.Ser
 })
 
 type acBlobAccessCreator struct {
-	protoBlobAccessCreator
-	protoBlobReplicatorCreator
+	protoBlobAccessCreator[*remoteexecution.ActionResult]
+	protoBlobReplicatorCreator[*remoteexecution.ActionResult]
 
-	contentAddressableStorage *BlobAccessInfo
-	grpcClientFactory         grpc.ClientFactory
-	maximumMessageSizeBytes   int
+	contentAddressableStorageInfo *ContentAddressableStorageInfo
+	grpcClientFactory             grpc.ClientFactory
+	maximumMessageSizeBytes       int
 }
 
 // NewACBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for accessing the Action Cache.
-func NewACBlobAccessCreator(contentAddressableStorage *BlobAccessInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator {
+func NewACBlobAccessCreator(contentAddressableStorageInfo *ContentAddressableStorageInfo, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) BlobAccessCreator[*remoteexecution.ActionResult] {
 	return &acBlobAccessCreator{
-		contentAddressableStorage: contentAddressableStorage,
-		grpcClientFactory:         grpcClientFactory,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		contentAddressableStorageInfo: contentAddressableStorageInfo,
+		grpcClientFactory:             grpcClientFactory,
+		maximumMessageSizeBytes:       maximumMessageSizeBytes,
 	}
-}
-
-func (acBlobAccessCreator) GetReadBufferFactory() blobstore.ReadBufferFactory {
-	return blobstore.ACReadBufferFactory
 }
 
 func (acBlobAccessCreator) GetStorageTypeName() string {
@@ -60,26 +57,31 @@ func (acBlobAccessCreator) GetDefaultCapabilitiesProvider() capabilities.Provide
 	return acCapabilitiesProvider
 }
 
-func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator) (BlobAccessInfo, string, error) {
+func (acBlobAccessCreator) GetBinaryCoder() coder.Coder[*remoteexecution.ActionResult, []byte] {
+	c := coder.NewProtoCoder[remoteexecution.ActionResult]()
+	return coder.JoinCoders(c, coder.NewSHA256SuffixCoder())
+}
+
+func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Group, configuration *pb.BlobAccessConfiguration, nestedCreator NestedBlobAccessCreator[*remoteexecution.ActionResult]) (BlobAccessInfo[*remoteexecution.ActionResult], string, error) {
 	switch backend := configuration.Backend.(type) {
 	case *pb.BlobAccessConfiguration_ActionResultExpiring:
 		base, err := nestedCreator.NewNestedBlobAccess(backend.ActionResultExpiring.Backend, bac)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", err
 		}
 		minimumTimestamp := backend.ActionResultExpiring.MinimumTimestamp
 		if err := minimumTimestamp.CheckValid(); err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum timestamp")
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum timestamp")
 		}
 		minimumValidity := backend.ActionResultExpiring.MinimumValidity
 		if err := minimumValidity.CheckValid(); err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum validity")
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid minimum validity")
 		}
 		maximumValidityJitter := backend.ActionResultExpiring.MaximumValidityJitter
 		if err := maximumValidityJitter.CheckValid(); err != nil {
-			return BlobAccessInfo{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum validity jitter")
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", util.StatusWrapWithCode(err, codes.InvalidArgument, "Invalid maximum validity jitter")
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[*remoteexecution.ActionResult]{
 			BlobAccess: blobstore.NewActionResultExpiringBlobAccess(
 				base.BlobAccess,
 				clock.SystemClock,
@@ -91,30 +93,32 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			DigestKeyFormat: base.DigestKeyFormat,
 		}, "action_result_expiring", nil
 	case *pb.BlobAccessConfiguration_CompletenessChecking:
-		if bac.contentAddressableStorage == nil {
-			return BlobAccessInfo{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
+		if bac.contentAddressableStorageInfo == nil {
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", status.Error(codes.InvalidArgument, "Action Cache completeness checking can only be enabled if a Content Addressable Storage is configured")
 		}
 		base, err := nestedCreator.NewNestedBlobAccess(backend.CompletenessChecking.Backend, bac)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[*remoteexecution.ActionResult]{
 			BlobAccess: completenesschecking.NewCompletenessCheckingBlobAccess(
 				base.BlobAccess,
-				bac.contentAddressableStorage.BlobAccess,
-				cas.NewBlobAccessStreamReader(bac.contentAddressableStorage.BlobAccess),
+				bac.contentAddressableStorageInfo.ChunkStorage,
+				bac.contentAddressableStorageInfo.ChunkMappingStorage,
+				bac.contentAddressableStorageInfo.CDCParametersFetcher,
+				cas.NewStorageBackedStreamReader(bac.contentAddressableStorageInfo.ReadInfo),
 				blobstore.RecommendedFindMissingDigestsCount,
 				bac.maximumMessageSizeBytes,
 				backend.CompletenessChecking.MaximumTotalTreeSizeBytes,
 			),
-			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorage.DigestKeyFormat),
+			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.contentAddressableStorageInfo.DigestKeyFormat),
 		}, "completeness_checking", nil
 	case *pb.BlobAccessConfiguration_Grpc:
 		client, err := bac.grpcClientFactory.NewClientFromConfiguration(backend.Grpc.Client, terminationGroup)
 		if err != nil {
-			return BlobAccessInfo{}, "", err
+			return BlobAccessInfo[*remoteexecution.ActionResult]{}, "", err
 		}
-		return BlobAccessInfo{
+		return BlobAccessInfo[*remoteexecution.ActionResult]{
 			BlobAccess:      grpcclients.NewACBlobAccess(client, bac.maximumMessageSizeBytes),
 			DigestKeyFormat: digest.KeyWithInstance,
 		}, "grpc", nil
@@ -123,7 +127,7 @@ func (bac *acBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 	}
 }
 
-func (bac *acBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess) blobstore.BlobAccess {
+func (bac *acBlobAccessCreator) WrapTopLevelBlobAccess(blobAccess blobstore.BlobAccess[*remoteexecution.ActionResult]) blobstore.BlobAccess[*remoteexecution.ActionResult] {
 	// For the Action Cache we want to ensure that all ActionResult
 	// objects have a 'worker_completed_timestamp'. This is needed
 	// to make decorators like ActionResultExpiringBlobAccess work.

@@ -7,7 +7,7 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
+	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestNewMetricsBlobReplicator(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create mock using the generated mock
-	mockReplicator := mock.NewMockBlobReplicator(ctrl)
+	mockReplicator := mock.NewMockBlobReplicator[*chunk.Chunk](ctrl)
 	mockClock := mock.NewMockClock(ctrl)
 
 	// Create a new MetricsBlobReplicator
@@ -37,13 +37,17 @@ func TestMetricsBlobReplicatorLabelCardinality(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockClock := mock.NewMockClock(ctrl)
-	mockReplicator := mock.NewMockBlobReplicator(ctrl)
+	mockReplicator := mock.NewMockBlobReplicator[*chunk.Chunk](ctrl)
 
 	// Set up fixed times for predictable testing
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	endTime := startTime.Add(1 * time.Second)
-	mockClock.EXPECT().Now().Return(startTime).AnyTimes()
-	mockClock.EXPECT().Now().Return(endTime).AnyTimes()
+	gomock.InOrder(
+		mockClock.EXPECT().Now().Return(startTime),
+		mockClock.EXPECT().Now().Return(endTime),
+		mockClock.EXPECT().Now().Return(startTime),
+		mockClock.EXPECT().Now().Return(endTime),
+	)
 
 	storageTypeName := "cas"
 	metricsReplicator := replication.NewMetricsBlobReplicator(
@@ -56,19 +60,20 @@ func TestMetricsBlobReplicatorLabelCardinality(t *testing.T) {
 	d := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	mockReplicator.EXPECT().
 		ReplicateSingle(gomock.Any(), d).
-		Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "not found")))
+		Return(nil, status.Error(codes.NotFound, "not found"))
 
 	// This should not panic due to label cardinality mismatch
-	b := metricsReplicator.ReplicateSingle(context.Background(), d)
-	b.Discard()
+	_, err := metricsReplicator.ReplicateSingle(context.Background(), d)
+	require.Error(t, err)
 
 	// Test ReplicateMultiple
 	digests := digest.NewSetBuilder(0).Add(d).Build()
+
 	mockReplicator.EXPECT().
 		ReplicateMultiple(gomock.Any(), digests).
 		Return(status.Error(codes.Internal, "internal error"))
 
 	// This should not panic due to label cardinality mismatch
-	err := metricsReplicator.ReplicateMultiple(context.Background(), digests)
+	err = metricsReplicator.ReplicateMultiple(context.Background(), digests)
 	require.Error(t, err)
 }

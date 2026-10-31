@@ -5,8 +5,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/blobstore/local"
@@ -23,7 +21,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
-	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 1, 100, 10, "cas")
+	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, 1, 100, 10, "cas")
 
 	// Based on the size of the allocator, it should be possible to
 	// create ten blocks.
@@ -45,41 +43,29 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	// Blocks should initially be handed out in order of the offset.
 	// The third block should thus start at offset 300.
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(300)).Return(5, nil)
-	offsetBytes, err := blocks[3].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	offsetBytes, err := blocks[3].Put(5)([]byte("Hello"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), offsetBytes)
 
-	// Fetch a blob from a block. Don't consume it yet, but do
-	// release the block associated with the blob. It should not be
-	// possible to reallocate the block as long as the blob hasn't
-	// been consumed.
-	dataIntegrityCallback := mock.NewMockDataIntegrityCallback(ctrl)
-	dataIntegrityCallback.EXPECT().Call(true)
-	b := blocks[7].Get(
-		digest.MustNewDigest("some-instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		25,
-		5,
-		dataIntegrityCallback.Call,
-	)
-	blocks[7].Release()
-	_, _, err = pa.NewBlock()
-	testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "No unused blocks available"), err)
-
-	// The blob may still be consumed with the block being released.
-	// It should have started at offset 700.
+	// Fetch a blob from a block.
 	blockDevice.EXPECT().ReadAt(gomock.Any(), int64(725)).DoAndReturn(
 		func(p []byte, off int64) (int, error) {
 			copy(p, "Hello")
 			return 5, nil
 		},
 	)
-	data, err := b.ToByteSlice(100)
+	data, err := blocks[7].Get(
+		digest.MustNewDigest("some-instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
+		25,
+		5,
+	)
 	require.NoError(t, err)
 	require.Equal(t, []byte("Hello"), data)
 
-	// With the blob being consumed, the underlying block should be
-	// released. This means the block can be allocated once again.
-	// It should still start at offset 700.
+	// By releasing our own reference to the block, it should be
+	// possible to reallocate it.
+	blocks[7].Release()
+
 	var location *pb.BlockLocation
 	blocks[7], location, err = pa.NewBlock()
 	require.NoError(t, err)
@@ -88,7 +74,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		SizeBytes:   100,
 	}, location)
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(700)).Return(5, nil)
-	offsetBytes, err = blocks[7].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	offsetBytes, err = blocks[7].Put(5)([]byte("Hello"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), offsetBytes)
 
@@ -108,7 +94,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 		}, location)
 
 		blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(100*i)).Return(5, nil)
-		offsetBytes, err := blocks[i].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		offsetBytes, err := blocks[i].Put(5)([]byte("Hello"))()
 		require.NoError(t, err)
 		require.Equal(t, int64(0), offsetBytes)
 	}
@@ -134,7 +120,7 @@ func TestBlockDeviceBackedBlockAllocator(t *testing.T) {
 	}, 17)
 	require.True(t, found)
 	blockDevice.EXPECT().WriteAt([]byte("Hello"), int64(717)).Return(5, nil)
-	offsetBytes, err = blocks[7].Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	offsetBytes, err = blocks[7].Put(5)([]byte("Hello"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(17), offsetBytes)
 }
@@ -147,7 +133,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	blockDevice := mock.NewMockBlockDevice(ctrl)
-	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, blobstore.CASReadBufferFactory, 16, 100, 1, "cas")
+	pa := local.NewBlockDeviceBackedBlockAllocator(blockDevice, 16, 100, 1, "cas")
 
 	block, location, err := pa.NewBlock()
 	require.NoError(t, err)
@@ -160,7 +146,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 	require.False(t, block.HasSpace(1601))
 
 	blockDevice.EXPECT().WriteAt([]byte("Hello\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"), int64(0)).Return(16, nil)
-	offsetBytes, err := block.Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+	offsetBytes, err := block.Put(5)([]byte("Hello"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), offsetBytes)
 
@@ -168,7 +154,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 	require.False(t, block.HasSpace(1596))
 
 	blockDevice.EXPECT().WriteAt([]byte("HelloWorld\x00\x00\x00\x00\x00\x00"), int64(0)).Return(16, nil)
-	offsetBytes, err = block.Put(5)(buffer.NewValidatedBufferFromByteSlice([]byte("World")))()
+	offsetBytes, err = block.Put(5)([]byte("World"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(5), offsetBytes)
 
@@ -177,7 +163,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 
 	blockDevice.EXPECT().WriteAt([]byte("HelloWorldThis b"), int64(0)).Return(16, nil)
 	blockDevice.EXPECT().WriteAt([]byte("lob is 22 bytes!"), int64(16)).Return(16, nil)
-	offsetBytes, err = block.Put(22)(buffer.NewValidatedBufferFromByteSlice([]byte("This blob is 22 bytes!")))()
+	offsetBytes, err = block.Put(22)([]byte("This blob is 22 bytes!"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(10), offsetBytes)
 
@@ -185,7 +171,7 @@ func TestBlockDeviceBackedBlockAllocatorSectorSize(t *testing.T) {
 	require.False(t, block.HasSpace(1569))
 
 	blockDevice.EXPECT().WriteAt([]byte("One sector long!"), int64(32)).Return(16, nil)
-	offsetBytes, err = block.Put(16)(buffer.NewValidatedBufferFromByteSlice([]byte("One sector long!")))()
+	offsetBytes, err = block.Put(16)([]byte("One sector long!"))()
 	require.NoError(t, err)
 	require.Equal(t, int64(32), offsetBytes)
 

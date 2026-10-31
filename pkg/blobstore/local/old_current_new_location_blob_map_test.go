@@ -5,7 +5,6 @@ import (
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/local"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
@@ -56,20 +55,14 @@ func TestOldCurrentNewLocationBlobMapAllocationPattern(t *testing.T) {
 				blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
 				blockList.EXPECT().Put(blockIndex, int64(5)).Return(blockListPutWriter.Call)
 				blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
-				blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
-					func(b buffer.Buffer) local.BlockListPutFinalizer {
-						data, err := b.ToByteSlice(10)
-						require.NoError(t, err)
-						require.Equal(t, []byte("Hello"), data)
-						return blockListPutFinalizer.Call
-					},
-				)
+
+				blockListPutWriter.EXPECT().Call([]byte("Hello")).Return(blockListPutFinalizer.Call)
 				blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 				// Perform the Put() operation.
 				locationBlobPutWriter, err := locationBlobMap.Put(5)
 				require.NoError(t, err)
-				location, err := locationBlobPutWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+				location, err := locationBlobPutWriter([]byte("Hello"))()
 				require.NoError(t, err)
 				require.Equal(t, local.Location{
 					BlockIndex:  blockIndex,
@@ -106,17 +99,14 @@ func TestOldCurrentNewLocationBlobMapGrowsMutableBlockList(t *testing.T) {
 		blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
 		blockList.EXPECT().Put(gomock.Any(), int64(5)).Return(blockListPutWriter.Call)
 		blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
-		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
-			func(b buffer.Buffer) local.BlockListPutFinalizer {
-				return blockListPutFinalizer.Call
-			},
-		)
+
+		blockListPutWriter.EXPECT().Call([]byte("Hello")).Return(blockListPutFinalizer.Call)
 		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 		// Perform the Put() operation.
 		locationBlobPutWriter, err := locationBlobMap.Put(5)
 		require.NoError(t, err)
-		_, err = locationBlobPutWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		_, err = locationBlobPutWriter([]byte("Hello"))()
 		require.NoError(t, err)
 	}
 	locationInOldestBlock := local.Location{
@@ -183,17 +173,14 @@ func TestOldCurrentNewLocationBlobMapGrowsImmutableBlockList(t *testing.T) {
 		blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
 		blockList.EXPECT().Put(gomock.Any(), int64(5)).Return(blockListPutWriter.Call)
 		blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
-		blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
-			func(b buffer.Buffer) local.BlockListPutFinalizer {
-				return blockListPutFinalizer.Call
-			},
-		)
+
+		blockListPutWriter.EXPECT().Call([]byte("Hello")).Return(blockListPutFinalizer.Call)
 		blockListPutFinalizer.EXPECT().Call().Return(int64(123), nil)
 
 		// Perform the Put() operation.
 		locationBlobPutWriter, err := locationBlobMap.Put(5)
 		require.NoError(t, err)
-		_, err = locationBlobPutWriter(buffer.NewValidatedBufferFromByteSlice([]byte("Hello")))()
+		_, err = locationBlobPutWriter([]byte("Hello"))()
 		require.NoError(t, err)
 	}
 	locationInOldestBlock := local.Location{
@@ -260,16 +247,12 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 		/* initialBlocksCount = */ 10,
 	)
 
-	// Perform a Get() call against block 1. Return a buffer that
-	// will trigger a data integrity error, as the digest
-	// corresponds with "Hello", not "xyzzy". This should cause the
-	// first two blocks to be marked for immediate release.
+	// Perform a Get() call against block 2. Since LocationBlobMap now returns
+	// eager representations and relies on FlatBlobAccess to do the validation,
+	// we just return invalid bytes here and manually execute the callback to
+	// test the resulting cleanup logic.
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	blockList.EXPECT().Get(2, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
-		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
-		},
-	)
+	blockList.EXPECT().Get(2, helloDigest, int64(10), int64(5)).Return([]byte("xyzzy"), nil)
 	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 3 blocks due to a data integrity error"))
 
 	locationBlobGetter, needsRefresh := locationBlobMap.Get(local.Location{
@@ -278,8 +261,13 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 		SizeBytes:   5,
 	})
 	require.False(t, needsRefresh)
-	_, err := locationBlobGetter(helloDigest).ToByteSlice(10)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+
+	data, integrityCallback, err := locationBlobGetter(helloDigest)
+	require.NoError(t, err)
+	require.Equal(t, []byte("xyzzy"), data)
+
+	// Manually invoke the callback to trigger the data integrity handling
+	integrityCallback()
 
 	// Get() is not capable of releasing blocks immediately due to
 	// locking constraints. Still, we should make sure that further
@@ -323,18 +311,13 @@ func TestOldCurrentNewLocationBlobMapDataCorruption(t *testing.T) {
 	blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
 	blockList.EXPECT().Put(0, int64(5)).Return(blockListPutWriter.Call)
 	blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
-	blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
-		func(b buffer.Buffer) local.BlockListPutFinalizer {
-			_, err := b.ToByteSlice(10)
-			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
-			return blockListPutFinalizer.Call
-		},
-	)
+
+	blockListPutWriter.EXPECT().Call([]byte("broken")).Return(blockListPutFinalizer.Call)
 	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
 
 	locationBlobPutWriter, err := locationBlobMap.Put(5)
 	require.NoError(t, err)
-	_, err = locationBlobPutWriter(buffer.NewBufferFromError(status.Error(codes.Unknown, "Client hung up")))()
+	_, err = locationBlobPutWriter([]byte("broken"))()
 	testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 }
 
@@ -357,16 +340,10 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 		/* initialBlocksCount = */ 10,
 	)
 
-	// Perform a Get() call against the new block 9. Return a buffer that
-	// will trigger a data integrity error in the last block, as the digest
-	// corresponds with "Hello", not "xyzzy". This should cause the
-	// all blocks to be marked for immediate release.
+	// Perform a Get() call against the new block 9. Similarly to above,
+	// manually trigger the integrity callback.
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
-	blockList.EXPECT().Get(9, helloDigest, int64(10), int64(5), gomock.Any()).DoAndReturn(
-		func(blockIndex int, digest digest.Digest, offsetBytes, sizeBytes int64, dataIntegrityCallback buffer.DataIntegrityCallback) buffer.Buffer {
-			return buffer.NewCASBufferFromByteSlice(digest, []byte("xyzzy"), buffer.BackendProvided(dataIntegrityCallback))
-		},
-	)
+	blockList.EXPECT().Get(9, helloDigest, int64(10), int64(5)).Return([]byte("xyzzy"), nil)
 	errorLogger.EXPECT().Log(status.Error(codes.Internal, "Releasing 10 blocks due to a data integrity error"))
 
 	locationBlobGetter, needsRefresh := locationBlobMap.Get(local.Location{
@@ -375,8 +352,13 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 		SizeBytes:   5,
 	})
 	require.False(t, needsRefresh)
-	_, err := locationBlobGetter(helloDigest).ToByteSlice(10)
-	testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Buffer has checksum 1271ed5ef305aadabc605b1609e24c52, while 8b1a9953c4611296a827abf8c47804d7 was expected"), err)
+
+	data, integrityCallback, err := locationBlobGetter(helloDigest)
+	require.NoError(t, err)
+	require.Equal(t, []byte("xyzzy"), data)
+
+	// Manually invoke the callback to trigger the data integrity handling
+	integrityCallback()
 
 	// Get() is not capable of releasing blocks immediately due to
 	// locking constraints. Still, we should make sure that further
@@ -405,17 +387,12 @@ func TestOldCurrentNewLocationBlobMapDataCorruptionInAllBlocks(t *testing.T) {
 	blockListPutWriter := mock.NewMockBlockListPutWriter(ctrl)
 	blockList.EXPECT().Put(0, int64(5)).Return(blockListPutWriter.Call)
 	blockListPutFinalizer := mock.NewMockBlockListPutFinalizer(ctrl)
-	blockListPutWriter.EXPECT().Call(gomock.Any()).DoAndReturn(
-		func(b buffer.Buffer) local.BlockListPutFinalizer {
-			_, err := b.ToByteSlice(10)
-			testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
-			return blockListPutFinalizer.Call
-		},
-	)
+
+	blockListPutWriter.EXPECT().Call([]byte("broken")).Return(blockListPutFinalizer.Call)
 	blockListPutFinalizer.EXPECT().Call().Return(int64(0), status.Error(codes.Unknown, "Client hung up"))
 
 	locationBlobPutWriter, err := locationBlobMap.Put(5)
 	require.NoError(t, err)
-	_, err = locationBlobPutWriter(buffer.NewBufferFromError(status.Error(codes.Unknown, "Client hung up")))()
+	_, err = locationBlobPutWriter([]byte("broken"))()
 	testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Client hung up"), err)
 }

@@ -38,28 +38,6 @@ func (s Set) Length() int {
 	return len(s.digests)
 }
 
-// RemoveEmptyBlob returns a copy of the set that has all of the entries
-// corresponding with the empty blob removed.
-func (s Set) RemoveEmptyBlob() Set {
-	for start, digest := range s.digests {
-		if digest.GetSizeBytes() == 0 {
-			// At least one non-empty blob was found. Copy
-			// the set up to this point and filter all
-			// successive results.
-			nonEmptyBlobs := append([]Digest(nil), s.digests[:start]...)
-			for _, digest := range s.digests[start+1:] {
-				if digest.GetSizeBytes() != 0 {
-					nonEmptyBlobs = append(nonEmptyBlobs, digest)
-				}
-			}
-			return Set{digests: nonEmptyBlobs}
-		}
-	}
-
-	// Return the original set, as no non-empty blobs were found.
-	return s
-}
-
 // PartitionByInstanceName partitions the elements stored in a set into
 // a list of sets, each containing elements of a single REv2 instance
 // name.

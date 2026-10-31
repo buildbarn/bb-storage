@@ -4,7 +4,6 @@ import (
 	"io"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
@@ -36,46 +35,39 @@ func VisitTopologicallySortedTree[TArgument any](r io.Reader, digestFunction dig
 		}
 		expectedFieldNumber = TreeChildrenFieldNumber
 
-		var directoryMessage proto.Message
-		var errUnmarshal error
+		if sizeBytes > int64(maximumDirectorySizeBytes) {
+			return status.Errorf(codes.InvalidArgument, "Directory size %d exceeds maximum of %d", sizeBytes, maximumDirectorySizeBytes)
+		}
+		directoryBytes := make([]byte, sizeBytes)
+		if _, err := io.ReadFull(fieldReader, directoryBytes); err != nil {
+			return util.StatusWrap(err, "Failed to read directory bytes")
+		}
+		directory := &remoteexecution.Directory{}
 		var argument *TArgument
 		switch fieldNumber {
 		case TreeRootFieldNumber:
-			directoryMessage, errUnmarshal = buffer.NewProtoBufferFromReader(
-				&remoteexecution.Directory{},
-				io.NopCloser(fieldReader),
-				buffer.UserProvided,
-			).ToProto(&remoteexecution.Directory{}, maximumDirectorySizeBytes)
+			if err := proto.Unmarshal(directoryBytes, directory); err != nil {
+				return util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal root directory")
+			}
 			argument = rootArgument
 		case TreeChildrenFieldNumber:
-			b1, b2 := buffer.NewProtoBufferFromReader(
-				&remoteexecution.Directory{},
-				io.NopCloser(fieldReader),
-				buffer.UserProvided,
-			).CloneCopy(maximumDirectorySizeBytes)
-
 			digestGenerator := digestFunction.NewGenerator(sizeBytes)
-			if err := b1.IntoWriter(digestGenerator); err != nil {
-				b2.Discard()
-				return err
+			if _, err := digestGenerator.Write(directoryBytes); err != nil {
+				return util.StatusWrap(err, "Failed to compute digest of directory")
 			}
 			directoryDigest := digestGenerator.Sum()
-
 			var ok bool
 			argument, ok = expectedDirectories[directoryDigest]
 			if !ok {
-				b2.Discard()
 				return status.Errorf(codes.InvalidArgument, "Directory has digest %#v, which was not expected", directoryDigest.String())
 			}
 			delete(expectedDirectories, directoryDigest)
 
-			directoryMessage, errUnmarshal = b2.ToProto(&remoteexecution.Directory{}, maximumDirectorySizeBytes)
-		}
-		if errUnmarshal != nil {
-			return errUnmarshal
+			if err := proto.Unmarshal(directoryBytes, directory); err != nil {
+				return util.StatusWrapWithCode(err, codes.InvalidArgument, "Failed to unmarshal child directory")
+			}
 		}
 
-		directory := directoryMessage.(*remoteexecution.Directory)
 		childArguments := make([]*TArgument, 0, len(directory.Directories))
 		for _, childDirectory := range directory.Directories {
 			digest, err := digestFunction.NewDigestFromProto(childDirectory.Digest)
@@ -103,3 +95,11 @@ func VisitTopologicallySortedTree[TArgument any](r io.Reader, digestFunction dig
 	}
 	return nil
 }
+
+// The Protobuf field numbers of the REv2 Tree's "root" and "children"
+// fields. These are used in combination with util.VisitProtoBytesFields()
+// to be able to process REv2 Tree objects in a streaming manner.
+const (
+	TreeRootFieldNumber     protowire.Number = 1
+	TreeChildrenFieldNumber protowire.Number = 2
+)

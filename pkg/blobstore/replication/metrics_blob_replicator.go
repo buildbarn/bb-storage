@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/slicing"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -35,7 +33,7 @@ var (
 			Namespace: "buildbarn",
 			Subsystem: "blobstore",
 			Name:      "blob_replicator_operations_blob_size_bytes",
-			Help:      "Size of blobs being replicated, in bytes.",
+			Help:      "Size of the digests of the blobs being replicated, in bytes. Only for the Chunk Store (CS) does this correspond to the actual size of the blobs replicated, and even then compression is not taken into consideration for this.",
 			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 33),
 		},
 		[]string{"storage_type", "operation"},
@@ -53,31 +51,29 @@ var (
 	)
 )
 
-type metricsBlobReplicator struct {
-	replicator  BlobReplicator
+type metricsBlobReplicator[T any] struct {
+	replicator  BlobReplicator[T]
 	clock       clock.Clock
 	source      string
 	destination string
 
-	singleDurationSeconds    prometheus.ObserverVec
-	singleBlobSizeBytes      prometheus.Observer
-	compositeDurationSeconds prometheus.ObserverVec
-	compositeBlobSizeBytes   prometheus.Observer
-	multipleDurationSeconds  prometheus.ObserverVec
-	multipleBatchSize        prometheus.Observer
-	multipleBlobSizeBytes    prometheus.Observer
+	singleDurationSeconds   prometheus.ObserverVec
+	singleBlobSizeBytes     prometheus.Observer
+	multipleDurationSeconds prometheus.ObserverVec
+	multipleBatchSize       prometheus.Observer
+	multipleBlobSizeBytes   prometheus.Observer
 }
 
 // NewMetricsBlobReplicator creates a wrapper around BlobReplicator that adds
 // Prometheus metrics for monitoring replication operations.
-func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, storageTypeName string) BlobReplicator {
+func NewMetricsBlobReplicator[T any](replicator BlobReplicator[T], clock clock.Clock, storageTypeName string) BlobReplicator[T] {
 	replicatorOperationsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(blobReplicatorOperationsDurationSeconds)
 		prometheus.MustRegister(blobReplicatorOperationsBlobSizeBytes)
 		prometheus.MustRegister(blobReplicatorOperationsBatchSize)
 	})
 
-	return &metricsBlobReplicator{
+	return &metricsBlobReplicator[T]{
 		replicator: replicator,
 		clock:      clock,
 		singleDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
@@ -85,11 +81,6 @@ func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, stor
 			"operation":    "ReplicateSingle",
 		}),
 		singleBlobSizeBytes: blobReplicatorOperationsBlobSizeBytes.WithLabelValues(storageTypeName, "ReplicateSingle"),
-		compositeDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
-			"storage_type": storageTypeName,
-			"operation":    "ReplicateComposite",
-		}),
-		compositeBlobSizeBytes: blobReplicatorOperationsBlobSizeBytes.WithLabelValues(storageTypeName, "ReplicateComposite"),
 		multipleDurationSeconds: blobReplicatorOperationsDurationSeconds.MustCurryWith(map[string]string{
 			"storage_type": storageTypeName,
 			"operation":    "ReplicateMultiple",
@@ -99,70 +90,31 @@ func NewMetricsBlobReplicator(replicator BlobReplicator, clock clock.Clock, stor
 	}
 }
 
-func (r *metricsBlobReplicator) updateDurationSeconds(vec prometheus.ObserverVec, code codes.Code, timeStart time.Time) {
+func (r *metricsBlobReplicator[T]) updateDurationSeconds(vec prometheus.ObserverVec, code codes.Code, timeStart time.Time) {
 	vec.WithLabelValues(code.String()).Observe(r.clock.Now().Sub(timeStart).Seconds())
 }
 
-func (r *metricsBlobReplicator) ReplicateSingle(ctx context.Context, blobDigest digest.Digest) buffer.Buffer {
+func (r *metricsBlobReplicator[T]) ReplicateSingle(ctx context.Context, d digest.Digest) (T, error) {
 	timeStart := r.clock.Now()
-	b := buffer.WithErrorHandler(
-		r.replicator.ReplicateSingle(ctx, blobDigest),
-		&metricsErrorHandler{
-			replicator:      r,
-			timeStart:       timeStart,
-			errorCode:       codes.OK,
-			durationSeconds: r.singleDurationSeconds,
-		},
-	)
-	if sizeBytes, err := b.GetSizeBytes(); err == nil {
-		r.singleBlobSizeBytes.Observe(float64(sizeBytes))
-	}
-	return b
+	r.singleBlobSizeBytes.Observe(float64(d.GetSizeBytes()))
+	ret, err := r.replicator.ReplicateSingle(ctx, d)
+	r.updateDurationSeconds(r.singleDurationSeconds, status.Code(err), timeStart)
+	return ret, err
 }
 
-func (r *metricsBlobReplicator) ReplicateComposite(ctx context.Context, parentDigest, childDigest digest.Digest, slicer slicing.BlobSlicer) buffer.Buffer {
-	timeStart := r.clock.Now()
-	b := buffer.WithErrorHandler(
-		r.replicator.ReplicateComposite(ctx, parentDigest, childDigest, slicer),
-		&metricsErrorHandler{
-			replicator:      r,
-			timeStart:       timeStart,
-			errorCode:       codes.OK,
-			durationSeconds: r.compositeDurationSeconds,
-		},
-	)
-	if sizeBytes, err := b.GetSizeBytes(); err == nil {
-		r.compositeBlobSizeBytes.Observe(float64(sizeBytes))
-	}
-	return b
-}
-
-func (r *metricsBlobReplicator) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
+func (r *metricsBlobReplicator[T]) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
 	if digests.Empty() {
 		return nil
 	}
 
 	timeStart := r.clock.Now()
 	r.multipleBatchSize.Observe(float64(digests.Length()))
-	// TODO: Add blob size metrics.
-
+	var sumDigestSizeBytes uint64
+	for _, d := range digests.Items() {
+		sumDigestSizeBytes += uint64(d.GetSizeBytes())
+	}
+	r.multipleBlobSizeBytes.Observe(float64(sumDigestSizeBytes))
 	err := r.replicator.ReplicateMultiple(ctx, digests)
 	r.updateDurationSeconds(r.multipleDurationSeconds, status.Code(err), timeStart)
 	return err
-}
-
-type metricsErrorHandler struct {
-	replicator      *metricsBlobReplicator
-	timeStart       time.Time
-	errorCode       codes.Code
-	durationSeconds prometheus.ObserverVec
-}
-
-func (eh *metricsErrorHandler) OnError(err error) (buffer.Buffer, error) {
-	eh.errorCode = status.Code(err)
-	return nil, err
-}
-
-func (eh *metricsErrorHandler) Done() {
-	eh.replicator.updateDurationSeconds(eh.durationSeconds, eh.errorCode, eh.timeStart)
 }

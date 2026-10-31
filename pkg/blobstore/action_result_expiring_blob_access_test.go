@@ -8,7 +8,6 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ import (
 func TestActionResultExpiringBlobAccess(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	baseBlobAccess := mock.NewMockBlobAccess(ctrl)
+	baseBlobAccess := mock.NewMockBlobAccess[*remoteexecution.ActionResult](ctrl)
 	clock := mock.NewMockClock(ctrl)
 	blobAccess := blobstore.NewActionResultExpiringBlobAccess(
 		baseBlobAccess,
@@ -40,9 +39,9 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 		// Failures from the backend should be propagated in
 		// literal form.
 		baseBlobAccess.EXPECT().Get(ctx, blobDigest).
-			Return(buffer.NewBufferFromError(status.Error(codes.Unavailable, "Server not reachable")))
+			Return(nil, status.Error(codes.Unavailable, "Server not reachable"))
 
-		_, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Unavailable, "Server not reachable"), err)
 	})
 
@@ -53,9 +52,9 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 			StderrRaw: []byte("Internal compiler error!"),
 			ExitCode:  1,
 		}
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(desiredActionResult, nil)
 
-		actualActionResult, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		actualActionResult, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, desiredActionResult, actualActionResult)
 	})
@@ -66,9 +65,9 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 			ExitCode:          1,
 			ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{},
 		}
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(desiredActionResult, nil)
 
-		actualActionResult, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		actualActionResult, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, desiredActionResult, actualActionResult)
 	})
@@ -84,9 +83,9 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 				WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 1641325784},
 			},
 		}
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(desiredActionResult, nil)
 
-		_, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result has worker completed timestamp 2022-01-04T19:49:44Z, which is below the minimum of 2022-01-04T19:49:45Z"), err)
 	})
 
@@ -99,10 +98,10 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 				WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 1641325786},
 			},
 		}
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(desiredActionResult, nil)
 		clock.EXPECT().Now().Return(time.Unix(1644187855, 0))
 
-		actualActionResult, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		actualActionResult, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
 		testutil.RequireEqualProto(t, desiredActionResult, actualActionResult)
 	})
@@ -116,10 +115,10 @@ func TestActionResultExpiringBlobAccess(t *testing.T) {
 				WorkerCompletedTimestamp: &timestamppb.Timestamp{Seconds: 1641325786},
 			},
 		}
-		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(buffer.NewProtoBufferFromProto(desiredActionResult, buffer.UserProvided))
+		baseBlobAccess.EXPECT().Get(ctx, blobDigest).Return(desiredActionResult, nil)
 		clock.EXPECT().Now().Return(time.Unix(1644187856, 0))
 
-		_, err := blobAccess.Get(ctx, blobDigest).ToProto(&remoteexecution.ActionResult{}, 10000)
+		_, err := blobAccess.Get(ctx, blobDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Action result with worker completed timestamp 2022-01-04T19:49:46Z expired at 2022-02-06T22:50:55Z"), err)
 	})
 }

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,7 +30,7 @@ var (
 )
 
 type actionResultTimestampInjectingBlobAccess struct {
-	BlobAccess
+	BlobAccess[*remoteexecution.ActionResult]
 	clock                   clock.Clock
 	maximumMessageSizeBytes int
 }
@@ -44,7 +43,7 @@ type actionResultTimestampInjectingBlobAccess struct {
 // This decorator is necessary to make ActionResultExpiringBlobAccess
 // work reliably, as it depends on this field being set. Not all clients
 // set this field.
-func NewActionResultTimestampInjectingBlobAccess(blobAccess BlobAccess, clock clock.Clock, maximumMessageSizeBytes int) BlobAccess {
+func NewActionResultTimestampInjectingBlobAccess(blobAccess BlobAccess[*remoteexecution.ActionResult], clock clock.Clock, maximumMessageSizeBytes int) BlobAccess[*remoteexecution.ActionResult] {
 	actionResultTimestampInjectingBlobAccessOperationsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(actionResultTimestampInjectingBlobAccessPutOperations)
 	})
@@ -56,29 +55,21 @@ func NewActionResultTimestampInjectingBlobAccess(blobAccess BlobAccess, clock cl
 	}
 }
 
-func (ba *actionResultTimestampInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, b buffer.Buffer) error {
-	b1, b2 := b.CloneCopy(ba.maximumMessageSizeBytes)
-	actionResultMessage, err := b1.ToProto(&remoteexecution.ActionResult{}, ba.maximumMessageSizeBytes)
-	if err != nil {
-		b2.Discard()
-		return err
-	}
-
-	oldActionResult := actionResultMessage.(*remoteexecution.ActionResult)
+func (ba *actionResultTimestampInjectingBlobAccess) Put(ctx context.Context, digest digest.Digest, value *remoteexecution.ActionResult) error {
+	oldActionResult := value
 	if oldActionResult.ExecutionMetadata.GetWorkerCompletedTimestamp() != nil {
 		// Timestamp is present. Forward the ActionResult unaltered.
 		actionResultTimestampInjectingBlobAccessPutOperationsPresent.Inc()
-		return ba.BlobAccess.Put(ctx, digest, b2)
+		return ba.BlobAccess.Put(ctx, digest, oldActionResult)
 	}
 
 	// Timestamp is absent. Inject the current time into it.
 	actionResultTimestampInjectingBlobAccessPutOperationsAbsent.Inc()
-	b2.Discard()
 	newActionResult := &remoteexecution.ActionResult{
 		ExecutionMetadata: &remoteexecution.ExecutedActionMetadata{
 			WorkerCompletedTimestamp: timestamppb.New(ba.clock.Now()),
 		},
 	}
 	proto.Merge(newActionResult, oldActionResult)
-	return ba.BlobAccess.Put(ctx, digest, buffer.NewProtoBufferFromProto(newActionResult, buffer.UserProvided))
+	return ba.BlobAccess.Put(ctx, digest, newActionResult)
 }
