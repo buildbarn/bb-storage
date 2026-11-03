@@ -113,10 +113,6 @@ go_deps_dev.module_override(
     path = "golang.org/x/oauth2",
 )
 go_deps_dev.module_override(
-    patches = ["//:patches/org_golang_x_sys/o-search.diff"],
-    path = "golang.org/x/sys",
-)
-go_deps_dev.module_override(
     patches = ["//:patches/cc_mvdan_gofumpt/unused-receiver-idents.diff"],
     path = "mvdan.cc/gofumpt",
 )
