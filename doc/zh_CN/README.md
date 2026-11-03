@@ -39,6 +39,7 @@ $ cat config/bb_storage.jsonnet
           oldBlocks: 8,
           currentBlocks: 24,
           newBlocks: 3,
+          refreshConcurrency: 1,
           blocksOnBlockDevice: {
             source: {
               file: {
@@ -75,6 +76,7 @@ $ cat config/bb_storage.jsonnet
               oldBlocks: 8,
               currentBlocks: 24,
               newBlocks: 1,
+              refreshConcurrency: 1,
               blocksOnBlockDevice: {
                 source: {
                   file: {
@@ -116,6 +118,7 @@ $ cat config/bb_storage.jsonnet
             oldBlocks: 8,
             currentBlocks: 24,
             newBlocks: 1,
+            refreshConcurrency: 1,
             blocksOnBlockDevice: {
               source: {
                 file: {

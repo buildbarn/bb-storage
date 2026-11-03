@@ -16,6 +16,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// MaximumRefreshConcurrency is the number of digest-keyed refresh stripes.
+const MaximumRefreshConcurrency = 256
+
 var (
 	flatBlobAccessPrometheusMetrics sync.Once
 
@@ -62,8 +65,11 @@ type flatBlobAccess[T any] struct {
 	locationBlobMap        LocationBlobMap
 	digestKeyFormat        digest.KeyFormat
 
-	lock        *sync.RWMutex
-	refreshLock sync.Mutex
+	lock *sync.RWMutex
+	// Refreshes hold a digest stripe and a slot across reading, decoding,
+	// copying and finalization. Neither is acquired while holding lock.
+	refreshStripes   [MaximumRefreshConcurrency]sync.Mutex
+	refreshSemaphore chan struct{}
 
 	refreshesBlobsGet         prometheus.Observer
 	refreshesBlobsFindMissing prometheus.Observer
@@ -80,7 +86,13 @@ type flatBlobAccess[T any] struct {
 // either ignores the REv2 instance name in digests entirely, or it
 // strongly partitions objects by instance name. It does not introduce
 // any hierarchy.
-func NewFlatBlobAccess[T any](keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, storageType string, capabilitiesProvider capabilities.Provider, coder coder.Coder[T, []byte]) blobstore.BlobAccess[T] {
+//
+// refreshConcurrency bounds FindMissing refreshes and must be between
+// 1 and MaximumRefreshConcurrency, inclusive. Get refreshes are not limited.
+func NewFlatBlobAccess[T any](keyLocationMap KeyLocationMap, blockReferenceResolver BlockReferenceResolver, locationBlobMap LocationBlobMap, digestKeyFormat digest.KeyFormat, lock *sync.RWMutex, refreshConcurrency int, storageType string, capabilitiesProvider capabilities.Provider, coder coder.Coder[T, []byte]) (blobstore.BlobAccess[T], error) {
+	if refreshConcurrency < 1 || refreshConcurrency > MaximumRefreshConcurrency {
+		return nil, status.Errorf(codes.InvalidArgument, "Refresh concurrency must be between 1 and %d, got %d", MaximumRefreshConcurrency, refreshConcurrency)
+	}
 	flatBlobAccessPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(flatBlobAccessRefreshesBlobs)
 		prometheus.MustRegister(flatBlobAccessRefreshesDurationSeconds)
@@ -96,6 +108,7 @@ func NewFlatBlobAccess[T any](keyLocationMap KeyLocationMap, blockReferenceResol
 		locationBlobMap:        locationBlobMap,
 		digestKeyFormat:        digestKeyFormat,
 		lock:                   lock,
+		refreshSemaphore:       make(chan struct{}, refreshConcurrency),
 
 		refreshesBlobsGet:         flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "Get"),
 		refreshesBlobsFindMissing: flatBlobAccessRefreshesBlobs.WithLabelValues(storageType, "FindMissing"),
@@ -104,11 +117,31 @@ func NewFlatBlobAccess[T any](keyLocationMap KeyLocationMap, blockReferenceResol
 		refreshesBlobsDurationFindMissing: flatBlobAccessRefreshesDurationSeconds.WithLabelValues(storageType, "FindMissing"),
 		refreshesBlobsSizeGet:             flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "Get"),
 		refreshesBlobsSizeFindMissing:     flatBlobAccessRefreshesSizeBytes.WithLabelValues(storageType, "FindMissing"),
-	}
+	}, nil
 }
 
 func (ba *flatBlobAccess[T]) getKey(digest digest.Digest) Key {
 	return NewKeyFromString(digest.GetKey(ba.digestKeyFormat))
+}
+
+// acquireRefreshSlot reserves one of the refresh concurrency slots,
+// blocking until one is free or ctx is done. The returned function
+// releases the slot.
+//
+// This must never be called while holding ba.lock. Slot holders need
+// ba.lock to make progress, so a caller that blocked here while holding
+// it would deadlock the refresh path. The established order is
+// stripe -> refreshSemaphore -> ba.lock.
+func (ba *flatBlobAccess[T]) acquireRefreshSlot(ctx context.Context) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, util.StatusFromContext(ctx)
+	}
+	select {
+	case ba.refreshSemaphore <- struct{}{}:
+		return func() { <-ba.refreshSemaphore }, nil
+	case <-ctx.Done():
+		return nil, util.StatusFromContext(ctx)
+	}
 }
 
 // finalizePut is called to finalize a write to the data store. This
@@ -270,91 +303,100 @@ func (ba *flatBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set
 		return missing.Build(), nil
 	}
 
-	// One or more blobs need to be refreshed.
-	//
-	// We should prevent concurrent FindMissing() calls from
-	// refreshing the same blobs, as that would cause data to be
-	// duplicated and load to increase significantly. Pick up the
-	// refresh lock to ensure bandwidth of refreshing is limited to
-	// one thread.
-	ba.refreshLock.Lock()
-	defer ba.refreshLock.Unlock()
-	// Add refresh start time before the refresh loop
+	// Refreshes of the same digest share a stripe through finalization.
+	// Without it, two callers can both pass the location comparison while
+	// the first copy is still in flight and has not published its location.
+	// A separate semaphore bounds refresh work across different stripes.
 	refreshStart := time.Now()
 	blobsRefreshedSuccessfully := 0
 	var blobRefreshSizeBytes int64
 	for _, blobToRefresh := range blobsToRefresh {
-		// Read blob data from the backing store.
-		ba.lock.RLock()
-		location, err := ba.keyLocationMap.Get(blobToRefresh.key, ba.blockReferenceResolver)
-		if err != nil {
-			ba.lock.RUnlock()
-			if status.Code(err) == codes.NotFound {
-				// Blob disappeared between the first and second scan.
-				// Simply report it as missing.
-				missing.Add(blobToRefresh.digest)
-				continue
+		if err := func() error {
+			stripe := &ba.refreshStripes[blobToRefresh.key[0]]
+			stripe.Lock()
+			defer stripe.Unlock()
+
+			releaseSlot, err := ba.acquireRefreshSlot(ctx)
+			if err != nil {
+				return err
 			}
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-		}
+			defer releaseSlot()
 
-		getter, needsRefresh := ba.locationBlobMap.Get(location)
-		if !needsRefresh {
-			// Blob was refreshed by someone else.
-			ba.lock.RUnlock()
-			continue
-		}
-		data, integrityCallback, err := getter(blobToRefresh.digest)
-		ba.lock.RUnlock()
-
-		if err != nil {
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-		}
-		if _, err := ba.coder.Decode(data, blobToRefresh.digest); err != nil {
-			integrityCallback()
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-		}
-
-		// Acquire write lock to allocate area for data.
-		ba.lock.Lock()
-		currentLocation, err := ba.keyLocationMap.Get(blobToRefresh.key, ba.blockReferenceResolver)
-		if err != nil {
-			ba.lock.Unlock()
-			if status.Code(err) == codes.NotFound {
-				// Blob disappeared before acquiring write lock. Simply
-				// report it as missing.
-				missing.Add(blobToRefresh.digest)
-				continue
+			// Read blob data from the backing store.
+			ba.lock.RLock()
+			location, err := ba.keyLocationMap.Get(blobToRefresh.key, ba.blockReferenceResolver)
+			if err != nil {
+				ba.lock.RUnlock()
+				if status.Code(err) == codes.NotFound {
+					// Blob disappeared between the first and second scan.
+					// Simply report it as missing.
+					missing.Add(blobToRefresh.digest)
+					return nil
+				}
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
 			}
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-		}
 
-		if currentLocation != location {
-			// When acquiring the write lock and the map now points to a
-			// new position in the block storage, the value was either
-			// overwritten or refreshed by another thread. We don't have
-			// to do anything for this blob.
+			getter, needsRefresh := ba.locationBlobMap.Get(location)
+			if !needsRefresh {
+				// Blob was refreshed by someone else.
+				ba.lock.RUnlock()
+				return nil
+			}
+			data, integrityCallback, err := getter(blobToRefresh.digest)
+			ba.lock.RUnlock()
+
+			if err != nil {
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+			if _, err := ba.coder.Decode(data, blobToRefresh.digest); err != nil {
+				integrityCallback()
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+
+			// Acquire write lock to allocate area for data.
+			ba.lock.Lock()
+			currentLocation, err := ba.keyLocationMap.Get(blobToRefresh.key, ba.blockReferenceResolver)
+			if err != nil {
+				ba.lock.Unlock()
+				if status.Code(err) == codes.NotFound {
+					// Blob disappeared before acquiring write lock. Simply
+					// report it as missing.
+					missing.Add(blobToRefresh.digest)
+					return nil
+				}
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+
+			if currentLocation != location {
+				// When acquiring the write lock and the map now points to a
+				// new position in the block storage, the value was either
+				// overwritten or refreshed by another thread. We don't have
+				// to do anything for this blob.
+				ba.lock.Unlock()
+				return nil
+			}
+
+			blobRefreshSizeBytes += currentLocation.SizeBytes
+			putWriter, err := ba.locationBlobMap.Put(currentLocation.SizeBytes)
+
+			// Copy the data outside of a lock.
 			ba.lock.Unlock()
-			continue
-		}
+			if err != nil {
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+			putFinalizer := putWriter(data)
 
-		blobRefreshSizeBytes += currentLocation.SizeBytes
-		putWriter, err := ba.locationBlobMap.Put(currentLocation.SizeBytes)
-
-		// Copy the data outside of a lock.
-		ba.lock.Unlock()
-		if err != nil {
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
-		}
-		putFinalizer := putWriter(data)
-
-		ba.lock.Lock()
-		if _, err := ba.finalizePut(putFinalizer, blobToRefresh.key); err != nil {
+			ba.lock.Lock()
+			if _, err := ba.finalizePut(putFinalizer, blobToRefresh.key); err != nil {
+				ba.lock.Unlock()
+				return util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			}
+			blobsRefreshedSuccessfully++
 			ba.lock.Unlock()
-			return digest.EmptySet, util.StatusWrapf(err, "Failed to refresh blob %#v", blobToRefresh.digest.String())
+			return nil
+		}(); err != nil {
+			return digest.EmptySet, err
 		}
-		blobsRefreshedSuccessfully++
-		ba.lock.Unlock()
 	}
 	ba.refreshesBlobsFindMissing.Observe(float64(blobsRefreshedSuccessfully))
 	ba.refreshesBlobsDurationFindMissing.Observe(time.Since(refreshStart).Seconds())
