@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -36,6 +37,31 @@ func (byteCoder) Decode(data []byte, d digest.Digest) ([]byte, error) {
 	return data, nil
 }
 
+// Finalizers may mutate state that readers also access. Check the
+// original exclusive-lock contract in all three write/refresh paths.
+func requireFlatBlobAccessWriteLock(t *testing.T, lock *sync.RWMutex) {
+	t.Helper()
+	if lock.TryRLock() {
+		lock.RUnlock()
+		t.Error("finalizer invoked without holding the outer write lock")
+	}
+}
+
+func TestNewFlatBlobAccessRefreshConcurrency(t *testing.T) {
+	for _, concurrency := range []int{-1, 0, 1, 4, 256, 257} {
+		t.Run(strconv.Itoa(concurrency), func(t *testing.T) {
+			access, err := local.NewFlatBlobAccess(nil, nil, nil, digest.KeyWithoutInstance, &sync.RWMutex{}, concurrency, "cas", nil, byteCoder{})
+			if concurrency < 1 || concurrency > 256 {
+				require.Nil(t, access)
+				testutil.RequireEqualStatus(t, status.Errorf(codes.InvalidArgument, "Refresh concurrency must be between 1 and 256, got %d", concurrency), err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, access)
+			}
+		})
+	}
+}
+
 func TestFlatBlobAccessGet(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
@@ -43,7 +69,9 @@ func TestFlatBlobAccessGet(t *testing.T) {
 	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider, byteCoder{})
+	var globalLock sync.RWMutex
+	blobAccess, err := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &globalLock, 4, "cas", capabilitiesProvider, byteCoder{})
+	require.NoError(t, err)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
@@ -137,7 +165,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).
 			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.Get(ctx, helloDigest)
@@ -161,7 +189,7 @@ func TestFlatBlobAccessGet(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).
 			Return(location2, nil)
 		keyLocationMap.EXPECT().Put(helloKey, location2, blockReferenceResolver)
 
@@ -178,7 +206,9 @@ func TestFlatBlobAccessPut(t *testing.T) {
 	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider, byteCoder{})
+	var globalLock sync.RWMutex
+	blobAccess, err := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &globalLock, 4, "cas", capabilitiesProvider, byteCoder{})
+	require.NoError(t, err)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location := local.Location{
@@ -216,7 +246,7 @@ func TestFlatBlobAccessPut(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).
 			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		require.Equal(
@@ -233,7 +263,7 @@ func TestFlatBlobAccessPut(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().Return(location, nil)
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).Return(location, nil)
 		keyLocationMap.EXPECT().Put(helloKey, location, blockReferenceResolver)
 
 		require.NoError(t, blobAccess.Put(ctx, helloDigest, []byte("Hello")))
@@ -247,7 +277,9 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
-	blobAccess := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider, byteCoder{})
+	var globalLock sync.RWMutex
+	blobAccess, err := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &globalLock, 4, "cas", capabilitiesProvider, byteCoder{})
+	require.NoError(t, err)
 	helloDigest := digest.MustNewDigest("example", remoteexecution.DigestFunction_SHA256, "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969", 5)
 	helloKey := local.NewKeyFromString("1-185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969-5")
 	location1 := local.Location{
@@ -260,6 +292,15 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 		OffsetBytes: 382,
 		SizeBytes:   5,
 	}
+
+	t.Run("RefreshCanceledBeforeAcquisition", func(t *testing.T) {
+		keyLocationMap.EXPECT().Get(helloKey, blockReferenceResolver).Return(location1, nil)
+		locationBlobMap.EXPECT().Get(location1).Return(nil, true)
+		ctx, cancel := context.WithCancel(ctx)
+		cancel()
+		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
+		require.Equal(t, codes.Canceled, status.Code(err))
+	})
 
 	t.Run("Phase1GetFailure", func(t *testing.T) {
 		keyLocationMap.EXPECT().Get(helloKey, blockReferenceResolver).
@@ -289,6 +330,44 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, digest.EmptySet, missing)
 	})
+
+	// Preserve the eager-read, decoding and location-revalidation behavior
+	// while adding per-digest refresh serialization.
+	for _, tc := range []struct {
+		name                  string
+		data                  []byte
+		readErr               error
+		currentLocation       local.Location
+		currentErr            error
+		wantCode              codes.Code
+		wantMissing           bool
+		wantIntegrityCallback bool
+	}{
+		{name: "RefreshReadFailure", data: []byte("Hello"), readErr: status.Error(codes.Internal, "Read error"), wantCode: codes.Internal},
+		{name: "RefreshDecodeFailure", data: []byte("error"), wantCode: codes.Internal, wantIntegrityCallback: true},
+		{name: "RefreshLocationChanged", data: []byte("Hello"), currentLocation: location2},
+		{name: "RefreshDisappearedBeforeAllocation", data: []byte("Hello"), currentErr: status.Error(codes.NotFound, "Gone"), wantMissing: true},
+		{name: "RefreshLookupFailedBeforeAllocation", data: []byte("Hello"), currentErr: status.Error(codes.Internal, "Lookup error"), wantCode: codes.Internal},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			keyLocationMap.EXPECT().Get(helloKey, blockReferenceResolver).Return(location1, nil).Times(2)
+			getter := mock.NewMockLocationBlobGetter(ctrl)
+			locationBlobMap.EXPECT().Get(location1).Return(getter.Call, true).Times(2)
+			integrityCalled := false
+			getter.EXPECT().Call(helloDigest).Return(tc.data, func() { integrityCalled = true }, tc.readErr)
+			if tc.readErr == nil && !tc.wantIntegrityCallback {
+				keyLocationMap.EXPECT().Get(helloKey, blockReferenceResolver).Return(tc.currentLocation, tc.currentErr)
+			}
+			missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
+			require.Equal(t, tc.wantCode, status.Code(err))
+			require.Equal(t, tc.wantIntegrityCallback, integrityCalled)
+			if tc.wantMissing {
+				require.Equal(t, helloDigest.ToSingletonSet(), missing)
+			} else {
+				require.Equal(t, digest.EmptySet, missing)
+			}
+		})
+	}
 
 	t.Run("Phase2GetFailure", func(t *testing.T) {
 		keyLocationMap.EXPECT().Get(helloKey, blockReferenceResolver).
@@ -354,7 +433,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).
 			Return(local.Location{}, status.Error(codes.Internal, "Write error"))
 
 		_, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
@@ -417,7 +496,7 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 			Return(putWriter.Call, nil)
 		putFinalizer := mock.NewMockLocationBlobPutFinalizer(ctrl)
 		putWriter.EXPECT().Call([]byte("Hello")).Return(putFinalizer.Call)
-		putFinalizer.EXPECT().Call().Return(location2, nil)
+		putFinalizer.EXPECT().Call().Do(func() { requireFlatBlobAccessWriteLock(t, &globalLock) }).Return(location2, nil)
 		keyLocationMap.EXPECT().Put(helloKey, location2, blockReferenceResolver)
 
 		missing, err := blobAccess.FindMissing(ctx, helloDigest.ToSingletonSet())
