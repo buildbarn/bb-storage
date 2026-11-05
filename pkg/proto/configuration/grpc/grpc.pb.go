@@ -924,11 +924,12 @@ func (x *RemoteAuthenticationPolicy) GetCacheReplacementPolicy() eviction.CacheR
 }
 
 type TracingMethodConfiguration struct {
-	state                              protoimpl.MessageState `protogen:"open.v1"`
-	AttributesFromFirstRequestMessage  []string               `protobuf:"bytes,1,rep,name=attributes_from_first_request_message,json=attributesFromFirstRequestMessage,proto3" json:"attributes_from_first_request_message,omitempty"`
-	AttributesFromFirstResponseMessage []string               `protobuf:"bytes,2,rep,name=attributes_from_first_response_message,json=attributesFromFirstResponseMessage,proto3" json:"attributes_from_first_response_message,omitempty"`
-	unknownFields                      protoimpl.UnknownFields
-	sizeCache                          protoimpl.SizeCache
+	state                         protoimpl.MessageState `protogen:"open.v1"`
+	AttributesFromRequestMessage  []string               `protobuf:"bytes,1,rep,name=attributes_from_request_message,json=attributesFromRequestMessage,proto3" json:"attributes_from_request_message,omitempty"`
+	AttributesFromResponseMessage []string               `protobuf:"bytes,2,rep,name=attributes_from_response_message,json=attributesFromResponseMessage,proto3" json:"attributes_from_response_message,omitempty"`
+	IncludeFollowupMessages       bool                   `protobuf:"varint,3,opt,name=include_followup_messages,json=includeFollowupMessages,proto3" json:"include_followup_messages,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *TracingMethodConfiguration) Reset() {
@@ -961,18 +962,25 @@ func (*TracingMethodConfiguration) Descriptor() ([]byte, []int) {
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *TracingMethodConfiguration) GetAttributesFromFirstRequestMessage() []string {
+func (x *TracingMethodConfiguration) GetAttributesFromRequestMessage() []string {
 	if x != nil {
-		return x.AttributesFromFirstRequestMessage
+		return x.AttributesFromRequestMessage
 	}
 	return nil
 }
 
-func (x *TracingMethodConfiguration) GetAttributesFromFirstResponseMessage() []string {
+func (x *TracingMethodConfiguration) GetAttributesFromResponseMessage() []string {
 	if x != nil {
-		return x.AttributesFromFirstResponseMessage
+		return x.AttributesFromResponseMessage
 	}
 	return nil
+}
+
+func (x *TracingMethodConfiguration) GetIncludeFollowupMessages() bool {
+	if x != nil {
+		return x.IncludeFollowupMessages
+	}
+	return false
 }
 
 type ServerRelayConfiguration struct {
@@ -1159,10 +1167,11 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_pro
 	"\bendpoint\x18\x02 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\bendpoint\x12,\n" +
 	"\x05scope\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\x05scope\x12,\n" +
 	"\x12maximum_cache_size\x18\x04 \x01(\x05R\x10maximumCacheSize\x12r\n" +
-	"\x18cache_replacement_policy\x18\x05 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicy\"\xc2\x01\n" +
-	"\x1aTracingMethodConfiguration\x12P\n" +
-	"%attributes_from_first_request_message\x18\x01 \x03(\tR!attributesFromFirstRequestMessage\x12R\n" +
-	"&attributes_from_first_response_message\x18\x02 \x03(\tR\"attributesFromFirstResponseMessage\"\x85\x01\n" +
+	"\x18cache_replacement_policy\x18\x05 \x01(\x0e28.buildbarn.configuration.eviction.CacheReplacementPolicyR\x16cacheReplacementPolicy\"\xe8\x01\n" +
+	"\x1aTracingMethodConfiguration\x12E\n" +
+	"\x1fattributes_from_request_message\x18\x01 \x03(\tR\x1cattributesFromRequestMessage\x12G\n" +
+	" attributes_from_response_message\x18\x02 \x03(\tR\x1dattributesFromResponseMessage\x12:\n" +
+	"\x19include_followup_messages\x18\x03 \x01(\bR\x17includeFollowupMessages\"\x85\x01\n" +
 	"\x18ServerRelayConfiguration\x12M\n" +
 	"\bendpoint\x18\x01 \x01(\v21.buildbarn.configuration.grpc.ClientConfigurationR\bendpoint\x12\x1a\n" +
 	"\bservices\x18\x02 \x03(\tR\bservicesB>Z<github.com/buildbarn/bb-storage/pkg/proto/configuration/grpcb\x06proto3"
