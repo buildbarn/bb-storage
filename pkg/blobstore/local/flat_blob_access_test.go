@@ -41,6 +41,18 @@ func TestFlatBlobAccessGet(t *testing.T) {
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
+	// Refreshes identify blocks by BlockReference across lock drops.
+	// No blocks are released in these tests, so use an identity mapping.
+	blockReferenceResolver.EXPECT().BlockIndexToBlockReference(gomock.Any()).DoAndReturn(
+		func(blockIndex int) (local.BlockReference, uint64) {
+			return local.BlockReference{BlocksFromLast: uint16(blockIndex)}, 0
+		},
+	).AnyTimes()
+	blockReferenceResolver.EXPECT().BlockReferenceToBlockIndex(gomock.Any()).DoAndReturn(
+		func(blockReference local.BlockReference) (int, uint64, bool) {
+			return int(blockReference.BlocksFromLast), 0, true
+		},
+	).AnyTimes()
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider, byteCoder{})
@@ -245,6 +257,18 @@ func TestFlatBlobAccessFindMissing(t *testing.T) {
 
 	keyLocationMap := mock.NewMockKeyLocationMap(ctrl)
 	blockReferenceResolver := mock.NewMockBlockReferenceResolver(ctrl)
+	// Refreshes identify blocks by BlockReference across lock drops.
+	// No blocks are released in these tests, so use an identity mapping.
+	blockReferenceResolver.EXPECT().BlockIndexToBlockReference(gomock.Any()).DoAndReturn(
+		func(blockIndex int) (local.BlockReference, uint64) {
+			return local.BlockReference{BlocksFromLast: uint16(blockIndex)}, 0
+		},
+	).AnyTimes()
+	blockReferenceResolver.EXPECT().BlockReferenceToBlockIndex(gomock.Any()).DoAndReturn(
+		func(blockReference local.BlockReference) (int, uint64, bool) {
+			return int(blockReference.BlocksFromLast), 0, true
+		},
+	).AnyTimes()
 	locationBlobMap := mock.NewMockLocationBlobMap(ctrl)
 	capabilitiesProvider := mock.NewMockCapabilitiesProvider(ctrl)
 	blobAccess := local.NewFlatBlobAccess(keyLocationMap, blockReferenceResolver, locationBlobMap, digest.KeyWithoutInstance, &sync.RWMutex{}, "cas", capabilitiesProvider, byteCoder{})
