@@ -67,7 +67,7 @@ func terminateWithSignal(currentPID int, terminationSignal os.Signal) {
 	// More details:
 	// https://github.com/golang/go/issues/19326
 	// https://github.com/golang/go/issues/46321
-	time.Sleep(5)
+	time.Sleep(5 * time.Second)
 	os.Exit(1)
 }
 
