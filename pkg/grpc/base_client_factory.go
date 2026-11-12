@@ -142,6 +142,15 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
 	}
 
+	// Optional: credential helper.
+	if helperConfig := config.CredentialHelper; helperConfig != nil {
+		perRPC, err := NewCredentialHelperCredentialsFromConfiguration(helperConfig, clock.SystemClock)
+		if err != nil {
+			return nil, util.StatusWrap(err, "Failed to create credential helper credentials")
+		}
+		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(perRPC))
+	}
+
 	// Optional: Keepalive.
 	if config.Keepalive != nil {
 		time := config.Keepalive.Time
