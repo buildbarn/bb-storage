@@ -44,6 +44,7 @@ type ClientConfiguration struct {
 	ProxyUrl                      string                                 `protobuf:"bytes,10,opt,name=proxy_url,json=proxyUrl,proto3" json:"proxy_url,omitempty"`
 	Tracing                       map[string]*TracingMethodConfiguration `protobuf:"bytes,11,rep,name=tracing,proto3" json:"tracing,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	DefaultServiceConfig          *structpb.Struct                       `protobuf:"bytes,13,opt,name=default_service_config,json=defaultServiceConfig,proto3" json:"default_service_config,omitempty"`
+	CredentialHelper              *CredentialHelperConfiguration         `protobuf:"bytes,14,opt,name=credential_helper,json=credentialHelper,proto3" json:"credential_helper,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }
@@ -155,6 +156,81 @@ func (x *ClientConfiguration) GetDefaultServiceConfig() *structpb.Struct {
 	return nil
 }
 
+func (x *ClientConfiguration) GetCredentialHelper() *CredentialHelperConfiguration {
+	if x != nil {
+		return x.CredentialHelper
+	}
+	return nil
+}
+
+type CredentialHelperConfiguration struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Path             string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Timeout          *durationpb.Duration   `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	ExpirationMargin *durationpb.Duration   `protobuf:"bytes,3,opt,name=expiration_margin,json=expirationMargin,proto3" json:"expiration_margin,omitempty"`
+	DefaultValidity  *durationpb.Duration   `protobuf:"bytes,4,opt,name=default_validity,json=defaultValidity,proto3" json:"default_validity,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CredentialHelperConfiguration) Reset() {
+	*x = CredentialHelperConfiguration{}
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialHelperConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialHelperConfiguration) ProtoMessage() {}
+
+func (x *CredentialHelperConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialHelperConfiguration.ProtoReflect.Descriptor instead.
+func (*CredentialHelperConfiguration) Descriptor() ([]byte, []int) {
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CredentialHelperConfiguration) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *CredentialHelperConfiguration) GetTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.Timeout
+	}
+	return nil
+}
+
+func (x *CredentialHelperConfiguration) GetExpirationMargin() *durationpb.Duration {
+	if x != nil {
+		return x.ExpirationMargin
+	}
+	return nil
+}
+
+func (x *CredentialHelperConfiguration) GetDefaultValidity() *durationpb.Duration {
+	if x != nil {
+		return x.DefaultValidity
+	}
+	return nil
+}
+
 type ClientKeepaliveConfiguration struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Time                *durationpb.Duration   `protobuf:"bytes,1,opt,name=time,proto3" json:"time,omitempty"`
@@ -166,7 +242,7 @@ type ClientKeepaliveConfiguration struct {
 
 func (x *ClientKeepaliveConfiguration) Reset() {
 	*x = ClientKeepaliveConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +254,7 @@ func (x *ClientKeepaliveConfiguration) String() string {
 func (*ClientKeepaliveConfiguration) ProtoMessage() {}
 
 func (x *ClientKeepaliveConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[1]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +267,7 @@ func (x *ClientKeepaliveConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientKeepaliveConfiguration.ProtoReflect.Descriptor instead.
 func (*ClientKeepaliveConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{1}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ClientKeepaliveConfiguration) GetTime() *durationpb.Duration {
@@ -240,7 +316,7 @@ type ServerConfiguration struct {
 
 func (x *ServerConfiguration) Reset() {
 	*x = ServerConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -252,7 +328,7 @@ func (x *ServerConfiguration) String() string {
 func (*ServerConfiguration) ProtoMessage() {}
 
 func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -265,7 +341,7 @@ func (x *ServerConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerConfiguration.ProtoReflect.Descriptor instead.
 func (*ServerConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{2}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ServerConfiguration) GetListenAddresses() []string {
@@ -403,7 +479,7 @@ type ServerKeepaliveEnforcementPolicy struct {
 
 func (x *ServerKeepaliveEnforcementPolicy) Reset() {
 	*x = ServerKeepaliveEnforcementPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -415,7 +491,7 @@ func (x *ServerKeepaliveEnforcementPolicy) String() string {
 func (*ServerKeepaliveEnforcementPolicy) ProtoMessage() {}
 
 func (x *ServerKeepaliveEnforcementPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +504,7 @@ func (x *ServerKeepaliveEnforcementPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerKeepaliveEnforcementPolicy.ProtoReflect.Descriptor instead.
 func (*ServerKeepaliveEnforcementPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{3}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ServerKeepaliveEnforcementPolicy) GetMinTime() *durationpb.Duration {
@@ -458,7 +534,7 @@ type ServerKeepaliveParameters struct {
 
 func (x *ServerKeepaliveParameters) Reset() {
 	*x = ServerKeepaliveParameters{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +546,7 @@ func (x *ServerKeepaliveParameters) String() string {
 func (*ServerKeepaliveParameters) ProtoMessage() {}
 
 func (x *ServerKeepaliveParameters) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[4]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +559,7 @@ func (x *ServerKeepaliveParameters) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerKeepaliveParameters.ProtoReflect.Descriptor instead.
 func (*ServerKeepaliveParameters) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{4}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ServerKeepaliveParameters) GetMaxConnectionIdle() *durationpb.Duration {
@@ -540,7 +616,7 @@ type AuthenticationPolicy struct {
 
 func (x *AuthenticationPolicy) Reset() {
 	*x = AuthenticationPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -552,7 +628,7 @@ func (x *AuthenticationPolicy) String() string {
 func (*AuthenticationPolicy) ProtoMessage() {}
 
 func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -565,7 +641,7 @@ func (x *AuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{5}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AuthenticationPolicy) GetPolicy() isAuthenticationPolicy_Policy {
@@ -708,7 +784,7 @@ type AnyAuthenticationPolicy struct {
 
 func (x *AnyAuthenticationPolicy) Reset() {
 	*x = AnyAuthenticationPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -720,7 +796,7 @@ func (x *AnyAuthenticationPolicy) String() string {
 func (*AnyAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +809,7 @@ func (x *AnyAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnyAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AnyAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{6}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AnyAuthenticationPolicy) GetPolicies() []*AuthenticationPolicy {
@@ -752,7 +828,7 @@ type AllAuthenticationPolicy struct {
 
 func (x *AllAuthenticationPolicy) Reset() {
 	*x = AllAuthenticationPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -764,7 +840,7 @@ func (x *AllAuthenticationPolicy) String() string {
 func (*AllAuthenticationPolicy) ProtoMessage() {}
 
 func (x *AllAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[7]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -777,7 +853,7 @@ func (x *AllAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*AllAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{7}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AllAuthenticationPolicy) GetPolicies() []*AuthenticationPolicy {
@@ -798,7 +874,7 @@ type TLSClientCertificateAuthenticationPolicy struct {
 
 func (x *TLSClientCertificateAuthenticationPolicy) Reset() {
 	*x = TLSClientCertificateAuthenticationPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -810,7 +886,7 @@ func (x *TLSClientCertificateAuthenticationPolicy) String() string {
 func (*TLSClientCertificateAuthenticationPolicy) ProtoMessage() {}
 
 func (x *TLSClientCertificateAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[8]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -823,7 +899,7 @@ func (x *TLSClientCertificateAuthenticationPolicy) ProtoReflect() protoreflect.M
 
 // Deprecated: Use TLSClientCertificateAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*TLSClientCertificateAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{8}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TLSClientCertificateAuthenticationPolicy) GetClientCertificateAuthorities() string {
@@ -860,7 +936,7 @@ type RemoteAuthenticationPolicy struct {
 
 func (x *RemoteAuthenticationPolicy) Reset() {
 	*x = RemoteAuthenticationPolicy{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -872,7 +948,7 @@ func (x *RemoteAuthenticationPolicy) String() string {
 func (*RemoteAuthenticationPolicy) ProtoMessage() {}
 
 func (x *RemoteAuthenticationPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[9]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -885,7 +961,7 @@ func (x *RemoteAuthenticationPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoteAuthenticationPolicy.ProtoReflect.Descriptor instead.
 func (*RemoteAuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{9}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RemoteAuthenticationPolicy) GetHeaders() []string {
@@ -933,7 +1009,7 @@ type TracingMethodConfiguration struct {
 
 func (x *TracingMethodConfiguration) Reset() {
 	*x = TracingMethodConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -945,7 +1021,7 @@ func (x *TracingMethodConfiguration) String() string {
 func (*TracingMethodConfiguration) ProtoMessage() {}
 
 func (x *TracingMethodConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[10]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -958,7 +1034,7 @@ func (x *TracingMethodConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingMethodConfiguration.ProtoReflect.Descriptor instead.
 func (*TracingMethodConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{10}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TracingMethodConfiguration) GetAttributesFromFirstRequestMessage() []string {
@@ -985,7 +1061,7 @@ type ServerRelayConfiguration struct {
 
 func (x *ServerRelayConfiguration) Reset() {
 	*x = ServerRelayConfiguration{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -997,7 +1073,7 @@ func (x *ServerRelayConfiguration) String() string {
 func (*ServerRelayConfiguration) ProtoMessage() {}
 
 func (x *ServerRelayConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[11]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1010,7 +1086,7 @@ func (x *ServerRelayConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerRelayConfiguration.ProtoReflect.Descriptor instead.
 func (*ServerRelayConfiguration) Descriptor() ([]byte, []int) {
-	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{11}
+	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ServerRelayConfiguration) GetEndpoint() *ClientConfiguration {
@@ -1037,7 +1113,7 @@ type ClientConfiguration_HeaderValues struct {
 
 func (x *ClientConfiguration_HeaderValues) Reset() {
 	*x = ClientConfiguration_HeaderValues{}
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1049,7 +1125,7 @@ func (x *ClientConfiguration_HeaderValues) String() string {
 func (*ClientConfiguration_HeaderValues) ProtoMessage() {}
 
 func (x *ClientConfiguration_HeaderValues) ProtoReflect() protoreflect.Message {
-	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[12]
+	mi := &file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1083,7 +1159,7 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc = "" +
 	"\n" +
-	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x80\b\n" +
+	"Ggithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x12\x1cbuildbarn.configuration.grpc\x1a9github.com/buildbarn/bb-storage/pkg/proto/auth/auth.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/eviction/eviction.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jmespath/jmespath.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/jwt/jwt.proto\x1aEgithub.com/buildbarn/bb-storage/pkg/proto/configuration/tls/tls.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/x509/x509.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xea\b\n" +
 	"\x13ClientConfiguration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12B\n" +
 	"\x03tls\x18\x02 \x01(\v20.buildbarn.configuration.tls.ClientConfigurationR\x03tls\x12X\n" +
@@ -1096,13 +1172,19 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_pro
 	"\tproxy_url\x18\n" +
 	" \x01(\tR\bproxyUrl\x12X\n" +
 	"\atracing\x18\v \x03(\v2>.buildbarn.configuration.grpc.ClientConfiguration.TracingEntryR\atracing\x12M\n" +
-	"\x16default_service_config\x18\r \x01(\v2\x17.google.protobuf.StructR\x14defaultServiceConfig\x1a>\n" +
+	"\x16default_service_config\x18\r \x01(\v2\x17.google.protobuf.StructR\x14defaultServiceConfig\x12h\n" +
+	"\x11credential_helper\x18\x0e \x01(\v2;.buildbarn.configuration.grpc.CredentialHelperConfigurationR\x10credentialHelper\x1a>\n" +
 	"\fHeaderValues\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\tR\x06header\x12\x16\n" +
 	"\x06values\x18\x02 \x03(\tR\x06values\x1at\n" +
 	"\fTracingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12N\n" +
-	"\x05value\x18\x02 \x01(\v28.buildbarn.configuration.grpc.TracingMethodConfigurationR\x05value:\x028\x01J\x04\b\x04\x10\x05J\x04\b\a\x10\b\"\xb6\x01\n" +
+	"\x05value\x18\x02 \x01(\v28.buildbarn.configuration.grpc.TracingMethodConfigurationR\x05value:\x028\x01J\x04\b\x04\x10\x05J\x04\b\a\x10\b\"\xf6\x01\n" +
+	"\x1dCredentialHelperConfiguration\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x123\n" +
+	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12F\n" +
+	"\x11expiration_margin\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x10expirationMargin\x12D\n" +
+	"\x10default_validity\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x0fdefaultValidity\"\xb6\x01\n" +
 	"\x1cClientKeepaliveConfiguration\x12-\n" +
 	"\x04time\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x04time\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x122\n" +
@@ -1179,81 +1261,86 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_prot
 	return file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDescData
 }
 
-var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_goTypes = []any{
 	(*ClientConfiguration)(nil),                         // 0: buildbarn.configuration.grpc.ClientConfiguration
-	(*ClientKeepaliveConfiguration)(nil),                // 1: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
-	(*ServerConfiguration)(nil),                         // 2: buildbarn.configuration.grpc.ServerConfiguration
-	(*ServerKeepaliveEnforcementPolicy)(nil),            // 3: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
-	(*ServerKeepaliveParameters)(nil),                   // 4: buildbarn.configuration.grpc.ServerKeepaliveParameters
-	(*AuthenticationPolicy)(nil),                        // 5: buildbarn.configuration.grpc.AuthenticationPolicy
-	(*AnyAuthenticationPolicy)(nil),                     // 6: buildbarn.configuration.grpc.AnyAuthenticationPolicy
-	(*AllAuthenticationPolicy)(nil),                     // 7: buildbarn.configuration.grpc.AllAuthenticationPolicy
-	(*TLSClientCertificateAuthenticationPolicy)(nil),    // 8: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
-	(*RemoteAuthenticationPolicy)(nil),                  // 9: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
-	(*TracingMethodConfiguration)(nil),                  // 10: buildbarn.configuration.grpc.TracingMethodConfiguration
-	(*ServerRelayConfiguration)(nil),                    // 11: buildbarn.configuration.grpc.ServerRelayConfiguration
-	(*ClientConfiguration_HeaderValues)(nil),            // 12: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
-	nil,                                                 // 13: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
-	nil,                                                 // 14: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
-	(*tls.ClientConfiguration)(nil),                     // 15: buildbarn.configuration.tls.ClientConfiguration
-	(*jmespath.Expression)(nil),                         // 16: buildbarn.configuration.jmespath.Expression
-	(*client.OAuth2Configuration)(nil),                  // 17: buildbarn.configuration.http.client.OAuth2Configuration
-	(*structpb.Struct)(nil),                             // 18: google.protobuf.Struct
-	(*durationpb.Duration)(nil),                         // 19: google.protobuf.Duration
-	(*tls.ServerConfiguration)(nil),                     // 20: buildbarn.configuration.tls.ServerConfiguration
-	(*emptypb.Empty)(nil),                               // 21: google.protobuf.Empty
-	(*auth.AuthenticationMetadata)(nil),                 // 22: buildbarn.auth.AuthenticationMetadata
-	(*x509.ClientCertificateVerifierConfiguration)(nil), // 23: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
-	(*jwt.AuthorizationHeaderParserConfiguration)(nil),  // 24: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	(*structpb.Value)(nil),                              // 25: google.protobuf.Value
-	(eviction.CacheReplacementPolicy)(0),                // 26: buildbarn.configuration.eviction.CacheReplacementPolicy
+	(*CredentialHelperConfiguration)(nil),               // 1: buildbarn.configuration.grpc.CredentialHelperConfiguration
+	(*ClientKeepaliveConfiguration)(nil),                // 2: buildbarn.configuration.grpc.ClientKeepaliveConfiguration
+	(*ServerConfiguration)(nil),                         // 3: buildbarn.configuration.grpc.ServerConfiguration
+	(*ServerKeepaliveEnforcementPolicy)(nil),            // 4: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
+	(*ServerKeepaliveParameters)(nil),                   // 5: buildbarn.configuration.grpc.ServerKeepaliveParameters
+	(*AuthenticationPolicy)(nil),                        // 6: buildbarn.configuration.grpc.AuthenticationPolicy
+	(*AnyAuthenticationPolicy)(nil),                     // 7: buildbarn.configuration.grpc.AnyAuthenticationPolicy
+	(*AllAuthenticationPolicy)(nil),                     // 8: buildbarn.configuration.grpc.AllAuthenticationPolicy
+	(*TLSClientCertificateAuthenticationPolicy)(nil),    // 9: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy
+	(*RemoteAuthenticationPolicy)(nil),                  // 10: buildbarn.configuration.grpc.RemoteAuthenticationPolicy
+	(*TracingMethodConfiguration)(nil),                  // 11: buildbarn.configuration.grpc.TracingMethodConfiguration
+	(*ServerRelayConfiguration)(nil),                    // 12: buildbarn.configuration.grpc.ServerRelayConfiguration
+	(*ClientConfiguration_HeaderValues)(nil),            // 13: buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
+	nil,                                                 // 14: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
+	nil,                                                 // 15: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
+	(*tls.ClientConfiguration)(nil),                     // 16: buildbarn.configuration.tls.ClientConfiguration
+	(*jmespath.Expression)(nil),                         // 17: buildbarn.configuration.jmespath.Expression
+	(*client.OAuth2Configuration)(nil),                  // 18: buildbarn.configuration.http.client.OAuth2Configuration
+	(*structpb.Struct)(nil),                             // 19: google.protobuf.Struct
+	(*durationpb.Duration)(nil),                         // 20: google.protobuf.Duration
+	(*tls.ServerConfiguration)(nil),                     // 21: buildbarn.configuration.tls.ServerConfiguration
+	(*emptypb.Empty)(nil),                               // 22: google.protobuf.Empty
+	(*auth.AuthenticationMetadata)(nil),                 // 23: buildbarn.auth.AuthenticationMetadata
+	(*x509.ClientCertificateVerifierConfiguration)(nil), // 24: buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+	(*jwt.AuthorizationHeaderParserConfiguration)(nil),  // 25: buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	(*structpb.Value)(nil),                              // 26: google.protobuf.Value
+	(eviction.CacheReplacementPolicy)(0),                // 27: buildbarn.configuration.eviction.CacheReplacementPolicy
 }
 var file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_depIdxs = []int32{
-	15, // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
-	1,  // 1: buildbarn.configuration.grpc.ClientConfiguration.keepalive:type_name -> buildbarn.configuration.grpc.ClientKeepaliveConfiguration
-	12, // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
-	16, // 3: buildbarn.configuration.grpc.ClientConfiguration.add_metadata_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	17, // 4: buildbarn.configuration.grpc.ClientConfiguration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
-	13, // 5: buildbarn.configuration.grpc.ClientConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
-	18, // 6: buildbarn.configuration.grpc.ClientConfiguration.default_service_config:type_name -> google.protobuf.Struct
-	19, // 7: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.time:type_name -> google.protobuf.Duration
-	19, // 8: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.timeout:type_name -> google.protobuf.Duration
-	5,  // 9: buildbarn.configuration.grpc.ServerConfiguration.authentication_policy:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
-	3,  // 10: buildbarn.configuration.grpc.ServerConfiguration.keepalive_enforcement_policy:type_name -> buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
-	14, // 11: buildbarn.configuration.grpc.ServerConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
-	4,  // 12: buildbarn.configuration.grpc.ServerConfiguration.keepalive_parameters:type_name -> buildbarn.configuration.grpc.ServerKeepaliveParameters
-	20, // 13: buildbarn.configuration.grpc.ServerConfiguration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
-	21, // 14: buildbarn.configuration.grpc.ServerConfiguration.alts:type_name -> google.protobuf.Empty
-	11, // 15: buildbarn.configuration.grpc.ServerConfiguration.relays:type_name -> buildbarn.configuration.grpc.ServerRelayConfiguration
-	19, // 16: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy.min_time:type_name -> google.protobuf.Duration
-	19, // 17: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_idle:type_name -> google.protobuf.Duration
-	19, // 18: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_age:type_name -> google.protobuf.Duration
-	19, // 19: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_age_grace:type_name -> google.protobuf.Duration
-	19, // 20: buildbarn.configuration.grpc.ServerKeepaliveParameters.time:type_name -> google.protobuf.Duration
-	19, // 21: buildbarn.configuration.grpc.ServerKeepaliveParameters.timeout:type_name -> google.protobuf.Duration
-	22, // 22: buildbarn.configuration.grpc.AuthenticationPolicy.allow:type_name -> buildbarn.auth.AuthenticationMetadata
-	6,  // 23: buildbarn.configuration.grpc.AuthenticationPolicy.any:type_name -> buildbarn.configuration.grpc.AnyAuthenticationPolicy
-	7,  // 24: buildbarn.configuration.grpc.AuthenticationPolicy.all:type_name -> buildbarn.configuration.grpc.AllAuthenticationPolicy
-	23, // 25: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
-	24, // 26: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
-	16, // 27: buildbarn.configuration.grpc.AuthenticationPolicy.peer_credentials_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	9,  // 28: buildbarn.configuration.grpc.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
-	5,  // 29: buildbarn.configuration.grpc.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
-	5,  // 30: buildbarn.configuration.grpc.AllAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
-	16, // 31: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	16, // 32: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
-	0,  // 33: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	25, // 34: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.scope:type_name -> google.protobuf.Value
-	26, // 35: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
-	0,  // 36: buildbarn.configuration.grpc.ServerRelayConfiguration.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
-	10, // 37: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
-	10, // 38: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	16, // 0: buildbarn.configuration.grpc.ClientConfiguration.tls:type_name -> buildbarn.configuration.tls.ClientConfiguration
+	2,  // 1: buildbarn.configuration.grpc.ClientConfiguration.keepalive:type_name -> buildbarn.configuration.grpc.ClientKeepaliveConfiguration
+	13, // 2: buildbarn.configuration.grpc.ClientConfiguration.add_metadata:type_name -> buildbarn.configuration.grpc.ClientConfiguration.HeaderValues
+	17, // 3: buildbarn.configuration.grpc.ClientConfiguration.add_metadata_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	18, // 4: buildbarn.configuration.grpc.ClientConfiguration.oauth2:type_name -> buildbarn.configuration.http.client.OAuth2Configuration
+	14, // 5: buildbarn.configuration.grpc.ClientConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ClientConfiguration.TracingEntry
+	19, // 6: buildbarn.configuration.grpc.ClientConfiguration.default_service_config:type_name -> google.protobuf.Struct
+	1,  // 7: buildbarn.configuration.grpc.ClientConfiguration.credential_helper:type_name -> buildbarn.configuration.grpc.CredentialHelperConfiguration
+	20, // 8: buildbarn.configuration.grpc.CredentialHelperConfiguration.timeout:type_name -> google.protobuf.Duration
+	20, // 9: buildbarn.configuration.grpc.CredentialHelperConfiguration.expiration_margin:type_name -> google.protobuf.Duration
+	20, // 10: buildbarn.configuration.grpc.CredentialHelperConfiguration.default_validity:type_name -> google.protobuf.Duration
+	20, // 11: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.time:type_name -> google.protobuf.Duration
+	20, // 12: buildbarn.configuration.grpc.ClientKeepaliveConfiguration.timeout:type_name -> google.protobuf.Duration
+	6,  // 13: buildbarn.configuration.grpc.ServerConfiguration.authentication_policy:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
+	4,  // 14: buildbarn.configuration.grpc.ServerConfiguration.keepalive_enforcement_policy:type_name -> buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy
+	15, // 15: buildbarn.configuration.grpc.ServerConfiguration.tracing:type_name -> buildbarn.configuration.grpc.ServerConfiguration.TracingEntry
+	5,  // 16: buildbarn.configuration.grpc.ServerConfiguration.keepalive_parameters:type_name -> buildbarn.configuration.grpc.ServerKeepaliveParameters
+	21, // 17: buildbarn.configuration.grpc.ServerConfiguration.tls:type_name -> buildbarn.configuration.tls.ServerConfiguration
+	22, // 18: buildbarn.configuration.grpc.ServerConfiguration.alts:type_name -> google.protobuf.Empty
+	12, // 19: buildbarn.configuration.grpc.ServerConfiguration.relays:type_name -> buildbarn.configuration.grpc.ServerRelayConfiguration
+	20, // 20: buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicy.min_time:type_name -> google.protobuf.Duration
+	20, // 21: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_idle:type_name -> google.protobuf.Duration
+	20, // 22: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_age:type_name -> google.protobuf.Duration
+	20, // 23: buildbarn.configuration.grpc.ServerKeepaliveParameters.max_connection_age_grace:type_name -> google.protobuf.Duration
+	20, // 24: buildbarn.configuration.grpc.ServerKeepaliveParameters.time:type_name -> google.protobuf.Duration
+	20, // 25: buildbarn.configuration.grpc.ServerKeepaliveParameters.timeout:type_name -> google.protobuf.Duration
+	23, // 26: buildbarn.configuration.grpc.AuthenticationPolicy.allow:type_name -> buildbarn.auth.AuthenticationMetadata
+	7,  // 27: buildbarn.configuration.grpc.AuthenticationPolicy.any:type_name -> buildbarn.configuration.grpc.AnyAuthenticationPolicy
+	8,  // 28: buildbarn.configuration.grpc.AuthenticationPolicy.all:type_name -> buildbarn.configuration.grpc.AllAuthenticationPolicy
+	24, // 29: buildbarn.configuration.grpc.AuthenticationPolicy.tls_client_certificate:type_name -> buildbarn.configuration.x509.ClientCertificateVerifierConfiguration
+	25, // 30: buildbarn.configuration.grpc.AuthenticationPolicy.jwt:type_name -> buildbarn.configuration.jwt.AuthorizationHeaderParserConfiguration
+	17, // 31: buildbarn.configuration.grpc.AuthenticationPolicy.peer_credentials_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	10, // 32: buildbarn.configuration.grpc.AuthenticationPolicy.remote:type_name -> buildbarn.configuration.grpc.RemoteAuthenticationPolicy
+	6,  // 33: buildbarn.configuration.grpc.AnyAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
+	6,  // 34: buildbarn.configuration.grpc.AllAuthenticationPolicy.policies:type_name -> buildbarn.configuration.grpc.AuthenticationPolicy
+	17, // 35: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.validation_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	17, // 36: buildbarn.configuration.grpc.TLSClientCertificateAuthenticationPolicy.metadata_extraction_jmespath_expression:type_name -> buildbarn.configuration.jmespath.Expression
+	0,  // 37: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	26, // 38: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.scope:type_name -> google.protobuf.Value
+	27, // 39: buildbarn.configuration.grpc.RemoteAuthenticationPolicy.cache_replacement_policy:type_name -> buildbarn.configuration.eviction.CacheReplacementPolicy
+	0,  // 40: buildbarn.configuration.grpc.ServerRelayConfiguration.endpoint:type_name -> buildbarn.configuration.grpc.ClientConfiguration
+	11, // 41: buildbarn.configuration.grpc.ClientConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
+	11, // 42: buildbarn.configuration.grpc.ServerConfiguration.TracingEntry.value:type_name -> buildbarn.configuration.grpc.TracingMethodConfiguration
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_init() }
@@ -1261,11 +1348,11 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_prot
 	if File_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto != nil {
 		return
 	}
-	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[2].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[3].OneofWrappers = []any{
 		(*ServerConfiguration_Tls)(nil),
 		(*ServerConfiguration_Alts)(nil),
 	}
-	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[5].OneofWrappers = []any{
+	file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_msgTypes[6].OneofWrappers = []any{
 		(*AuthenticationPolicy_Allow)(nil),
 		(*AuthenticationPolicy_Any)(nil),
 		(*AuthenticationPolicy_All)(nil),
@@ -1281,7 +1368,7 @@ func file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_prot
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc), len(file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
