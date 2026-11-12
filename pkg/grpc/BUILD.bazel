@@ -11,6 +11,7 @@ go_library(
         "base_client_factory.go",
         "client_dialer.go",
         "client_factory.go",
+        "credential_helper_credentials.go",
         "deduplicating_client_factory.go",
         "deny_authenticator.go",
         "forwarding_stream_handler.go",
