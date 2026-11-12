@@ -1,6 +1,6 @@
 module github.com/buildbarn/bb-storage
 
-go 1.27.3
+go 1.27.4
 
 // rules_go doesn't support gomock's package mode.
 replace go.uber.org/mock => go.uber.org/mock v0.4.0
@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.6
 	github.com/bazelbuild/buildtools v0.0.0-20260904073137-eaa4d125b423
 	github.com/bazelbuild/remote-apis v0.0.0-20261020142950-c2c07e3d718d
-	github.com/bazelbuild/rules_go v0.64.2
+	github.com/bazelbuild/rules_go v0.65.0
 	github.com/buildbarn/go-cdc v0.0.10
 	github.com/buildbarn/go-sha256tree v0.0.0-20250310211320-0f70f20e855b
 	github.com/fxtlabs/primes v0.0.0-20150821004651-dad82d10a449

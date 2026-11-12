@@ -70,8 +70,8 @@ github.com/bazelbuild/buildtools v0.0.0-20260904073137-eaa4d125b423 h1:scNMqf+Fg
 github.com/bazelbuild/buildtools v0.0.0-20260904073137-eaa4d125b423/go.mod h1:jWjcMGVH6hAgMG98abRQOIvoFFLPx/p3e5eeTGIHUMc=
 github.com/bazelbuild/remote-apis v0.0.0-20261020142950-c2c07e3d718d h1:7izNenYM1R0KKGLzukza/7Z9aqm6DR+PRAZDJl+ZRrs=
 github.com/bazelbuild/remote-apis v0.0.0-20261020142950-c2c07e3d718d/go.mod h1:7Tyi5f5+hG+6LwC0X/G/EjCQS4ZYJUcpY0geSsU2NAw=
-github.com/bazelbuild/rules_go v0.64.2 h1:bBzVLLT/gSQ+bhE7V1rQDQRBIcQgbv0kZrVCjELBE/Q=
-github.com/bazelbuild/rules_go v0.64.2/go.mod h1:fGJXke4qp7Xq27y1oZ7Qib3rhk5Ar3T1/A9jxOtkcH8=
+github.com/bazelbuild/rules_go v0.65.0 h1:oHAvkNIMaOhguFSCHi0bCoUhz2390srk4U0rTn9mqBc=
+github.com/bazelbuild/rules_go v0.65.0/go.mod h1:xfi7fis5FXCWYcI1W3egOzRBoz+Yi5AeFV7MbCtdmj8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
