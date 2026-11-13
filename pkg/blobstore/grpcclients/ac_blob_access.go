@@ -67,6 +67,10 @@ func (acBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (digest
 	return digest.EmptySet, status.Error(codes.Unimplemented, "Bazel action cache does not support bulk existence checking")
 }
 
+func (*acBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}
+
 func (ba *acBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	serverCapabilities, err := getServerCapabilitiesWithCacheCapabilities(ctx, ba.capabilitiesClient, instanceName)
 	if err != nil {

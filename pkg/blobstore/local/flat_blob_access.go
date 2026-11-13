@@ -361,3 +361,7 @@ func (ba *flatBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Set
 	ba.refreshesBlobsSizeFindMissing.Observe(float64(blobRefreshSizeBytes))
 	return missing.Build(), nil
 }
+
+func (*flatBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}

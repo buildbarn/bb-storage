@@ -46,3 +46,24 @@ func (ba *readCachingBlobAccess[T]) Get(ctx context.Context, digest digest.Diges
 	}
 	return ret, err
 }
+
+// Prefetch ensures that a set of objects is present in the fast data
+// store, replicating them from the slow data store where needed. This
+// allows callers to warm up the read cache without having to perform a
+// Get() for every object.
+//
+// Objects that are absent from the slow data store cause a NOT_FOUND
+// error to be returned.
+func (ba *readCachingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Determine which objects are still missing from the fast data
+	// store, so that objects that are already cached are not fetched
+	// from the slow data store again.
+	missing, err := ba.fast.FindMissing(ctx, digests)
+	if err != nil {
+		return util.StatusWrap(err, "Fast")
+	}
+	if missing.Empty() {
+		return nil
+	}
+	return ba.replicator.ReplicateMultiple(ctx, missing)
+}
