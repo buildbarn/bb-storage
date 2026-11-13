@@ -17,6 +17,7 @@ import (
 
 type hierarchicalCSBlobAccess struct {
 	capabilities.Provider
+	blobstore.NonPrefetchingBlobAccess
 
 	coder                  coder.Coder[*chunk.Chunk, []byte]
 	keyLocationMap         KeyLocationMap

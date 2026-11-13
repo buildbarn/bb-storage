@@ -73,3 +73,13 @@ func (ba *readFallbackBlobAccess[T]) FindMissing(ctx context.Context, digests di
 
 	return missingInBoth, nil
 }
+
+func (ba *readFallbackBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Prefetching is only performed against the primary backend.
+	// Objects that are only present in the secondary backend are
+	// replicated as part of FindMissing() and Get().
+	if err := ba.BlobAccess.Prefetch(ctx, digests); err != nil {
+		return util.StatusWrap(err, "Primary")
+	}
+	return nil
+}

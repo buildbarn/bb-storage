@@ -45,3 +45,9 @@ func (d *deadlineEnforcingBlobAccess[T]) FindMissing(ctx context.Context, digest
 	defer cancel()
 	return d.delegate.FindMissing(ctxWithTimeout, digests)
 }
+
+func (d *deadlineEnforcingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, d.timeout)
+	defer cancel()
+	return d.delegate.Prefetch(ctxWithTimeout, digests)
+}

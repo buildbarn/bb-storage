@@ -19,6 +19,7 @@ import (
 )
 
 type csBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
 	capabilitiesClient              remoteexecution.CapabilitiesClient
 	supportedCompressors            atomic.Pointer[[]remoteexecution.Compressor_Value]

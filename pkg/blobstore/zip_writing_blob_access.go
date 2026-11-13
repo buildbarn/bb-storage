@@ -45,6 +45,7 @@ type ReadWriterAt interface {
 // using NewZIPReadingBlobAccess().
 type ZIPWritingBlobAccess[T any] struct {
 	capabilities.Provider
+	NonPrefetchingBlobAccess
 	coder           coder.Coder[T, []byte]
 	digestKeyFormat digest.KeyFormat
 	rw              ReadWriterAt

@@ -160,6 +160,27 @@ func (ba *mirroredBlobAccess[T]) FindMissing(ctx context.Context, digests digest
 	return missingFromBoth, nil
 }
 
+func (ba *mirroredBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Prefetch objects from both backends. Objects that are only
+	// present in one of the backends are replicated as part of
+	// FindMissing(), which is invoked by the prefetching read
+	// cache. Simply forward the request to both backends.
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		if err := ba.backendA.Prefetch(groupCtx, digests); err != nil {
+			return util.StatusWrap(err, "Backend A")
+		}
+		return nil
+	})
+	group.Go(func() error {
+		if err := ba.backendB.Prefetch(groupCtx, digests); err != nil {
+			return util.StatusWrap(err, "Backend B")
+		}
+		return nil
+	})
+	return group.Wait()
+}
+
 func (ba *mirroredBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	// Alternate requests between storage backends.
 	var backend blobstore.BlobAccess[T]
