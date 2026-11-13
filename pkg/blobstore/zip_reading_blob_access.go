@@ -70,3 +70,7 @@ func (ba *zipReadingBlobAccess[T]) FindMissing(ctx context.Context, digests dige
 	}
 	return missing.Build(), nil
 }
+
+func (*zipReadingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}

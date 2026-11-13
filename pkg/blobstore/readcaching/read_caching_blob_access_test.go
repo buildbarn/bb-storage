@@ -113,3 +113,61 @@ func TestReadCachingBlobAccessFindMissing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, digests, missing)
 }
+
+func TestReadCachingBlobAccessPrefetch(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	slowBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	fastBlobAccess := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	blobReplicator := mock.NewMockBlobReplicator[*chunk.Chunk](ctrl)
+	blobAccess := readcaching.NewReadCachingBlobAccess(slowBlobAccess, fastBlobAccess, blobReplicator)
+	digests := digest.NewSetBuilder(0).
+		Add(digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c", 11)).
+		Add(digest.MustNewDigest("default", remoteexecution.DigestFunction_SHA256, "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9", 7)).
+		Build()
+
+	t.Run("AllPresent", func(t *testing.T) {
+		// If all objects are already present in the fast backend,
+		// nothing needs to be replicated.
+		fastBlobAccess.EXPECT().FindMissing(ctx, digests).Return(digest.EmptySet, nil)
+
+		require.NoError(t, blobAccess.Prefetch(ctx, digests))
+	})
+
+	t.Run("PartiallyMissing", func(t *testing.T) {
+		// Only the objects that are missing from the fast backend
+		// should be replicated from the slow backend.
+		first := digests.Items()[0]
+		fastBlobAccess.EXPECT().FindMissing(ctx, digests).Return(first.ToSingletonSet(), nil)
+		blobReplicator.EXPECT().ReplicateMultiple(ctx, first.ToSingletonSet()).Return(nil)
+
+		require.NoError(t, blobAccess.Prefetch(ctx, digests))
+	})
+
+	t.Run("FastError", func(t *testing.T) {
+		// Errors checking the fast backend should propagate.
+		fastBlobAccess.EXPECT().FindMissing(ctx, digests).Return(digest.EmptySet, status.Error(codes.Internal, "Disk on fire"))
+
+		err := blobAccess.Prefetch(ctx, digests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Fast: Disk on fire"), err)
+	})
+
+	t.Run("ReplicationError", func(t *testing.T) {
+		// Errors replicating objects should propagate.
+		fastBlobAccess.EXPECT().FindMissing(ctx, digests).Return(digests, nil)
+		blobReplicator.EXPECT().ReplicateMultiple(ctx, digests).Return(status.Error(codes.Internal, "Disk on fire"))
+
+		err := blobAccess.Prefetch(ctx, digests)
+		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Disk on fire"), err)
+	})
+
+	t.Run("MissingFromSlow", func(t *testing.T) {
+		// Objects that are absent from the slow backend cause the
+		// replicator to return NotFound, which is propagated.
+		fastBlobAccess.EXPECT().FindMissing(ctx, digests).Return(digests, nil)
+		blobReplicator.EXPECT().ReplicateMultiple(ctx, digests).Return(status.Error(codes.NotFound, "Blob not found"))
+
+		err := blobAccess.Prefetch(ctx, digests)
+		testutil.RequireEqualStatus(t, status.Error(codes.NotFound, "Blob not found"), err)
+	})
+}

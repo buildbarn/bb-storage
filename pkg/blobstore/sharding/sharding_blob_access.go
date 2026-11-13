@@ -97,6 +97,32 @@ func (ba *shardingBlobAccess[T]) FindMissing(ctx context.Context, digests digest
 	return digest.GetUnion(missingPerBackend), nil
 }
 
+func (ba *shardingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Partition all digests by shard.
+	digestsPerBackend := make([]digest.SetBuilder, 0, len(ba.backends))
+	for range ba.backends {
+		digestsPerBackend = append(digestsPerBackend, digest.NewSetBuilder(digests.Length()/len(ba.backends)+1))
+	}
+	for _, blobDigest := range digests.Items() {
+		digestsPerBackend[ba.getBackendIndexByDigest(blobDigest)].Add(blobDigest)
+	}
+
+	// Asynchronously call Prefetch() on backends.
+	group, ctxWithCancel := errgroup.WithContext(ctx)
+	for indexIter, digestsIter := range digestsPerBackend {
+		index, digests := indexIter, digestsIter
+		if digests.Length() > 0 {
+			group.Go(func() error {
+				if err := ba.backends[index].Backend.Prefetch(ctxWithCancel, digests.Build()); err != nil {
+					return util.StatusWrapf(err, "Shard %s", ba.backends[index].Key)
+				}
+				return nil
+			})
+		}
+	}
+	return group.Wait()
+}
+
 func (ba *shardingBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	// Spread requests across shards.
 	index := ba.shardSelector.GetShard(ba.getCapabilitiesRound.Add(1))
