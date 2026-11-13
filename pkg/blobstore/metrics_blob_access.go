@@ -38,6 +38,16 @@ var (
 		},
 		[]string{"storage_type", "backend_type"},
 	)
+	blobAccessOperationsPrefetchBatchSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "buildbarn",
+			Subsystem: "blobstore",
+			Name:      "blob_access_operations_prefetch_batch_size",
+			Help:      "Number of digests provided to Prefetch().",
+			Buckets:   prometheus.ExponentialBuckets(1.0, 2.0, 17),
+		},
+		[]string{"storage_type", "backend_type"},
+	)
 	blobAccessOperationsDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "buildbarn",
@@ -60,6 +70,8 @@ type metricsBlobAccess[T any] struct {
 	putDurationSeconds         prometheus.ObserverVec
 	findMissingBatchSize       prometheus.Observer
 	findMissingDurationSeconds prometheus.ObserverVec
+	prefetchBatchSize          prometheus.Observer
+	prefetchDurationSeconds    prometheus.ObserverVec
 	getCapabilitiesSeconds     prometheus.ObserverVec
 }
 
@@ -69,6 +81,7 @@ func NewMetricsBlobAccess[T any](blobAccess BlobAccess[T], clock clock.Clock, st
 	blobAccessOperationsPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(blobAccessOperationsBlobSizeBytes)
 		prometheus.MustRegister(blobAccessOperationsFindMissingBatchSize)
+		prometheus.MustRegister(blobAccessOperationsPrefetchBatchSize)
 		prometheus.MustRegister(blobAccessOperationsDurationSeconds)
 	})
 
@@ -82,6 +95,8 @@ func NewMetricsBlobAccess[T any](blobAccess BlobAccess[T], clock clock.Clock, st
 		putDurationSeconds:         blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Put"}),
 		findMissingBatchSize:       blobAccessOperationsFindMissingBatchSize.WithLabelValues(storageType, backendType),
 		findMissingDurationSeconds: blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "FindMissing"}),
+		prefetchBatchSize:          blobAccessOperationsPrefetchBatchSize.WithLabelValues(storageType, backendType),
+		prefetchDurationSeconds:    blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "Prefetch"}),
 		getCapabilitiesSeconds:     blobAccessOperationsDurationSeconds.MustCurryWith(map[string]string{"storage_type": storageType, "backend_type": backendType, "operation": "GetCapabilities"}),
 	}
 }
@@ -119,6 +134,18 @@ func (ba *metricsBlobAccess[T]) FindMissing(ctx context.Context, digests digest.
 	digests, err := ba.blobAccess.FindMissing(ctx, digests)
 	ba.updateDurationSeconds(ba.findMissingDurationSeconds, status.Code(err), timeStart)
 	return digests, err
+}
+
+func (ba *metricsBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	if digests.Empty() {
+		return nil
+	}
+
+	ba.prefetchBatchSize.Observe(float64(digests.Length()))
+	timeStart := ba.clock.Now()
+	err := ba.blobAccess.Prefetch(ctx, digests)
+	ba.updateDurationSeconds(ba.prefetchDurationSeconds, status.Code(err), timeStart)
+	return err
 }
 
 func (ba *metricsBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {

@@ -12,6 +12,7 @@ import (
 )
 
 type icasBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	icasClient              icas.IndirectContentAddressableStorageClient
 	maximumMessageSizeBytes int
 }

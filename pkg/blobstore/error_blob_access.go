@@ -37,6 +37,10 @@ func (ba *errorBlobAccess[T]) FindMissing(ctx context.Context, digests digest.Se
 	return digest.EmptySet, ba.err
 }
 
+func (ba *errorBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	return ba.err
+}
+
 func (ba *errorBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	return nil, ba.err
 }

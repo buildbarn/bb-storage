@@ -55,6 +55,7 @@ var (
 
 type flatBlobAccess[T any] struct {
 	capabilities.Provider
+	blobstore.NonPrefetchingBlobAccess
 
 	coder                  coder.Coder[T, []byte]
 	keyLocationMap         KeyLocationMap

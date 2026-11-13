@@ -26,6 +26,8 @@ import (
 )
 
 type referenceExpandingBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
+
 	indirectContentAddressableStorage blobstore.BlobAccess[*icas.Reference]
 	readInfo                          cas.ReadInfo
 	httpClient                        *http.Client

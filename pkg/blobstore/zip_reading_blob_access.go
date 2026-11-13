@@ -16,6 +16,7 @@ import (
 
 type zipReadingBlobAccess[T any] struct {
 	capabilities.Provider
+	NonPrefetchingBlobAccess
 	decoder         coder.Decoder[T, []byte]
 	digestKeyFormat digest.KeyFormat
 	files           map[string]*zip.File

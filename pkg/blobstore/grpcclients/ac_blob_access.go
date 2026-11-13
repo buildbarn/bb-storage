@@ -26,6 +26,7 @@ func getServerCapabilitiesWithCacheCapabilities(ctx context.Context, capabilitie
 }
 
 type acBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	actionCacheClient       remoteexecution.ActionCacheClient
 	capabilitiesClient      remoteexecution.CapabilitiesClient
 	maximumMessageSizeBytes int

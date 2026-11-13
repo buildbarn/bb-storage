@@ -29,6 +29,23 @@ type BlobAccess[T any] interface {
 	Get(ctx context.Context, digest digest.Digest) (T, error)
 	Put(ctx context.Context, digest digest.Digest, value T) error
 	FindMissing(ctx context.Context, digests digest.Set) (digest.Set, error)
+	// Prefetch signals to the underlying blob access to prefetch data
+	// to any faster storage medium it may have. This is useful to warm
+	// local caches without actually needing the data.
+	//
+	// Returns an error if there is an error prefetching any of the
+	// digests.
+	Prefetch(ctx context.Context, digests digest.Set) error
+}
+
+// NonPrefetchingBlobAccess is an empty struct that allows us to write a
+// default trivial implementation of Prefetch() for BlobAccess
+// implementations which have no need of prefetching.
+type NonPrefetchingBlobAccess struct{}
+
+// Prefetch is a no-op for NonPrefetchingBlobAccess.
+func (NonPrefetchingBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
 }
 
 // RecommendedFindMissingDigestsCount corresponds to the maximum number

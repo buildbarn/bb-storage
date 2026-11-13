@@ -14,6 +14,7 @@ import (
 )
 
 type fsacBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	filesystemAccessCacheClient fsac.FileSystemAccessCacheClient
 	maximumMessageSizeBytes     int
 }

@@ -14,6 +14,7 @@ import (
 )
 
 type isccBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	initialSizeClassCacheClient iscc.InitialSizeClassCacheClient
 	maximumMessageSizeBytes     int
 }

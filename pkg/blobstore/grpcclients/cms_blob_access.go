@@ -15,6 +15,7 @@ import (
 )
 
 type cmsBlobAccess struct {
+	blobstore.NonPrefetchingBlobAccess
 	contentAddressableStorageClient remoteexecution.ContentAddressableStorageClient
 }
 
