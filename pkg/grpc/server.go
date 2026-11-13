@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 
@@ -198,8 +199,8 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 		// when it is healthy and set this.
 		h.SetServingStatus(configuration.HealthCheckService, grpc_health_v1.HealthCheckResponse_SERVING)
 
-		if len(configuration.ListenAddresses)+len(configuration.ListenPaths) == 0 {
-			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses or paths")
+		if len(configuration.ListenAddresses) == 0 && len(configuration.ListenPaths) == 0 && configuration.ListenFileDescriptors == 0 {
+			return status.Error(codes.InvalidArgument, "GRPC server configured without any listen addresses, paths or file descriptors")
 		}
 
 		// TCP sockets.
@@ -234,8 +235,42 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 				return nil
 			})
 		}
+
+		// Listening sockets inherited from the parent process (socket activation).
+		for i := uint32(0); i < configuration.ListenFileDescriptors; i++ {
+			fd := socketActivationFirstFileDescriptor + i
+			sock, err := newListenerFromFileDescriptor(fd)
+			if err != nil {
+				return util.StatusWrapf(err, "Failed to use file descriptor %d as a listening socket", fd)
+			}
+			group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+				if err := s.Serve(sock); err != nil {
+					return util.StatusWrapf(err, "gRPC server failed for file descriptor %d", fd)
+				}
+				return nil
+			})
+		}
 	}
 	return nil
+}
+
+// socketActivationFirstFileDescriptor is the number of the first file
+// descriptor that is passed down by a service manager (SD_LISTEN_FDS_START).
+const socketActivationFirstFileDescriptor = 3
+
+func newListenerFromFileDescriptor(fd uint32) (net.Listener, error) {
+	f := os.NewFile(uintptr(fd), fmt.Sprintf("listen-fd-%d", fd))
+	if f == nil {
+		return nil, status.Error(codes.InvalidArgument, "Invalid file descriptor")
+	}
+	// net.FileListener() duplicates the file descriptor, so the
+	// original one must be closed to prevent a leak.
+	defer f.Close()
+	sock, err := net.FileListener(f)
+	if err != nil {
+		return nil, util.StatusWrap(err, "File descriptor is not a listening socket")
+	}
+	return sock, nil
 }
 
 func newRoutingStreamHandlerFromConfiguration(serverRelayConfigurations []serverRelayConfigWithGrpcClient) (grpc.StreamHandler, error) {

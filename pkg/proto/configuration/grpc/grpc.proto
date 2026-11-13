@@ -164,6 +164,24 @@ message ServerConfiguration {
   // inside directories that have access controls set up properly.
   repeated string listen_paths = 2;
 
+  // Number of already open file descriptors, starting at file
+  // descriptor 3, that refer to listening sockets. This can be used to
+  // implement socket activation, where a service manager such as
+  // systemd or launchd creates the listening sockets and passes them on
+  // to the process on startup. This allows the server to be started
+  // lazily, upon the arrival of the first connection.
+  //
+  // This matches the convention of systemd, where the value of the
+  // LISTEN_FDS environment variable can be provided here. On macOS,
+  // launchd does not pass sockets down this way, so a launcher process
+  // needs to call launch_activate_socket(), move the sockets to file
+  // descriptors 3 and up, and set LISTEN_FDS before executing the
+  // server.
+  //
+  // The server takes ownership of these file descriptors, meaning that
+  // they are not available to be used for any other purpose.
+  uint32 listen_file_descriptors = 15;
+
   // Policy for authenticating clients against the gRPC server.
   //
   // Each authentication policy yields a Protobuf message of type
