@@ -219,6 +219,7 @@ type ServerConfiguration struct {
 	state                           protoimpl.MessageState                 `protogen:"open.v1"`
 	ListenAddresses                 []string                               `protobuf:"bytes,1,rep,name=listen_addresses,json=listenAddresses,proto3" json:"listen_addresses,omitempty"`
 	ListenPaths                     []string                               `protobuf:"bytes,2,rep,name=listen_paths,json=listenPaths,proto3" json:"listen_paths,omitempty"`
+	ListenFileDescriptors           uint32                                 `protobuf:"varint,15,opt,name=listen_file_descriptors,json=listenFileDescriptors,proto3" json:"listen_file_descriptors,omitempty"`
 	AuthenticationPolicy            *AuthenticationPolicy                  `protobuf:"bytes,4,opt,name=authentication_policy,json=authenticationPolicy,proto3" json:"authentication_policy,omitempty"`
 	MaximumReceivedMessageSizeBytes int64                                  `protobuf:"varint,5,opt,name=maximum_received_message_size_bytes,json=maximumReceivedMessageSizeBytes,proto3" json:"maximum_received_message_size_bytes,omitempty"`
 	KeepaliveEnforcementPolicy      *ServerKeepaliveEnforcementPolicy      `protobuf:"bytes,6,opt,name=keepalive_enforcement_policy,json=keepaliveEnforcementPolicy,proto3" json:"keepalive_enforcement_policy,omitempty"`
@@ -280,6 +281,13 @@ func (x *ServerConfiguration) GetListenPaths() []string {
 		return x.ListenPaths
 	}
 	return nil
+}
+
+func (x *ServerConfiguration) GetListenFileDescriptors() uint32 {
+	if x != nil {
+		return x.ListenFileDescriptors
+	}
+	return 0
 }
 
 func (x *ServerConfiguration) GetAuthenticationPolicy() *AuthenticationPolicy {
@@ -1106,10 +1114,11 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_grpc_grpc_pro
 	"\x1cClientKeepaliveConfiguration\x12-\n" +
 	"\x04time\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x04time\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x122\n" +
-	"\x15permit_without_stream\x18\x03 \x01(\bR\x13permitWithoutStream\"\x8d\t\n" +
+	"\x15permit_without_stream\x18\x03 \x01(\bR\x13permitWithoutStream\"\xc5\t\n" +
 	"\x13ServerConfiguration\x12)\n" +
 	"\x10listen_addresses\x18\x01 \x03(\tR\x0flistenAddresses\x12!\n" +
-	"\flisten_paths\x18\x02 \x03(\tR\vlistenPaths\x12g\n" +
+	"\flisten_paths\x18\x02 \x03(\tR\vlistenPaths\x126\n" +
+	"\x17listen_file_descriptors\x18\x0f \x01(\rR\x15listenFileDescriptors\x12g\n" +
 	"\x15authentication_policy\x18\x04 \x01(\v22.buildbarn.configuration.grpc.AuthenticationPolicyR\x14authenticationPolicy\x12L\n" +
 	"#maximum_received_message_size_bytes\x18\x05 \x01(\x03R\x1fmaximumReceivedMessageSizeBytes\x12\x80\x01\n" +
 	"\x1ckeepalive_enforcement_policy\x18\x06 \x01(\v2>.buildbarn.configuration.grpc.ServerKeepaliveEnforcementPolicyR\x1akeepaliveEnforcementPolicy\x120\n" +

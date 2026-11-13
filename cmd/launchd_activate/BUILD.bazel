@@ -1,0 +1,9 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+cc_binary(
+    name = "launchd_activate",
+    srcs = ["main.c"],
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+    visibility = ["//visibility:public"],
+)
