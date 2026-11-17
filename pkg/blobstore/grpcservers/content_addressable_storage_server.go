@@ -100,21 +100,25 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 			panic("Unsupported compression algorithm should not be reachable")
 		}
 	}
-	getChunkDigest := func(i int) digest.Digest { return blobDigest }
-	chunkCount := 1
-	if !cas.IsSingleChunk(params, blobDigest) {
-		chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
+	if cas.IsSingleChunk(params, blobDigest) {
+		// Blobs that fit in a single chunk are stored as the
+		// chunk itself. Chunks are immutable, so their data can
+		// be placed in the response without copying it.
+		c, err := s.chunkStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
-		chunkCount = chunkMapping.Length()
-		instanceName := blobDigest.GetInstanceName()
-		getChunkDigest = func(i int) digest.Digest { return chunkMapping.GetDigestAtIndex(instanceName, i) }
+		return c.GetEncodedBytes(compressor)
 	}
+	chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
+	if err != nil {
+		return nil, err
+	}
+	instanceName := blobDigest.GetInstanceName()
 	var buf bytes.Buffer
 	buf.Grow(int(blobDigest.GetSizeBytes()))
-	for i := range chunkCount {
-		c, err := s.chunkStorage.Get(ctx, getChunkDigest(i))
+	for i := range chunkMapping.Length() {
+		c, err := s.chunkStorage.Get(ctx, chunkMapping.GetDigestAtIndex(instanceName, i))
 		if err != nil {
 			return nil, err
 		}
