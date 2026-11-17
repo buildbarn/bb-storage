@@ -222,6 +222,9 @@ func TestMergingProviderWithCompression(t *testing.T) {
 				remoteexecution.Compressor_IDENTITY,
 				remoteexecution.Compressor_ZSTD,
 			},
+			SupportedBatchUpdateCompressors: []remoteexecution.Compressor_Value{
+				remoteexecution.Compressor_ZSTD,
+			},
 		},
 	})
 
@@ -254,6 +257,9 @@ func TestMergingProviderWithCompression(t *testing.T) {
 			},
 			SupportedCompressors: []remoteexecution.Compressor_Value{
 				remoteexecution.Compressor_IDENTITY,
+				remoteexecution.Compressor_ZSTD,
+			},
+			SupportedBatchUpdateCompressors: []remoteexecution.Compressor_Value{
 				remoteexecution.Compressor_ZSTD,
 			},
 		},

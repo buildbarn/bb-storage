@@ -102,8 +102,15 @@ func main() {
 				capabilities.NewStaticProvider(&remoteexecution.ServerCapabilities{
 					CacheCapabilities: &remoteexecution.CacheCapabilities{
 						SupportedCompressors: configuration.SupportedCompressors,
-						SpliceBlobSupport:    true,
-						SplitBlobSupport:     true,
+						// BatchUpdateBlobs() decompresses and
+						// validates any compressor listed in
+						// supported_compressors, and
+						// BatchReadBlobs() honors
+						// acceptable_compressors, so the same
+						// set applies to the batch operations.
+						SupportedBatchUpdateCompressors: configuration.SupportedCompressors,
+						SpliceBlobSupport:               true,
+						SplitBlobSupport:                true,
 					},
 				}),
 			)
