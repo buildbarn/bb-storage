@@ -131,6 +131,51 @@ message ClientConfiguration {
   //
   // More details: https://grpc.io/docs/guides/service-config/
   google.protobuf.Struct default_service_config = 13;
+
+  // Obtain credentials for outgoing requests by invoking an external
+  // credential helper that implements the Credential Helper Protocol:
+  // https://github.com/EngFlow/credential-helper-spec
+  //
+  // This allows the same credential helper to be shared with tools such
+  // as Bazel. Credentials are cached until they expire. Because the
+  // resulting headers typically contain secrets, this option may only
+  // be used in combination with TLS.
+  CredentialHelperConfiguration credential_helper = 14;
+}
+
+message CredentialHelperConfiguration {
+  // Path of the credential helper executable. It is invoked as
+  // "${path} get". A JSON object of the form {"uri": "..."} is written
+  // to its standard input, and a JSON object of the form
+  // {"expires": "...", "headers": {"name": ["value", ...]}} is expected
+  // on its standard output.
+  //
+  // The URI is constructed in the same way as Bazel does for gRPC
+  // calls: "https://${host}/${service}", where ${host} is the address
+  // of the server (without the port if it is 443) and ${service} is the
+  // fully qualified name of the gRPC service being called (e.g.,
+  // "https://example.com/build.bazel.remote.execution.v2.Execution").
+  // Credentials are cached per URI.
+  string path = 1;
+
+  // Maximum amount of time the credential helper may take to run.
+  //
+  // Default value: 10 seconds.
+  google.protobuf.Duration timeout = 2;
+
+  // Amount of time before the expiration time returned by the
+  // credential helper at which the credentials are refreshed. This
+  // prevents requests from being sent with credentials that expire
+  // while in flight.
+  //
+  // Default value: 30 seconds.
+  google.protobuf.Duration expiration_margin = 3;
+
+  // For responses that do not contain an expiration time, the amount of
+  // time for which the credentials may be cached. If left unset, such
+  // credentials are cached indefinitely. A value of zero disables
+  // caching.
+  google.protobuf.Duration default_validity = 4;
 }
 
 message ClientKeepaliveConfiguration {
