@@ -212,6 +212,25 @@ $ bazel build --remote_cache=grpc://localhost:8980 --remote_instance_name=foo //
 Prebuilt binaries of the Buildbarn storage daemon may be obtained by
 choosing a build on [the GitHub Actions page](https://github.com/buildbarn/bb-storage/actions?query=event%3Apush+branch%3Amain+is%3Asuccess+workflow%3Amain).
 Prebuilt container images may be found on [the GitHub Packages page](https://github.com/orgs/buildbarn/packages).
+
+### Verifying image authenticity
+
+Container images are signed with [cosign](https://github.com/sigstore/cosign)
+using GitHub Actions' OIDC identity, and each platform image carries a
+CycloneDX SBOM attestation. Release binaries come with a CycloneDX SBOM
+(`*.cdx.json`) and a [build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations).
+
+```
+$ IDENTITY=https://github.com/buildbarn/bb-storage/.github/workflows/main.yaml@refs/heads/main
+$ cosign verify --certificate-identity "$IDENTITY" \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      ghcr.io/buildbarn/bb-storage:<tag>
+$ cosign verify-attestation --type cyclonedx --certificate-identity "$IDENTITY" \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      ghcr.io/buildbarn/bb-storage@$(crane digest --platform linux/amd64 ghcr.io/buildbarn/bb-storage:<tag>)
+$ gh attestation verify bb_storage.linux_amd64 --repo buildbarn/bb-storage
+```
+
 More examples of how the Buildbarn storage daemon may be deployed can be
 found in [the Buildbarn deployments repository](https://github.com/buildbarn/bb-deployments).
 
