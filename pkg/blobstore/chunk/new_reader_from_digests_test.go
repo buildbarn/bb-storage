@@ -10,6 +10,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -47,8 +48,8 @@ func newFakeChunkBytesReader(t *testing.T, chunkData ...string) (*fakeChunkBytes
 	digests := make([]digest.Digest, 0, len(chunkData))
 	for _, data := range chunkData {
 		c := chunk.NewChunk([]byte(data))
-		d := c.ComputeDigest(digestFunction)
-		r.data[d] = c.GetBytes()
+		d := util.Must(c.ComputeDigest(digestFunction))
+		r.data[d] = util.Must(c.GetBytes())
 		digests = append(digests, d)
 	}
 	return r, digests

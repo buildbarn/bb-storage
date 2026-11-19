@@ -116,9 +116,12 @@ func (byteStreamServer) sendChunk(out bytestream.ByteStream_ReadServer, chunk *c
 	// bytes we need to find the data based on that offset in
 	// its decompressed form, then compress it again before
 	// sending it back.
-	data := chunk.GetBytes()[chunkOffset:]
+	data, err := chunk.GetBytes()
+	if err != nil {
+		return err
+	}
 	return out.SendMsg(&bytestream.ReadResponse{
-		Data: zstd.Encode(data),
+		Data: zstd.Encode(data[chunkOffset:]),
 	})
 }
 

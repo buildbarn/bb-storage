@@ -165,7 +165,7 @@ func TestCSBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -406,7 +406,7 @@ func TestCSBlobAccessGetWithCompression(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, largeDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, expectedData, data)
 	})
 }

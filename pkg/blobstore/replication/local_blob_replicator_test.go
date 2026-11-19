@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -34,7 +35,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				require.Equal(t, []byte("Hello"), c.GetBytes())
+				require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 				return nil
 			},
 		)
@@ -42,7 +43,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		// Data should also be returned to the caller.
 		c, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), c.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 	})
 
 	t.Run("SourceError", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestLocalBlobReplicatorReplicateSingle(t *testing.T) {
 		// be able to disambiguate from source errors.
 		c, err := replicator.ReplicateSingle(ctx, helloDigest)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "3-8b1a9953c4611296a827abf8c47804d7-5-hello: Server on fire"), err)
-		require.Equal(t, []byte("Hello"), c.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 	})
 }
 
@@ -89,7 +90,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		source.EXPECT().Get(ctx, helloDigest).Return(chunk.NewChunk([]byte("Hello")), nil)
 		sink.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -98,7 +99,7 @@ func TestLocalBlobReplicatorReplicateMultiple(t *testing.T) {
 		source.EXPECT().Get(ctx, worldDigest).Return(chunk.NewChunk([]byte("World")), nil)
 		sink.EXPECT().Put(ctx, worldDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("World"), data)
 				return nil
 			},

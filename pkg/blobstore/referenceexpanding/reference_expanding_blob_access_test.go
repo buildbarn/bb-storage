@@ -19,6 +19,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/proto/icas"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -185,7 +186,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -338,7 +339,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -381,7 +382,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, aaaDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
 	})
 
@@ -410,7 +411,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -444,7 +445,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -485,7 +486,7 @@ func TestReferenceExpandingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, aaaDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), data)
 	})
 }

@@ -211,7 +211,9 @@ func (ba *referenceExpandingBlobAccess) Get(ctx context.Context, blobDigest dige
 
 	// Validate the checksum.
 	c := chunk.NewChunk(data)
-	if computedDigest := c.ComputeDigest(blobDigest.GetDigestFunction()); blobDigest != computedDigest {
+	if computedDigest, err := c.ComputeDigest(blobDigest.GetDigestFunction()); err != nil {
+		return nil, err
+	} else if blobDigest != computedDigest {
 		return nil, status.Errorf(
 			codes.InvalidArgument,
 			"Buffer has checksum %s, while %s was expected",

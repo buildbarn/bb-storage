@@ -25,8 +25,8 @@ type Chunk struct {
 
 // GetBytes gets the underlying bytes of the chunk in uncompressed
 // format.
-func (c *Chunk) GetBytes() []byte {
-	return c.data
+func (c *Chunk) GetBytes() ([]byte, error) {
+	return c.data, nil
 }
 
 // GetEncodedBytes gets the underlying bytes of the chunk in the given
@@ -35,7 +35,7 @@ func (c *Chunk) GetBytes() []byte {
 func (c *Chunk) GetEncodedBytes(compressor remoteexecution.Compressor_Value) ([]byte, error) {
 	switch compressor {
 	case remoteexecution.Compressor_IDENTITY:
-		return c.data, nil
+		return c.GetBytes()
 	case remoteexecution.Compressor_ZSTD:
 		if encodedData := c.zstdData.Load(); encodedData != nil {
 			return *encodedData, nil
@@ -49,13 +49,16 @@ func (c *Chunk) GetEncodedBytes(compressor remoteexecution.Compressor_Value) ([]
 }
 
 // ComputeDigest computes the digest of the underlying chunk.
-func (c *Chunk) ComputeDigest(digestFunction digest.Function) digest.Digest {
-	data := c.GetBytes()
+func (c *Chunk) ComputeDigest(digestFunction digest.Function) (digest.Digest, error) {
+	data, err := c.GetBytes()
+	if err != nil {
+		return digest.BadDigest, err
+	}
 	generator := digestFunction.NewGenerator(int64(len(data)))
 	if _, err := generator.Write(data); err != nil {
 		panic("Should not be possible, got error while computing digest of fixed size byte slice: " + err.Error())
 	}
-	return generator.Sum()
+	return generator.Sum(), nil
 }
 
 // NewChunk creates a chunk from an uncompressed byte slice. Ownership

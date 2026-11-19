@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/mirrored"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -40,7 +41,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data := chunk.GetBytes()
+			data := util.Must(chunk.GetBytes())
 			require.Equal(t, []byte("Hello world"), data)
 		}
 	})
@@ -70,7 +71,7 @@ func TestMirroredBlobAccessGet(t *testing.T) {
 		blobAccess := mirrored.NewMirroredBlobAccess(backendA, backendB, replicatorAToB, replicatorBToA)
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello world"), data)
 	})
 
@@ -107,14 +108,14 @@ func TestMirroredBlobAccessPut(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		backendA.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
 			},
 		)
 		backendB.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("Hello world"), data)
 				return nil
 			},

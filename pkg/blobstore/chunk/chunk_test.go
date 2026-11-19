@@ -6,6 +6,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +18,7 @@ func TestChunkEncodedRoundTrip(t *testing.T) {
 	t.Run("Identity", func(t *testing.T) {
 		c := chunk.NewChunk([]byte("hello world"))
 
-		require.Equal(t, []byte("hello world"), c.GetBytes())
+		require.Equal(t, []byte("hello world"), util.Must(c.GetBytes()))
 		encoded, err := c.GetEncodedBytes(remoteexecution.Compressor_IDENTITY)
 		require.NoError(t, err)
 		require.Equal(t, []byte("hello world"), encoded)
@@ -45,7 +46,7 @@ func TestChunkFromEncoded(t *testing.T) {
 	t.Run("Identity", func(t *testing.T) {
 		c, err := chunk.NewChunkFromEncoded([]byte("test data"), 100, remoteexecution.Compressor_IDENTITY)
 		require.NoError(t, err)
-		require.Equal(t, []byte("test data"), c.GetBytes())
+		require.Equal(t, []byte("test data"), util.Must(c.GetBytes()))
 	})
 
 	t.Run("IdentityBufferTooLarge", func(t *testing.T) {
@@ -62,7 +63,7 @@ func TestChunkFromEncoded(t *testing.T) {
 		compressed := zstd.Encode([]byte("test data"))
 		c, err := chunk.NewChunkFromEncoded(compressed, len([]byte("test data")), remoteexecution.Compressor_ZSTD)
 		require.NoError(t, err)
-		require.Equal(t, []byte("test data"), c.GetBytes())
+		require.Equal(t, []byte("test data"), util.Must(c.GetBytes()))
 
 		// The chunk must hand back the exact bytes it was created
 		// from, not a fresh encoding of the decoded data.
@@ -94,6 +95,6 @@ func TestChunkComputeDigest(t *testing.T) {
 	require.Equal(
 		t,
 		digest.MustNewDigest("", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5),
-		c.ComputeDigest(digest.MustNewFunction("", remoteexecution.DigestFunction_MD5)),
+		util.Must(c.ComputeDigest(digest.MustNewFunction("", remoteexecution.DigestFunction_MD5))),
 	)
 }

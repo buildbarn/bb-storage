@@ -99,7 +99,9 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to decode upstream response")
 	}
 
-	if actualDigest := c.ComputeDigest(digestFunction); actualDigest != digest {
+	if actualDigest, err := c.ComputeDigest(digestFunction); err != nil {
+		return nil, err
+	} else if actualDigest != digest {
 		return nil, status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", digest.String(), actualDigest.String())
 	}
 
