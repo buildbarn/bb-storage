@@ -1,6 +1,7 @@
 package grpcservers_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -527,6 +528,73 @@ func TestByteStreamServer(t *testing.T) {
 		decompressedData, err := decoder.DecodeAll(compressedData, nil)
 		require.NoError(t, err)
 		require.Equal(t, []byte(" message"), decompressedData)
+	})
+
+	t.Run("ReadChunkWithDelayedValidation", func(t *testing.T) {
+		// Chunks that have not been validated yet are forwarded
+		// to the client without validating them, as the client
+		// is responsible for doing that. The digest used here
+		// does not match the data, which goes by unnoticed.
+		data := bytes.Repeat([]byte("Hello"), 1000)
+		compressed := bb_zstd.Encode(data)
+		digest1 := digest.MustNewDigest("fedora28", remoteexecution.DigestFunction_MD5, "f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f", int64(len(data)))
+		expectGet := func(compressed []byte) {
+			c, err := chunk.NewChunkWithDelayedValidation(compressed, digest1, remoteexecution.Compressor_ZSTD)
+			require.NoError(t, err)
+			cdcParametersFetcher.EXPECT().FetchCDCParameters(gomock.Any(), mustNewInstanceName("fedora28")).Return(singleChunkParameters, nil)
+			chunkStorage.EXPECT().Get(gomock.Any(), digest1).Return(c, nil)
+		}
+		recvAll := func(request *bytestream.ReadRequest) ([]byte, error) {
+			req, err := client.Read(ctx, request)
+			require.NoError(t, err)
+			var received []byte
+			for {
+				response, err := req.Recv()
+				if err == io.EOF {
+					return received, nil
+				}
+				if err != nil {
+					return nil, err
+				}
+				received = append(received, response.Data...)
+			}
+		}
+
+		// Compressed reads from the start relay the frame as is.
+		expectGet(compressed)
+		received, err := recvAll(&bytestream.ReadRequest{
+			ResourceName: "fedora28/compressed-blobs/zstd/f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f/5000",
+		})
+		require.NoError(t, err)
+		require.Equal(t, compressed, received)
+
+		// Compressed reads at an offset and uncompressed reads
+		// cause the chunk to be decompressed.
+		expectGet(compressed)
+		require.Equal(t, data[4321:], readAndDecompressZSTD(t, ctx, client, "fedora28/compressed-blobs/zstd/f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f/5000", 4321))
+
+		expectGet(compressed)
+		received, err = recvAll(&bytestream.ReadRequest{
+			ResourceName: "fedora28/blobs/f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f/5000",
+			ReadOffset:   4321,
+		})
+		require.NoError(t, err)
+		require.Equal(t, data[4321:], received)
+
+		// If decompression is needed and fails, an error is
+		// returned instead of malformed data.
+		corrupted := append([]byte(nil), compressed...)
+		for i := 12; i < len(corrupted); i++ {
+			corrupted[i] ^= 0xff
+		}
+		for _, request := range []*bytestream.ReadRequest{
+			{ResourceName: "fedora28/compressed-blobs/zstd/f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f/5000", ReadOffset: 4321},
+			{ResourceName: "fedora28/blobs/f2e3f6aeb3cd1ea1b1b8ea6e3d0e7e8f/5000"},
+		} {
+			expectGet(corrupted)
+			_, err = recvAll(request)
+			require.Equal(t, codes.Internal, status.Code(err))
+		}
 	})
 
 	t.Run("ReadNonexistentBlob", func(t *testing.T) {

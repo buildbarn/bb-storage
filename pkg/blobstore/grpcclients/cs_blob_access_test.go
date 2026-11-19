@@ -411,6 +411,110 @@ func TestCSBlobAccessGetWithCompression(t *testing.T) {
 	})
 }
 
+func expectBatchReadBlobs(ctx context.Context, client *mock.MockClientConnInterface, blobDigest digest.Digest, data []byte, compressor remoteexecution.Compressor_Value) {
+	client.EXPECT().Invoke(
+		ctx,
+		"/build.bazel.remote.execution.v2.ContentAddressableStorage/BatchReadBlobs",
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+	).DoAndReturn(func(ctx context.Context, method string, req, reply interface{}, opts ...grpc.CallOption) error {
+		resp := reply.(*remoteexecution.BatchReadBlobsResponse)
+		resp.Responses = []*remoteexecution.BatchReadBlobsResponse_Response{
+			{
+				Digest:     blobDigest.GetProto(),
+				Data:       data,
+				Status:     status.New(codes.OK, "").Proto(),
+				Compressor: compressor,
+			},
+		}
+		return nil
+	})
+}
+
+func TestCSBlobAccessGetDelayedValidation(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	client := mock.NewMockClientConnInterface(ctrl)
+	blobAccess := grpcclients.NewCSBlobAccess(client, true)
+
+	expectGetCapabilitiesWithZSTD(client)
+	blobDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
+	require.NoError(t, err)
+
+	t.Run("DigestMismatch", func(t *testing.T) {
+		// Chunks are not validated when received. Data that
+		// doesn't match the digest can therefore be obtained,
+		// but only be forwarded. Accessing it fails.
+		for _, compressor := range []remoteexecution.Compressor_Value{
+			remoteexecution.Compressor_IDENTITY,
+			remoteexecution.Compressor_ZSTD,
+		} {
+			data := []byte("Jello")
+			if compressor == remoteexecution.Compressor_ZSTD {
+				data = encoder.EncodeAll(data, nil)
+			}
+			expectBatchReadBlobs(ctx, client, blobDigest, data, compressor)
+
+			chunk, err := blobAccess.Get(ctx, blobDigest)
+			require.NoError(t, err)
+			forwardedData, err := chunk.GetUnvalidatedEncodedBytes(compressor)
+			require.NoError(t, err)
+			require.Equal(t, data, forwardedData)
+
+			actualDigest := digest.MustNewDigest("hello", remoteexecution.DigestFunction_MD5, "bedad9eef4de4b391cc5aeb8ddbe6387", 5)
+			_, err = chunk.GetBytes()
+			testutil.RequireEqualStatus(t,
+				status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", blobDigest.String(), actualDigest.String()),
+				err)
+			_, err = chunk.GetEncodedBytes(compressor)
+			require.Equal(t, codes.Internal, status.Code(err))
+		}
+	})
+
+	t.Run("CompressedPassthrough", func(t *testing.T) {
+		// The ZSTD frame sent by the server is retained, so that
+		// it can be returned to clients without recompressing.
+		compressedData := encoder.EncodeAll([]byte("Hello"), nil)
+		expectBatchReadBlobs(ctx, client, blobDigest, compressedData, remoteexecution.Compressor_ZSTD)
+
+		chunk, err := blobAccess.Get(ctx, blobDigest)
+		require.NoError(t, err)
+		forwardedData, err := chunk.GetUnvalidatedEncodedBytes(remoteexecution.Compressor_ZSTD)
+		require.NoError(t, err)
+		require.Equal(t, compressedData, forwardedData)
+		require.Equal(t, []byte("Hello"), util.Must(chunk.GetBytes()))
+	})
+
+	t.Run("SizeMismatch", func(t *testing.T) {
+		// Uncompressed chunks of the wrong size are rejected
+		// right away.
+		expectBatchReadBlobs(ctx, client, blobDigest, []byte("Hell"), remoteexecution.Compressor_IDENTITY)
+
+		_, err := blobAccess.Get(ctx, blobDigest)
+		testutil.RequireEqualStatus(t,
+			status.Error(codes.Internal, "Failed to decode upstream response: Chunk is 4 bytes in size, while 5 bytes were expected"),
+			err)
+	})
+
+	t.Run("CompressedSizeMismatch", func(t *testing.T) {
+		// Compressed chunks of the wrong size can only be
+		// forwarded in compressed form.
+		for _, data := range []string{"Hell", "Hello world"} {
+			compressedData := encoder.EncodeAll([]byte(data), nil)
+			expectBatchReadBlobs(ctx, client, blobDigest, compressedData, remoteexecution.Compressor_ZSTD)
+
+			chunk, err := blobAccess.Get(ctx, blobDigest)
+			require.NoError(t, err)
+			_, err = chunk.GetBytes()
+			require.Equal(t, codes.Internal, status.Code(err))
+			_, err = chunk.GetUnvalidatedEncodedBytes(remoteexecution.Compressor_IDENTITY)
+			require.Equal(t, codes.Internal, status.Code(err))
+		}
+	})
+}
+
 func TestCSBlobAccessFindMissing(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

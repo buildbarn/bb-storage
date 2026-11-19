@@ -325,6 +325,49 @@ func TestContentAddressableStorageServerBatchUpdateBlobsMultiChunk(t *testing.T)
 	}, response)
 }
 
+func TestContentAddressableStorageServerBatchReadBlobsDelayedValidation(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+
+	// A chunk that has not been validated yet, whose contents don't
+	// match the digest. It is forwarded as is, as the client is
+	// responsible for validating it.
+	digest1 := digest.MustNewDigest("ubuntu1804", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
+	compressed := zstd.Encode([]byte("Jello"))
+
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+	cdcParametersFetcher := mock.NewMockCDCParametersFetcher(ctrl)
+	readerPutter := mock.NewMockReaderPutter(ctrl)
+	contentAddressableStorageServer := grpcservers.NewContentAddressableStorageServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, readerPutter, allowAllAuthorizer, allowAllAuthorizer, 4<<20, 1000)
+
+	for _, testCase := range []struct {
+		compressor   remoteexecution.Compressor_Value
+		expectedData []byte
+	}{
+		{remoteexecution.Compressor_ZSTD, compressed},
+		{remoteexecution.Compressor_IDENTITY, []byte("Jello")},
+	} {
+		c, err := chunk.NewChunkWithDelayedValidation(compressed, digest1, remoteexecution.Compressor_ZSTD)
+		require.NoError(t, err)
+		cdcParametersFetcher.EXPECT().FetchCDCParameters(
+			gomock.Any(),
+			mustNewInstanceName("ubuntu1804"),
+		).Return(&remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 1 << 20, HorizonSizeBytes: 2 << 20}, nil)
+		chunkStorage.EXPECT().Get(ctx, digest1).Return(c, nil)
+
+		response, err := contentAddressableStorageServer.BatchReadBlobs(ctx, &remoteexecution.BatchReadBlobsRequest{
+			InstanceName:          "ubuntu1804",
+			Digests:               []*remoteexecution.Digest{digest1.GetProto()},
+			AcceptableCompressors: []remoteexecution.Compressor_Value{testCase.compressor},
+		})
+		require.NoError(t, err)
+		require.Len(t, response.Responses, 1)
+		require.Equal(t, codes.OK, codes.Code(response.Responses[0].Status.GetCode()))
+		require.Equal(t, testCase.compressor, response.Responses[0].Compressor)
+		require.Equal(t, testCase.expectedData, response.Responses[0].Data)
+	}
+}
+
 func TestContentAddressableStorageServerBatchUpdateBlobsZSTD(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 

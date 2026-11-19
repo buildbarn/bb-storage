@@ -104,11 +104,15 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		// Blobs that fit in a single chunk are stored as the
 		// chunk itself. Chunks are immutable, so their data can
 		// be placed in the response without copying it.
+		//
+		// The client is responsible for validating the data
+		// it receives, so there is no need for us to validate
+		// chunks that haven't been already.
 		c, err := s.chunkStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
-		return c.GetEncodedBytes(compressor)
+		return c.GetUnvalidatedEncodedBytes(compressor)
 	}
 	chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
 	if err != nil {
@@ -122,7 +126,7 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		data, err := c.GetEncodedBytes(compressor)
+		data, err := c.GetUnvalidatedEncodedBytes(compressor)
 		if err != nil {
 			return nil, err
 		}
