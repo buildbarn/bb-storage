@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -262,6 +263,18 @@ func getBinaryPath(envVar string) (string, error) {
 	return rf.Rlocation(runfilePath)
 }
 
+func waitForSocket(t *testing.T, timeout time.Duration, socketPath string) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	}, timeout, 10*time.Millisecond, "Socket %s did not become available", socketPath)
+}
+
 func setupCluster(t *testing.T, minChunkSizeBytes int) string {
 	storageBinaryPath, err := getBinaryPath("BB_STORAGE_RUNFILE_PATH")
 	require.NoError(t, err, "Could not get bb_storage binary path")
@@ -270,18 +283,12 @@ func setupCluster(t *testing.T, minChunkSizeBytes int) string {
 	for i := 0; i < 2; i++ {
 		storageSocketPaths[i] = createSocketPath(t)
 		setupServer(t, storageBinaryPath, fmt.Sprintf("storage%d", i), storageConfig(storageSocketPaths[i], minChunkSizeBytes))
-		require.Eventually(t, func() bool {
-			_, err := os.Stat(storageSocketPaths[i])
-			return err == nil
-		}, 2*time.Second, 10*time.Millisecond, "Storage server %d did not start.", i)
+		waitForSocket(t, 2*time.Second, storageSocketPaths[i])
 	}
 
 	localCacheSocketPath := createSocketPath(t)
 	setupServer(t, storageBinaryPath, "localCache", storageConfig(localCacheSocketPath, minChunkSizeBytes))
-	require.Eventually(t, func() bool {
-		_, err := os.Stat(localCacheSocketPath)
-		return err == nil
-	}, 2*time.Second, 10*time.Millisecond, "Local cache storage server did not start.")
+	waitForSocket(t, 2*time.Second, localCacheSocketPath)
 
 	storageAddresses := storageAddresses{
 		storageShardSocketPaths: storageSocketPaths,
@@ -290,10 +297,7 @@ func setupCluster(t *testing.T, minChunkSizeBytes int) string {
 
 	frontendSocketPath := createSocketPath(t)
 	setupServer(t, storageBinaryPath, "frontend", frontendConfig(frontendSocketPath, storageAddresses))
-	require.Eventually(t, func() bool {
-		_, err := os.Stat(frontendSocketPath)
-		return err == nil
-	}, 2*time.Second, 10*time.Millisecond, "Frontend server did not start.")
+	waitForSocket(t, 2*time.Second, frontendSocketPath)
 
 	return frontendSocketPath
 }
