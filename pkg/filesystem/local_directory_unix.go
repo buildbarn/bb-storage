@@ -43,7 +43,7 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 		return nil, util.StatusWrap(err, "Failed to create local representation of directory")
 	}
 
-	fd, err := unix.Openat(unix.AT_FDCWD, pathString, unix.O_DIRECTORY|unix.O_NOFOLLOW|oflagSearch, 0)
+	fd, err := unix.Openat(unix.AT_FDCWD, pathString, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC|oflagSearch, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func NewLocalDirectory(directoryParser path.Parser) (DirectoryCloser, error) {
 func (d *localDirectory) enter(name path.Component) (*localDirectory, error) {
 	defer runtime.KeepAlive(d)
 
-	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|oflagSearch, 0)
+	fd, err := unix.Openat(d.fd, name.String(), unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC|oflagSearch, 0)
 	if err != nil {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
@@ -81,7 +81,7 @@ func (d *localDirectory) Close() error {
 func (d *localDirectory) open(name path.Component, creationMode CreationMode, flag int) (*os.File, error) {
 	defer runtime.KeepAlive(d)
 
-	fd, err := unix.Openat(d.fd, name.String(), flag|creationMode.flags|unix.O_NOFOLLOW, uint32(creationMode.permissions))
+	fd, err := unix.Openat(d.fd, name.String(), flag|creationMode.flags|unix.O_NOFOLLOW|unix.O_CLOEXEC, uint32(creationMode.permissions))
 	if err != nil {
 		if runtime.GOOS == "freebsd" && err == syscall.EMLINK {
 			// FreeBSD erroneously returns EMLINK.
@@ -244,7 +244,7 @@ func (d *localDirectory) readdirnames() ([]string, error) {
 	defer runtime.KeepAlive(d)
 
 	// Obtain filenames in current directory.
-	fd, err := unix.Openat(d.fd, ".", unix.O_DIRECTORY|unix.O_RDONLY, 0)
+	fd, err := unix.Openat(d.fd, ".", unix.O_DIRECTORY|unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +466,7 @@ func (d *localDirectory) Sync() error {
 	dfd := d.fd
 	if runtime.GOOS == "linux" {
 		var err error
-		dfd, err = unix.Openat(d.fd, ".", unix.O_DIRECTORY|unix.O_RDONLY, 0)
+		dfd, err = unix.Openat(d.fd, ".", unix.O_DIRECTORY|unix.O_RDONLY|unix.O_CLOEXEC, 0)
 		if err != nil {
 			return err
 		}
