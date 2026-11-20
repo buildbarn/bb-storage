@@ -73,11 +73,7 @@ func setupStandaloneCAS(t *testing.T, minChunkSizeBytes int) string {
 
 	socketPath := createSocketPath(t)
 	setupServer(t, storageBinaryPath, "standalone", standaloneCASConfig(socketPath, minChunkSizeBytes))
-
-	require.Eventually(t, func() bool {
-		_, err := os.Stat(socketPath)
-		return err == nil
-	}, 2*time.Second, 10*time.Millisecond, "Standalone storage server did not start.")
+	waitForSocket(t, 2*time.Second, socketPath)
 
 	return socketPath
 }
