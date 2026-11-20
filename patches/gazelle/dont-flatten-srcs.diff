@@ -1,8 +1,8 @@
 diff --git language/go/generate.go language/go/generate.go
-index 9e3ed9a..af460a1 100644
+index d1eea17..931d26b 100644
 --- language/go/generate.go
 +++ language/go/generate.go
-@@ -594,7 +594,7 @@ func (g *generator) generateLib(pkg *goPackage, embeds []string) *rule.Rule {
+@@ -672,7 +672,7 @@ func (g *generator) generateLib(pkg *goPackage, embeds []string) *rule.Rule {
  	} else {
  		visibility = g.commonVisibility(pkg.importPath)
  	}
@@ -11,7 +11,7 @@ index 9e3ed9a..af460a1 100644
  	g.setImportAttrs(goLibrary, pkg.importPath)
  	return goLibrary
  }
-@@ -623,7 +623,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
+@@ -701,7 +701,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
  		return goBinary // empty
  	}
  	visibility := g.commonVisibility(pkg.importPath)
@@ -20,7 +20,7 @@ index 9e3ed9a..af460a1 100644
  	return goBinary
  }
  
-@@ -665,7 +665,7 @@ func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
+@@ -743,7 +743,7 @@ func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
  				embeds = append(embeds, library)
  			}
  		}
@@ -29,12 +29,18 @@ index 9e3ed9a..af460a1 100644
  		if pkg.hasTestdata {
  			goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
  		}
-@@ -718,9 +718,13 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
+@@ -796,7 +796,7 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
  	return r
  }
  
 -func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embeds []string) {
 +func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embeds []string, flattenSrcs bool) {
+ 	gc := getGoConfig(g.c)
+ 	linksBinary := r.Kind() == "go_binary" || r.Kind() == "go_test"
+ 
+@@ -822,7 +822,11 @@ func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []str
+ 	}
+ 
  	if !target.sources.isEmpty() {
 -		r.SetAttr("srcs", target.sources.buildFlat())
 +		if flattenSrcs {
