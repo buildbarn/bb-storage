@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/iotest"
+	"time"
 
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"github.com/buildbarn/bb-storage/internal/mock"
@@ -16,11 +19,27 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/stretchr/testify/require"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"go.uber.org/mock/gomock"
 )
+
+func newReaderPutter(chunkStorage *mock.MockBlobAccess[*chunk.Chunk], chunkMappingStorage *mock.MockBlobAccess[chunk.Mapping]) cas.ReaderPutter {
+	return cas.NewReaderPutter(chunkStorage, chunkMappingStorage, semaphore.NewWeighted(cas.RecommendedMaximumBufferedChunks))
+}
+
+// smallChunkParams make blobs of a few KiB decompose into many chunks.
+var smallChunkParams = &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
+
+func randomBlob(sizeBytes int, seed int64) ([]byte, digest.Digest) {
+	data := make([]byte, sizeBytes)
+	rand.New(rand.NewSource(seed)).Read(data)
+	generator := digest.MustNewFunction("instance", remoteexecution.DigestFunction_SHA256).NewGenerator(int64(sizeBytes))
+	generator.Write(data)
+	return data, generator.Sum()
+}
 
 func TestReaderPutterSingleChunk(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
@@ -34,7 +53,7 @@ func TestReaderPutterSingleChunk(t *testing.T) {
 	chunkStorage.EXPECT().FindMissing(ctx, d.ToSingletonSet()).Return(d.ToSingletonSet(), nil)
 	chunkStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(nil)
 
-	require.NoError(t, cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params))
+	require.NoError(t, newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params))
 }
 
 func TestReaderPutterMultipleChunks(t *testing.T) {
@@ -54,16 +73,16 @@ func TestReaderPutterMultipleChunks(t *testing.T) {
 	}, 143, true)
 	require.NoError(t, err)
 
-	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet(), nil)
-	chunkStorage.EXPECT().FindMissing(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet(), nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0), gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0).ToSingletonSet(), nil)
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet()).Return(expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1).ToSingletonSet(), nil)
+	chunkStorage.EXPECT().Put(gomock.Any(), expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 0), gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
 		return bytes.Equal(chunk.GetBytes(), data[:77])
 	})).Return(nil)
-	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1), gomock.Cond(func(x any) bool {
+	chunkStorage.EXPECT().Put(gomock.Any(), expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1), gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
@@ -72,7 +91,7 @@ func TestReaderPutterMultipleChunks(t *testing.T) {
 	})).Return(nil)
 	chunkMappingStorage.EXPECT().Put(ctx, d, expectedChunkMapping).Return(nil)
 
-	require.NoError(t, cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params))
+	require.NoError(t, newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params))
 }
 
 func TestReaderPutterRejectsBadDigests(t *testing.T) {
@@ -114,7 +133,7 @@ func TestReaderPutterRejectsBadDigests(t *testing.T) {
 				chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 				chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).Return(digest.EmptySet, nil).AnyTimes()
 				chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, tc.digest, bytes.NewReader(size.data), params)
+				err := newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, tc.digest, bytes.NewReader(size.data), params)
 				require.Equal(t, codes.InvalidArgument, status.Code(err))
 			})
 		}
@@ -131,7 +150,7 @@ func TestReaderPutterEmptyStream(t *testing.T) {
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "d41d8cd98f00b204e9800998ecf8427e", 0)
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	require.NoError(t, cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(nil), params))
+	require.NoError(t, newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(nil), params))
 }
 
 func TestReaderPutterPropagatesChunkStorageErrors(t *testing.T) {
@@ -146,7 +165,7 @@ func TestReaderPutterPropagatesChunkStorageErrors(t *testing.T) {
 	chunkStorage.EXPECT().FindMissing(ctx, d.ToSingletonSet()).Return(d.ToSingletonSet(), nil)
 	chunkStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire"))
 
-	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params)
+	err := newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params)
 	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to save chunk: Disk on fire"), err)
 }
 
@@ -169,7 +188,7 @@ func TestReaderPutterPropagatesChunkMappingStorageErrors(t *testing.T) {
 	chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 	chunkMappingStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire"))
 
-	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params)
+	err := newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(data), params)
 	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Could not save chunk mapping for blob: Disk on fire"), err)
 }
 
@@ -181,7 +200,7 @@ func TestReaderPutterPropagatesStreamErrors(t *testing.T) {
 	d := digest.MustNewDigest("instance", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 	params := &remoteexecution.RepMaxCdcParams{MinChunkSizeBytes: 64, HorizonSizeBytes: 128}
 
-	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, iotest.ErrReader(errors.New("Write stream failed")), params)
+	err := newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, iotest.ErrReader(errors.New("Write stream failed")), params)
 	testutil.RequirePrefixedStatus(t, status.Error(codes.Unknown, "Failed to read write stream: Write stream failed"), err)
 }
 
@@ -222,11 +241,9 @@ func FuzzReaderPutter(f *testing.F) {
 		chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
 		chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
 
-		type storedChunk struct {
-			digest digest.Digest
-			chunk  *chunk.Chunk
-		}
-		chunks := make([]storedChunk, 0)
+		var lock sync.Mutex
+		storedChunks := map[digest.Digest]*chunk.Chunk{}
+		var storedMapping *chunk.Mapping
 		chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digests digest.Set) (digest.Set, error) {
 				// Report all requested digests as missing, so that
@@ -236,26 +253,137 @@ func FuzzReaderPutter(f *testing.F) {
 		).AnyTimes()
 		chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, d digest.Digest, c *chunk.Chunk) error {
-				chunks = append(chunks, storedChunk{digest: d, chunk: c})
+				lock.Lock()
+				defer lock.Unlock()
+				storedChunks[d] = c
 				return nil
 			},
 		).AnyTimes()
-		chunkMappingStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+		chunkMappingStorage.EXPECT().Put(gomock.Any(), d, gomock.Any()).DoAndReturn(
+			func(ctx context.Context, d digest.Digest, m chunk.Mapping) error {
+				storedMapping = &m
+				return nil
+			},
+		).MaxTimes(1)
 
-		require.NoError(cas.NewReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(originalData), params))
+		require.NoError(newReaderPutter(chunkStorage, chunkMappingStorage).PutReader(ctx, d, bytes.NewReader(originalData), params))
 
+		var chunkDigests []digest.Digest
+		if storedMapping != nil {
+			chunkDigests = storedMapping.GetDigests(d.GetInstanceName())
+		} else {
+			for chunkDigest := range storedChunks {
+				chunkDigests = append(chunkDigests, chunkDigest)
+			}
+			require.LessOrEqual(len(chunkDigests), 1, "Stored multiple chunks without a chunk mapping.")
+		}
 		composedData := make([]byte, 0, dataSizeBytes)
-		for i, c := range chunks {
-			require.Equal(c.chunk.ComputeDigest(digestFunction), c.digest, "Digest mismatch for chunk %d.", i)
-			composedData = append(composedData, c.chunk.GetBytes()...)
+		for i, chunkDigest := range chunkDigests {
+			c, ok := storedChunks[chunkDigest]
+			require.True(ok, "Chunk %d was not stored.", i)
+			require.Equal(c.ComputeDigest(digestFunction), chunkDigest, "Digest mismatch for chunk %d.", i)
+			composedData = append(composedData, c.GetBytes()...)
 		}
 		require.Equal(originalData, composedData)
 
-		numberOfChunks := len(chunks)
+		numberOfChunks := len(chunkDigests)
 		minNumberOfChunks := dataSizeBytes / fuzzMaxChunkSize
 		require.GreaterOrEqual(numberOfChunks, minNumberOfChunks, "Produced fewer chunks than should be possible.")
 
 		maxNumberOfChunks := dataSizeBytes / fuzzMinChunkSize
 		require.LessOrEqual(numberOfChunks, maxNumberOfChunks, "Produced more chunks than should be possible.")
 	})
+}
+
+func TestReaderPutterStoresChunksConcurrently(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+
+	data, d := randomBlob(16<<10, 1)
+
+	// Put() only returns once four calls run at the same time.
+	const concurrency = 4
+	var started atomic.Int64
+	allStarted := make(chan struct{})
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, digests digest.Set) (digest.Set, error) {
+			return digests, nil
+		},
+	).AnyTimes()
+	chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, chunkDigest digest.Digest, c *chunk.Chunk) error {
+			if started.Add(1) == concurrency {
+				close(allStarted)
+			}
+			select {
+			case <-allStarted:
+				return nil
+			case <-time.After(10 * time.Second):
+				return status.Error(codes.DeadlineExceeded, "Chunks are not stored concurrently")
+			}
+		},
+	).AnyTimes()
+	chunkMappingStorage.EXPECT().Put(ctx, d, gomock.Any()).Return(nil)
+
+	require.NoError(t, cas.NewReaderPutter(chunkStorage, chunkMappingStorage, semaphore.NewWeighted(concurrency)).PutReader(ctx, d, bytes.NewReader(data), smallChunkParams))
+}
+
+func TestReaderPutterMultipleChunksPropagatesChunkStorageErrors(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+
+	data, d := randomBlob(16<<10, 2)
+
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, digests digest.Set) (digest.Set, error) {
+			return digests, nil
+		},
+	).AnyTimes()
+	chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(status.Error(codes.Internal, "Disk on fire")).MinTimes(1)
+
+	chunkSemaphore := semaphore.NewWeighted(4)
+	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage, chunkSemaphore).PutReader(ctx, d, bytes.NewReader(data), smallChunkParams)
+	testutil.RequirePrefixedStatus(t, status.Error(codes.Internal, "Failed to save chunk: Disk on fire"), err)
+	require.True(t, chunkSemaphore.TryAcquire(4))
+}
+
+func TestReaderPutterReleasesSemaphoreOnBadDigest(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+
+	// The stream is larger than the digest.
+	data, _ := randomBlob(16<<10, 3)
+	_, d := randomBlob(8<<10, 3)
+
+	chunkStorage.EXPECT().FindMissing(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, digests digest.Set) (digest.Set, error) {
+			return digests, nil
+		},
+	).AnyTimes()
+	chunkStorage.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	chunkSemaphore := semaphore.NewWeighted(4)
+	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage, chunkSemaphore).PutReader(ctx, d, bytes.NewReader(data), smallChunkParams)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	require.True(t, chunkSemaphore.TryAcquire(4))
+}
+
+func TestReaderPutterCanceledWhileWaitingForSemaphore(t *testing.T) {
+	ctrl, ctx := gomock.WithContext(context.Background(), t)
+	chunkStorage := mock.NewMockBlobAccess[*chunk.Chunk](ctrl)
+	chunkMappingStorage := mock.NewMockBlobAccess[chunk.Mapping](ctrl)
+
+	data, d := randomBlob(16<<10, 4)
+
+	// Another call holds all units.
+	chunkSemaphore := semaphore.NewWeighted(1)
+	require.True(t, chunkSemaphore.TryAcquire(1))
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	err := cas.NewReaderPutter(chunkStorage, chunkMappingStorage, chunkSemaphore).PutReader(ctx, d, bytes.NewReader(data), smallChunkParams)
+	require.Equal(t, codes.Canceled, status.Code(err))
 }

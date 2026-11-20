@@ -45,6 +45,13 @@ message ContentAddressableStorageConfiguration {
   // from the CS. This cache is particularly useful for consumers which
   // frequently read the same chunks.
   buildbarn.configuration.digest.ExistenceCacheConfiguration chunk_cache = 5;
+
+  // Optional: The maximum number of chunks that are read and not yet
+  // stored, for all writes of blobs with more than one chunk to this
+  // CAS together. Each chunk uses between the minimum chunk size and
+  // the minimum chunk size plus the horizon size of memory. If not set,
+  // 64 chunks are used.
+  int64 maximum_buffered_chunks = 6;
 }
 
 // Storage configuration for Bazel Buildbarn.
