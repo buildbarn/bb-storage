@@ -20,3 +20,5 @@ func (ra *simpleRecordArray[TKey, TValue]) Put(index uint64, record Record[TKey,
 	ra.records[index] = record
 	return nil
 }
+
+func (*simpleRecordArray[TKey, TValue]) Drop(record Record[TKey, TValue], unused struct{}) {}

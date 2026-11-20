@@ -51,3 +51,6 @@ func (lra *inMemoryLocationRecordArray) Put(index uint64, locationRecord Locatio
 	}
 	return nil
 }
+
+func (*inMemoryLocationRecordArray) Drop(locationRecord LocationRecord, resolver BlockReferenceResolver) {
+}
