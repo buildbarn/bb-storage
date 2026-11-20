@@ -205,6 +205,12 @@ func (ba *ZIPWritingBlobAccess[T]) FindMissing(ctx context.Context, digests dige
 	return missing.Build(), nil
 }
 
+// Prefetch is a no-op, as all objects are already present in the ZIP
+// archive that backs this BlobAccess.
+func (*ZIPWritingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}
+
 // Finalize the ZIP archive by appending a central directory to the
 // underlying file. Once called, it is no longer possible to call Put().
 func (ba *ZIPWritingBlobAccess[T]) Finalize() error {

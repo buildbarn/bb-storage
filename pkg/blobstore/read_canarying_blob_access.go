@@ -179,3 +179,36 @@ func (ba *readCanaryingBlobAccess[T]) FindMissing(ctx context.Context, digests d
 	}
 	return digest.GetUnion(append(missingFromReplicas, missingFromSource)), nil
 }
+
+func (ba *readCanaryingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Prefetching is a read operation, so decompose the request by
+	// instance name in the same way as FindMissing() to determine
+	// whether the replica should be used.
+	digestsByInstanceName := digests.PartitionByInstanceName()
+	digestsForSource := make([]digest.Set, 0, len(digestsByInstanceName))
+	for _, digestsForInstanceName := range digestsByInstanceName {
+		instanceNameStr := digestsForInstanceName.Items()[0].GetInstanceName().String()
+		if ba.shouldSendToReplica(instanceNameStr) {
+			err := ba.replica.Prefetch(ctx, digestsForInstanceName)
+			if !ba.recordReplicaResponse(instanceNameStr, err) {
+				if err != nil {
+					return util.StatusWrapf(err, "Replica, instance name %#v", instanceNameStr)
+				}
+				continue
+			}
+		}
+		// Replica was known to be unavailable, or a call
+		// against it just failed. Forward the request to the
+		// source.
+		digestsForSource = append(digestsForSource, digestsForInstanceName)
+	}
+
+	// Single request to the source for all instance names for which
+	// the replica is unavailable.
+	if digestsForSource := digest.GetUnion(digestsForSource); !digestsForSource.Empty() {
+		if err := ba.BlobAccess.Prefetch(ctx, digestsForSource); err != nil {
+			return util.StatusWrap(err, "Source")
+		}
+	}
+	return nil
+}

@@ -62,3 +62,9 @@ func (ba *authorizingBlobAccess[T]) FindMissing(ctx context.Context, digests dig
 	}
 	return ba.BlobAccess.FindMissing(ctx, digests)
 }
+
+// Prefetch is not exposed as an external API and is only used
+// internally to warm up caches, so it does not require authorization.
+func (ba *authorizingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	return ba.BlobAccess.Prefetch(ctx, digests)
+}

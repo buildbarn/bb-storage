@@ -147,6 +147,10 @@ func (ba *csBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (di
 	return findMissingBlobsInternal(ctx, digests, ba.contentAddressableStorageClient)
 }
 
+func (*csBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}
+
 func findMissingBlobsInternal(ctx context.Context, digests digest.Set, cas remoteexecution.ContentAddressableStorageClient) (digest.Set, error) {
 	type findMissingBatch struct {
 		digestFunction digest.Function

@@ -89,6 +89,10 @@ func (ba *icasBlobAccess) FindMissing(ctx context.Context, digests digest.Set) (
 	return missingDigests.Build(), nil
 }
 
+func (*icasBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}
+
 func (icasBlobAccess) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	panic("GetCapabilities() should only be called against BlobAccess instances for the Content Addressable Storage and Action Cache")
 }

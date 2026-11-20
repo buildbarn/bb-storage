@@ -402,3 +402,7 @@ func (ba *hierarchicalCSBlobAccess) FindMissing(ctx context.Context, digests dig
 	}
 	return missing.Build(), nil
 }
+
+func (*hierarchicalCSBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}

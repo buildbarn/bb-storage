@@ -235,6 +235,10 @@ func (ba *referenceExpandingBlobAccess) FindMissing(ctx context.Context, digests
 	return ba.indirectContentAddressableStorage.FindMissing(ctx, digests)
 }
 
+func (*referenceExpandingBlobAccess) Prefetch(ctx context.Context, digests digest.Set) error {
+	return nil
+}
+
 func errToStatus(err error) error {
 	if err == nil {
 		return nil

@@ -133,6 +133,49 @@ func (ba *demultiplexingBlobAccess[T]) FindMissing(ctx context.Context, digests 
 	return allMissing.Build(), nil
 }
 
+func (ba *demultiplexingBlobAccess[T]) Prefetch(ctx context.Context, digests digest.Set) error {
+	// Partition the digest set into one set per backend.
+	type partitionInfo struct {
+		digests digest.SetBuilder
+		backend BlobAccess[T]
+		patcher digest.InstanceNamePatcher
+	}
+	perInstanceNamePartitions := map[digest.InstanceName]*partitionInfo{}
+	perBackendPartitions := map[string]*partitionInfo{}
+	for _, blobDigest := range digests.Items() {
+		instanceName := blobDigest.GetInstanceName()
+		partition, ok := perInstanceNamePartitions[instanceName]
+		if !ok {
+			// This instance name hasn't been observed before.
+			backend, backendName, patcher, err := ba.getBackend.Call(instanceName)
+			if err != nil {
+				return err
+			}
+			partition, ok = perBackendPartitions[backendName]
+			if !ok {
+				// This backend hasn't been observed before.
+				partition = &partitionInfo{
+					digests: digest.NewSetBuilder(0),
+					backend: backend,
+					patcher: patcher,
+				}
+				perBackendPartitions[backendName] = partition
+			}
+			perInstanceNamePartitions[instanceName] = partition
+		}
+		// Change the instance name if requested.
+		partition.digests.Add(partition.patcher.PatchDigest(blobDigest))
+	}
+
+	// Call Prefetch() on each of the backends.
+	for backendName, partition := range perBackendPartitions {
+		if err := partition.backend.Prefetch(ctx, partition.digests.Build()); err != nil {
+			return util.StatusWrapf(err, "Backend %#v", backendName)
+		}
+	}
+	return nil
+}
+
 func (ba *demultiplexingBlobAccess[T]) GetCapabilities(ctx context.Context, instanceName digest.InstanceName) (*remoteexecution.ServerCapabilities, error) {
 	backend, backendName, patcher, err := ba.getBackend.Call(instanceName)
 	if err != nil {
