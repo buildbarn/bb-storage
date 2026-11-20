@@ -224,5 +224,5 @@ func (cf baseClientFactory) NewClientFromConfiguration(config *configuration.Cli
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...),
 	)
-	return cf.dialer(context.Background(), config.Address, dialOptions...)
+	return cf.dialer(group, config.Address, dialOptions...)
 }

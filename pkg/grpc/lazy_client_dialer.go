@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sync/semaphore"
@@ -25,8 +26,9 @@ import (
 // together with the ability to automatically hang up connections if
 // unused for a prolonged amount of time.
 func NewLazyClientDialer(dialer ClientDialer) ClientDialer {
-	return func(ctx context.Context, target string, dialOptions ...grpc.DialOption) (grpc.ClientConnInterface, error) {
+	return func(group program.Group, target string, dialOptions ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 		return &lazyClientConn{
+			group:       group,
 			dialer:      dialer,
 			target:      target,
 			dialOptions: dialOptions,
@@ -37,6 +39,7 @@ func NewLazyClientDialer(dialer ClientDialer) ClientDialer {
 }
 
 type lazyClientConn struct {
+	group       program.Group
 	dialer      ClientDialer
 	target      string
 	dialOptions []grpc.DialOption
@@ -62,7 +65,7 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 	if conn := cc.connection.Load(); conn != nil {
 		return *conn, nil
 	}
-	conn, err := cc.dialer(ctx, cc.target, cc.dialOptions...)
+	conn, err := cc.dialer(cc.group, cc.target, cc.dialOptions...)
 	if err != nil {
 		return nil, util.StatusWrap(err, "Failed to create client connection")
 	}
