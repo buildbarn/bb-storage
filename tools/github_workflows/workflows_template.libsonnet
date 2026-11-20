@@ -63,6 +63,11 @@
       },
       'runs-on': '${{ matrix.host.os }}',
       name: 'build_and_test ${{ matrix.host.os }}',
+      [if doUpload then 'permissions']: {
+        contents: 'read',
+        'id-token': 'write',
+        packages: 'write',
+      },
       steps: [
         {
           name: 'Check out source code',
@@ -139,11 +144,56 @@
           ] + [
             {
               name: 'Push container %s' % container,
-              run: 'bazel run --stamp //cmd/%s_container_push' % container,
+              // The push prints each reference it pushed, which is what gets signed below.
+              run: 'bazel run --stamp //cmd/%s_container_push | tee -a "${RUNNER_TEMP}/pushed_images"' % container,
+              shell: 'bash',
               'if': 'matrix.host.upload',
             }
             for container in containers
-          ]
+          ] + (
+            if std.length(containers) > 0
+            then [
+              {
+                name: 'Install cosign',
+                uses: 'sigstore/cosign-installer@v4',
+                with: { 'cosign-release': 'v3.1.4' },
+                'if': 'matrix.host.upload',
+              },
+              {
+                name: 'Install crane',
+                uses: 'imjasonh/setup-crane@v0.7',
+                'if': 'matrix.host.upload',
+              },
+              {
+                name: 'Install syft',
+                uses: 'anchore/sbom-action/download-syft@v0',
+                with: { 'syft-version': 'v1.57.2' },
+                'if': 'matrix.host.upload',
+              },
+              {
+                name: 'Sign containers and attest SBOMs',
+                // Lists are read on fd 3, so that cosign and syft can't consume them from stdin.
+                run: |||
+                  while read -r -u 3 tag; do
+                    repo="${tag%:*}"
+                    ref="${repo}@$(crane digest "${tag}")"
+                    cosign sign --yes --recursive "${ref}"
+                    while read -r -u 4 digest; do
+                      syft scan "registry:${repo}@${digest}" -o "cyclonedx-json=${RUNNER_TEMP}/sbom.cdx.json"
+                      cosign attest --yes --type cyclonedx --predicate "${RUNNER_TEMP}/sbom.cdx.json" "${repo}@${digest}"
+                    done 4< <(crane manifest "${ref}" | jq -r '.manifests[] | select(.platform.os != "unknown") | .digest')
+                    cosign verify \
+                      --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
+                      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+                      "${ref}" > /dev/null
+                  done 3< "${RUNNER_TEMP}/pushed_images"
+                |||,
+                shell: 'bash',
+                'if': 'matrix.host.upload',
+              },
+            ]
+            else []
+          )
         )
         else []
       ),
@@ -152,6 +202,11 @@
       'runs-on': 'ubuntu-latest',
       name: 'publish',
       needs: ['build_and_test'],
+      permissions: {
+        attestations: 'write',
+        contents: 'write',
+        'id-token': 'write',
+      },
       steps: [
         {
           name: 'Checkout the repository',
@@ -166,8 +221,23 @@
           },
         },
         {
+          name: 'Install syft',
+          uses: 'anchore/sbom-action/download-syft@v0',
+          with: { 'syft-version': 'v1.57.2' },
+        },
+        {
+          name: 'Generate SBOMs',
+          run: 'for f in assets/*; do syft scan "file:${f}" -o "cyclonedx-json=${f}.cdx.json"; done',
+          shell: 'bash',
+        },
+        {
           name: 'Calculate shasum',
           run: 'shasum -a 256 assets/* > sha256',
+        },
+        {
+          name: 'Attest build provenance',
+          uses: 'actions/attest-build-provenance@v4',
+          with: { 'subject-path': 'assets/*' },
         },
         {
           name: 'Set release Git user',
