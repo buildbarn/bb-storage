@@ -155,6 +155,14 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 			DigestKeyFormat: backendA.DigestKeyFormat.Combine(backendB.DigestKeyFormat),
 		}, "mirrored", nil
 	case *pb.BlobAccessConfiguration_Local:
+		// Validate before opening block devices or starting syncers.
+		if backend.Local.HierarchicalInstanceNames {
+			if backend.Local.RefreshConcurrency != 0 {
+				return BlobAccessInfo[T]{}, "", status.Error(codes.InvalidArgument, "Refresh concurrency is not supported with hierarchical instance names")
+			}
+		} else if n := backend.Local.RefreshConcurrency; n < 1 || n > local.MaximumRefreshConcurrency {
+			return BlobAccessInfo[T]{}, "", status.Errorf(codes.InvalidArgument, "Refresh concurrency must be between 1 and %d, got %d", local.MaximumRefreshConcurrency, n)
+		}
 		digestKeyFormat := digest.KeyWithInstance
 		if !backend.Local.HierarchicalInstanceNames {
 			digestKeyFormat = creator.GetBaseDigestKeyFormat()
@@ -381,16 +389,20 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 				return BlobAccessInfo[T]{}, "", err
 			}
 		} else {
-			localBlobAccess = local.NewFlatBlobAccess(
+			localBlobAccess, err = local.NewFlatBlobAccess(
 				keyLocationMap,
 				locationBlobMap,
 				locationBlobMap,
 				digestKeyFormat,
 				&globalLock,
+				int(backend.Local.RefreshConcurrency),
 				storageTypeName,
 				capabilitiesProvider,
 				creator.GetBinaryCoder(),
 			)
+			if err != nil {
+				return BlobAccessInfo[T]{}, "", err
+			}
 		}
 		return BlobAccessInfo[T]{
 			BlobAccess:      localBlobAccess,

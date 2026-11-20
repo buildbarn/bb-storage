@@ -39,6 +39,10 @@ Tagging ... as bazel/cmd/bb_storage:bb_storage_container
 
 This container image can then be launched using Docker as follows:
 
+Each flat local backend requires an explicit `refreshConcurrency` between
+1 and 256. The example uses 1 to preserve the historical refresh-copy
+concurrency; choose a higher value only if appropriate for your storage.
+
 ```
 $ cat config/bb_storage.jsonnet
 {
@@ -59,6 +63,7 @@ $ cat config/bb_storage.jsonnet
           oldBlocks: 8,
           currentBlocks: 24,
           newBlocks: 3,
+          refreshConcurrency: 1,
           blocksOnBlockDevice: {
             source: {
               file: {
@@ -95,6 +100,7 @@ $ cat config/bb_storage.jsonnet
               oldBlocks: 8,
               currentBlocks: 24,
               newBlocks: 1,
+              refreshConcurrency: 1,
               blocksOnBlockDevice: {
                 source: {
                   file: {
@@ -136,6 +142,7 @@ $ cat config/bb_storage.jsonnet
             oldBlocks: 8,
             currentBlocks: 24,
             newBlocks: 1,
+            refreshConcurrency: 1,
             blocksOnBlockDevice: {
               source: {
                 file: {

@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "configuration",
@@ -61,5 +61,19 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_x_sync//semaphore",
+    ],
+)
+
+go_test(
+    name = "configuration_test",
+    srcs = ["new_blob_access_test.go"],
+    deps = [
+        ":configuration",
+        "//pkg/proto/configuration/blobstore",
+        "//pkg/proto/configuration/lossymap",
+        "//pkg/testutil",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
