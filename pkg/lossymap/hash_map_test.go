@@ -154,5 +154,30 @@ func TestHashMap(t *testing.T) {
 
 			require.NoError(t, m.Put(1, 2000, 0))
 		})
+
+		t.Run("Dropped", func(t *testing.T) {
+			// If both places at which the record may be
+			// stored contain newer records, the record
+			// should be dropped. This should be reported to
+			// the record array.
+			recordKeyHasher.EXPECT().Call(&lossymap.RecordKey[int]{Key: 1}).
+				Return(uint64(21))
+			recordArray.EXPECT().Get(uint64(8), 0).Return(lossymap.Record[int, int]{
+				RecordKey: lossymap.RecordKey[int]{Key: 2},
+				Value:     2000,
+			}, nil)
+			recordKeyHasher.EXPECT().Call(&lossymap.RecordKey[int]{Key: 1, Attempt: 1}).
+				Return(uint64(15))
+			recordArray.EXPECT().Get(uint64(2), 0).Return(lossymap.Record[int, int]{
+				RecordKey: lossymap.RecordKey[int]{Key: 3},
+				Value:     3000,
+			}, nil)
+			recordArray.EXPECT().Drop(lossymap.Record[int, int]{
+				RecordKey: lossymap.RecordKey[int]{Key: 1},
+				Value:     1000,
+			}, 0)
+
+			require.NoError(t, m.Put(1, 1000, 0))
+		})
 	})
 }

@@ -36,3 +36,10 @@ func (ra *lowerBoundComparingRecordArray[TKey, TValue]) Put(index uint64, record
 	}
 	return ra.base.Put(index, record, struct{}{})
 }
+
+func (ra *lowerBoundComparingRecordArray[TKey, TValue]) Drop(record Record[TKey, TValue], lowestValidValue TValue) {
+	// Records that are already invalid don't need to be reported.
+	if ra.valueComparator(&record.Value, &lowestValidValue) >= 0 {
+		ra.base.Drop(record, struct{}{})
+	}
+}

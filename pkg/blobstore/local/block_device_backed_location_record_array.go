@@ -109,3 +109,6 @@ func (lra *blockDeviceBackedLocationRecordArray) Put(index uint64, locationRecor
 	_, err := lra.device.WriteAt(record[:], int64(index)*blockDeviceBackedLocationRecordSize)
 	return err
 }
+
+func (*blockDeviceBackedLocationRecordArray) Drop(locationRecord LocationRecord, resolver BlockReferenceResolver) {
+}

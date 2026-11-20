@@ -199,9 +199,18 @@ func (m *hashMap[TKey, TValue, TExpirationData]) Put(key TKey, value TValue, exp
 		if record.RecordKey.Attempt >= m.maximumGetAttempts {
 			// No need to generate records that Get() cannot reach.
 			m.putTooManyAttempts.Observe(float64(iteration))
+			m.drop(record, expirationData)
 			return nil
 		}
 	}
 	m.putTooManyIterations.Inc()
+	m.drop(record, expirationData)
 	return nil
+}
+
+// drop is called by Put() when a record is dropped, because no place
+// could be found to store it.
+func (m *hashMap[TKey, TValue, TExpirationData]) drop(record Record[TKey, TValue], expirationData TExpirationData) {
+	record.RecordKey.Attempt = 0
+	m.recordArray.Drop(record, expirationData)
 }
