@@ -56,7 +56,9 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), len(data))
 		}
 		c := chunk.NewChunk(data)
-		if actual := c.ComputeDigest(digestFunction); actual != d {
+		if actual, err := c.ComputeDigest(digestFunction); err != nil {
+			return err
+		} else if actual != d {
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 		}
 		if d.GetSizeBytes() > 0 {
@@ -97,10 +99,14 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 		// The chunker returns data that aliases an internal buffer
 		// which gets reused between calls. Copy it, so that the
 		// resulting chunk may be retained for as long as desired.
-		c := chunk.NewChunk(bytes.Clone(chunkData))
-		chunkDigest := c.ComputeDigest(digestFunction)
+		chunkData = bytes.Clone(chunkData)
+		c := chunk.NewChunk(chunkData)
+		chunkDigest, err := c.ComputeDigest(digestFunction)
+		if err != nil {
+			return err
+		}
 
-		if _, err := wholeGen.Write(c.GetBytes()); err != nil {
+		if _, err := wholeGen.Write(chunkData); err != nil {
 			return status.Error(codes.Internal, "Could not compute digest of blob")
 		}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readfallback"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -34,7 +35,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -60,7 +61,7 @@ func TestReadFallbackBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello"), data)
 	})
 
@@ -104,7 +105,7 @@ func TestReadFallbackBlobAccessPut(t *testing.T) {
 		// secondary backend is effectively read-only.
 		primary.EXPECT().Put(ctx, helloDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -227,7 +228,7 @@ func TestReadFallbackBlobAccessSeparateReplicators(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), chunk.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(chunk.GetBytes()))
 	})
 
 	t.Run("FindMissing", func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -45,7 +46,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 		blobDigest := digest.MustNewDigest("put", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 5)
 		sourceBackend.EXPECT().Put(gomock.Any(), blobDigest, gomock.Any()).DoAndReturn(
 			func(ctx context.Context, digest digest.Digest, c *chunk.Chunk) error {
-				data := c.GetBytes()
+				data := util.Must(c.GetBytes())
 				require.Equal(t, []byte("Hello"), data)
 				return nil
 			},
@@ -77,7 +78,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data := chunk.GetBytes()
+			data := util.Must(chunk.GetBytes())
 			require.Equal(t, []byte("Hello"), data)
 		}
 
@@ -92,7 +93,7 @@ func TestReadCanaryingBlobAccess(t *testing.T) {
 
 			chunk, err := blobAccess.Get(ctx, blobDigest)
 			require.NoError(t, err)
-			data := chunk.GetBytes()
+			data := util.Must(chunk.GetBytes())
 			require.Equal(t, []byte("Hello"), data)
 		}
 

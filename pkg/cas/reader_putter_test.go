@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -61,14 +62,14 @@ func TestReaderPutterMultipleChunks(t *testing.T) {
 		if !ok {
 			return false
 		}
-		return bytes.Equal(chunk.GetBytes(), data[:77])
+		return bytes.Equal(util.Must(chunk.GetBytes()), data[:77])
 	})).Return(nil)
 	chunkStorage.EXPECT().Put(ctx, expectedChunkMapping.GetDigestAtIndex(d.GetInstanceName(), 1), gomock.Cond(func(x any) bool {
 		chunk, ok := x.(*chunk.Chunk)
 		if !ok {
 			return false
 		}
-		return bytes.Equal(chunk.GetBytes(), data[77:])
+		return bytes.Equal(util.Must(chunk.GetBytes()), data[77:])
 	})).Return(nil)
 	chunkMappingStorage.EXPECT().Put(ctx, d, expectedChunkMapping).Return(nil)
 
@@ -246,8 +247,8 @@ func FuzzReaderPutter(f *testing.F) {
 
 		composedData := make([]byte, 0, dataSizeBytes)
 		for i, c := range chunks {
-			require.Equal(c.chunk.ComputeDigest(digestFunction), c.digest, "Digest mismatch for chunk %d.", i)
-			composedData = append(composedData, c.chunk.GetBytes()...)
+			require.Equal(util.Must(c.chunk.ComputeDigest(digestFunction)), c.digest, "Digest mismatch for chunk %d.", i)
+			composedData = append(composedData, util.Must(c.chunk.GetBytes())...)
 		}
 		require.Equal(originalData, composedData)
 

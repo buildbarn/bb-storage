@@ -72,12 +72,11 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		compressor = remoteexecution.Compressor_ZSTD
 	}
 
-	digestFunction := digest.GetDigestFunction()
 	req := &remoteexecution.BatchReadBlobsRequest{
 		InstanceName:          digest.GetInstanceName().String(),
 		Digests:               []*remoteexecution.Digest{digest.GetProto()},
 		AcceptableCompressors: []remoteexecution.Compressor_Value{compressor},
-		DigestFunction:        digestFunction.GetEnumValue(),
+		DigestFunction:        digest.GetDigestFunction().GetEnumValue(),
 	}
 
 	resp, err := ba.contentAddressableStorageClient.BatchReadBlobs(ctx, req)
@@ -94,15 +93,14 @@ func (ba *csBlobAccess) Get(ctx context.Context, digest digest.Digest) (*chunk.C
 		return nil, err
 	}
 
-	c, err := chunk.NewChunkFromEncoded(r.Data, int(digest.GetSizeBytes()), r.Compressor)
+	// Don't decompress and validate the chunk here. If the chunk
+	// is merely forwarded to a client that validates it by itself,
+	// doing so would be a waste of effort. The chunk validates
+	// itself the moment its contents are accessed.
+	c, err := chunk.NewChunkWithDelayedValidation(r.Data, digest, r.Compressor)
 	if err != nil {
 		return nil, util.StatusWrapWithCode(err, codes.Internal, "Failed to decode upstream response")
 	}
-
-	if actualDigest := c.ComputeDigest(digestFunction); actualDigest != digest {
-		return nil, status.Errorf(codes.Internal, "Digest mismatch, expected %s, got %s", digest.String(), actualDigest.String())
-	}
-
 	return c, nil
 }
 

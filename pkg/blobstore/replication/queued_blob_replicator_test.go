@@ -12,6 +12,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/eviction"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -45,7 +46,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		c, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), c.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 
 		// The fact that the object has been replicated should
 		// be cached. We should only perform the load during the
@@ -57,7 +58,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		c, err = replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), c.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 
 		// A third request after the cache entry has expired
 		// should trigger a replication once again.
@@ -69,7 +70,7 @@ func TestQueuedBlobReplicatorReplicateSingle(t *testing.T) {
 
 		c, err = replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), c.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(c.GetBytes()))
 	})
 
 	t.Run("SourceError", func(t *testing.T) {

@@ -104,11 +104,15 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		// Blobs that fit in a single chunk are stored as the
 		// chunk itself. Chunks are immutable, so their data can
 		// be placed in the response without copying it.
+		//
+		// The client is responsible for validating the data
+		// it receives, so there is no need for us to validate
+		// chunks that haven't been already.
 		c, err := s.chunkStorage.Get(ctx, blobDigest)
 		if err != nil {
 			return nil, err
 		}
-		return c.GetEncodedBytes(compressor)
+		return c.GetUnvalidatedEncodedBytes(compressor)
 	}
 	chunkMapping, err := s.chunkMappingStorage.Get(ctx, blobDigest)
 	if err != nil {
@@ -122,7 +126,7 @@ func (s *contentAddressableStorageServer) readBlobFromBatch(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		data, err := c.GetEncodedBytes(compressor)
+		data, err := c.GetUnvalidatedEncodedBytes(compressor)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +253,9 @@ func (s *contentAddressableStorageServer) updateChunk(ctx context.Context, d dig
 		return status.Errorf(codes.Unimplemented, "This service does not support uploading compression type: %s", compressor)
 	}
 	c := chunk.NewChunk(decompressedData)
-	if actual := c.ComputeDigest(d.GetDigestFunction()); actual != d {
+	if actual, err := c.ComputeDigest(d.GetDigestFunction()); err != nil {
+		return err
+	} else if actual != d {
 		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 	}
 	// We can't reuse the compression here as it comes from an untrusted
