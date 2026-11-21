@@ -132,11 +132,18 @@ func (bac *csBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gro
 			if err != nil {
 				return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCP client options")
 			}
-			client, err := storage.NewClient(context.Background(), clientOptions...)
+			client, err := storage.NewClient(context.TODO(), clientOptions...)
 			if err != nil {
 				return BlobAccessInfo[*chunk.Chunk]{}, "", util.StatusWrap(err, "Failed to create GCS client")
 			}
 			gcsClient = gcp.NewWrappedStorageClient(client)
+			terminationGroup.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+				<-ctx.Done()
+				if err := client.Close(); err != nil {
+					return util.StatusWrapf(err, "Failed to close GCS client")
+				}
+				return nil
+			})
 		}
 
 		return BlobAccessInfo[*chunk.Chunk]{
