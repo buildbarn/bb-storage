@@ -54,7 +54,7 @@ func (cc *lazyClientConn) openConnection(ctx context.Context) (grpc.ClientConnIn
 
 	// Slow path: initialize or wait for initialization by another
 	// goroutine to complete.
-	if err := util.AcquireSemaphore(ctx, cc.initializationSemaphore, 1); err != nil {
+	if err := cc.initializationSemaphore.Acquire(ctx, 1); err != nil {
 		return nil, err
 	}
 	defer cc.initializationSemaphore.Release(1)

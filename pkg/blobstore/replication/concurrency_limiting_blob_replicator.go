@@ -5,7 +5,6 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/digest"
-	"github.com/buildbarn/bb-storage/pkg/util"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -44,7 +43,7 @@ func (br *concurrencyLimitingBlobReplicator[T]) ReplicateSingle(ctx context.Cont
 }
 
 func (br *concurrencyLimitingBlobReplicator[T]) ReplicateMultiple(ctx context.Context, digests digest.Set) error {
-	if err := util.AcquireSemaphore(ctx, br.semaphore, 1); err != nil {
+	if err := br.semaphore.Acquire(ctx, 1); err != nil {
 		return err
 	}
 	err := br.base.ReplicateMultiple(ctx, digests)

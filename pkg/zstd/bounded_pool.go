@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/klauspost/compress/zstd"
 	"golang.org/x/sync/semaphore"
 )
@@ -57,7 +56,7 @@ func NewBoundedPool(
 }
 
 func (p *boundedPool) NewEncoder(ctx context.Context, w io.Writer) (Encoder, error) {
-	if err := util.AcquireSemaphore(ctx, p.encoderSem, 1); err != nil {
+	if err := p.encoderSem.Acquire(ctx, 1); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +66,7 @@ func (p *boundedPool) NewEncoder(ctx context.Context, w io.Writer) (Encoder, err
 }
 
 func (p *boundedPool) NewDecoder(ctx context.Context, r io.Reader) (Decoder, error) {
-	if err := util.AcquireSemaphore(ctx, p.decoderSem, 1); err != nil {
+	if err := p.decoderSem.Acquire(ctx, 1); err != nil {
 		return nil, err
 	}
 
