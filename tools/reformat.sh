@@ -65,9 +65,15 @@ find bazel-bin/ -path "*${go_module_name}*" -name '*.pb.go' | while read f; do
   cat $f > $(echo $f | sed -e "s|.*/${go_module_name}/||")
 done
 
-# Files embedded into Go binaries
+# Files embedded into Go binaries. Only build patterns that correspond
+# to generated files. Patterns may also refer to files or directories
+# that are checked in, for which no target exists.
 if git grep -q '^[[:space:]]*//go:embed '; then
-  bazel build $(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |//\1:|; s|"||g; s| .*||' | sort -u)
+  embed_patterns="set($(git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |//\1:|; s|"||g; s| .*||' | sort -u | tr '\n' ' '))"
+  embed_targets=$(bazel query --keep_going --output=label "$embed_patterns except kind('source file', $embed_patterns)" 2>/dev/null || true)
+  if [ -n "$embed_targets" ]; then
+    bazel build $embed_targets
+  fi
   git grep '^[[:space:]]*//go:embed ' | sed -e 's|\(.*\)/.*//go:embed |\1/|' | while read o; do
     if [ -e "bazel-bin/$o" ]; then
       rm -rf "$o"
