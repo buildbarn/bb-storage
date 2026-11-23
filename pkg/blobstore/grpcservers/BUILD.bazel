@@ -29,6 +29,7 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_x_sync//semaphore",
     ],
 )
 
@@ -44,6 +45,7 @@ go_test(
         "//internal/mock",
         "//pkg/auth",
         "//pkg/blobstore/chunk",
+        "//pkg/cas",
         "//pkg/digest",
         "//pkg/proto/icas",
         "//pkg/testutil",
@@ -57,6 +59,7 @@ go_test(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_grpc//test/bufconn",
+        "@org_golang_x_sync//semaphore",
         "@org_uber_go_mock//gomock",
     ],
 )

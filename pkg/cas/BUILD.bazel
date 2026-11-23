@@ -6,6 +6,7 @@ go_library(
     name = "cas",
     srcs = [
         "chunk_bytes_reader.go",
+        "fetch_chunks_in_order.go",
         "find_missing.go",
         "get_bytes.go",
         "get_reader.go",
@@ -43,6 +44,7 @@ go_test(
     name = "cas_test",
     srcs = [
         "empty_blob_test.go",
+        "fetch_chunks_in_order_test.go",
         "nested_blob_replicator_test.go",
         "reader_putter_test.go",
         "stream_reader_test.go",

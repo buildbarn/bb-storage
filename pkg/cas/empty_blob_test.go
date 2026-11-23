@@ -61,7 +61,7 @@ func TestEmptyBlobReads(t *testing.T) {
 			name: "IntoWriter",
 			run: func(t *testing.T, deps emptyBlobTestDeps) {
 				var w bytes.Buffer
-				require.NoError(t, cas.IntoWriter(deps.ctx, deps.chunkBytesReader, nil, params, emptyDigest, 0, &w))
+				require.NoError(t, cas.IntoWriter(deps.ctx, deps.chunkBytesReader, nil, nil, params, emptyDigest, 0, &w))
 				require.Empty(t, w.Bytes())
 			},
 		},

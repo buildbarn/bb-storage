@@ -64,6 +64,9 @@ type ContentAddressableStorageInfo struct {
 	// ChunkSemaphore limits the chunks that ReaderPutters, which write
 	// to this CAS, hold in memory.
 	ChunkSemaphore *semaphore.Weighted
+	// ChunkReadAheadSemaphore limits the chunks that are read ahead
+	// from this CAS, as described in cas.FetchChunksInOrder().
+	ChunkReadAheadSemaphore *semaphore.Weighted
 }
 
 type simpleNestedBlobAccessCreator[T any] struct {
@@ -756,9 +759,10 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 			ChunkMappingFetcher:  chunkMappingFetcher,
 			CDCParametersFetcher: cdcParametersFetcher,
 		},
-		ChunkStorage:        chunkStorage,
-		ChunkMappingStorage: chunkMappingStorage,
-		DigestKeyFormat:     chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
-		ChunkSemaphore:      chunkSemaphore,
+		ChunkStorage:            chunkStorage,
+		ChunkMappingStorage:     chunkMappingStorage,
+		DigestKeyFormat:         chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
+		ChunkSemaphore:          chunkSemaphore,
+		ChunkReadAheadSemaphore: semaphore.NewWeighted(maximumBufferedChunks),
 	}, nil
 }

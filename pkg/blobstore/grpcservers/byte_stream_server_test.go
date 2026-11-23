@@ -12,12 +12,14 @@ import (
 	"github.com/buildbarn/bb-storage/internal/mock"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/chunk"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/grpcservers"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -67,7 +69,7 @@ func TestByteStreamServer(t *testing.T) {
 		[]zstd.DOption{zstd.WithDecoderConcurrency(1)},
 	)
 	readerPutter := mock.NewMockReaderPutter(ctrl)
-	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter))
+	bytestream.RegisterByteStreamServer(server, grpcservers.NewByteStreamServer(chunkStorage, chunkMappingStorage, cdcParametersFetcher, zstdPool, readerPutter, semaphore.NewWeighted(cas.RecommendedMaximumBufferedChunks)))
 	go func() {
 		require.NoError(t, server.Serve(l))
 	}()

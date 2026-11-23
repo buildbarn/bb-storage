@@ -20,8 +20,9 @@ import (
 )
 
 // RecommendedMaximumBufferedChunks is a recommended size for the
-// semaphore given to NewReaderPutter(). It is used if the
-// maximum_buffered_chunks option of the CAS configuration is not set.
+// semaphores given to NewReaderPutter() and FetchChunksInOrder(). It is
+// used if the maximum_buffered_chunks option of the CAS configuration
+// is not set.
 const RecommendedMaximumBufferedChunks = 64
 
 // ReaderPutter abstracts putting streams of data into the Content

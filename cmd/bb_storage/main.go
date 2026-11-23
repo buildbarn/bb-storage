@@ -248,6 +248,7 @@ func main() {
 							contentAddressableStorageInfo.CDCParametersFetcher,
 							zstdPool,
 							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage, contentAddressableStorageInfo.ChunkSemaphore),
+							contentAddressableStorageInfo.ChunkReadAheadSemaphore,
 						),
 					)
 				}

@@ -14,6 +14,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/buildbarn/bb-storage/pkg/zstd"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/genproto/googleapis/bytestream"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,18 +26,22 @@ type byteStreamServer struct {
 	cdcParametersFetcher capabilities.CDCParametersFetcher
 	zstdPool             zstd.Pool
 	readerPutter         cas.ReaderPutter
+	readAheadSemaphore   *semaphore.Weighted
 }
 
 // NewByteStreamServer creates a GRPC service for reading blobs from and
 // writing blobs to the Chunk Storage (CS) and Chunk Mapping Storage (CMS).
 // It is used by Bazel to access the Content Addressable Storage (CAS).
-func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, readerPutter cas.ReaderPutter) bytestream.ByteStreamServer {
+// The semaphore limits how many chunks are read ahead, as described in
+// cas.FetchChunksInOrder().
+func NewByteStreamServer(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], cdcParametersFetcher capabilities.CDCParametersFetcher, zstdPool zstd.Pool, readerPutter cas.ReaderPutter, readAheadSemaphore *semaphore.Weighted) bytestream.ByteStreamServer {
 	return &byteStreamServer{
 		chunkStorage:         chunkStorage,
 		chunkMappingStorage:  chunkMappingStorage,
 		cdcParametersFetcher: cdcParametersFetcher,
 		zstdPool:             zstdPool,
 		readerPutter:         readerPutter,
+		readAheadSemaphore:   readAheadSemaphore,
 	}
 }
 
@@ -77,17 +82,17 @@ func (s *byteStreamServer) Read(in *bytestream.ReadRequest, out bytestream.ByteS
 			return err
 		}
 		i, chunkOffset := chunkMapping.FindChunkOffset(uint64(in.ReadOffset))
-		for ; i < chunkMapping.Length(); i++ {
-			chunk, err := s.chunkStorage.Get(ctx, chunkMapping.GetDigestAtIndex(d.GetInstanceName(), i))
-			if err != nil {
+		return cas.FetchChunksInOrder(
+			ctx,
+			chunkMapping.GetDigests(d.GetInstanceName())[i:],
+			s.chunkStorage.Get,
+			s.readAheadSemaphore,
+			func(chunk *chunk.Chunk) error {
+				err := s.sendChunk(out, chunk, chunkOffset, compressor)
+				chunkOffset = 0
 				return err
-			}
-			if err := s.sendChunk(out, chunk, chunkOffset, compressor); err != nil {
-				return err
-			}
-			chunkOffset = 0
-		}
-		return nil
+			},
+		)
 	}
 	// Blobs that fit in a single chunk have no chunk mappings in
 	// storage; the blob is stored as the chunk itself.
