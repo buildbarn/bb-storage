@@ -1,5 +1,5 @@
-load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@aspect_rules_js//js:defs.bzl", "js_run_binary")
+load("@bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@com_github_buildbarn_bb_storage_npm//:purgecss/package_json.bzl", purgecss_bin = "bin")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
