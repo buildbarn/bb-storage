@@ -32,6 +32,8 @@ go_library(
         "request_metadata_tracing_interceptor.go",
         "routing_stream_handler.go",
         "server.go",
+        "server_launchd_darwin.go",
+        "server_launchd_disabled.go",
         "tls_client_certificate_authenticator.go",
     ],
     importpath = "github.com/buildbarn/bb-storage/pkg/grpc",
@@ -81,12 +83,14 @@ go_library(
             "@org_golang_x_sys//unix",
         ],
         "@rules_go//go/platform:darwin": [
+            "@com_github_bored_engineer_go_launchd//:go-launchd",
             "@org_golang_x_sys//unix",
         ],
         "@rules_go//go/platform:freebsd": [
             "@org_golang_x_sys//unix",
         ],
         "@rules_go//go/platform:ios": [
+            "@com_github_bored_engineer_go_launchd//:go-launchd",
             "@org_golang_x_sys//unix",
         ],
         "@rules_go//go/platform:linux": [

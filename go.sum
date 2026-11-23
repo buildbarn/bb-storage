@@ -75,6 +75,8 @@ github.com/bazelbuild/rules_go v0.65.0/go.mod h1:xfi7fis5FXCWYcI1W3egOzRBoz+Yi5A
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
+github.com/bored-engineer/go-launchd v0.0.0-20241220214420-b514778f4f80 h1:O7c0CDkfGaIa7eNktOIBoPpuaq0zazOqB3iTghXIySw=
+github.com/bored-engineer/go-launchd v0.0.0-20241220214420-b514778f4f80/go.mod h1:fuBezjGxBjQFkJeCIN1eTo9c27q2WxjHK7tRlfBkyQk=
 github.com/buildbarn/go-cdc v0.0.10 h1:/QMZuWZFPMP5jB3SX9QCKDjcpOJHMnEUv3AfViSIcXk=
 github.com/buildbarn/go-cdc v0.0.10/go.mod h1:vImAFzKmVqxoy9mKuh7wrD3bl3s2VDL5+0Ma6sLxRWA=
 github.com/buildbarn/go-sha256tree v0.0.0-20250310211320-0f70f20e855b h1:IKUxixGBm9UxobU7c248z0BF0ojG19uoSLz8MFZM/KA=
