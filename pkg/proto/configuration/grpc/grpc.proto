@@ -164,6 +164,40 @@ message ServerConfiguration {
   // inside directories that have access controls set up properly.
   repeated string listen_paths = 2;
 
+  // Numbers of already open file descriptors that refer to listening
+  // sockets. This can be used to implement socket activation, where a
+  // service manager such as systemd or launchd creates the listening
+  // sockets and passes them on to the process on startup. This allows
+  // the server to be started lazily, upon the arrival of the first
+  // connection.
+  //
+  // systemd passes sockets down at file descriptors 3, 4, ..., and
+  // sets the LISTEN_FDS environment variable to the number of sockets.
+  // If LISTEN_FDS is provided to Jsonnet as an external variable, the
+  // list of file descriptors can be computed as follows:
+  //
+  //     listenFileDescriptors: std.range(
+  //       3,
+  //       std.parseInt(std.extVar('LISTEN_FDS')) + 2,
+  //     ),
+  //
+  // On macOS, launchd does not pass sockets down this way. Use
+  // listen_launchd_socket_names instead.
+  //
+  // The server takes ownership of these file descriptors, meaning that
+  // they are not available to be used for any other purpose.
+  repeated uint32 listen_file_descriptors = 15;
+
+  // Names of entries in the Sockets dictionary of the launchd property
+  // list of this service, whose listening sockets should be used. The
+  // sockets are obtained by calling launch_activate_socket(). This
+  // allows the server to be started lazily on macOS, upon the arrival
+  // of the first connection.
+  //
+  // This option is only supported on macOS. On other platforms, the
+  // server fails to start if this option is set.
+  repeated string listen_launchd_socket_names = 16;
+
   // Policy for authenticating clients against the gRPC server.
   //
   // Each authentication policy yields a Protobuf message of type
