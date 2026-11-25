@@ -1,93 +1,9 @@
 {
    "jobs": {
-      "build_and_test": {
-         "name": "build_and_test ${{ matrix.host.os }}",
-         "runs-on": "${{ matrix.host.os }}",
-         "steps": [
-            {
-               "name": "Check out source code",
-               "uses": "actions/checkout@v1"
-            },
-            {
-               "name": "Installing Bazel",
-               "run": "v=$(cat .bazelversion) && curl -L https://github.com/bazelbuild/bazel/releases/download/${v}/bazel-${v}-${{matrix.host.bazel_os}}-x86_64 > ~/bazel && chmod +x ~/bazel && echo ~ >> ${GITHUB_PATH}",
-               "shell": "bash"
-            },
-            {
-               "if": "matrix.host.platform_name == 'windows_amd64'",
-               "name": "Override .bazelrc",
-               "run": "echo \"startup --output_base=D:/bazel_output\" >> .bazelrc"
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64'",
-               "name": "linux_amd64: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64_v3'",
-               "name": "linux_amd64_v3: build${{ matrix.host.platform_name == 'linux_amd64_v3' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
-               "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm'",
-               "name": "linux_arm: build${{ matrix.host.platform_name == 'linux_arm' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
-               "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_amd64'",
-               "name": "darwin_amd64: build${{ matrix.host.platform_name == 'darwin_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
-               "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'freebsd_amd64'",
-               "name": "freebsd_amd64: build${{ matrix.host.platform_name == 'freebsd_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 //..."
-            },
-            {
-               "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
-               "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 //..."
-            }
-         ],
-         "strategy": {
-            "matrix": {
-               "host": [
-                  {
-                     "bazel_os": "linux",
-                     "cross_compile": true,
-                     "os": "ubuntu-latest",
-                     "platform_name": "linux_amd64",
-                     "upload": true
-                  },
-                  {
-                     "bazel_os": "windows",
-                     "cross_compile": false,
-                     "os": "windows-latest",
-                     "platform_name": "windows_amd64",
-                     "upload": false
-                  }
-               ]
-            }
-         }
-      },
-      "lint": {
-         "name": "lint",
+      "integration_test": {
+         "name": "integration_test x1000",
          "runs-on": "ubuntu-latest",
+         "timeout-minutes": 350,
          "steps": [
             {
                "name": "Check out source code",
@@ -99,16 +15,8 @@
                "shell": "bash"
             },
             {
-               "name": "Reformat",
-               "run": "bazel run @com_github_buildbarn_bb_storage//tools:reformat"
-            },
-            {
-               "name": "Test style conformance",
-               "run": "git add . && git diff --exit-code HEAD --"
-            },
-            {
-               "name": "Golint",
-               "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
+               "name": "Run integration test 1000 times",
+               "run": "bazel test --test_output=errors --runs_per_test=1000 --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //pkg/blobstore/grpcservers/integration:integration_test"
             }
          ]
       }
