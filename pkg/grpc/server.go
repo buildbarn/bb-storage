@@ -76,6 +76,12 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 			grpc.ChainUnaryInterceptor(unaryInterceptors...),
 			grpc.ChainStreamInterceptor(streamInterceptors...),
 			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+			// Even when not stopping gracefully, wait for
+			// handlers of cancelled RPCs to return. This
+			// ensures that dependencies of the server
+			// (e.g., storage backends) are not terminated
+			// while RPCs are still accessing them.
+			grpc.WaitForHandlers(true),
 		}
 
 		// Enable TLS transport credentials if provided.
