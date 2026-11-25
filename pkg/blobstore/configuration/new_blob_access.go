@@ -306,7 +306,7 @@ func (nc *simpleNestedBlobAccessCreator[T]) newNestedBlobAccessBare(configuratio
 			initialBlockCount,
 		)
 
-		keyLocationMap, err := lossymap.NewHashMapFromConfiguration(
+		keyLocationMap, _, err := lossymap.NewHashMapFromConfiguration(
 			backend.Local.KeyLocationMap,
 			"KeyLocationMap:"+storageTypeName,
 			local.LocationRecordArrayFactory,
