@@ -32,6 +32,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/random"
 	"github.com/buildbarn/bb-storage/pkg/util"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -60,6 +61,12 @@ type ContentAddressableStorageInfo struct {
 	// DigestKeyFormat is the digest.KeyFormat of the CAS, i.e. the
 	// combined digest.KeyFormat of the CS and CMS.
 	DigestKeyFormat digest.KeyFormat
+	// ChunkSemaphore limits the chunks that ReaderPutters, which write
+	// to this CAS, hold in memory.
+	ChunkSemaphore *semaphore.Weighted
+	// ChunkReadAheadSemaphore limits the chunks that are read ahead
+	// from this CAS, as described in cas.FetchChunksInOrder().
+	ChunkReadAheadSemaphore *semaphore.Weighted
 }
 
 type simpleNestedBlobAccessCreator[T any] struct {
@@ -680,6 +687,15 @@ func NewCASAndACFromConfiguration(terminationGroup program.Group, configuration 
 // constituent parts of a Content Addressable Storage (CAS) from
 // configuration.
 func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.ContentAddressableStorageConfiguration, grpcClientFactory grpc.ClientFactory, maximumMessageSizeBytes int) (ContentAddressableStorageInfo, error) {
+	maximumBufferedChunks := configuration.GetMaximumBufferedChunks()
+	if maximumBufferedChunks < 0 {
+		return ContentAddressableStorageInfo{}, status.Errorf(codes.InvalidArgument, "Maximum buffered chunks must not be negative, got %d", maximumBufferedChunks)
+	}
+	if maximumBufferedChunks == 0 {
+		maximumBufferedChunks = cas.RecommendedMaximumBufferedChunks
+	}
+	chunkSemaphore := semaphore.NewWeighted(maximumBufferedChunks)
+
 	chunkStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkStorage(),
@@ -719,7 +735,7 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 	chunkMappingStorageInfo, err := NewBlobAccessFromConfiguration(
 		terminationGroup,
 		configuration.GetChunkMappingStorage(),
-		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory),
+		NewCMSBlobAccessCreator(&chunkStorageInfo, cdcParametersFetcher, chunkBytesReader, grpcClientFactory, chunkSemaphore),
 	)
 	if err != nil {
 		return ContentAddressableStorageInfo{}, util.StatusWrap(err, "Failed to create Chunk Mapping Storage")
@@ -743,8 +759,10 @@ func NewCASFromConfiguration(terminationGroup program.Group, configuration *pb.C
 			ChunkMappingFetcher:  chunkMappingFetcher,
 			CDCParametersFetcher: cdcParametersFetcher,
 		},
-		ChunkStorage:        chunkStorage,
-		ChunkMappingStorage: chunkMappingStorage,
-		DigestKeyFormat:     chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
+		ChunkStorage:            chunkStorage,
+		ChunkMappingStorage:     chunkMappingStorage,
+		DigestKeyFormat:         chunkStorageInfo.DigestKeyFormat.Combine(chunkMappingStorageInfo.DigestKeyFormat),
+		ChunkSemaphore:          chunkSemaphore,
+		ChunkReadAheadSemaphore: semaphore.NewWeighted(maximumBufferedChunks),
 	}, nil
 }

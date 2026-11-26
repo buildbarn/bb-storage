@@ -6,6 +6,7 @@ go_library(
     name = "cas",
     srcs = [
         "chunk_bytes_reader.go",
+        "fetch_chunks_in_order.go",
         "find_missing.go",
         "get_bytes.go",
         "get_reader.go",
@@ -35,6 +36,7 @@ go_library(
         "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
         "@org_golang_x_sync//errgroup",
+        "@org_golang_x_sync//semaphore",
     ],
 )
 
@@ -42,6 +44,7 @@ go_test(
     name = "cas_test",
     srcs = [
         "empty_blob_test.go",
+        "fetch_chunks_in_order_test.go",
         "nested_blob_replicator_test.go",
         "reader_putter_test.go",
         "stream_reader_test.go",
@@ -58,6 +61,7 @@ go_test(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
+        "@org_golang_x_sync//semaphore",
         "@org_uber_go_mock//gomock",
     ],
 )

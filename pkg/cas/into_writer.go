@@ -9,13 +9,15 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // IntoWriter streams the chunks of a blob directly into the provided
-// io.Writer from the specified offset.
-func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
+// io.Writer from the specified offset. The semaphore limits how many
+// chunks are read ahead, as described in FetchChunksInOrder().
+func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chunkMappingFetcher chunk.MappingFetcher, readAheadSemaphore *semaphore.Weighted, params *remoteexecution.RepMaxCdcParams, d digest.Digest, offset int64, w io.Writer) error {
 	if offset < 0 || offset > d.GetSizeBytes() {
 		return status.Errorf(codes.InvalidArgument, "Invalid offset %d for digest %s", offset, d)
 	}
@@ -39,17 +41,15 @@ func IntoWriter(ctx context.Context, chunkBytesReader reader.Reader[[]byte], chu
 		return err
 	}
 	index, chunkOffset := mapping.FindChunkOffset(uint64(offset))
-	for ; index < mapping.Length(); index++ {
-		chunkData, err := chunkBytesReader.Read(ctx, mapping.GetDigestAtIndex(d.GetInstanceName(), index))
-		if err != nil {
+	return FetchChunksInOrder(
+		ctx,
+		mapping.GetDigests(d.GetInstanceName())[index:],
+		chunkBytesReader.Read,
+		readAheadSemaphore,
+		func(chunkData []byte) error {
+			_, err := w.Write(chunkData[chunkOffset:])
+			chunkOffset = 0
 			return err
-		}
-
-		if _, err := w.Write(chunkData[chunkOffset:]); err != nil {
-			return err
-		}
-		chunkOffset = 0
-	}
-
-	return nil
+		},
+	)
 }
