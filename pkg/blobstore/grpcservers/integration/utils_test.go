@@ -59,6 +59,7 @@ local inMemoryStorage = {
 	oldBlocks: 1,
 	currentBlocks: 1,
 	newBlocks: 1,
+	refreshConcurrency: 1,
 	blocksInMemory: { blockSizeBytes: 32 * 1024 * 1024 },
 };
 

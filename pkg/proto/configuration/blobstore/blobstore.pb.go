@@ -717,6 +717,7 @@ type LocalBlobAccessConfiguration struct {
 	Persistent                *LocalBlobAccessConfiguration_Persistent     `protobuf:"bytes,13,opt,name=persistent,proto3" json:"persistent,omitempty"`
 	HierarchicalInstanceNames bool                                         `protobuf:"varint,14,opt,name=hierarchical_instance_names,json=hierarchicalInstanceNames,proto3" json:"hierarchical_instance_names,omitempty"`
 	ChunkingParameters        *v2.RepMaxCdcParams                          `protobuf:"bytes,15,opt,name=chunking_parameters,json=chunkingParameters,proto3" json:"chunking_parameters,omitempty"`
+	RefreshConcurrency        uint32                                       `protobuf:"varint,16,opt,name=refresh_concurrency,json=refreshConcurrency,proto3" json:"refresh_concurrency,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -823,6 +824,13 @@ func (x *LocalBlobAccessConfiguration) GetChunkingParameters() *v2.RepMaxCdcPara
 		return x.ChunkingParameters
 	}
 	return nil
+}
+
+func (x *LocalBlobAccessConfiguration) GetRefreshConcurrency() uint32 {
+	if x != nil {
+		return x.RefreshConcurrency
+	}
+	return 0
 }
 
 type isLocalBlobAccessConfiguration_BlocksBackend interface {
@@ -2075,7 +2083,7 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"\tbackend_a\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\bbackendA\x12W\n" +
 	"\tbackend_b\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\bbackendB\x12i\n" +
 	"\x11replicator_a_to_b\x18\x03 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorAToB\x12i\n" +
-	"\x11replicator_b_to_a\x18\x04 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorBToA\"\x88\t\n" +
+	"\x11replicator_b_to_a\x18\x04 \x01(\v2>.buildbarn.configuration.blobstore.BlobReplicatorConfigurationR\x0ereplicatorBToA\"\xb9\t\n" +
 	"\x1cLocalBlobAccessConfiguration\x12`\n" +
 	"\x10key_location_map\x18\x04 \x01(\v26.buildbarn.configuration.lossymap.HashMapConfigurationR\x0ekeyLocationMap\x12\x1d\n" +
 	"\n" +
@@ -2090,7 +2098,8 @@ const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blo
 	"persistent\x18\r \x01(\v2J.buildbarn.configuration.blobstore.LocalBlobAccessConfiguration.PersistentR\n" +
 	"persistent\x12>\n" +
 	"\x1bhierarchical_instance_names\x18\x0e \x01(\bR\x19hierarchicalInstanceNames\x12a\n" +
-	"\x13chunking_parameters\x18\x0f \x01(\v20.build.bazel.remote.execution.v2.RepMaxCdcParamsR\x12chunkingParameters\x1a:\n" +
+	"\x13chunking_parameters\x18\x0f \x01(\v20.build.bazel.remote.execution.v2.RepMaxCdcParamsR\x12chunkingParameters\x12/\n" +
+	"\x13refresh_concurrency\x18\x10 \x01(\rR\x12refreshConcurrency\x1a:\n" +
 	"\x0eBlocksInMemory\x12(\n" +
 	"\x10block_size_bytes\x18\x01 \x01(\x03R\x0eblockSizeBytes\x1a\x84\x01\n" +
 	"\x13BlocksOnBlockDevice\x12J\n" +

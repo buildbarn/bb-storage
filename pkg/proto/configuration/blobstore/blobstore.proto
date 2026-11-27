@@ -654,6 +654,21 @@ message LocalBlobAccessConfiguration {
   //
   // This option is only supported for the CS.
   build.bazel.remote.execution.v2.RepMaxCdcParams chunking_parameters = 15;
+
+  // Maximum number of concurrent FindMissing() blob refreshes. A refresh
+  // reads a blob from an old block and copies it into a new one to keep
+  // it from disappearing. Inline Get() refreshes are not subject to this
+  // limit. Refreshes of the same blob are serialized by digest stripes.
+  //
+  // Must be explicitly set to a value between 1 and 256, inclusive.
+  // Unset (zero) and out-of-range values cause startup to fail. A value
+  // of 1 preserves the historical single-copy concurrency limit, not
+  // whole-batch scheduling. Choose a limit appropriate for the storage.
+  //
+  // Only supported when hierarchical_instance_names is false. When it
+  // is true, this field must be left unset; hierarchical storage retains
+  // its existing refresh locking.
+  uint32 refresh_concurrency = 16;
 }
 
 message ExistenceCachingBlobAccessConfiguration {
