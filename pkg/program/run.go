@@ -17,6 +17,30 @@ import (
 // its siblings. Siblings are all terminated at the same time, while
 // dependencies are only terminated after all of the siblings of the
 // current routine have completed.
+//
+//	Root R (ctxR)
+//	├── Sibling S1
+//	├── Sibling S2
+//	├── Dependency (ctxD)
+//	│   ├── Sibling D1-S1
+//	│   ├── Sibling D1-S2
+//	│   └── Dependency (ctxD1D)
+//	│       └── Sibling D1-D1-S1
+//	└── Dependency (ctxD)
+//	    ├── Sibling D2-S1
+//	    └── Dependency (ctxD2D)
+//	        └── Sibling D2-D1-S1
+//
+// In the graph above, the contexts are cancelled in the order as the
+// numbers suggest, where 'D2-D1-S*' are terminated concurrently, by
+// cancelling ctxD2D, as soon as their owning 'D2-S*' siblings have
+// completed.
+//
+// 1. If any routine returns an error, ctxR is cancelled immediately.
+// 2. When all Sn have returned, ctxD is cancelled.
+// 3a. When all D1-Sn have returned, ctxD1D is cancelled.
+// 3b. When all D2-Sn have returned, ctxD2D is cancelled.
+// 4. When all routines have returned and nothing is running, R returns.
 type Routine func(ctx context.Context, siblingsGroup, dependenciesGroup Group) error
 
 // Group of routines. This interface can be used to launch additional

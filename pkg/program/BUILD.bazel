@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "program",
@@ -12,4 +12,13 @@ go_library(
     importpath = "github.com/buildbarn/bb-storage/pkg/program",
     visibility = ["//visibility:public"],
     deps = ["//pkg/util"],
+)
+
+go_test(
+    name = "program_test",
+    srcs = ["run_test.go"],
+    deps = [
+        ":program",
+        "@com_github_stretchr_testify//require",
+    ],
 )
