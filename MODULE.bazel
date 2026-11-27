@@ -1,7 +1,7 @@
 module(name = "com_github_buildbarn_bb_storage")
 
-bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
 bazel_dep(name = "aspect_rules_js", version = "3.6.1")
+bazel_dep(name = "bazel_lib", version = "3.7.0")
 bazel_dep(name = "bazel_remote_apis", version = "0")
 bazel_dep(name = "gazelle", version = "0.54.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20261103-57aa4dbc")

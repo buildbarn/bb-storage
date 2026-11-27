@@ -1,6 +1,6 @@
 # gazelle:ignore
 
-load("@aspect_bazel_lib//lib:expand_template.bzl", "expand_template")
+load("@bazel_lib//lib:expand_template.bzl", "expand_template")
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 # When built with --stamp, creates a non-deterministic output file for pushing images to a remote registry.
