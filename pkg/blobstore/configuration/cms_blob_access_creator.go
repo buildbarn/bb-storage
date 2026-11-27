@@ -13,6 +13,8 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	pb "github.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type cmsBlobAccessCreator struct {
@@ -23,17 +25,19 @@ type cmsBlobAccessCreator struct {
 	cdcParametersFetcher capabilities.CDCParametersFetcher
 	chunkBytesReader     reader.Reader[[]byte]
 	grpcClientFactory    grpc.ClientFactory
+	chunkSemaphore       *semaphore.Weighted
 }
 
 // NewCMSBlobAccessCreator creates a BlobAccessCreator that can be
 // provided to NewBlobAccessFromConfiguration() to construct a
 // BlobAccess that is suitable for querying for chunk mapping.
-func NewCMSBlobAccessCreator(chunkStorage *BlobAccessInfo[*chunk.Chunk], cdcParametersFetcher capabilities.CDCParametersFetcher, chunkBytesReader reader.Reader[[]byte], grpcClientFactory grpc.ClientFactory) BlobAccessCreator[chunk.Mapping] {
+func NewCMSBlobAccessCreator(chunkStorage *BlobAccessInfo[*chunk.Chunk], cdcParametersFetcher capabilities.CDCParametersFetcher, chunkBytesReader reader.Reader[[]byte], grpcClientFactory grpc.ClientFactory, chunkSemaphore *semaphore.Weighted) BlobAccessCreator[chunk.Mapping] {
 	return &cmsBlobAccessCreator{
 		chunkStorage:         chunkStorage,
 		cdcParametersFetcher: cdcParametersFetcher,
 		chunkBytesReader:     chunkBytesReader,
 		grpcClientFactory:    grpcClientFactory,
+		chunkSemaphore:       chunkSemaphore,
 	}
 }
 
@@ -63,7 +67,7 @@ func (bac *cmsBlobAccessCreator) NewCustomBlobAccess(terminationGroup program.Gr
 				bac.chunkStorage.BlobAccess,
 				bac.cdcParametersFetcher,
 				bac.chunkBytesReader,
-				cas.NewReaderPutter(bac.chunkStorage.BlobAccess, base.BlobAccess),
+				cas.NewReaderPutter(bac.chunkStorage.BlobAccess, base.BlobAccess, bac.chunkSemaphore),
 			),
 			DigestKeyFormat: base.DigestKeyFormat.Combine(bac.chunkStorage.DigestKeyFormat),
 		}, "chunk_mapping_validating", nil

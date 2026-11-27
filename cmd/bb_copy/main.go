@@ -62,7 +62,7 @@ func main() {
 		}
 
 		replicator := cas.NewReplicator(
-			cas.NewReaderPutter(sink.ChunkStorage, sink.ChunkMappingStorage),
+			cas.NewReaderPutter(sink.ChunkStorage, sink.ChunkMappingStorage, sink.ChunkSemaphore),
 			source.ChunkBytesReader,
 			source.ChunkMappingStorage,
 			source.ChunkMappingFetcher,

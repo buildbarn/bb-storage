@@ -13,9 +13,16 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/util"
 	cdc "github.com/buildbarn/go-cdc"
 
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// RecommendedMaximumBufferedChunks is a recommended size for the
+// semaphore given to NewReaderPutter(). It is used if the
+// maximum_buffered_chunks option of the CAS configuration is not set.
+const RecommendedMaximumBufferedChunks = 64
 
 // ReaderPutter abstracts putting streams of data into the Content
 // Addressable Storage (CAS).
@@ -31,14 +38,30 @@ type ReaderPutter interface {
 type readerPutter struct {
 	chunkStorage        blobstore.BlobAccess[*chunk.Chunk]
 	chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]
+	chunkSemaphore      *semaphore.Weighted
 }
 
 // NewReaderPutter creates a ReaderPutter that writes to the CAS.
-func NewReaderPutter(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping]) ReaderPutter {
+func NewReaderPutter(chunkStorage blobstore.BlobAccess[*chunk.Chunk], chunkMappingStorage blobstore.BlobAccess[chunk.Mapping], chunkSemaphore *semaphore.Weighted) ReaderPutter {
 	return &readerPutter{
 		chunkStorage:        chunkStorage,
 		chunkMappingStorage: chunkMappingStorage,
+		chunkSemaphore:      chunkSemaphore,
 	}
+}
+
+// storeChunk stores a chunk in the Chunk Storage, if it is missing.
+func (rp *readerPutter) storeChunk(ctx context.Context, d digest.Digest, c *chunk.Chunk) error {
+	missing, err := rp.chunkStorage.FindMissing(ctx, d.ToSingletonSet())
+	if err != nil {
+		return err
+	}
+	if !missing.Empty() {
+		if err := rp.chunkStorage.Put(ctx, d, c); err != nil {
+			return util.StatusWrap(err, "Failed to save chunk")
+		}
+	}
+	return nil
 }
 
 func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Reader, params *remoteexecution.RepMaxCdcParams) error {
@@ -60,15 +83,7 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 		}
 		if d.GetSizeBytes() > 0 {
-			missing, err := rp.chunkStorage.FindMissing(ctx, d.ToSingletonSet())
-			if err != nil {
-				return err
-			}
-			if !missing.Empty() {
-				if err := rp.chunkStorage.Put(ctx, d, c); err != nil {
-					return util.StatusWrap(err, "Failed to save chunk")
-				}
-			}
+			return rp.storeChunk(ctx, d, c)
 		}
 		return nil
 	}
@@ -83,53 +98,60 @@ func (rp *readerPutter) PutReader(ctx context.Context, d digest.Digest, r io.Rea
 	)
 	wholeGen := digestFunction.NewGenerator(d.GetSizeBytes())
 
+	group, groupCtx := errgroup.WithContext(ctx)
 	chunkDigests := make([]digest.Digest, 0)
-	var offset uint64
-	for {
-		chunkData, err := chunkReader.ReadNextChunk()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return util.StatusWrap(err, "Failed to chunk write stream")
-		}
-
-		// The chunker returns data that aliases an internal buffer
-		// which gets reused between calls. Copy it, so that the
-		// resulting chunk may be retained for as long as desired.
-		c := chunk.NewChunk(bytes.Clone(chunkData))
-		chunkDigest := c.ComputeDigest(digestFunction)
-
-		if _, err := wholeGen.Write(c.GetBytes()); err != nil {
-			return status.Error(codes.Internal, "Could not compute digest of blob")
-		}
-
-		// TODO: If we allow ourselves to gather a couple of chunks we
-		// can do fewer find missing calls and reduce pipelining delay
-		// as we can chunk as fast as possible. This does require some
-		// form of semaphore to prevent memory use from growing
-		// uncontrollably.
-		missing, err := rp.chunkStorage.FindMissing(ctx, chunkDigest.ToSingletonSet())
-		if err != nil {
-			return err
-		}
-		if !missing.Empty() {
-			// The calculated chunk was not present in Chunk Storage.
-			if err := rp.chunkStorage.Put(ctx, chunkDigest, c); err != nil {
-				return util.StatusWrap(err, "Failed to save chunk")
+	readErr := func() error {
+		var offset uint64
+		for {
+			chunkData, err := chunkReader.ReadNextChunk()
+			if err == io.EOF {
+				break
 			}
+			if err != nil {
+				return util.StatusWrap(err, "Failed to chunk write stream")
+			}
+
+			if err := util.AcquireSemaphore(groupCtx, rp.chunkSemaphore, 1); err != nil {
+				return err
+			}
+
+			// The chunker returns data that aliases an internal
+			// buffer which gets reused between calls. Copy it, so
+			// that the chunk may be retained until it is stored.
+			c := chunk.NewChunk(bytes.Clone(chunkData))
+			chunkDigest := c.ComputeDigest(digestFunction)
+
+			if _, err := wholeGen.Write(c.GetBytes()); err != nil {
+				rp.chunkSemaphore.Release(1)
+				return status.Error(codes.Internal, "Could not compute digest of blob")
+			}
+			chunkDigests = append(chunkDigests, chunkDigest)
+			offset += uint64(chunkDigest.GetSizeBytes())
+			if offset > uint64(d.GetSizeBytes()) {
+				rp.chunkSemaphore.Release(1)
+				return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), offset)
+			}
+
+			group.Go(func() error {
+				defer rp.chunkSemaphore.Release(1)
+				return rp.storeChunk(groupCtx, chunkDigest, c)
+			})
 		}
 
-		chunkDigests = append(chunkDigests, chunkDigest)
-		offset += uint64(chunkDigest.GetSizeBytes())
-		if offset > uint64(d.GetSizeBytes()) {
-			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, digest is supposed to be %d bytes but have already received %d bytes", d.GetSizeBytes(), offset)
+		// Verify the whole blob against the advertised digest.
+		if actual := wholeGen.Sum(); actual != d {
+			return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
 		}
+		return nil
+	}()
+
+	// A failed store cancels groupCtx, which can cause readErr. Thus,
+	// the error of the store has priority.
+	if err := group.Wait(); err != nil {
+		return err
 	}
-
-	// Verify the whole blob against the advertised digest.
-	if actual := wholeGen.Sum(); actual != d {
-		return status.Errorf(codes.InvalidArgument, "Blob digest mismatch, advertised %s, actual %s", d, actual)
+	if readErr != nil {
+		return readErr
 	}
 
 	// A single chunk is the trivial case: it already lives in the

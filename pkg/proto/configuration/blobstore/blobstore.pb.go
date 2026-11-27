@@ -34,14 +34,15 @@ const (
 )
 
 type ContentAddressableStorageConfiguration struct {
-	state               protoimpl.MessageState              `protogen:"open.v1"`
-	ChunkStorage        *BlobAccessConfiguration            `protobuf:"bytes,1,opt,name=chunk_storage,json=chunkStorage,proto3" json:"chunk_storage,omitempty"`
-	ChunkMappingStorage *BlobAccessConfiguration            `protobuf:"bytes,2,opt,name=chunk_mapping_storage,json=chunkMappingStorage,proto3" json:"chunk_mapping_storage,omitempty"`
-	ChunkMappingCache   *digest.ExistenceCacheConfiguration `protobuf:"bytes,3,opt,name=chunk_mapping_cache,json=chunkMappingCache,proto3" json:"chunk_mapping_cache,omitempty"`
-	CdcParameterCache   *digest.ExistenceCacheConfiguration `protobuf:"bytes,4,opt,name=cdc_parameter_cache,json=cdcParameterCache,proto3" json:"cdc_parameter_cache,omitempty"`
-	ChunkCache          *digest.ExistenceCacheConfiguration `protobuf:"bytes,5,opt,name=chunk_cache,json=chunkCache,proto3" json:"chunk_cache,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                 protoimpl.MessageState              `protogen:"open.v1"`
+	ChunkStorage          *BlobAccessConfiguration            `protobuf:"bytes,1,opt,name=chunk_storage,json=chunkStorage,proto3" json:"chunk_storage,omitempty"`
+	ChunkMappingStorage   *BlobAccessConfiguration            `protobuf:"bytes,2,opt,name=chunk_mapping_storage,json=chunkMappingStorage,proto3" json:"chunk_mapping_storage,omitempty"`
+	ChunkMappingCache     *digest.ExistenceCacheConfiguration `protobuf:"bytes,3,opt,name=chunk_mapping_cache,json=chunkMappingCache,proto3" json:"chunk_mapping_cache,omitempty"`
+	CdcParameterCache     *digest.ExistenceCacheConfiguration `protobuf:"bytes,4,opt,name=cdc_parameter_cache,json=cdcParameterCache,proto3" json:"cdc_parameter_cache,omitempty"`
+	ChunkCache            *digest.ExistenceCacheConfiguration `protobuf:"bytes,5,opt,name=chunk_cache,json=chunkCache,proto3" json:"chunk_cache,omitempty"`
+	MaximumBufferedChunks int64                               `protobuf:"varint,6,opt,name=maximum_buffered_chunks,json=maximumBufferedChunks,proto3" json:"maximum_buffered_chunks,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ContentAddressableStorageConfiguration) Reset() {
@@ -107,6 +108,13 @@ func (x *ContentAddressableStorageConfiguration) GetChunkCache() *digest.Existen
 		return x.ChunkCache
 	}
 	return nil
+}
+
+func (x *ContentAddressableStorageConfiguration) GetMaximumBufferedChunks() int64 {
+	if x != nil {
+		return x.MaximumBufferedChunks
+	}
+	return 0
 }
 
 type BlobstoreConfiguration struct {
@@ -2020,14 +2028,15 @@ var File_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobs
 
 const file_github_com_buildbarn_bb_storage_pkg_proto_configuration_blobstore_blobstore_proto_rawDesc = "" +
 	"\n" +
-	"Qgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xb1\x04\n" +
+	"Qgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blobstore/blobstore.proto\x12!buildbarn.configuration.blobstore\x1a6build/bazel/remote/execution/v2/remote_execution.proto\x1aUgithub.com/buildbarn/bb-storage/pkg/proto/configuration/blockdevice/blockdevice.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/aws/aws.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/cloud/gcp/gcp.proto\x1aKgithub.com/buildbarn/bb-storage/pkg/proto/configuration/digest/digest.proto\x1aGgithub.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto\x1aPgithub.com/buildbarn/bb-storage/pkg/proto/configuration/http/client/client.proto\x1aOgithub.com/buildbarn/bb-storage/pkg/proto/configuration/lossymap/lossymap.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xe9\x04\n" +
 	"&ContentAddressableStorageConfiguration\x12_\n" +
 	"\rchunk_storage\x18\x01 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\fchunkStorage\x12n\n" +
 	"\x15chunk_mapping_storage\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\x13chunkMappingStorage\x12k\n" +
 	"\x13chunk_mapping_cache\x18\x03 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x11chunkMappingCache\x12k\n" +
 	"\x13cdc_parameter_cache\x18\x04 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\x11cdcParameterCache\x12\\\n" +
 	"\vchunk_cache\x18\x05 \x01(\v2;.buildbarn.configuration.digest.ExistenceCacheConfigurationR\n" +
-	"chunkCache\"\x83\x02\n" +
+	"chunkCache\x126\n" +
+	"\x17maximum_buffered_chunks\x18\x06 \x01(\x03R\x15maximumBufferedChunks\"\x83\x02\n" +
 	"\x16BlobstoreConfiguration\x12\x89\x01\n" +
 	"\x1bcontent_addressable_storage\x18\x01 \x01(\v2I.buildbarn.configuration.blobstore.ContentAddressableStorageConfigurationR\x19contentAddressableStorage\x12]\n" +
 	"\faction_cache\x18\x02 \x01(\v2:.buildbarn.configuration.blobstore.BlobAccessConfigurationR\vactionCache\"\xf2\x10\n" +

@@ -230,7 +230,7 @@ func main() {
 						authorizedChunkStorage,
 						authorizedChunkMappingStorage,
 						contentAddressableStorageInfo.CDCParametersFetcher,
-						cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
+						cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage, contentAddressableStorageInfo.ChunkSemaphore),
 						casGetChunkMappingAuthorizer,
 						casPutChunkMappingAuthorizer,
 						configuration.MaximumMessageSizeBytes,
@@ -247,7 +247,7 @@ func main() {
 							authorizedChunkMappingStorage,
 							contentAddressableStorageInfo.CDCParametersFetcher,
 							zstdPool,
-							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage),
+							cas.NewReaderPutter(authorizedChunkStorage, authorizedChunkMappingStorage, contentAddressableStorageInfo.ChunkSemaphore),
 						),
 					)
 				}
