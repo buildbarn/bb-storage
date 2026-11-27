@@ -45,7 +45,10 @@ $go mod tidy || true
 
 # Gazelle
 find . -name '*.pb.go' -delete
-rm -f $(find . -name '*.proto' | sed -e 's/[^/]*$/BUILD.bazel/')
+for f in $(find . -name '*.proto' | sed -e 's/[^/]*$/BUILD.bazel/'); do
+  grep '# gazelle:' "$f" > "$f.tmp" || true
+  mv "$f.tmp" "$f"
+done
 $gazelle
 
 # bzlmod
