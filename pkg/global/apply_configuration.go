@@ -211,13 +211,18 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 					}
 					spanExporter = exporter
 				case *pb.TracingConfiguration_Backend_OtlpSpanExporter:
-					client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter, group)
-					if err != nil {
-						return nil, nil, util.StatusWrap(err, "Failed to create OTLP gRPC client")
-					}
-					spanExporter, err = otlptrace.New(context.Background(), bb_otel.NewGRPCOTLPTraceClient(client))
-					if err != nil {
-						return nil, nil, util.StatusWrap(err, "Failed to create OTLP span exporter")
+					if err := program.Startup(group, func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+						client, err := nonTracingGRPCClientFactory.NewClientFromConfiguration(spanExporterConfiguration.OtlpSpanExporter, dependenciesGroup)
+						if err != nil {
+							return util.StatusWrap(err, "Failed to create OTLP gRPC client")
+						}
+						spanExporter, err = otlptrace.New(context.TODO(), bb_otel.NewGRPCOTLPTraceClient(client))
+						if err != nil {
+							return util.StatusWrap(err, "Failed to create OTLP span exporter")
+						}
+						return nil
+					}); err != nil {
+						return nil, nil, err
 					}
 				default:
 					return nil, nil, status.Error(codes.InvalidArgument, "Tracing backend does not contain a valid span exporter")
@@ -354,19 +359,25 @@ func ApplyConfiguration(configuration *pb.Configuration, group program.Group) (*
 		}
 		pushTimeoutDuration := pushTimeout.AsDuration()
 
-		// TODO: Run this as part of the program.Group, so that
-		// it gets cleaned up upon shutdown.
-		go func() {
-			for {
-				ctx, cancel := context.WithTimeout(context.Background(), pushTimeoutDuration)
-				err := pusher.PushContext(ctx)
-				cancel()
-				if err != nil {
-					log.Print("Failed to push metrics to Prometheus Pushgateway: ", err)
+		group.Go(func(ctx context.Context, siblingsGroup, dependenciesGroup program.Group) error {
+			// Push metrics until all siblingsGroup tasks have completed.
+			dependenciesGroup.Go(func(dependenciesCtx context.Context, _, _ program.Group) error {
+				for {
+					ctxWithTimeout, cancel := context.WithTimeout(dependenciesCtx, pushTimeoutDuration)
+					err := pusher.PushContext(ctxWithTimeout)
+					cancel()
+					if dependenciesCtx.Err() != nil {
+						// The dependencyGroup has been cancelled.
+						return nil
+					}
+					if err != nil {
+						log.Print("Failed to push metrics to Prometheus Pushgateway: ", err)
+					}
+					time.Sleep(pushIntervalDuration)
 				}
-				time.Sleep(pushIntervalDuration)
-			}
-		}()
+			})
+			return nil
+		})
 	}
 
 	grpcClientFactory := bb_grpc.NewDeduplicatingClientFactory(

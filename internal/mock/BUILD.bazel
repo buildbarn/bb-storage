@@ -279,6 +279,7 @@ gomock(
     out = "grpc.go",
     interfaces = [
         "Authenticator",
+        "ClientConnCloser",
         "ClientDialer",
         "ClientFactory",
     ],

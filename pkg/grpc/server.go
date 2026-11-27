@@ -196,7 +196,9 @@ func NewServersFromConfigurationAndServe(configurations []*configuration.ServerC
 
 		// Enable default services.
 		grpc_prometheus.Register(s)
-		if err := registerReflectionServer(context.Background(), s, relayConfigWithGrpcClients); err != nil {
+		if err := program.StartupDependencies(group, func(ctx context.Context, dependenciesGroup program.Group) error {
+			return registerReflectionServer(ctx, s, relayConfigWithGrpcClients)
+		}); err != nil {
 			return util.StatusWrap(err, "Failed to create reflection service")
 		}
 		h := health.NewServer()
