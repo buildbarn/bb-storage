@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/replication"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -36,7 +37,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 
 		data, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), data.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(data.GetBytes()))
 	})
 
 	t.Run("SuccessReplication", func(t *testing.T) {
@@ -49,7 +50,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 
 		data, err := replicator.ReplicateSingle(ctx, helloDigest)
 		require.NoError(t, err)
-		require.Equal(t, []byte("Hello"), data.GetBytes())
+		require.Equal(t, []byte("Hello"), util.Must(data.GetBytes()))
 	})
 
 	t.Run("FindMissingError", func(t *testing.T) {
@@ -134,7 +135,7 @@ func TestDeduplicatingBlobReplicatorReplicateSingle(t *testing.T) {
 			go func() {
 				data, err := replicator.ReplicateSingle(ctx, helloDigest)
 				require.NoError(t, err)
-				require.Equal(t, []byte("Hello"), data.GetBytes())
+				require.Equal(t, []byte("Hello"), util.Must(data.GetBytes()))
 
 				done <- struct{}{}
 			}()

@@ -27,7 +27,9 @@ func (chunkCoder) Decode(data []byte, d digest.Digest) (*chunk.Chunk, error) {
 		return nil, err
 	}
 
-	if d2 := c.ComputeDigest(d.GetDigestFunction()); d2 != d {
+	if d2, err := c.ComputeDigest(d.GetDigestFunction()); err != nil {
+		return nil, err
+	} else if d2 != d {
 		return nil, status.Errorf(codes.InvalidArgument, "Digest mismatch, expected %s, got %s", d, d2)
 	}
 	return c, nil

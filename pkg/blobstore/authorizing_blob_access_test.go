@@ -44,7 +44,7 @@ func TestAuthorizingBlobAccess(t *testing.T) {
 
 		gotChunk, err := ba.Get(ctx, d)
 		require.NoError(t, err)
-		gotBytes := gotChunk.GetBytes()
+		gotBytes := util.Must(gotChunk.GetBytes())
 		require.Equal(t, wantBytes, gotBytes)
 	})
 

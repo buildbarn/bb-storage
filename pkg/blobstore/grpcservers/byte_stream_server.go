@@ -104,7 +104,11 @@ func (byteStreamServer) sendChunk(out bytestream.ByteStream_ReadServer, chunk *c
 		// multiple ZSTD encoded chunks and their concatenated byte
 		// representation is a valid ZSTD representation of their
 		// concatenated underlying bytes.
-		data, err := chunk.GetEncodedBytes(compressor)
+		//
+		// The client is responsible for validating the data
+		// it receives, so there is no need for us to validate
+		// chunks that haven't been already.
+		data, err := chunk.GetUnvalidatedEncodedBytes(compressor)
 		if err != nil {
 			return err
 		}
@@ -116,9 +120,12 @@ func (byteStreamServer) sendChunk(out bytestream.ByteStream_ReadServer, chunk *c
 	// bytes we need to find the data based on that offset in
 	// its decompressed form, then compress it again before
 	// sending it back.
-	data := chunk.GetBytes()[chunkOffset:]
+	data, err := chunk.GetUnvalidatedEncodedBytes(remoteexecution.Compressor_IDENTITY)
+	if err != nil {
+		return err
+	}
 	return out.SendMsg(&bytestream.ReadResponse{
-		Data: zstd.Encode(data),
+		Data: zstd.Encode(data[chunkOffset:]),
 	})
 }
 

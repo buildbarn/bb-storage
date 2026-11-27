@@ -10,6 +10,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/readcaching"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -34,7 +35,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello world"), data)
 	})
 
@@ -48,7 +49,7 @@ func TestReadCachingBlobAccessGet(t *testing.T) {
 
 		chunk, err := blobAccess.Get(ctx, blobDigest)
 		require.NoError(t, err)
-		data := chunk.GetBytes()
+		data := util.Must(chunk.GetBytes())
 		require.Equal(t, []byte("Hello world"), data)
 	})
 

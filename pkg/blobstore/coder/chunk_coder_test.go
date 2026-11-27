@@ -8,6 +8,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore/coder"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
+	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc/codes"
@@ -27,7 +28,7 @@ func TestChunkCoderEncodeDecodeRoundTrip(t *testing.T) {
 
 	decoded, err := c.Decode(encoded, helloDigest)
 	require.NoError(t, err)
-	decodedData := decoded.GetBytes()
+	decodedData := util.Must(decoded.GetBytes())
 	require.Equal(t, []byte("Hello"), decodedData)
 }
 
